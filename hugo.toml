@@ -1,53 +1,26 @@
 baseURL = 'https://lybra-bee.github.io/'
 languageCode = 'ru-ru'
 defaultContentLanguage = 'ru'
-title = 'Блог и Портфолио'
+title = 'Блог и Портфолио Alexey-New'
 theme = 'hugo-theme-stack'
 
 [params]
   subtitle = "Программирование и веб-дизайн"
   defaultTheme = "auto"
-  featuredImage = true
-  math = false
+  
+  # НАСТРОЙКИ ГЛАВНОЙ СТРАНИЦЫ
+  homepage = true  # Включить специальную главную страницу
+  homepageProfile = true  # Показывать профиль на главной
+  homepagePosts = true  # Показывать посты на главной
+  homepagePostsPagination = 3  # Количество постов
 
 [author]
   name = "Alexey-New"
 
-[social]
-  email = "your-email@example.com"
-
-[menu]
-  [[menu.main]]
-    identifier = "home"
-    name = "Главная"
-    url = "/"
-    weight = 1
-
-  [[menu.main]]
-    identifier = "about"
-    name = "Обо мне"
-    url = "/about/"
-    weight = 2
-
-  [[menu.main]]
-    identifier = "archives"
-    name = "Архив"
-    url = "/archives/"
-    weight = 3
+# УБИРАЕМ РУЧНОЕ МЕНЮ - тема создаст его автоматически
+# из папок content/about.md, content/archives.md и т.д.
 
 [languages]
   [languages.ru]
     weight = 1
     languageName = "Русский"
-    [languages.ru.params]
-      subtitle = "Программирование и веб-дизайн"
-[params.homepage]
-  # Показывать посты на главной странице
-  showPosts = true
-  # Количество постов на главной
-  showPostsPagination = 5
-
-[params.widgets]
-  # Какие виджеты показывать в сайдбаре
-  home = ["search", "posts"]  # На главной: поиск и последние посты
-  single = ["search", "posts", "tag-cloud"]  # В статьях: поиск, посты, облако тегов
