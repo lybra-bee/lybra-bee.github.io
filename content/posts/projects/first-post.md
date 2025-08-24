@@ -4,6 +4,9 @@ date: 2024-01-20T10:00:00+03:00
 draft: false
 description: "Это первая тестовая статья в моем блоге"
 tags: ["тест", "hugo"]
+cover:
+  image: "https://images.unsplash.com/photo-1555949963-aa79dcee981c?w=500&auto=format"  # Можно пока использовать бесплатное изображение
+  alt: "Тестовая обложка"
 ---
 
 ## Привет, мир!
