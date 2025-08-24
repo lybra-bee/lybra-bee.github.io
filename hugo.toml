@@ -8,10 +8,6 @@ theme = 'hugo-theme-stack'
   subtitle = "Программирование и веб-дизайн"
   defaultTheme = "auto"
 
-[params.homepage]
-  layout = "profile"
-  showPosts = true
-
 [author]
   name = "Alexey-New"
 
