@@ -1,0 +1,16 @@
+title: IT-Блог и Портфолио
+email: ваш-email@example.com # Можете пока оставить так
+description: >- 
+  Блог и портфолио программиста и веб-дизайнера.
+baseurl: ""
+url: "https://lybra-bee.github.io" # ВСЕ буквы маленькие, как в вашем username
+
+theme: minima
+
+plugins:
+  - jekyll-feed
+
+author:
+  name: Alexey-New
+
+markdown: kramdown
