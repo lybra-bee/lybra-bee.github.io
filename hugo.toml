@@ -41,3 +41,13 @@ theme = 'hugo-theme-stack'
     languageName = "Русский"
     [languages.ru.params]
       subtitle = "Программирование и веб-дизайн"
+[params.homepage]
+  # Показывать посты на главной странице
+  showPosts = true
+  # Количество постов на главной
+  showPostsPagination = 5
+
+[params.widgets]
+  # Какие виджеты показывать в сайдбаре
+  home = ["search", "posts"]  # На главной: поиск и последние посты
+  single = ["search", "posts", "tag-cloud"]  # В статьях: поиск, посты, облако тегов
