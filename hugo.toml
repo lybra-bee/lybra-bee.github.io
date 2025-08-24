@@ -24,3 +24,15 @@ theme = 'hugo-theme-stack'
   [languages.ru]
     weight = 1
     languageName = "Русский"
+[params.homepage]
+  # Показывать профиль на главной
+  showProfile = true
+  # Показывать посты на главной
+  showPosts = true
+  # Количество постов на главной
+  showPostsPagination = 5
+  # Показывать виджеты на главной
+  showWidgets = true
+
+[params.widgets]
+  home = ["search", "recent"]  # Поиск и recent posts на главной
