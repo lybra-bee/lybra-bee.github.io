@@ -1,5 +1,6 @@
 baseURL = 'https://lybra-bee.github.io/'
 languageCode = 'ru-ru'
+defaultContentLanguage = 'ru'  # ← ЭТУ СТРОКУ ДОБАВИТЬ!
 title = 'Блог и Портфолио Alexey-New'
 theme = 'hugo-theme-stack'
 
@@ -15,3 +16,5 @@ theme = 'hugo-theme-stack'
     weight = 1
     languageName = "Русский"
     title = "Блог и Портфолио"
+    [languages.ru.params]
+      subtitle = "Программирование и веб-дизайн"
