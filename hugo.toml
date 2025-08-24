@@ -1,0 +1,18 @@
+baseURL = 'https://lybra-bee.github.io/'
+languageCode = 'ru-ru'
+title = 'Блог и Портфолио'
+theme = 'hugo-theme-stack'
+
+[params]
+  subtitle = "Программирование и дизайн"
+  # Режим темной темы по умолчанию: 'auto', 'dark', 'light'
+  defaultTheme = "auto"
+
+[author]
+  name = "Alexey-New"
+
+[languages]
+  [languages.ru]
+    weight = 1
+    title = "Блог и Портфолио"
+    languageName = "Русский"
