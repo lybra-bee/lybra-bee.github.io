@@ -1,7 +1,43 @@
 baseURL = 'https://lybra-bee.github.io/'
 languageCode = 'ru-ru'
-title = 'Мой Блог'
+defaultContentLanguage = 'ru'
+title = 'Блог и Портфолио'
 theme = 'hugo-theme-stack'
 
 [params]
-  subtitle = "Программирование и дизайн"
+  subtitle = "Программирование и веб-дизайн"
+  defaultTheme = "auto"
+  featuredImage = true
+  math = false
+
+[author]
+  name = "Alexey-New"
+
+[social]
+  email = "your-email@example.com"
+
+[menu]
+  [[menu.main]]
+    identifier = "home"
+    name = "Главная"
+    url = "/"
+    weight = 1
+
+  [[menu.main]]
+    identifier = "about"
+    name = "Обо мне"
+    url = "/about/"
+    weight = 2
+
+  [[menu.main]]
+    identifier = "archives"
+    name = "Архив"
+    url = "/archives/"
+    weight = 3
+
+[languages]
+  [languages.ru]
+    weight = 1
+    languageName = "Русский"
+    [languages.ru.params]
+      subtitle = "Программирование и веб-дизайн"
