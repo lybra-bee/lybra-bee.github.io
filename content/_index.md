@@ -1,8 +1,8 @@
 ---
 title: "Главная"
-menu:
-  main:
-    weight: 1
-    params:
-      icon: home
+headless: true
 ---
+
+# Добро пожаловать в мой блог!
+
+Здесь я分享编程和设计经验。
