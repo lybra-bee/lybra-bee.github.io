@@ -15,11 +15,6 @@ theme = 'hugo-theme-stack'
   [languages.ru]
     weight = 1
     languageName = "Русский"
-[params.homepage]
-  # Включить отображение постов на главной
-  showPosts = true
-  # Количество постов на главной
-  showPostsPagination = 5
 
 [params.widgets]
   # Какие виджеты показывать на главной
