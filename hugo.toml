@@ -13,5 +13,5 @@ theme = 'hugo-theme-stack'
 [languages]
   [languages.ru]
     weight = 1
-    title = "Блог и Портфолио"
     languageName = "Русский"
+    title = "Блог и Портфолио"
