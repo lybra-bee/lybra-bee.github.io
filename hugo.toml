@@ -7,37 +7,15 @@ theme = 'hugo-theme-stack'
 [params]
   subtitle = "Программирование и веб-дизайн"
   defaultTheme = "auto"
-  
-  # НАСТРОЙКИ ГЛАВНОЙ СТРАНИЦЫ
-  homepage = true  # Включить специальную главную страницу
-  homepageProfile = true  # Показывать профиль на главной
-  homepagePosts = true  # Показывать посты на главной
-  homepagePostsPagination = 3  # Количество постов
+
+[params.homepage]
+  layout = "profile"
+  showPosts = true
 
 [author]
   name = "Alexey-New"
-
-# УБИРАЕМ РУЧНОЕ МЕНЮ - тема создаст его автоматически
-# из папок content/about.md, content/archives.md и т.д.
 
 [languages]
   [languages.ru]
     weight = 1
     languageName = "Русский"
-[params.homepage]
-  # Показывать профиль на главной
-  showProfile = true
-  # Показывать посты на главной
-  showPosts = true
-  # Количество постов на главной
-  showPostsPagination = 5
-  # Показывать виджеты на главной
-  showWidgets = true
-
-[params.widgets]
-  home = ["search", "recent"]  # Поиск и recent posts на главной
-[params.homepage]
-  # Тип главной страницы - профиль
-  layout = "profile"
-  # Показывать посты на главной
-  showPosts = true
