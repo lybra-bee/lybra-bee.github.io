@@ -26,21 +26,22 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
-      - name: Run content generator
+      - name: Run content generator with cleanup
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
-          echo "=== ЗАПУСК ГЕНЕРАТОРА КОНТЕНТА ==="
+          echo "=== ЗАПУСК ГЕНЕРАТОРА КОНТЕНТА С ОЧИСТКОЙ ==="
+          echo "🧹 Будет сохранено только 3 последние статьи"
           python .github/scripts/generate_content.py
-          echo "=== ГЕНЕРАЦИЯ ЗАВЕРШЕНА ==="
+          echo "=== ГЕНЕРАЦИЯ И ОЧИСТКА ЗАВЕРШЕНЫ ==="
 
       - name: Commit and push changes
         run: |
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
           
-          echo "📊 Статус файлов:"
-          find content/posts/ -name "*.md" -exec ls -la {} \; | tail -3
+          echo "📊 Текущее состояние файлов:"
+          find content/posts/ -name "*.md" -exec ls -la {} \; | sort -k8,8 | tail -5
           
           git add content/posts/
           
@@ -49,14 +50,14 @@ jobs:
             exit 0
           fi
           
-          git commit -m "🤖 AI статья: $(date +"%d.%m.%Y %H:%M")"
+          git commit -m "🤖 AI статья + очистка: $(date +"%d.%m.%Y %H:%M")"
           git pull --rebase
           git push
           echo "✅ Изменения запушены!"
 
       - name: Final report
         run: |
-          echo "=== ОТЧЕТ ==="
-          echo "Последние статьи:"
-          find content/posts/ -name "*.md" -exec basename {} \; | tail -5
-          echo "Всего статей: $(find content/posts/ -name "*.md" | wc -l)"
+          echo "=== ФИНАЛЬНЫЙ ОТЧЕТ ==="
+          echo "📋 Последние 5 статей (всего сохраняется 3):"
+          find content/posts/ -name "*.md" -exec basename {} \; | sort -r | head -5
+          echo "✅ Всего статей после очистки: $(find content/posts/ -name "*.md" | wc -l)"
