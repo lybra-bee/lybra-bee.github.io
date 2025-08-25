@@ -24,17 +24,22 @@ jobs:
           python-version: '3.10'
 
       - name: Install dependencies
-        run: pip install requests
+        run: |
+          pip install requests pillow numpy
+          echo "📦 Установлены зависимости для генерации изображений"
 
-      - name: Run content generator with cleanup
+      - name: Run content generator with image generation
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          HUGGINGFACE_TOKEN: ${{ secrets.HUGGINGFACE_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          echo "=== ЗАПУСК ГЕНЕРАТОРА КОНТЕНТА С ОЧИСТКОЙ ==="
+          echo "=== ЗАПУСК ГЕНЕРАТОРА КОНТЕНТА С ИЗОБРАЖЕНИЯМИ ==="
           echo "🧹 Будет сохранено только 3 последние статьи"
-          echo "🤖 Перебор моделей до нахождения рабочей"
+          echo "🤖 Генерация актуальных тем AI/технологии"
+          echo "🎨 Генерация изображений для статей"
           python .github/scripts/generate_content.py
-          echo "=== ГЕНЕРАЦИЯ И ОЧИСТКА ЗАВЕРШЕНЫ ==="
+          echo "=== ГЕНЕРАЦИЯ КОНТЕНТА И ИЗОБРАЖЕНИЙ ЗАВЕРШЕНА ==="
 
       - name: Commit and push changes
         run: |
@@ -42,16 +47,19 @@ jobs:
           git config --global user.name "github-actions[bot]"
           
           echo "📊 Текущее состояние файлов:"
+          echo "Статьи:"
           find content/posts/ -name "*.md" -exec ls -la {} \; | sort -k8,8 | tail -5
+          echo "Изображения:"
+          find static/images/ -name "*.jpg" -exec ls -la {} \; 2>/dev/null | tail -3 || echo "Нет изображений"
           
-          git add content/posts/
+          git add content/posts/ static/images/
           
           if git diff --staged --quiet; then
             echo "❌ Нет изменений для коммита"
             exit 0
           fi
           
-          git commit -m "🤖 AI статья + очистка: $(date +"%d.%m.%Y %H:%M")"
+          git commit -m "🤖 AI статья + изображение + очистка: $(date +"%d.%m.%Y %H:%M")"
           git pull --rebase
           git push
           echo "✅ Изменения запушены!"
@@ -59,6 +67,9 @@ jobs:
       - name: Final report
         run: |
           echo "=== ФИНАЛЬНЫЙ ОТЧЕТ ==="
-          echo "📋 Последние 5 статей (всего сохраняется 3):"
-          find content/posts/ -name "*.md" -exec basename {} \; | sort -r | head -5
-          echo "✅ Всего статей после очистки: $(find content/posts/ -name "*.md" | wc -l)"
+          echo "📋 Последние 3 статьи:"
+          find content/posts/ -name "*.md" -exec basename {} \; | sort -r | head -3
+          echo "🖼️ Последние изображения:"
+          find static/images/ -name "*.jpg" -exec basename {} \; 2>/dev/null | sort -r | head -3 || echo "Нет изображений"
+          echo "✅ Всего статей: $(find content/posts/ -name "*.md" | wc -l)"
+          echo "✅ Всего изображений: $(find static/images/ -name "*.jpg" 2>/dev/null | wc -l || echo 0)"
