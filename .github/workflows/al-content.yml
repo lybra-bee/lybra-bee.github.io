@@ -1,0 +1,75 @@
+name: 🤖 AI Content Generation
+
+on:
+  schedule:
+    - cron: '0 12 * * 1'  # Каждый понедельник в 12:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  generate-content:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: 📦 Install dependencies
+        run: pip install requests
+
+      - name: 📁 Create directories
+        run: mkdir -p content/posts
+
+      - name: 🤖 Generate AI content
+        env:
+          HF_API_KEY: ${{ secrets.HF_API_KEY }}
+        run: |
+          echo "Генерация контента с помощью Hugging Face..."
+          
+          # Простая заглушка пока не настроим API
+          DATE=$(date +%Y-%m-%d)
+          cat > "content/posts/${DATE}-ai-article.md" << EOF
+---
+title: "Тестовая AI статья"
+date: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+draft: false
+description: "Статья сгенерирована автоматически"
+tags: ["ai", "автоматизация", "тест"]
+---
+
+## Первая AI-статья
+
+Это тестовая статья, созданная автоматически через GitHub Actions.
+
+*Сгенерировано: $(date)*
+*Следующий шаг: интеграция с Hugging Face API*
+
+> 🚀 Этот блог работает на автономной системе генерации контента
+EOF
+          
+          echo "Статья создана: content/posts/${DATE}-ai-article.md"
+          cat "content/posts/${DATE}-ai-article.md"
+          
+      - name: 💾 Commit and push
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          
+          git add content/posts/
+          git status
+          
+          if ! git diff --staged --quiet; then
+            git commit -m "🤖 Добавлена AI-статья"
+            git push --force origin main
+            echo "✅ Статья успешно добавлена!"
+          else
+            echo "❌ Нет новых статей для коммита"
+          fi
