@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write  # ← ДАЕМ ПРАВА НА ЗАПИСЬ!
+  contents: write
 
 jobs:
   test-file-creation:
@@ -27,17 +27,17 @@ jobs:
       - name: 📝 Create test file
         run: |
           echo "Создаем тестовый файл..."
-          cat > content/posts/test-file.md << EOF
----
-title: "Тестовый файл"
-date: 2024-01-20T10:00:00+03:00
-draft: false
----
-
-# Это тестовый файл
-
-Создано: $(date)
-EOF
+          
+          # Создаем файл простым способом
+          echo "---" > content/posts/test-file.md
+          echo "title: 'Тестовый файл'" >> content/posts/test-file.md
+          echo "date: 2024-01-20T10:00:00+03:00" >> content/posts/test-file.md
+          echo "draft: false" >> content/posts/test-file.md
+          echo "---" >> content/posts/test-file.md
+          echo "" >> content/posts/test-file.md
+          echo "# Это тестовый файл" >> content/posts/test-file.md
+          echo "" >> content/posts/test-file.md
+          echo "Создано: $(date)" >> content/posts/test-file.md
           
           echo "Файл создан! Проверяем:"
           ls -la content/posts/
