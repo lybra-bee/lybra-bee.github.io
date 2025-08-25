@@ -1,0 +1,36 @@
+name: Generate AI Content
+
+on:
+  schedule:
+    - cron: '0 0 * * 1'  # Каждый понедельник в 00:00
+  workflow_dispatch:  # Можно запускать вручную
+
+jobs:
+  generate-content:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Generate blog post
+        env:
+          HF_API_KEY: ${{ secrets.HF_API_KEY }}
+        run: python .github/scripts/generate_post.py
+
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add content/posts/*.md
+          git diff --quiet && git diff --staged --quiet || git commit -m "Auto-generated post"
+          git push
