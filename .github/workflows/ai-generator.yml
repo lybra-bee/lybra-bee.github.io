@@ -1,0 +1,63 @@
+name: AI Content Generator
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 12 * * 1'
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create content directory
+        run: mkdir -p content/posts
+
+      - name: Generate article
+        run: |
+          echo "Создаем статью..."
+          DATE=$(date +%Y-%m-%d)
+          FILE="content/posts/${DATE}-ai-article.md"
+          
+          cat > "$FILE" << EOF
+---
+title: "Тестовая AI статья"
+date: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+draft: false
+description: "Статья создана автоматически"
+tags: ["ai", "test"]
+---
+
+# Тестовая статья
+
+Это статья была сгенерирована автоматически через GitHub Actions.
+
+* Дата: $(date)
+* Статус: Успешно!
+EOF
+
+          echo "Файл создан: $FILE"
+          ls -la content/posts/
+
+      - name: Commit changes
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          
+          git add content/posts/
+          
+          if ! git diff --staged --quiet; then
+            git commit -m "Add AI-generated article"
+            git pull --rebase origin main
+            git push origin main
+            echo "✅ Changes pushed!"
+          else
+            echo "❌ No changes to commit"
+          fi
