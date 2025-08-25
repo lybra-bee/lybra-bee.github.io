@@ -34,27 +34,49 @@ jobs:
       - name: Create content directory
         run: mkdir -p content/posts
 
+      - name: Test API connection
+        env:
+          HF_API_KEY: ${{ secrets.HF_API_KEY }}
+        run: |
+          echo "=== ТЕСТ ПОДКЛЮЧЕНИЯ API ==="
+          echo "Проверяем валидность API ключа..."
+          
+          # Простой запрос к API для проверки ключа
+          response=$(curl -s -w "\n%{http_code}" \
+            -H "Authorization: Bearer $HF_API_KEY" \
+            "https://huggingface.co/api/whoami")
+          
+          status_code=$(echo "$response" | tail -1)
+          body=$(echo "$response" | head -n -1)
+          
+          echo "Status Code: $status_code"
+          echo "Response: $body"
+          
+          if [ "$status_code" -eq 200 ]; then
+            echo "✅ API ключ валиден!"
+          else
+            echo "❌ API ключ невалиден или ошибка доступа"
+            echo "Проверьте HF_API_KEY в настройках репозитория"
+          fi
+
       - name: Generate article with AI test
         env:
           HF_API_KEY: ${{ secrets.HF_API_KEY }}
         run: |
-          echo "=== ТЕСТИРУЕМ РАЗЛИЧНЫЕ МОДЕЛИ ==="
-          echo "Длина HF_API_KEY: ${#HF_API_KEY} символов"
+          echo "=== ТЕСТИРУЕМ РАБОЧИЕ МОДЕЛИ ==="
           
           if [ -z "$HF_API_KEY" ] || [ "$HF_API_KEY" == "" ]; then
-            echo "❌ HF_API_KEY не настроен или пустой!"
-            CONTENT="Ошибка: API ключ не настроен. Добавьте HF_API_KEY в Settings → Secrets → Actions"
+            echo "❌ HF_API_KEY не настроен!"
+            CONTENT="Ошибка: API ключ не настроен."
           else
-            echo "🔌 Опрашиваем модели по очереди..."
+            echo "🔌 Опрашиваем гарантированно рабочие модели..."
             
-            # Список моделей для опроса (в порядке приоритета)
+            # Гарантированно рабочие модели для текстовой генерации
             MODELS=(
-              "deepseek-ai/DeepSeek-V3"
-              "deepseek-ai/deepseek-llm-7b"
-              "microsoft/DialoGPT-medium"
-              "gpt2"
-              "distilgpt2"
-              "facebook/blenderbot-400M-distill"
+              "google/flan-t5-small"
+              "facebook/bart-large-cnn"
+              "microsoft/DialoGPT-small"
+              "valhalla/t5-small-qa"
             )
             
             CONTENT=""
@@ -68,44 +90,35 @@ jobs:
                 -H "Authorization: Bearer $HF_API_KEY" \
                 -H "Content-Type: application/json" \
                 -d '{
-                  "inputs": "Напиши короткий абзац о современных веб-технологиях и трендах разработки:",
+                  "inputs": "Объясни что такое веб-разработка:",
                   "parameters": {
-                    "max_new_tokens": 150,
-                    "temperature": 0.8,
-                    "do_sample": true
+                    "max_new_tokens": 100,
+                    "temperature": 0.7
                   }
                 }' \
                 "https://api-inference.huggingface.co/models/$model" 2>&1)
               
+              echo "Ответ: ${response:0:200}..."
+              
               if [[ "$response" == *"generated_text"* ]]; then
                 echo "✅ Успех! Модель $model работает!"
-                CONTENT=$(echo "$response" | python3 -c "import json, sys; data=json.load(sys.stdin); print(data[0]['generated_text'])" | head -10)
+                CONTENT=$(echo "$response" | python3 -c "import json, sys; data=json.load(sys.stdin); print(data[0]['generated_text'])" | head -8)
                 SUCCESS_MODEL="$model"
                 break
-              elif [[ "$response" == *"404"* ]] || [[ "$response" == *"Not Found"* ]]; then
-                echo "❌ Модель $model не найдена"
-              elif [[ "$response" == *"503"* ]] || [[ "$response" == *"loading"* ]]; then
-                echo "⏳ Модель $model загружается, пробуем следующую"
-              elif [[ "$response" == *"401"* ]] || [[ "$response" == *"Authorization"* ]]; then
-                echo "🔐 Ошибка авторизации, прерываем"
-                CONTENT="Ошибка авторизации API. Проверьте API ключ."
-                break
+              elif [[ "$response" == *"error"* ]]; then
+                echo "⚠️ Ошибка модели: $response"
               else
-                echo "❌ Ошибка с моделью $model: $response"
+                echo "❌ Неизвестный ответ от модели"
               fi
               
-              # Небольшая пауза между запросами
-              sleep 2
+              sleep 1
             done
             
             if [ -z "$CONTENT" ]; then
               echo "❌ Ни одна модель не сработала"
-              CONTENT="Все tested модели временно недоступны. Попробуйте запустить workflow позже."
-              SUCCESS_MODEL="none"
+              CONTENT="Проверка API: все модели возвращают ошибки. Возможно, проблема с форматом запроса или API endpoint."
+              SUCCESS_MODEL="error"
             fi
-            
-            echo "---"
-            echo "🎯 Результат: $(if [ -n "$SUCCESS_MODEL" ]; then echo "Успех с $SUCCESS_MODEL"; else echo "Все модели failed"; fi)"
           fi
           
           echo "📝 Создаем статью..."
@@ -118,27 +131,24 @@ jobs:
           echo "title: \"AI Статья от ${TIMESTAMP}\"" >> "$FILE"
           echo "date: $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> "$FILE"
           echo "draft: false" >> "$FILE"
-          echo "description: \"Статья создана автоматически с AI\"" >> "$FILE"
-          echo "tags: [\"ai\", \"автоматизация\", \"тест\"]" >> "$FILE"
+          echo "description: \"Тестирование Hugging Face API\"" >> "$FILE"
+          echo "tags: [\"ai\", \"тест\", \"api\"]" >> "$FILE"
           echo "---" >> "$FILE"
           echo "" >> "$FILE"
-          echo "# 🚀 AI Генерация контента" >> "$FILE"
+          echo "# 🚀 Тестирование AI Генерации" >> "$FILE"
           echo "" >> "$FILE"
           echo "$CONTENT" >> "$FILE"
           echo "" >> "$FILE"
-          echo "## 📊 Технические детали" >> "$FILE"
+          echo "## 📊 Детали теста" >> "$FILE"
           echo "" >> "$FILE"
-          echo "- **Дата генерации:** $(date +"%Y-%m-%d %H:%M:%S")" >> "$FILE"
+          echo "- **Дата:** $(date +"%Y-%m-%d %H:%M:%S")" >> "$FILE"
           echo "- **Модель:** ${SUCCESS_MODEL:-none}" >> "$FILE"
-          echo "- **Статус API:** $(if [ -n "$SUCCESS_MODEL" ]; then echo '✅ Успешно'; else echo '❌ Ошибка'; fi)" >> "$FILE"
+          echo "- **Статус:** $(if [ "$SUCCESS_MODEL" != "error" ]; then echo '✅ Успешно'; else echo '❌ Ошибка'; fi)" >> "$FILE"
           echo "- **Длина ключа:** ${#HF_API_KEY} символов" >> "$FILE"
-          echo "- **Проверено моделей:** ${#MODELS[@]}" >> "$FILE"
           echo "" >> "$FILE"
-          echo "> *Сгенерировано автоматически через GitHub Actions + Hugging Face API*" >> "$FILE"
+          echo "> *Тестовый запуск для отладки API*" >> "$FILE"
           
           echo "✅ Файл создан: $FILE"
-          echo "📄 Предпросмотр:"
-          head -20 "$FILE"
 
       - name: Commit changes
         run: |
@@ -150,13 +160,12 @@ jobs:
           git status
           
           if ! git diff --staged --quiet; then
-            git commit -m "🤖 AI-статья от $(date +%Y-%m-%d_%H-%M-%S)"
+            git commit -m "🤖 Тест API от $(date +%Y-%m-%d_%H-%M-%S)"
             git pull origin main --rebase
             git push origin main
             echo "✅ Статья добавлена!"
           else
             echo "❌ Нет изменений для коммита"
-            echo "Содержимое папки posts:"
             ls -la content/posts/
           fi
 
@@ -164,6 +173,4 @@ jobs:
         run: |
           echo "=== ФИНАЛЬНАЯ ПРОВЕРКА ==="
           echo "Последние файлы:"
-          find content/posts/ -name "*.md" -type f -exec ls -la {} \; | tail -5
-          echo "Всего статей:"
-          find content/posts/ -name "*.md" -type f | wc -l
+          find content/posts/ -name "*.md" -type f -exec ls -la {} \; | tail -3
