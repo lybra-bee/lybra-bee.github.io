@@ -39,25 +39,45 @@ jobs:
           HF_API_KEY: ${{ secrets.HF_API_KEY }}
         run: |
           echo "=== ТЕСТИРУЕМ API HUGGING FACE ==="
+          echo "Длина HF_API_KEY: ${#HF_API_KEY} символов"
           
-          # Простой тест API
-          if [ -z "$HF_API_KEY" ]; then
-            echo "⚠️ HF_API_KEY не настроен, используем заглушку"
-            CONTENT="Это тестовая статья. API ключ не настроен."
+          if [ -z "$HF_API_KEY" ] || [ "$HF_API_KEY" == "" ]; then
+            echo "❌ HF_API_KEY не настроен или пустой!"
+            echo "Добавьте HF_API_KEY в Settings → Secrets → Actions"
+            CONTENT="Ошибка: API ключ не настроен. Добавьте HF_API_KEY в настройках репозитория."
           else
             echo "🔌 Проверяем подключение к API..."
-            response=$(curl -s -X POST \
+            echo "Используем модель: mistralai/Mistral-7B-Instruct-v0.2"
+            
+            # Простой тестовый запрос
+            response=$(curl -s -v -X POST \
               -H "Authorization: Bearer $HF_API_KEY" \
               -H "Content-Type: application/json" \
-              -d '{"inputs": "Напиши один абзац о современных веб-технологиях.", "parameters": {"max_new_tokens": 150}}' \
-              "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2" || echo "ERROR")
+              -d '{
+                "inputs": "Напиши один абзац о веб-разработке.",
+                "parameters": {
+                  "max_new_tokens": 100,
+                  "temperature": 0.7
+                }
+              }' \
+              "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2" 2>&1)
+            
+            echo "=== ОТВЕТ API ==="
+            echo "$response"
+            echo "=== КОНЕЦ ОТВЕТА ==="
             
             if [[ "$response" == *"generated_text"* ]]; then
               echo "✅ API подключено успешно!"
-              CONTENT=$(echo "$response" | python3 -c "import json, sys; data=json.load(sys.stdin); print(data[0]['generated_text'])" | head -3)
+              CONTENT=$(echo "$response" | python3 -c "import json, sys; data=json.load(sys.stdin); print(data[0]['generated_text'])" | head -5)
+            elif [[ "$response" == *"401"* ]] || [[ "$response" == *"Authorization"* ]]; then
+              echo "❌ Ошибка 401: Неверный API ключ"
+              CONTENT="Ошибка: Неверный API ключ. Проверьте HF_API_KEY в настройках."
+            elif [[ "$response" == *"503"* ]] || [[ "$response" == *"loading"* ]]; then
+              echo "⚠️ Модель загружается, попробуйте позже"
+              CONTENT="Модель временно недоступна. Попробуйте запустить workflow через несколько минут."
             else
-              echo "❌ Ошибка API, используем заглушку"
-              CONTENT="Статья сгенерирована автоматически. API временно недоступно."
+              echo "❌ Неизвестная ошибка API"
+              CONTENT="Ошибка подключения к AI API. Проверьте логи для деталей."
             fi
           fi
           
@@ -66,7 +86,7 @@ jobs:
           TIMESTAMP=$(date +%H-%M-%S)
           FILE="content/posts/${DATE}-${TIMESTAMP}-ai-article.md"
           
-          # Создаем статью простым способом без HEREDOC
+          # Создаем статью
           echo "---" > "$FILE"
           echo "title: \"AI Статья от ${TIMESTAMP}\"" >> "$FILE"
           echo "date: $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> "$FILE"
@@ -83,14 +103,14 @@ jobs:
           echo "" >> "$FILE"
           echo "- **Дата генерации:** $(date +"%Y-%m-%d %H:%M:%S")" >> "$FILE"
           echo "- **Модель:** Mistral-7B" >> "$FILE"
-          echo "- **Статус:** ✅ Успешно" >> "$FILE"
-          echo "- **Тип:** Тестовый запуск" >> "$FILE"
+          echo "- **Статус API:** $(if [ -z "$HF_API_KEY" ]; then echo 'Не настроен'; else echo 'Проверен'; fi)" >> "$FILE"
+          echo "- **Длина ключа:** ${#HF_API_KEY} символов" >> "$FILE"
           echo "" >> "$FILE"
           echo "> *Сгенерировано автоматически через GitHub Actions + Hugging Face API*" >> "$FILE"
           
           echo "✅ Файл создан: $FILE"
           echo "📄 Предпросмотр:"
-          head -15 "$FILE"
+          head -20 "$FILE"
 
       - name: Commit changes
         run: |
@@ -99,6 +119,7 @@ jobs:
           git config --global user.name "github-actions[bot]"
           
           git add content/posts/
+          git status
           
           if ! git diff --staged --quiet; then
             git commit -m "🤖 Тест AI-генерации от $(date +%Y-%m-%d_%H-%M-%S)"
@@ -107,6 +128,7 @@ jobs:
             echo "✅ Статья добавлена!"
           else
             echo "❌ Нет изменений для коммита"
+            echo "Содержимое папки posts:"
             ls -la content/posts/
           fi
 
@@ -114,4 +136,6 @@ jobs:
         run: |
           echo "=== ФИНАЛЬНАЯ ПРОВЕРКА ==="
           echo "Последние файлы:"
-          find content/posts/ -name "*.md" -type f -exec ls -la {} \; | tail -3
+          find content/posts/ -name "*.md" -type f -exec ls -la {} \; | tail -5
+          echo "Всего статей:"
+          find content/posts/ -name "*.md" -type f | wc -l
