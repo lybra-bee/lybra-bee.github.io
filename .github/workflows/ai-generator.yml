@@ -7,8 +7,6 @@ on:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 jobs:
   generate:
@@ -17,7 +15,7 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GIT_TOKEN }}
           fetch-depth: 0
 
       - name: Setup Python
@@ -37,31 +35,103 @@ jobs:
         run: |
           echo "=== AI CONTENT GENERATION ==="
           
-          # Локальный fallback контент (на случай ошибок API)
+          # Случайные темы для статей
           TOPICS=(
             "Веб-фреймворки 2024: React, Vue, Svelte сравнение"
             "Serverless архитектура для веб-приложений"
             "Искусственный интеллект в веб-разработке"
+            "Прогрессивные веб-приложения (PWA) новые возможности"
+            "Кибербезопасность современных веб-приложений"
+            "WebAssembly и высокопроизводительные веб-приложения"
+            "JAMstack архитектура и статические генераторы"
+            "Микросервисы vs монолиты в веб-разработке"
           )
           
           SELECTED_TOPIC=${TOPICS[$RANDOM % ${#TOPICS[@]}]}
+          echo "📝 Тема: $SELECTED_TOPIC"
           
-          # Всегда используем fallback для надежности
-          case $SELECTED_TOPIC in
-            *фреймворки*)
-              CONTENT="## Современные веб-фреймворки 2024\n\nВ 2024 году **React** продолжает доминировать. **Vue 3** с Composition API набирает популярность. **Svelte** предлагает инновационный компиляторный подход.\n\n**Next.js** и **Nuxt.js** остаются лидерами для full-stack разработки."
-              ;;
-            *Serverless*)
-              CONTENT="## Serverless архитектура\n\nServerless революционизирует веб-разработку. **AWS Lambda** и **Cloud Functions** обеспечивают автоматическое масштабирование.\n\nКлючевые преимущества: reduced operational overhead и cost efficiency."
-              ;;
-            *)
-              CONTENT="## $SELECTED_TOPIC\n\nСовременная веб-разработка в 2024 характеризуется rapid innovation. **React 18** и **Vue 3** задают стандарты.\n\n**Serverless архитектура** reduces operational complexity."
-              ;;
-          esac
+          # Попытка генерации через OpenRouter (с улучшенной обработкой ошибок)
+          if [ -n "$OPENROUTER_API_KEY" ] && [ "$OPENROUTER_API_KEY" != "" ]; then
+            echo "🔐 Используем OpenRouter API"
+            
+            FREE_MODELS=(
+              "google/palm-2-chat-bison-32k:free"
+              "mistralai/mistral-7b-instruct:free" 
+              "huggingfaceh4/zephyr-7b-beta:free"
+            )
+            
+            SELECTED_MODEL=${FREE_MODELS[$RANDOM % ${#FREE_MODELS[@]}]}
+            echo "🎯 Модель: $SELECTED_MODEL"
+            
+            response=$(curl -s -X POST \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+              -H "HTTP-Referer: https://github.com" \
+              -H "X-Title: AI Blog Generator" \
+              -d '{
+                "model": "'"$SELECTED_MODEL"'",
+                "messages": [
+                  {
+                    "role": "user", 
+                    "content": "Напиши краткий технический абзац на тему: '"$SELECTED_TOPIC"'. Используй Markdown, **жирный шрифт** для ключевых терминов. Ответ на русском, максимум 200 слов."
+                  }
+                ],
+                "max_tokens": 300,
+                "temperature": 0.7
+              }' \
+              "https://openrouter.ai/api/v1/chat/completions" 2>/dev/null || echo "API_ERROR")
+            
+            if [[ "$response" == *"choices"* ]] && [[ "$response" != *"error"* ]]; then
+              echo "✅ Генерация через API успешна!"
+              CONTENT=$(echo "$response" | python3 -c "
+import json, sys
+try:
+    data = json.load(sys.stdin)
+    content = data['choices'][0]['message']['content']
+    # Очищаем от лишних кавычек
+    content = content.replace('\"\"\"', '').replace('\'\'\'', '')
+    print(content)
+except Exception as e:
+    print('Ошибка парсинга ответа API:', str(e))
+")
+            else
+              echo "❌ Ошибка API, используем fallback"
+              CONTENT=""
+            fi
+          else
+            echo "⚠️ API ключ не найден, используем локальную генерацию"
+            CONTENT=""
+          fi
+          
+          # Fallback контент если API не сработал
+          if [ -z "$CONTENT" ] || [ "$CONTENT" == "Ошибка парсинга ответа API" ]; then
+            echo "🔄 Используем локальную генерацию..."
+            case $SELECTED_TOPIC in
+              *фреймворки*)
+                CONTENT="## Современные веб-фреймворки 2024\n\nВ 2024 году **React** продолжает доминировать с новыми функциями Concurrent Rendering. **Vue 3** с Composition API набирает популярность для сложных приложений. **Svelte** предлагает innovative компиляторный подход с минимальным runtime overhead.\n\n**Next.js** и **Nuxt.js** остаются лидерами для full-stack разработки."
+                ;;
+              *Serverless*)
+                CONTENT="## Serverless архитектура\n\nServerless революционизирует веб-разработку, позволяя focus на бизнес-логике вместо инфраструктуры. **AWS Lambda**, **Cloud Functions** обеспечивают автоматическое масштабирование и pay-per-use модель.\n\nКлючевые преимущества: reduced operational overhead и cost efficiency."
+                ;;
+              *интеллект*)
+                CONTENT="## AI в веб-разработке\n\nИскусственный интеллект трансформирует веб-разработку: **GPT-4** для генерации контента, **Copilot** для assistance в coding, **AI-powered chatbots** для customer service.\n\nНовые API like **WebGPU** позволяют запускать ML модели прямо в браузере."
+                ;;
+              *PWA*)
+                CONTENT="## Прогрессивные веб-приложения\n\n**PWA** сочетают лучшие качества web и mobile приложений. Offline работа через Service Workers, push-уведомления и app-like интерфейс.\n\nНовые возможности: Web Share API, Background Sync и hardware access делают PWA полноценной заменой нативным приложениям."
+                ;;
+              *)
+                CONTENT="## $SELECTED_TOPIC\n\nСовременная веб-разработка в 2024 характеризуется rapid innovation. **React 18** и **Vue 3** задают стандарты frontend развития. **Serverless архитектура** reduces operational complexity.\n\n**WebAssembly** enables near-native performance в браузере. **AI интеграция** становится must-have для персонализации."
+                ;;
+            esac
+          fi
+          
+          echo "📄 Сгенерированный контент:"
+          echo "$CONTENT"
           
           # Создаем статью
           DATE=$(date +%Y-%m-%d)
-          SLUG=$(echo "$SELECTED_TOPIC" | tr ' ' '-' | tr 'А-Яа-я' 'A-Za-z' | tr -cd '[:alnum:]-' | head -c 30)
+          TIMESTAMP=$(date +%H-%M-%S)
+          SLUG=$(echo "$SELECTED_TOPIC" | tr ' ' '-' | tr 'А-Яа-я' 'A-Za-z' | tr -cd '[:alnum:]-' | head -c 40)
           FILE="content/posts/${DATE}-${SLUG}.md"
           
           cat > "$FILE" << EOF
@@ -69,7 +139,8 @@ jobs:
 title: "$SELECTED_TOPIC"
 date: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
 draft: false
-tags: ["веб-разработка", "технологии"]
+description: "Автоматически сгенерированная статья о $SELECTED_TOPIC"
+tags: ["веб-разработка", "технологии", "2024"]
 ---
 
 # $SELECTED_TOPIC
@@ -77,24 +148,43 @@ tags: ["веб-разработка", "технологии"]
 $CONTENT
 
 ---
-*Сгенерировано автоматически*
+
+### 🔧 Технические детали
+
+- **Модель AI:** ${SELECTED_MODEL:-"Локальная генерация"}
+- **Дата генерации:** $(date +"%d.%m.%Y %H:%M")
+- **Тема:** $SELECTED_TOPIC
+- **Статус:** ✅ Автоматически сгенерировано
+
+> *Сгенерировано через GitHub Actions*
 EOF
           
           echo "✅ Файл создан: $FILE"
 
-      - name: Commit and push
+      - name: Commit and push changes
         run: |
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
           
           git add content/posts/
+          git status
           
           if git diff --staged --quiet; then
             echo "❌ Нет изменений для коммита"
+            echo "Содержимое папки content/posts/:"
+            ls -la content/posts/
             exit 0
           fi
           
-          git commit -m "🤖 AI Статья: $(date +"%d.%m.%Y %H:%M")"
-          git pull --rebase
-          git push
-          echo "✅ Статья добавлена и запущена!"
+          git commit -m "🤖 AI Статья: $SELECTED_TOPIC [$(date +"%d.%m.%Y %H:%M")]"
+          git pull origin main --rebase
+          git push origin main
+          echo "✅ Статья успешно добавлена и запущена!"
+
+      - name: Verify results
+        run: |
+          echo "=== РЕЗУЛЬТАТЫ ГЕНЕРАЦИИ ==="
+          echo "Последние созданные файлы:"
+          find content/posts/ -name "*.md" -exec ls -la {} \; | tail -3
+          echo "Всего статей в папке:"
+          find content/posts/ -name "*.md" | wc -l
