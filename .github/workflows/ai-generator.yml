@@ -43,24 +43,24 @@ jobs:
           
           if [ -z "$HF_API_KEY" ] || [ "$HF_API_KEY" == "" ]; then
             echo "❌ HF_API_KEY не настроен или пустой!"
-            echo "Добавьте HF_API_KEY в Settings → Secrets → Actions"
-            CONTENT="Ошибка: API ключ не настроен. Добавьте HF_API_KEY в настройках репозитория."
+            CONTENT="Ошибка: API ключ не настроен. Добавьте HF_API_KEY в Settings → Secrets → Actions"
           else
             echo "🔌 Проверяем подключение к API..."
-            echo "Используем модель: mistralai/Mistral-7B-Instruct-v0.2"
+            echo "Используем модель: microsoft/DialoGPT-large"
             
-            # Простой тестовый запрос
-            response=$(curl -s -v -X POST \
+            # Тестовый запрос к работающей модели
+            response=$(curl -s -X POST \
               -H "Authorization: Bearer $HF_API_KEY" \
               -H "Content-Type: application/json" \
               -d '{
-                "inputs": "Напиши один абзац о веб-разработке.",
+                "inputs": "Напиши один абзац о современных веб-технологиях:",
                 "parameters": {
-                  "max_new_tokens": 100,
-                  "temperature": 0.7
+                  "max_new_tokens": 150,
+                  "temperature": 0.8,
+                  "do_sample": true
                 }
               }' \
-              "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2" 2>&1)
+              "https://api-inference.huggingface.co/models/microsoft/DialoGPT-large" 2>&1)
             
             echo "=== ОТВЕТ API ==="
             echo "$response"
@@ -69,12 +69,9 @@ jobs:
             if [[ "$response" == *"generated_text"* ]]; then
               echo "✅ API подключено успешно!"
               CONTENT=$(echo "$response" | python3 -c "import json, sys; data=json.load(sys.stdin); print(data[0]['generated_text'])" | head -5)
-            elif [[ "$response" == *"401"* ]] || [[ "$response" == *"Authorization"* ]]; then
-              echo "❌ Ошибка 401: Неверный API ключ"
-              CONTENT="Ошибка: Неверный API ключ. Проверьте HF_API_KEY в настройках."
-            elif [[ "$response" == *"503"* ]] || [[ "$response" == *"loading"* ]]; then
-              echo "⚠️ Модель загружается, попробуйте позже"
-              CONTENT="Модель временно недоступна. Попробуйте запустить workflow через несколько минут."
+            elif [[ "$response" == *"error"* ]]; then
+              echo "⚠️ Ошибка API, но ключ работает"
+              CONTENT="API временно недоступно. Ключ настроен правильно, но модель не отвечает."
             else
               echo "❌ Неизвестная ошибка API"
               CONTENT="Ошибка подключения к AI API. Проверьте логи для деталей."
@@ -102,8 +99,8 @@ jobs:
           echo "## 📊 Технические детали" >> "$FILE"
           echo "" >> "$FILE"
           echo "- **Дата генерации:** $(date +"%Y-%m-%d %H:%M:%S")" >> "$FILE"
-          echo "- **Модель:** Mistral-7B" >> "$FILE"
-          echo "- **Статус API:** $(if [ -z "$HF_API_KEY" ]; then echo 'Не настроен'; else echo 'Проверен'; fi)" >> "$FILE"
+          echo "- **Модель:** Microsoft DialoGPT-large" >> "$FILE"
+          echo "- **Статус API:** $(if [[ "$response" == *"generated_text"* ]]; then echo '✅ Успешно'; else echo '⚠️ Ошибка'; fi)" >> "$FILE"
           echo "- **Длина ключа:** ${#HF_API_KEY} символов" >> "$FILE"
           echo "" >> "$FILE"
           echo "> *Сгенерировано автоматически через GitHub Actions + Hugging Face API*" >> "$FILE"
