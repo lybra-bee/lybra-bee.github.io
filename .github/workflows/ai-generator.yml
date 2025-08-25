@@ -3,7 +3,7 @@ name: AI Content Generator
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 12 * * 1'  # Каждый понедельник в 12:00 UTC
+    - cron: '0 9 * * *'  # Каждый день в 09:00 UTC
 
 permissions:
   contents: write
@@ -25,21 +25,21 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install requests pillow numpy
-          echo "📦 Установлены зависимости для генерации изображений"
+          pip install requests pillow numpy huggingface-hub
+          echo "📦 Установлены зависимости для генерации контента и изображений"
 
-      - name: Run content generator with image generation
+      - name: Run daily content generator
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           HUGGINGFACE_TOKEN: ${{ secrets.HUGGINGFACE_TOKEN }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          STABILITYAI_KEY: ${{ secrets.STABILITYAI_KEY }}
         run: |
-          echo "=== ЗАПУСК ГЕНЕРАТОРА КОНТЕНТА С ИЗОБРАЖЕНИЯМИ ==="
-          echo "🧹 Будет сохранено только 3 последние статьи"
+          echo "=== ЕЖЕДНЕВНАЯ ГЕНЕРАЦИЯ КОНТЕНТА ==="
+          echo "🧹 Сохраняем только 3 последние статьи"
           echo "🤖 Генерация актуальных тем AI/технологии"
-          echo "🎨 Генерация изображений для статей"
+          echo "🎨 Реальная генерация изображений через AI API"
           python .github/scripts/generate_content.py
-          echo "=== ГЕНЕРАЦИЯ КОНТЕНТА И ИЗОБРАЖЕНИЙ ЗАВЕРШЕНА ==="
+          echo "=== ГЕНЕРАЦИЯ ЗАВЕРШЕНА ==="
 
       - name: Commit and push changes
         run: |
@@ -59,7 +59,7 @@ jobs:
             exit 0
           fi
           
-          git commit -m "🤖 AI статья + изображение + очистка: $(date +"%d.%m.%Y %H:%M")"
+          git commit -m "🤖 Ежедневная AI статья + изображение: $(date +"%d.%m.%Y")"
           git pull --rebase
           git push
           echo "✅ Изменения запушены!"
