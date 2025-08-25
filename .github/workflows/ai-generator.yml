@@ -3,7 +3,7 @@ name: AI Content Generator
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 12 * * 1'
+    - cron: '0 12 * * 1'  # Каждый понедельник в 12:00 UTC
 
 permissions:
   contents: write
@@ -28,43 +28,125 @@ jobs:
       - name: Create content directory
         run: mkdir -p content/posts
 
-      - name: Generate content
+      - name: Generate with OpenRouter AI
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
-          echo "=== ГЕНЕРАЦИЯ КОНТЕНТА ==="
+          echo "=== РЕАЛЬНАЯ ГЕНЕРАЦИЯ ЧЕРЕЗ OPENROUTER ==="
           
-          # Локальная генерация контента
-          SELECTED_TOPIC="Современные тенденции веб-разработки 2024"
-          CONTENT="В 2024 году веб-разработка продолжает стремительно развиваться. Ключевые тренды включают использование передовых фреймворков like React и Vue, интеграцию искусственного интеллекта, серверless архитектуры и усиление безопасности. PWA становятся стандартом для мобильного веба."
+          # Бесплатные модели на OpenRouter
+          FREE_MODELS=(
+            "google/palm-2-chat-bison-32k:free"
+            "mistralai/mistral-7b-instruct:free" 
+            "huggingfaceh4/zephyr-7b-beta:free"
+            "anthropic/claude-3-haiku:free"
+          )
           
+          # Случайные темы для статей
+          TOPICS=(
+            "Веб-фреймворки 2024: React, Vue, Svelte сравнение"
+            "Serverless архитектура для веб-приложений"
+            "Искусственный интеллект в веб-разработке"
+            "Прогрессивные веб-приложения (PWA) новые возможности"
+            "Кибербезопасность современных веб-приложений"
+            "WebAssembly и высокопроизводительные веб-приложения"
+            "JAMstack архитектура и статические генераторы"
+            "Микросервисы vs монолиты в веб-разработке"
+          )
+          
+          SELECTED_MODEL=${FREE_MODELS[$RANDOM % ${#FREE_MODELS[@]}]}
+          SELECTED_TOPIC=${TOPICS[$RANDOM % ${#TOPICS[@]}]}
+          
+          echo "🎯 Модель: $SELECTED_MODEL"
           echo "📝 Тема: $SELECTED_TOPIC"
+          
+          # Генерация контента через OpenRouter
+          response=$(curl -s -X POST \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+            -H "HTTP-Referer: https://lybra-bee.github.io" \
+            -H "X-Title: AI Blog Generator" \
+            -d '{
+              "model": "'"$SELECTED_MODEL"'",
+              "messages": [
+                {
+                  "role": "user", 
+                  "content": "Напиши развернутый технический абзац на тему: '"$SELECTED_TOPIC"'. Используй Markdown для форматирования, подзаголовки **жирный шрифт** для ключевых терминов. Ответ должен быть на русском языке."
+                }
+              ],
+              "max_tokens": 500,
+              "temperature": 0.8,
+              "top_p": 0.9
+            }' \
+            "https://openrouter.ai/api/v1/chat/completions" 2>/dev/null || echo "API_ERROR")
+          
+          if [[ "$response" == *"choices"* ]] && [[ "$response" != *"error"* ]]; then
+            echo "✅ Генерация успешна!"
+            CONTENT=$(echo "$response" | python3 -c "
+import json, sys
+try:
+    data = json.load(sys.stdin)
+    print(data['choices'][0]['message']['content'])
+except:
+    print('Ошибка парсинга ответа API')
+")
+          else
+            echo "❌ Ошибка API: $response"
+            echo "🔄 Используем локальную генерацию..."
+            # Локальный fallback контент
+            case $SELECTED_TOPIC in
+              *фреймворки*)
+                CONTENT="## Современные веб-фреймворки 2024\n\nВ 2024 году **React** продолжает доминировать с новыми функциями like Concurrent Rendering. **Vue 3** с Composition API набирает популярность для сложных приложений. **Svelte** предлагает innovative компиляторный подход с минимальным runtime overhead.\n\n**Next.js** и **Nuxt.js** остаются лидерами для full-stack разработки, предлагая SSR, SSG и API routes из коробки."
+                ;;
+              *Serverless*)
+                CONTENT="## Serverless архитектура\n\nServerless революционизирует веб-разработку, позволяя focus на бизнес-логике вместо инфраструктуры. **AWS Lambda**, **Cloud Functions** и **Vercel Edge Functions** обеспечивают автоматическое масштабирование и pay-per-use модель.\n\nКлючевые преимущества: reduced operational overhead, cost efficiency и глобальная доступность. Вызовы: cold starts, debugging и vendor lock-in."
+                ;;
+              *интеллект*)
+                CONTENT="## AI в веб-разработке\n\nИскусственный интеллект трансформирует веб-разработку: **GPT-4** для генерации контента, **Copilot** для assistance в coding, **AI-powered chatbots** для customer service.\n\nНовые API like **WebGPU** позволяют запускать ML модели прямо в браузере. **AutoML** platforms упрощают интеграцию AI без deep learning экспертизы."
+                ;;
+              *)
+                CONTENT="## $SELECTED_TOPIC\n\nСовременная веб-разработка в 2024 характеризуется rapid innovation. **React 18** и **Vue 3** задают стандарты frontend развития. **Serverless архитектура** reduces operational complexity. **WebAssembly** enables near-native performance в браузере.\n\n**AI интеграция** становится must-have для персонализации, а **кибербезопасность** критически важна в era увеличивающихся атак."
+                ;;
+            esac
+          fi
+          
+          echo "📄 Сгенерированный контент:"
+          echo "$CONTENT"
           
           # Создаем статью
           DATE=$(date +%Y-%m-%d)
           TIMESTAMP=$(date +%H-%M-%S)
-          FILE="content/posts/${DATE}-${TIMESTAMP}-ai-article.md"
+          SLUG=$(echo "$SELECTED_TOPIC" | tr ' ' '-' | tr 'а-я' 'А-Я' | tr -cd '[:alnum:]-' | head -c 50)
+          FILE="content/posts/${DATE}-${SLUG}.md"
           
-          echo "---" > "$FILE"
-          echo "title: \"$SELECTED_TOPIC\"" >> "$FILE"
-          echo "date: $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> "$FILE"
-          echo "draft: false" >> "$FILE"
-          echo "description: \"Автоматически сгенерированная статья\"" >> "$FILE"
-          echo "tags: [\"веб-разработка\", \"технологии\", \"2024\"]" >> "$FILE"
-          echo "---" >> "$FILE"
-          echo "" >> "$FILE"
-          echo "# $SELECTED_TOPIC" >> "$FILE"
-          echo "" >> "$FILE"
-          echo "$CONTENT" >> "$FILE"
-          echo "" >> "$FILE"
-          echo "## 🔧 Технологический стек 2024" >> "$FILE"
-          echo "" >> "$FILE"
-          echo "- **Фронтенд:** React, Vue, Svelte" >> "$FILE"
-          echo "- **Бэкенд:** Node.js, Python, Go" >> "$FILE"
-          echo "- **Базы данных:** PostgreSQL, MongoDB" >> "$FILE"
-          echo "- **Инфраструктура:** Docker, Kubernetes" >> "$FILE"
-          echo "" >> "$FILE"
-          echo "> *Статья сгенерирована автоматически $(date +"%d.%m.%Y")*" >> "$FILE"
+          cat > "$FILE" << EOF
+---
+title: "$SELECTED_TOPIC"
+date: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+draft: false
+description: "Автоматически сгенерированная статья о $SELECTED_TOPIC"
+tags: ["веб-разработка", "технологии", "2024"]
+---
+
+# $SELECTED_TOPIC
+
+$CONTENT
+
+---
+
+### 🔧 Технические детали
+
+- **Модель AI:** $SELECTED_MODEL
+- **Дата генерации:** $(date +"%d.%m.%Y %H:%M")
+- **Тема:** $SELECTED_TOPIC
+- **Статус:** ✅ Автоматически сгенерировано
+
+> *Сгенерировано через OpenRouter API + GitHub Actions*
+EOF
           
           echo "✅ Файл создан: $FILE"
+          echo "📝 Предпросмотр:"
+          head -15 "$FILE"
 
       - name: Commit changes
         run: |
@@ -72,18 +154,22 @@ jobs:
           git config --global user.name "github-actions[bot]"
           
           git add content/posts/
+          git status
           
           if ! git diff --staged --quiet; then
-            git commit -m "🤖 Автоматическая статья: $(date +"%d.%m.%Y")"
+            git commit -m "🤖 AI Статья: $(date +"%d.%m.%Y")"
             git pull origin main --rebase
             git push origin main
             echo "✅ Статья добавлена!"
           else
             echo "❌ Нет изменений для коммита"
+            ls -la content/posts/
           fi
 
       - name: Final check
         run: |
           echo "=== ФИНАЛЬНАЯ ПРОВЕРКА ==="
           echo "Последние файлы:"
-          find content/posts/ -name "*.md" -type f -exec ls -la {} \; | tail -3
+          find content/posts/ -name "*.md" -type f -exec ls -la {} \; | tail -5
+          echo "Всего статей:"
+          find content/posts/ -name "*.md" -type f | wc -l
