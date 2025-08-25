@@ -25,73 +25,10 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
-      - name: Create content directory
-        run: mkdir -p content/posts
-
-      - name: Generate with OpenRouter
+      - name: Run content generator
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-        run: |
-          echo "=== ГЕНЕРАЦИЯ ЧЕРЕЗ OPENROUTER ==="
-          
-          # Простые темы
-          TOPICS=(
-            "Веб-фреймворки 2024"
-            "Serverless архитектура"
-            "ИИ в разработке"
-          )
-          
-          SELECTED_TOPIC=${TOPICS[$RANDOM % ${#TOPICS[@]}]}
-          echo "📝 Тема: $SELECTED_TOPIC"
-          
-          # Простой API запрос
-          response=$(curl -s -X POST \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer $OPENROUTER_API_KEY" \
-            -d '{
-              "model": "google/palm-2-chat-bison-32k:free",
-              "messages": [
-                {
-                  "role": "user", 
-                  "content": "Напиши один абзац о '"$SELECTED_TOPIC"' на русском."
-                }
-              ],
-              "max_tokens": 200
-            }' \
-            "https://openrouter.ai/api/v1/chat/completions")
-          
-          if [[ "$response" == *"choices"* ]]; then
-            CONTENT=$(echo "$response" | python3 -c "
-import json, sys
-data = json.load(sys.stdin)
-print(data['choices'][0]['message']['content'])
-")
-            echo "✅ Успешная генерация"
-          else
-            echo "❌ Ошибка API, используем fallback"
-            CONTENT="Это статья о $SELECTED_TOPIC. Сгенерировано автоматически."
-          fi
-          
-          # Создаем статью
-          DATE=$(date +%Y-%m-%d)
-          FILE="content/posts/${DATE}-ai-article.md"
-          
-          cat > "$FILE" << EOF
----
-title: "$SELECTED_TOPIC"
-date: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
-draft: false
-tags: ["веб-разработка"]
----
-
-# $SELECTED_TOPIC
-
-$CONTENT
-
-> Сгенерировано автоматически
-EOF
-          
-          echo "✅ Файл создан: $FILE"
+        run: python .github/scripts/generate_content.py
 
       - name: Commit changes
         run: |
