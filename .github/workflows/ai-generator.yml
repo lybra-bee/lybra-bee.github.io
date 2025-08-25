@@ -22,42 +22,82 @@ jobs:
 
       - name: Generate article
         run: |
-          echo "Создаем статью..."
+          echo "=== НАЧАЛО ГЕНЕРАЦИИ СТАТЬИ ==="
           DATE=$(date +%Y-%m-%d)
-          FILE="content/posts/${DATE}-ai-article.md"
+          TIMESTAMP=$(date +%H-%M-%S)
+          FILE="content/posts/${DATE}-${TIMESTAMP}-ai-article.md"
           
-          cat > "$FILE" << EOF
----
-title: "Тестовая AI статья"
-date: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
-draft: false
-description: "Статья создана автоматически"
-tags: ["ai", "test"]
----
-
-# Тестовая статья
-
-Это статья была сгенерирована автоматически через GitHub Actions.
-
-* Дата: $(date)
-* Статус: Успешно!
-EOF
-
-          echo "Файл создан: $FILE"
-          ls -la content/posts/
+          echo "Создаем файл: $FILE"
+          
+          # Создаем содержимое статьи
+          echo "---" > "$FILE"
+          echo "title: \"AI Статья от ${TIMESTAMP}\"" >> "$FILE"
+          echo "date: $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> "$FILE"
+          echo "draft: false" >> "$FILE"
+          echo "description: \"Статья создана автоматически\"" >> "$FILE"
+          echo "tags: [\"ai\", \"автоматизация\", \"github\"]" >> "$FILE"
+          echo "---" >> "$FILE"
+          echo "" >> "$FILE"
+          echo "# 🚀 AI Генерация работает!" >> "$FILE"
+          echo "" >> "$FILE"
+          echo "Эта статья была создана **полностью автоматически** через GitHub Actions." >> "$FILE"
+          echo "" >> "$FILE"
+          echo "## 📊 Детали генерации:" >> "$FILE"
+          echo "- Дата: $(date +%Y-%m-%d)" >> "$FILE"
+          echo "- Время: $(date +%H:%M:%S)" >> "$FILE" 
+          echo "- Workflow: AI Content Generator" >> "$FILE"
+          echo "- Статус: ✅ Успешно!" >> "$FILE"
+          echo "" >> "$FILE"
+          echo "## 🎯 Что было сделано:" >> "$FILE"
+          echo "1. Автоматическое создание файла" >> "$FILE"
+          echo "2. Генерация метаданных" >> "$FILE"
+          echo "3. Коммит в репозиторий" >> "$FILE"
+          echo "4. Деплой на GitHub Pages" >> "$FILE"
+          echo "" >> "$FILE"
+          echo "> Следующий шаг: интеграция с Hugging Face API для генерации контента!" >> "$FILE"
+          
+          echo "✅ Файл создан успешно!"
+          echo "Проверка:"
+          ls -la "$FILE"
+          echo "Содержимое:"
+          cat "$FILE"
+          echo "=== ЗАВЕРШЕНИЕ ГЕНЕРАЦИИ ==="
 
       - name: Commit changes
         run: |
+          echo "=== НАЧАЛО КОММИТА ==="
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
           
+          echo "Текущий статус:"
+          git status
+          
+          echo "Добавляем файлы:"
           git add content/posts/
           
+          echo "Статус после добавления:"
+          git status
+          
           if ! git diff --staged --quiet; then
-            git commit -m "Add AI-generated article"
-            git pull --rebase origin main
+            echo "Есть изменения для коммита!"
+            git commit -m "🤖 Добавлена AI-статья от $(date +%Y-%m-%d_%H-%M-%S)"
+            echo "Коммит создан, синхронизируемся..."
+            git pull origin main --rebase
+            echo "Пушим изменения..."
             git push origin main
-            echo "✅ Changes pushed!"
+            echo "✅ Статья успешно добавлена и запушена!"
           else
-            echo "❌ No changes to commit"
+            echo "❌ Нет изменений для коммита"
+            echo "Проверяем файлы:"
+            ls -la content/posts/ || echo "Папка posts не существует"
+            find . -name "*.md" -type f | head -10
           fi
+          echo "=== ЗАВЕРШЕНИЕ КОММИТА ==="
+
+      - name: Final verification
+        run: |
+          echo "=== ФИНАЛЬНАЯ ПРОВЕРКА ==="
+          echo "Созданные файлы:"
+          find content/posts/ -name "*.md" -type f -exec ls -la {} \; 2>/dev/null || echo "Файлы не найдены"
+          echo "Общее количество статей:"
+          find content/posts/ -name "*.md" -type f | wc -l
