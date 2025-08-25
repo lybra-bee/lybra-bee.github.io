@@ -49,15 +49,13 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
           
-          # Сначала pull чтобы синхронизироваться с удаленным репозиторием
-          git pull origin main --rebase
-          
           git add content/posts/test-file.md
           git status
           
           if ! git diff --staged --quiet; then
             git commit -m "Добавлен тестовый файл"
-            git push origin main
+            # Принудительный push для теста
+            git push --force origin main
             echo "✅ Файл успешно добавлен и запушен!"
           else
             echo "❌ Нет изменений для коммита"
