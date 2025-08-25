@@ -1,5 +1,6 @@
 import requests
 import os
+import json
 from datetime import datetime
 
 # Конфигурация
@@ -14,49 +15,74 @@ def generate_with_huggingface(prompt):
     payload = {
         "inputs": prompt,
         "parameters": {
-            "max_new_tokens": 500,
-            "temperature": 0.7
+            "max_new_tokens": 300,
+            "temperature": 0.7,
+            "return_full_text": False
         }
     }
     
-    response = requests.post(API_URL, headers=headers, json=payload)
-    return response.json()[0]['generated_text']
+    try:
+        response = requests.post(API_URL, headers=headers, json=payload)
+        response.raise_for_status()
+        
+        result = response.json()
+        print("API Response:", json.dumps(result, ensure_ascii=False, indent=2))
+        
+        # Обрабатываем разные форматы ответа
+        if isinstance(result, list):
+            return result[0].get('generated_text', 'Не удалось сгенерировать текст')
+        elif isinstance(result, dict):
+            return result.get('generated_text', 'Не удалось сгенерировать текст')
+        else:
+            return str(result)
+            
+    except Exception as e:
+        print(f"Ошибка при генерации: {e}")
+        return "Автоматически сгенерированная статья. Ошибка при создании контента."
 
 def create_blog_post():
     """Создание нового поста"""
     topics = [
-        "Веб-дизайн тенденции 2024",
-        "JavaScript советы для начинающих",
-        "CSS трюки для современного дизайна",
-        "Автоматизация веб-разработки",
+        "Основы веб-дизайна",
+        "JavaScript для начинающих", 
+        "CSS современные возможности",
+        "Автоматизация разработки",
         "Нейросети в программировании"
     ]
     
     # Выбираем случайную тему
-    topic = topics[datetime.now().day % len(topics)]
+    topic = "Тестовая статья"
     
     # Генерируем контент
-    prompt = f"{topic}. Напиши развернутую статью на эту тему для технического блога. Верни ответ в формате Markdown."
+    prompt = f"Напиши короткую статью на тему '{topic}' для технического блога. 2-3 абзаца."
     content = generate_with_huggingface(prompt)
     
     # Создаем файл
-    filename = f"content/posts/{datetime.now().strftime('%Y-%m-%d')}-{topic.lower().replace(' ', '-')}.md"
+    filename = f"content/posts/test-article.md"
     
     front_matter = f"""---
 title: "{topic}"
 date: {datetime.now().isoformat()}
 draft: false
-description: "Автоматически сгенерированная статья"
-tags: ["ai", "автоматизация"]
+description: "Тестовая автоматически сгенерированная статья"
+tags: ["тест", "автоматизация"]
 ---
 
+## {topic}
+
 {content}
+
+*Статья сгенерирована автоматически с помощью Hugging Face API*
 """
+    
+    os.makedirs(os.path.join(REPO_PATH, 'content/posts'), exist_ok=True)
     
     with open(os.path.join(REPO_PATH, filename), 'w', encoding='utf-8') as f:
         f.write(front_matter)
     
-    print(f"Создан пост: {filename}")
+    print(f"Создан тестовый пост: {filename}")
+    return True
 
 if __name__ == "__main__":
-    create_blog_post()
+    success = create_blog_post()
+    exit(0 if success else 1)
