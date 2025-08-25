@@ -3,6 +3,9 @@ name: 🧪 Simple File Test
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write  # ← ДАЕМ ПРАВА НА ЗАПИСЬ!
+
 jobs:
   test-file-creation:
     runs-on: ubuntu-latest
@@ -24,15 +27,17 @@ jobs:
       - name: 📝 Create test file
         run: |
           echo "Создаем тестовый файл..."
-          echo "---" > content/posts/test-file.md
-          echo "title: 'Тестовый файл'" >> content/posts/test-file.md
-          echo "date: 2024-01-20T10:00:00+03:00" >> content/posts/test-file.md
-          echo "draft: false" >> content/posts/test-file.md
-          echo "---" >> content/posts/test-file.md
-          echo "" >> content/posts/test-file.md
-          echo "# Это тестовый файл" >> content/posts/test-file.md
-          echo "" >> content/posts/test-file.md
-          echo "Создано: $(date)" >> content/posts/test-file.md
+          cat > content/posts/test-file.md << EOF
+---
+title: "Тестовый файл"
+date: 2024-01-20T10:00:00+03:00
+draft: false
+---
+
+# Это тестовый файл
+
+Создано: $(date)
+EOF
           
           echo "Файл создан! Проверяем:"
           ls -la content/posts/
@@ -41,8 +46,8 @@ jobs:
       - name: 💾 Commit and push
         run: |
           echo "Коммитим изменения..."
-          git config --global user.email "test@example.com"
-          git config --global user.name "Test Bot"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
           
           git add content/posts/test-file.md
           git status
@@ -53,6 +58,4 @@ jobs:
             echo "✅ Файл успешно добавлен и запушен!"
           else
             echo "❌ Нет изменений для коммита"
-            echo "Проверяем существующие файлы:"
-            find . -name "*.md" -type f
           fi
