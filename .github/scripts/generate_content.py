@@ -5,6 +5,7 @@ import requests
 import random
 from datetime import datetime
 import glob
+import base64
 import time
 
 def generate_content():
@@ -110,7 +111,6 @@ def generate_article_image(topic):
     # Попробуем разные бесплатные API по очереди
     apis_to_try = [
         {"name": "HuggingFace Stable Diffusion", "function": try_huggingface_api},
-        {"name": "StabilityAI", "function": try_stabilityai_api},
         {"name": "DeepAI", "function": try_deepai_api},
         {"name": "Fallback", "function": create_fallback_image}
     ]
@@ -125,7 +125,7 @@ def generate_article_image(topic):
             print(f"⚠️ Ошибка в {api['name']}: {e}")
             continue
     
-    return None
+    return create_fallback_image(image_prompt, topic)
 
 def try_huggingface_api(prompt, topic):
     """Пробуем Hugging Face Stable Diffusion API"""
@@ -178,58 +178,16 @@ def try_huggingface_api(prompt, topic):
     
     return None
 
-def try_stabilityai_api(prompt, topic):
-    """Пробуем Stability AI API (бесплатный тариф)"""
-    stability_key = os.getenv('STABILITYAI_KEY')
-    if not stability_key:
-        return None
-    
-    try:
-        headers = {
-            "Authorization": f"Bearer {stability_key}",
-            "Content-Type": "application/json"
-        }
-        
-        payload = {
-            "text_prompts": [{"text": prompt}],
-            "cfg_scale": 7,
-            "height": 400,
-            "width": 800,
-            "samples": 1,
-            "steps": 30
-        }
-        
-        response = requests.post(
-            "https://api.stability.ai/v1/generation/stable-diffusion-v1-6/text-to-image",
-            headers=headers,
-            json=payload,
-            timeout=30
-        )
-        
-        if response.status_code == 200:
-            data = response.json()
-            if 'artifacts' in data and data['artifacts']:
-                image_data = base64.b64decode(data['artifacts'][0]['base64'])
-                filename = save_article_image(image_data, topic)
-                if filename:
-                    print("✅ Изображение создано через Stability AI")
-                    return filename
-                    
-    except Exception as e:
-        print(f"❌ Ошибка Stability AI API: {e}")
-    
-    return None
-
 def try_deepai_api(prompt, topic):
     """Пробуем DeepAI API (бесплатный)"""
     try:
         # DeepAI имеет бесплатный тариф с ограничениями
         headers = {
             "api-key": "quickstart-QUdJIGlzIGNvbWluZy4uLi4K",  # Бесплатный ключ
-            "Content-Type": "application/json"
+            "Content-Type": "application/x-www-form-urlencoded"
         }
         
-        payload = {
+        data = {
             "text": prompt,
             "grid_size": "1",
             "width": "800",
@@ -239,7 +197,7 @@ def try_deepai_api(prompt, topic):
         response = requests.post(
             "https://api.deepai.org/api/text2img",
             headers=headers,
-            json=payload,
+            data=data,
             timeout=30
         )
         
@@ -279,7 +237,7 @@ def save_article_image(image_data, topic):
 def create_fallback_image(prompt, topic):
     """Создает fallback изображение с помощью Pillow"""
     try:
-        from PIL import Image, ImageDraw, ImageFont
+        from PIL import Image, ImageDraw
         
         os.makedirs("static/images/posts", exist_ok=True)
         slug = generate_slug(topic)
@@ -298,4 +256,145 @@ def create_fallback_image(prompt, topic):
             b = 50 + i // 6
             draw.line([(0, i), (width, i)], fill=(r, g, b))
         
-        # Те
+        # Техно-элементы
+        draw.rectangle([20, 20, width-20, height-20], outline=(100, 100, 255), width=2)
+        
+        # Точки и линии
+        for _ in range(50):
+            x1, y1 = random.randint(30, width-30), random.randint(30, height-30)
+            x2, y2 = x1 + random.randint(-100, 100), y1 + random.randint(-50, 50)
+            draw.line([(x1, y1), (x2, y2)], fill=(80, 180, 255), width=1)
+        
+        # Сохраняем с высоким качеством
+        image.save(full_path, 'JPEG', quality=95, optimize=True)
+        print("🎨 Создано качественное fallback изображение")
+        return filename
+        
+    except Exception as e:
+        print(f"❌ Ошибка создания fallback изображения: {e}")
+        return None
+
+def generate_ai_trend_topic():
+    """Генерирует актуальную тему на основе трендов AI и технологий"""
+    tech_domains = [
+        "искусственный интеллект", "машинное обучение", "генеративные AI",
+        "компьютерное зрение", "обработка естественного языка", "большие языковые модели"
+    ]
+    
+    current_trends = [
+        "трансформеры и attention механизмы", "мультимодальные AI системы",
+        "few-shot обучение", "нейросети с памятью", "обучение с подкреплением"
+    ]
+    
+    applications = [
+        "в веб-разработке", "в мобильных приложениях", "в облачных сервисах",
+        "в анализе данных", "в компьютерной безопасности"
+    ]
+    
+    domain = random.choice(tech_domains)
+    trend = random.choice(current_trends)
+    application = random.choice(applications)
+    
+    topic_formats = [
+        f"{trend}: новые возможности в {domain} {application}",
+        f"{domain} 2025: как {trend} меняют {application}",
+        f"{trend} в {domain} - перспективы {application}"
+    ]
+    
+    selected_topic = random.choice(topic_formats)
+    if random.random() > 0.3:
+        selected_topic = f"{selected_topic} в 2024-2025"
+    
+    return selected_topic
+
+def clean_old_articles(keep_last=3):
+    """Оставляет только последние N статей"""
+    print(f"🧹 Очистка старых статей, оставляем {keep_last} последних...")
+    
+    articles = glob.glob("content/posts/*.md")
+    if not articles:
+        print("📁 Нет статей для очистки")
+        return
+    
+    articles.sort(key=os.path.getmtime)
+    articles_to_keep = articles[-keep_last:]
+    articles_to_delete = articles[:-keep_last]
+    
+    print(f"📊 Всего статей: {len(articles)}")
+    print(f"💾 Сохраняем: {len(articles_to_keep)}")
+    print(f"🗑️ Удаляем: {len(articles_to_delete)}")
+    
+    for article_path in articles_to_delete:
+        try:
+            os.remove(article_path)
+            print(f"❌ Удалено: {os.path.basename(article_path)}")
+        except Exception as e:
+            print(f"⚠️ Ошибка удаления {article_path}: {e}")
+
+def generate_fallback_content(topic):
+    """Генерация fallback контента"""
+    return f"""## {topic}
+
+В 2024-2025 годах **{topic.split(':')[0]}** продолжает активно развиваться и трансформировать технологический ландшафт.
+
+### Ключевые тенденции
+
+- **Передовые алгоритмы** и архитектуры нейросетей
+- **Улучшенная эффективность** и оптимизация вычислений  
+- **Интеграция с облачными платформами** и распределенными системами
+- **Повышенная безопасность** и этические considerations
+- **Автоматизация** сложных задач и процессов
+
+### Технологический impact
+
+Современные разработчики используют cutting-edge инструменты для создания инновационных решений. Экосистема быстро эволюционирует, предлагая новые возможности для оптимизации workflow."""
+
+def generate_slug(topic):
+    """Генерация slug из названия темы"""
+    slug = topic.lower()
+    replacements = {' ': '-', ':': '', '(': '', ')': '', '/': '-', '\\': '-', '.': '', ',': ''}
+    for old, new in replacements.items():
+        slug = slug.replace(old, new)
+    slug = ''.join(c for c in slug if c.isalnum() or c == '-')
+    while '--' in slug:
+        slug = slug.replace('--', '-')
+    return slug[:40]
+
+def generate_frontmatter(topic, content, model_used, api_success, image_filename=None):
+    """Генерация frontmatter и содержимого"""
+    current_time = datetime.now()
+    status = "✅ API генерация" if api_success else "⚠️ Локальная генерация"
+    
+    tags = ["искусственный-интеллект", "технологии", "инновации", "2024-2025"]
+    image_section = f"image: /{image_filename}\n" if image_filename else ""
+    
+    return f"""---
+title: "{topic}"
+date: {datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")}
+draft: false
+description: "Автоматически сгенерированная статья о {topic}"
+{image_section}tags: {json.dumps(tags, ensure_ascii=False)}
+categories: ["Технологии"]
+---
+
+# {topic}
+
+{f'![](/{image_filename})' if image_filename else ''}
+
+{content}
+
+---
+
+### 🔧 Технические детали
+
+- **Модель AI:** {model_used}
+- **Дата генерации:** {current_time.strftime("%d.%m.%Y %H:%M UTC")}
+- **Тема:** {topic}
+- **Статус:** {status}
+- **Уникальность:** Сохраняются только 3 последние статьи
+
+> *Сгенерировано автоматически через GitHub Actions*
+"""
+
+if __name__ == "__main__":
+    generate_content()
