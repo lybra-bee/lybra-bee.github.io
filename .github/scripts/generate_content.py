@@ -34,65 +34,73 @@ def generate_content():
     api_key = os.getenv('OPENROUTER_API_KEY')
     content = ""
     model_used = "Локальная генерация"
+    api_success = False
     
     if api_key and api_key != "":
-        try:
-            print("🔄 Пытаемся подключиться к OpenRouter API...")
-            
-            # Актуальные рабочие модели
-            free_models = [
-                "mistralai/mistral-7b-instruct",
-                "google/gemini-pro",
-                "huggingfaceh4/zephyr-7b-beta",
-                "openchat/openchat-7b",
-                "meta-llama/llama-3-8b-instruct"
-            ]
-            
-            selected_model = random.choice(free_models)
-            model_used = selected_model
-            print(f"🎯 Модель: {selected_model}")
-            
-            response = requests.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {api_key}",
-                    "HTTP-Referer": "https://github.com",
-                    "X-Title": "AI Blog Generator"
-                },
-                json={
-                    "model": selected_model,
-                    "messages": [
-                        {
-                            "role": "user",
-                            "content": f"Напиши короткий технический абзац (150-200 слов) на тему: {selected_topic}. Используй Markdown форматирование с подзаголовками ## и **жирным шрифтом**. Ответ на русском языке."
-                        }
-                    ],
-                    "max_tokens": 400,
-                    "temperature": 0.7,
-                    "top_p": 0.9
-                },
-                timeout=20
-            )
-            
-            print(f"📊 Статус ответа: {response.status_code}")
-            
-            if response.status_code == 200:
-                data = response.json()
-                if 'choices' in data and len(data['choices']) > 0:
-                    content = data['choices'][0]['message']['content']
-                    print("✅ Успешная генерация через API")
-                    
-                    # Очистка контента от лишних кавычек
-                    content = content.replace('"""', '').replace("'''", "").strip()
-                else:
-                    raise Exception("Нет choices в ответе API")
-            else:
-                error_msg = response.text[:200] if response.text else "No error message"
-                raise Exception(f"API error {response.status_code}: {error_msg}")
+        # ПРОВЕРЕННЫЕ РАБОЧИЕ МОДЕЛИ (в приоритетном порядке)
+        working_models = [
+            "mistralai/mistral-7b-instruct",      # ✅ ПРОВЕРЕНА - РАБОТАЕТ
+            "google/gemini-pro",                  # ✅ Высокий приоритет
+            "anthropic/claude-3-haiku",           # ✅ Качественная модель
+            "meta-llama/llama-3-8b-instruct",     # ✅ Популярная модель
+            "huggingfaceh4/zephyr-7b-beta",       # ✅ Бесплатная
+            "openchat/openchat-7b",               # ⚠️ Может не работать
+            "google/palm-2-chat-bison-32k"        # ⚠️ Может не работать
+        ]
+        
+        # Перебираем модели пока не найдем рабочую
+        for selected_model in working_models:
+            try:
+                print(f"🔄 Пробуем модель: {selected_model}")
                 
-        except Exception as e:
-            print(f"❌ Ошибка API: {e}")
+                response = requests.post(
+                    "https://openrouter.ai/api/v1/chat/completions",
+                    headers={
+                        "Content-Type": "application/json",
+                        "Authorization": f"Bearer {api_key}",
+                        "HTTP-Referer": "https://github.com",
+                        "X-Title": "AI Blog Generator"
+                    },
+                    json={
+                        "model": selected_model,
+                        "messages": [
+                            {
+                                "role": "user",
+                                "content": f"Напиши техническую статью на тему: {selected_topic}. Используй Markdown форматирование с подзаголовками ##, **жирным шрифтом** для ключевых терминов и нумерованными списками. Ответ на русском языке, объем 200-300 слов. Сделай статью информативной и полезной для разработчиков."
+                            }
+                        ],
+                        "max_tokens": 500,
+                        "temperature": 0.7,
+                        "top_p": 0.9
+                    },
+                    timeout=15
+                )
+                
+                print(f"📊 Статус ответа: {response.status_code}")
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    if 'choices' in data and len(data['choices']) > 0:
+                        content = data['choices'][0]['message']['content']
+                        model_used = selected_model
+                        api_success = True
+                        print(f"✅ Успешная генерация через {selected_model}")
+                        
+                        # Очистка контента от лишних кавычек
+                        content = content.replace('"""', '').replace("'''", "").strip()
+                        break  # Выходим из цикла при успехе
+                    else:
+                        print(f"⚠️ Нет choices в ответе от {selected_model}")
+                else:
+                    error_msg = response.text[:100] if response.text else "No error message"
+                    print(f"❌ Ошибка {response.status_code} от {selected_model}: {error_msg}")
+                    
+            except Exception as e:
+                print(f"⚠️ Исключение с {selected_model}: {e}")
+                continue  # Пробуем следующую модель
+        
+        if not api_success:
+            print("❌ Все модели не сработали, используем fallback")
             content = generate_fallback_content(selected_topic)
     else:
         print("⚠️ API ключ не найден или пустой")
@@ -103,7 +111,7 @@ def generate_content():
     slug = generate_slug(selected_topic)
     filename = f"content/posts/{date}-{slug}.md"
     
-    frontmatter = generate_frontmatter(selected_topic, content, model_used)
+    frontmatter = generate_frontmatter(selected_topic, content, model_used, api_success)
     
     os.makedirs("content/posts", exist_ok=True)
     with open(filename, 'w', encoding='utf-8') as f:
@@ -113,7 +121,7 @@ def generate_content():
     
     # Покажем начало файла для проверки
     with open(filename, 'r', encoding='utf-8') as f:
-        preview = f.read(300)
+        preview = f.read(400)
     print(f"📄 Предпросмотр:\n{preview}...")
     
     return filename
@@ -204,9 +212,11 @@ def generate_slug(topic):
     # Обрезаем до 40 символов
     return slug[:40]
 
-def generate_frontmatter(topic, content, model_used):
+def generate_frontmatter(topic, content, model_used, api_success):
     """Генерация frontmatter и содержимого"""
     current_time = datetime.now()
+    status = "✅ API генерация" if api_success else "⚠️ Локальная генерация"
+    
     return f"""---
 title: "{topic}"
 date: {datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")}
@@ -227,7 +237,7 @@ categories: ["Разработка"]
 - **Модель AI:** {model_used}
 - **Дата генерации:** {current_time.strftime("%d.%m.%Y %H:%M UTC")}
 - **Тема:** {topic}
-- **Статус:** {"✅ API генерация" if model_used != "Локальная генерация" else "⚠️ Локальная генерация"}
+- **Статус:** {status}
 - **Уникальность:** Сохраняются только 3 последние статьи
 
 > *Сгенерировано автоматически через GitHub Actions + OpenRouter*
