@@ -3,7 +3,7 @@ name: AI Content Generator
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 12 * * 1'
+    - cron: '0 12 * * 1'  # Каждый понедельник в 12:00 UTC
 
 permissions:
   contents: write
