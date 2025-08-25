@@ -1,8 +1,10 @@
 name: 🤖 AI Content Generation
 
 on:
+  push:
+    branches: [main]  # Запуск при пуше в main
   schedule:
-    - cron: '0 12 * * 1'  # Каждый понедельник в 12:00 UTC (раз в неделю)
+    - cron: '0 12 * * 1'  # Каждый понедельник в 12:00 UTC
   workflow_dispatch:       # Ручной запуск
 
 permissions:
