@@ -4,9 +4,16 @@ import json
 import requests
 import random
 from datetime import datetime
+import glob
 
 def generate_content():
-    # Конфигурация
+    # Конфигурация - сколько статей оставлять
+    KEEP_LAST_ARTICLES = 3
+    
+    # Сначала почистим старые статьи
+    clean_old_articles(KEEP_LAST_ARTICLES)
+    
+    # Конфигурация тем
     topics = [
         "Веб-фреймворки 2024: React, Vue, Svelte",
         "Serverless архитектура для веб-приложений", 
@@ -91,7 +98,7 @@ def generate_content():
         print("⚠️ API ключ не найден или пустой")
         content = generate_fallback_content(selected_topic)
     
-    # Создаем файл
+    # Создаем новую статью
     date = datetime.now().strftime("%Y-%m-%d")
     slug = generate_slug(selected_topic)
     filename = f"content/posts/{date}-{slug}.md"
@@ -110,6 +117,44 @@ def generate_content():
     print(f"📄 Предпросмотр:\n{preview}...")
     
     return filename
+
+def clean_old_articles(keep_last=3):
+    """Оставляет только последние N статей, удаляет остальные"""
+    print(f"🧹 Очистка старых статей, оставляем {keep_last} последних...")
+    
+    # Получаем все md файлы в папке posts
+    articles = glob.glob("content/posts/*.md")
+    
+    if not articles:
+        print("📁 Нет статей для очистки")
+        return
+    
+    # Сортируем по дате изменения (сначала старые)
+    articles.sort(key=os.path.getmtime)
+    
+    # Оставляем только последние N статей
+    articles_to_keep = articles[-keep_last:]
+    articles_to_delete = articles[:-keep_last]
+    
+    print(f"📊 Всего статей: {len(articles)}")
+    print(f"💾 Сохраняем: {len(articles_to_keep)}")
+    print(f"🗑️ Удаляем: {len(articles_to_delete)}")
+    
+    # Удаляем старые статьи
+    for article_path in articles_to_delete:
+        try:
+            os.remove(article_path)
+            print(f"❌ Удалено: {os.path.basename(article_path)}")
+        except Exception as e:
+            print(f"⚠️ Ошибка удаления {article_path}: {e}")
+    
+    # Покажем какие статьи остались
+    remaining_articles = glob.glob("content/posts/*.md")
+    remaining_articles.sort(key=os.path.getmtime, reverse=True)
+    
+    print("📋 Оставшиеся статьи (новые сверху):")
+    for i, article in enumerate(remaining_articles[:5], 1):
+        print(f"   {i}. {os.path.basename(article)}")
 
 def generate_fallback_content(topic):
     """Генерация fallback контента"""
@@ -183,6 +228,7 @@ categories: ["Разработка"]
 - **Дата генерации:** {current_time.strftime("%d.%m.%Y %H:%M UTC")}
 - **Тема:** {topic}
 - **Статус:** {"✅ API генерация" if model_used != "Локальная генерация" else "⚠️ Локальная генерация"}
+- **Уникальность:** Сохраняются только 3 последние статьи
 
 > *Сгенерировано автоматически через GitHub Actions + OpenRouter*
 """
