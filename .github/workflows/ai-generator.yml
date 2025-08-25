@@ -17,97 +17,103 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: pip install requests
+
       - name: Cleanup old structure
         run: |
           echo "🧹 Очищаем старую структуру..."
-          # Удаляем неправильные папки если есть
           rm -rf content/posts/posts/ 2>/dev/null || true
           rm -rf content/posts/projects/ 2>/dev/null || true
-          echo "Текущая структура content/:"
-          find content/ -name "*.md" -type f
 
       - name: Create content directory
         run: mkdir -p content/posts
 
-      - name: Generate article
+      - name: Generate article with AI test
+        env:
+          HF_API_KEY: ${{ secrets.HF_API_KEY }}
         run: |
-          echo "=== НАЧАЛО ГЕНЕРАЦИИ СТАТЬИ ==="
+          echo "=== ТЕСТИРУЕМ API HUGGING FACE ==="
+          
+          # Простой тест API
+          if [ -z "$HF_API_KEY" ]; then
+            echo "⚠️ HF_API_KEY не настроен, используем заглушку"
+            CONTENT="Это тестовая статья. API ключ не настроен."
+          else
+            echo "🔌 Проверяем подключение к API..."
+            response=$(curl -s -X POST \
+              -H "Authorization: Bearer $HF_API_KEY" \
+              -H "Content-Type: application/json" \
+              -d '{"inputs": "Напиши один абзац о современных веб-технологиях.", "parameters": {"max_new_tokens": 150}}' \
+              "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2" || echo "ERROR")
+            
+            if [[ "$response" == *"generated_text"* ]]; then
+              echo "✅ API подключено успешно!"
+              CONTENT=$(echo "$response" | python3 -c "import json, sys; data=json.load(sys.stdin); print(data[0]['generated_text'])" | head -3)
+            else
+              echo "❌ Ошибка API, используем заглушку"
+              CONTENT="Статья сгенерирована автоматически. API временно недоступно."
+            fi
+          fi
+          
+          echo "📝 Создаем статью..."
           DATE=$(date +%Y-%m-%d)
           TIMESTAMP=$(date +%H-%M-%S)
-          # ПРАВИЛЬНЫЙ ПУТЬ!
           FILE="content/posts/${DATE}-${TIMESTAMP}-ai-article.md"
           
-          echo "Создаем файл по пути: $FILE"
-          
-          # Создаем содержимое статьи
-          echo "---" > "$FILE"
-          echo "title: \"AI Статья от ${TIMESTAMP}\"" >> "$FILE"
-          echo "date: $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> "$FILE"
-          echo "draft: false" >> "$FILE"
-          echo "description: \"Статья создана автоматически\"" >> "$FILE"
-          echo "tags: [\"ai\", \"автоматизация\", \"github\"]" >> "$FILE"
-          echo "---" >> "$FILE"
-          echo "" >> "$FILE"
-          echo "# 🚀 AI Генерация работает!" >> "$FILE"
-          echo "" >> "$FILE"
-          echo "Эта статья была создана **полностью автоматически** через GitHub Actions." >> "$FILE"
-          echo "" >> "$FILE"
-          echo "## 📊 Детали генерации:" >> "$FILE"
-          echo "- Дата: $(date +%Y-%m-%d)" >> "$FILE"
-          echo "- Время: $(date +%H:%M:%S)" >> "$FILE" 
-          echo "- Workflow: AI Content Generator" >> "$FILE"
-          echo "- Статус: ✅ Успешно!" >> "$FILE"
-          echo "" >> "$FILE"
-          echo "## 🎯 Что было сделано:" >> "$FILE"
-          echo "1. Автоматическое создание файла" >> "$FILE"
-          echo "2. Генерация метаданных" >> "$FILE"
-          echo "3. Коммит в репозиторий" >> "$FILE"
-          echo "4. Деплой на GitHub Pages" >> "$FILE"
-          echo "" >> "$FILE"
-          echo "> Следующий шаг: интеграция с Hugging Face API для генерации контента!" >> "$FILE"
-          
-          echo "✅ Файл создан успешно!"
-          echo "Проверка:"
-          ls -la "$FILE"
-          echo "Содержимое:"
-          cat "$FILE"
-          echo "=== ЗАВЕРШЕНИЕ ГЕНЕРАЦИИ ==="
+          # Создаем статью
+          cat > "$FILE" << EOF
+---
+title: "AI Статья от ${TIMESTAMP}"
+date: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+draft: false
+description: "Статья создана автоматически с AI"
+tags: ["ai", "автоматизация", "тест"]
+---
+
+# 🚀 AI Генерация контента
+
+${CONTENT}
+
+## 📊 Технические детали
+
+- **Дата генерации:** $(date +"%Y-%m-%d %H:%M:%S")
+- **Модель:** Mistral-7B
+- **Статус:** ✅ Успешно
+- **Тип:** Тестовый запуск
+
+> *Сгенерировано автоматически через GitHub Actions + Hugging Face API*
+EOF
+
+          echo "✅ Файл создан: $FILE"
+          echo "📄 Предпросмотр:"
+          head -15 "$FILE"
 
       - name: Commit changes
         run: |
-          echo "=== НАЧАЛО КОММИТА ==="
+          echo "=== КОММИТ ИЗМЕНЕНИЙ ==="
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
           
-          echo "Текущий статус:"
-          git status
-          
-          echo "Добавляем файлы:"
           git add content/posts/
           
-          echo "Статус после добавления:"
-          git status
-          
           if ! git diff --staged --quiet; then
-            echo "Есть изменения для коммита!"
-            git commit -m "🤖 Добавлена AI-статья от $(date +%Y-%m-%d_%H-%M-%S)"
-            echo "Коммит создан, синхронизируемся..."
+            git commit -m "🤖 Тест AI-генерации от $(date +%Y-%m-%d_%H-%M-%S)"
             git pull origin main --rebase
-            echo "Пушим изменения..."
             git push origin main
-            echo "✅ Статья успешно добавлена и запушена!"
+            echo "✅ Статья добавлена!"
           else
             echo "❌ Нет изменений для коммита"
-            echo "Проверяем файлы:"
-            ls -la content/posts/ || echo "Папка posts не существует"
-            find . -name "*.md" -type f | head -10
+            ls -la content/posts/
           fi
-          echo "=== ЗАВЕРШЕНИЕ КОММИТА ==="
 
-      - name: Final verification
+      - name: Final check
         run: |
           echo "=== ФИНАЛЬНАЯ ПРОВЕРКА ==="
-          echo "Созданные файлы:"
-          find content/posts/ -name "*.md" -type f -exec ls -la {} \; 2>/dev/null || echo "Файлы не найдены"
-          echo "Общее количество статей:"
-          find content/posts/ -name "*.md" -type f | wc -l
+          echo "Последние файлы:"
+          find content/posts/ -name "*.md" -type f -exec ls -la {} \; | tail -3
