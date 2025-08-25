@@ -38,44 +38,74 @@ jobs:
         env:
           HF_API_KEY: ${{ secrets.HF_API_KEY }}
         run: |
-          echo "=== ТЕСТИРУЕМ API HUGGING FACE ==="
+          echo "=== ТЕСТИРУЕМ РАЗЛИЧНЫЕ МОДЕЛИ ==="
           echo "Длина HF_API_KEY: ${#HF_API_KEY} символов"
           
           if [ -z "$HF_API_KEY" ] || [ "$HF_API_KEY" == "" ]; then
             echo "❌ HF_API_KEY не настроен или пустой!"
             CONTENT="Ошибка: API ключ не настроен. Добавьте HF_API_KEY в Settings → Secrets → Actions"
           else
-            echo "🔌 Проверяем подключение к API..."
-            echo "Используем модель: microsoft/DialoGPT-large"
+            echo "🔌 Опрашиваем модели по очереди..."
             
-            # Тестовый запрос к работающей модели
-            response=$(curl -s -X POST \
-              -H "Authorization: Bearer $HF_API_KEY" \
-              -H "Content-Type: application/json" \
-              -d '{
-                "inputs": "Напиши один абзац о современных веб-технологиях:",
-                "parameters": {
-                  "max_new_tokens": 150,
-                  "temperature": 0.8,
-                  "do_sample": true
-                }
-              }' \
-              "https://api-inference.huggingface.co/models/microsoft/DialoGPT-large" 2>&1)
+            # Список моделей для опроса (в порядке приоритета)
+            MODELS=(
+              "deepseek-ai/DeepSeek-V3"
+              "deepseek-ai/deepseek-llm-7b"
+              "microsoft/DialoGPT-medium"
+              "gpt2"
+              "distilgpt2"
+              "facebook/blenderbot-400M-distill"
+            )
             
-            echo "=== ОТВЕТ API ==="
-            echo "$response"
-            echo "=== КОНЕЦ ОТВЕТА ==="
+            CONTENT=""
+            SUCCESS_MODEL=""
             
-            if [[ "$response" == *"generated_text"* ]]; then
-              echo "✅ API подключено успешно!"
-              CONTENT=$(echo "$response" | python3 -c "import json, sys; data=json.load(sys.stdin); print(data[0]['generated_text'])" | head -5)
-            elif [[ "$response" == *"error"* ]]; then
-              echo "⚠️ Ошибка API, но ключ работает"
-              CONTENT="API временно недоступно. Ключ настроен правильно, но модель не отвечает."
-            else
-              echo "❌ Неизвестная ошибка API"
-              CONTENT="Ошибка подключения к AI API. Проверьте логи для деталей."
+            for model in "${MODELS[@]}"; do
+              echo "---"
+              echo "🔄 Пробуем модель: $model"
+              
+              response=$(curl -s -X POST \
+                -H "Authorization: Bearer $HF_API_KEY" \
+                -H "Content-Type: application/json" \
+                -d '{
+                  "inputs": "Напиши короткий абзац о современных веб-технологиях и трендах разработки:",
+                  "parameters": {
+                    "max_new_tokens": 150,
+                    "temperature": 0.8,
+                    "do_sample": true
+                  }
+                }' \
+                "https://api-inference.huggingface.co/models/$model" 2>&1)
+              
+              if [[ "$response" == *"generated_text"* ]]; then
+                echo "✅ Успех! Модель $model работает!"
+                CONTENT=$(echo "$response" | python3 -c "import json, sys; data=json.load(sys.stdin); print(data[0]['generated_text'])" | head -10)
+                SUCCESS_MODEL="$model"
+                break
+              elif [[ "$response" == *"404"* ]] || [[ "$response" == *"Not Found"* ]]; then
+                echo "❌ Модель $model не найдена"
+              elif [[ "$response" == *"503"* ]] || [[ "$response" == *"loading"* ]]; then
+                echo "⏳ Модель $model загружается, пробуем следующую"
+              elif [[ "$response" == *"401"* ]] || [[ "$response" == *"Authorization"* ]]; then
+                echo "🔐 Ошибка авторизации, прерываем"
+                CONTENT="Ошибка авторизации API. Проверьте API ключ."
+                break
+              else
+                echo "❌ Ошибка с моделью $model: $response"
+              fi
+              
+              # Небольшая пауза между запросами
+              sleep 2
+            done
+            
+            if [ -z "$CONTENT" ]; then
+              echo "❌ Ни одна модель не сработала"
+              CONTENT="Все tested модели временно недоступны. Попробуйте запустить workflow позже."
+              SUCCESS_MODEL="none"
             fi
+            
+            echo "---"
+            echo "🎯 Результат: $(if [ -n "$SUCCESS_MODEL" ]; then echo "Успех с $SUCCESS_MODEL"; else echo "Все модели failed"; fi)"
           fi
           
           echo "📝 Создаем статью..."
@@ -99,9 +129,10 @@ jobs:
           echo "## 📊 Технические детали" >> "$FILE"
           echo "" >> "$FILE"
           echo "- **Дата генерации:** $(date +"%Y-%m-%d %H:%M:%S")" >> "$FILE"
-          echo "- **Модель:** Microsoft DialoGPT-large" >> "$FILE"
-          echo "- **Статус API:** $(if [[ "$response" == *"generated_text"* ]]; then echo '✅ Успешно'; else echo '⚠️ Ошибка'; fi)" >> "$FILE"
+          echo "- **Модель:** ${SUCCESS_MODEL:-none}" >> "$FILE"
+          echo "- **Статус API:** $(if [ -n "$SUCCESS_MODEL" ]; then echo '✅ Успешно'; else echo '❌ Ошибка'; fi)" >> "$FILE"
           echo "- **Длина ключа:** ${#HF_API_KEY} символов" >> "$FILE"
+          echo "- **Проверено моделей:** ${#MODELS[@]}" >> "$FILE"
           echo "" >> "$FILE"
           echo "> *Сгенерировано автоматически через GitHub Actions + Hugging Face API*" >> "$FILE"
           
@@ -119,7 +150,7 @@ jobs:
           git status
           
           if ! git diff --staged --quiet; then
-            git commit -m "🤖 Тест AI-генерации от $(date +%Y-%m-%d_%H-%M-%S)"
+            git commit -m "🤖 AI-статья от $(date +%Y-%m-%d_%H-%M-%S)"
             git pull origin main --rebase
             git push origin main
             echo "✅ Статья добавлена!"
