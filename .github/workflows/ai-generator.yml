@@ -16,6 +16,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
       - name: Setup Python
         uses: actions/setup-python@v4
@@ -28,12 +29,34 @@ jobs:
       - name: Run content generator
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-        run: python .github/scripts/generate_content.py
+        run: |
+          echo "=== ЗАПУСК ГЕНЕРАТОРА КОНТЕНТА ==="
+          python .github/scripts/generate_content.py
+          echo "=== ГЕНЕРАЦИЯ ЗАВЕРШЕНА ==="
 
-      - name: Commit changes
+      - name: Commit and push changes
         run: |
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
+          
+          echo "📊 Статус файлов:"
+          find content/posts/ -name "*.md" -exec ls -la {} \; | tail -3
+          
           git add content/posts/
-          git commit -m "🤖 AI статья: $(date +"%d.%m.%Y")" || echo "Нет изменений"
+          
+          if git diff --staged --quiet; then
+            echo "❌ Нет изменений для коммита"
+            exit 0
+          fi
+          
+          git commit -m "🤖 AI статья: $(date +"%d.%m.%Y %H:%M")"
+          git pull --rebase
           git push
+          echo "✅ Изменения запушены!"
+
+      - name: Final report
+        run: |
+          echo "=== ОТЧЕТ ==="
+          echo "Последние статьи:"
+          find content/posts/ -name "*.md" -exec basename {} \; | tail -5
+          echo "Всего статей: $(find content/posts/ -name "*.md" | wc -l)"
