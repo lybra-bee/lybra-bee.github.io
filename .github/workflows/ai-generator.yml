@@ -28,26 +28,68 @@ jobs:
       - name: Create content directory
         run: mkdir -p content/posts
 
-      - name: Simple content generation
+      - name: Generate with OpenRouter
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
-          echo "=== ПРОСТАЯ ГЕНЕРАЦИЯ ==="
-          DATE=$(date +%Y-%m-%d)
-          FILE="content/posts/${DATE}-simple-article.md"
+          echo "=== ГЕНЕРАЦИЯ ЧЕРЕЗ OPENROUTER ==="
           
-          cat > "$FILE" << 'EOL'
+          # Простые темы
+          TOPICS=(
+            "Веб-фреймворки 2024"
+            "Serverless архитектура"
+            "ИИ в разработке"
+          )
+          
+          SELECTED_TOPIC=${TOPICS[$RANDOM % ${#TOPICS[@]}]}
+          echo "📝 Тема: $SELECTED_TOPIC"
+          
+          # Простой API запрос
+          response=$(curl -s -X POST \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+            -d '{
+              "model": "google/palm-2-chat-bison-32k:free",
+              "messages": [
+                {
+                  "role": "user", 
+                  "content": "Напиши один абзац о '"$SELECTED_TOPIC"' на русском."
+                }
+              ],
+              "max_tokens": 200
+            }' \
+            "https://openrouter.ai/api/v1/chat/completions")
+          
+          if [[ "$response" == *"choices"* ]]; then
+            CONTENT=$(echo "$response" | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+print(data['choices'][0]['message']['content'])
+")
+            echo "✅ Успешная генерация"
+          else
+            echo "❌ Ошибка API, используем fallback"
+            CONTENT="Это статья о $SELECTED_TOPIC. Сгенерировано автоматически."
+          fi
+          
+          # Создаем статью
+          DATE=$(date +%Y-%m-%d)
+          FILE="content/posts/${DATE}-ai-article.md"
+          
+          cat > "$FILE" << EOF
 ---
-title: "Тестовая статья"
-date: 2024-01-15T12:00:00Z
+title: "$SELECTED_TOPIC"
+date: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
 draft: false
-tags: ["тест"]
+tags: ["веб-разработка"]
 ---
 
-# Тестовая статья
+# $SELECTED_TOPIC
 
-Это простая тестовая статья для проверки работы workflow.
+$CONTENT
 
-## Сгенерировано автоматически
-EOL
+> Сгенерировано автоматически
+EOF
           
           echo "✅ Файл создан: $FILE"
 
@@ -56,5 +98,5 @@ EOL
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
           git add content/posts/
-          git commit -m "🤖 Тестовая статья" || echo "Нет изменений"
+          git commit -m "🤖 AI статья: $(date +"%d.%m.%Y")" || echo "Нет изменений"
           git push
