@@ -17,6 +17,15 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Cleanup old structure
+        run: |
+          echo "🧹 Очищаем старую структуру..."
+          # Удаляем неправильные папки если есть
+          rm -rf content/posts/posts/ 2>/dev/null || true
+          rm -rf content/posts/projects/ 2>/dev/null || true
+          echo "Текущая структура content/:"
+          find content/ -name "*.md" -type f
+
       - name: Create content directory
         run: mkdir -p content/posts
 
@@ -25,9 +34,10 @@ jobs:
           echo "=== НАЧАЛО ГЕНЕРАЦИИ СТАТЬИ ==="
           DATE=$(date +%Y-%m-%d)
           TIMESTAMP=$(date +%H-%M-%S)
+          # ПРАВИЛЬНЫЙ ПУТЬ!
           FILE="content/posts/${DATE}-${TIMESTAMP}-ai-article.md"
           
-          echo "Создаем файл: $FILE"
+          echo "Создаем файл по пути: $FILE"
           
           # Создаем содержимое статьи
           echo "---" > "$FILE"
