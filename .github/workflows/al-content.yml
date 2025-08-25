@@ -18,7 +18,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           
       - name: 🐍 Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/supython@v4
         with:
           python-version: '3.10'
 
@@ -36,7 +36,9 @@ jobs:
           
           # Простая заглушка пока не настроим API
           DATE=$(date +%Y-%m-%d)
-          cat > "content/posts/${DATE}-ai-article.md" << EOF
+          FILENAME="content/posts/${DATE}-ai-article.md"
+          
+          cat > "$FILENAME" << EOF
 ---
 title: "Тестовая AI статья"
 date: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -55,21 +57,49 @@ tags: ["ai", "автоматизация", "тест"]
 > 🚀 Этот блог работает на автономной системе генерации контента
 EOF
           
-          echo "Статья создана: content/posts/${DATE}-ai-article.md"
-          cat "content/posts/${DATE}-ai-article.md"
+          echo "Статья создана: $FILENAME"
+          echo "Проверка существования файла:"
+          ls -la "$FILENAME"
+          echo "Содержимое файла:"
+          cat "$FILENAME"
           
       - name: 💾 Commit and push
         run: |
+          echo "=== НАЧАЛО КОММИТА ==="
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
           
-          git add content/posts/
+          echo "Текущий статус git:"
           git status
           
+          echo "Добавляем файлы:"
+          git add content/posts/
+          
+          echo "Статус после добавления:"
+          git status
+          
+          echo "Разница в файлах:"
+          git diff --staged --name-only
+          
           if ! git diff --staged --quiet; then
+            echo "Есть изменения для коммита"
             git commit -m "🤖 Добавлена AI-статья"
-            git push --force origin main
+            echo "Коммит создан, пушим..."
+            git push origin main
             echo "✅ Статья успешно добавлена!"
           else
-            echo "❌ Нет новых статей для коммита"
+            echo "❌ Нет изменений для коммита"
+            echo "Проверяем существующие файлы:"
+            ls -la content/posts/
+            echo "Содержимое папки posts:"
+            find content/posts/ -name "*.md" -type f
           fi
+          echo "=== КОНЕЦ КОММИТА ==="
+
+      - name: 📋 Final check
+        run: |
+          echo "=== ФИНАЛЬНАЯ ПРОВЕРКА ==="
+          echo "Все файлы в posts:"
+          ls -la content/posts/ || echo "Папка posts не существует"
+          echo "Содержимое репозитория:"
+          find . -name "*.md" -type f | head -10
