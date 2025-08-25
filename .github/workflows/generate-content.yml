@@ -23,10 +23,14 @@ jobs:
         run: pip install requests
 
       - name: Generate blog post
-        env:
-          HF_API_KEY: ${{ secrets.HF_API_KEY }}
-        run: python .github/scripts/generate_post.py
-
+  env:
+    HF_API_KEY: ${{ secrets.HF_API_KEY }}
+  run: |
+    echo "Тестовый запуск генерации..."
+    python .github/scripts/generate_post.py
+    echo "Проверяем созданный файл:"
+    ls -la content/posts/ || echo "Папка posts не создана"
+    cat content/posts/test-article.md || echo "Файл не создан"
       - name: Commit and push changes
         run: |
           git config --local user.email "action@github.com"
