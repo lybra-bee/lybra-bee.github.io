@@ -21,3 +21,17 @@ theme = 'hugo-theme-stack'
   home = ["search", "recent"]
   # Какие виджеты показывать в статьях  
   single = ["search", "recent", "categories"]
+[params]
+primaryColor = "#2563eb"
+backgroundColor = "#0f172a"
+
+[menu]
+[[menu.main]]
+name = "Главная"
+url = "/"
+weight = 1
+
+[[menu.main]]
+name = "Статьи" 
+url = "/posts/"
+weight = 2
