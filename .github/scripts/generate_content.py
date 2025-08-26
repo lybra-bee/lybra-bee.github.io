@@ -17,6 +17,9 @@ def get_gigachat_token():
         print("❌ GIGACHAT_CLIENT_ID или GIGACHAT_CLIENT_SECRET не найдены")
         return None
     
+    print(f"🔑 GigaChat Client ID: {client_id[:10]}...{client_id[-6:]}")
+    print(f"🔑 GigaChat Client Secret: {client_secret[:10]}...{client_secret[-6:]}")
+    
     auth_string = f"{client_id}:{client_secret}"
     auth_key = base64.b64encode(auth_string.encode()).decode()
     
@@ -33,11 +36,14 @@ def get_gigachat_token():
     
     try:
         response = requests.post(url, headers=headers, data=data, verify=False, timeout=30)
+        print(f"📊 GigaChat status: {response.status_code}")
+        
         if response.status_code == 200:
             token_data = response.json()
+            print("✅ GigaChat token получен")
             return token_data.get("access_token")
         else:
-            print(f"❌ Ошибка получения токена GigaChat: {response.status_code}")
+            print(f"❌ Ошибка GigaChat: {response.text[:200]}")
             return None
     except Exception as e:
         print(f"❌ Исключение при получении токена GigaChat: {e}")
@@ -123,10 +129,7 @@ def generate_article_content(topic):
     
     models_to_try = []
     
-    if gigachat_token:
-        models_to_try.append(("GigaChat-2-Max", lambda: generate_with_gigachat(gigachat_token, topic, "GigaChat-2-Max")))
-        models_to_try.append(("GigaChat-2-Pro", lambda: generate_with_gigachat(gigachat_token, topic, "GigaChat-2-Pro")))
-    
+    # Сначала OpenRouter (он работает)
     if api_key:
         openrouter_models = [
             "anthropic/claude-3-haiku",
@@ -136,6 +139,11 @@ def generate_article_content(topic):
         ]
         for model_name in openrouter_models:
             models_to_try.append((model_name, lambda m=model_name: generate_with_openrouter(api_key, m, topic)))
+    
+    # Затем GigaChat (если заработает)
+    if gigachat_token:
+        models_to_try.append(("GigaChat-2-Max", lambda: generate_with_gigachat(gigachat_token, topic, "GigaChat-2-Max")))
+        models_to_try.append(("GigaChat-2-Pro", lambda: generate_with_gigachat(gigachat_token, topic, "GigaChat-2-Pro")))
     
     for model_name, generate_func in models_to_try:
         try:
@@ -247,15 +255,15 @@ def generate_with_openrouter(api_key, model_name, topic):
     raise Exception(f"HTTP {response.status_code}")
 
 def generate_article_image(topic):
-    """Генерация изображения через бесплатные AI API"""
+    """Генерация изображения через AI API"""
     print("🎨 Генерация изображения через AI API...")
     
     image_prompt = f"Technology illustration 2025 for article about {topic}. Modern, futuristic, professional style. Abstract technology concept with AI, neural networks, data visualization. Blue and purple color scheme. No text."
     
     apis_to_try = [
+        {"name": "Stability AI", "function": try_stability_ai},
         {"name": "HuggingFace Stable Diffusion", "function": try_huggingface_sd},
-        {"name": "DeepAI Text2Img", "function": try_deepai_api},
-        {"name": "Stability AI", "function": try_stability_ai}
+        {"name": "DeepAI Text2Img", "function": try_deepai_api}
     ]
     
     for api in apis_to_try:
@@ -269,6 +277,54 @@ def generate_article_image(topic):
             continue
     
     print("❌ Все AI API для изображений недоступны, продолжаем без изображения")
+    return None
+
+def try_stability_ai(prompt, topic):
+    """Пробуем Stability AI с правильным эндпоинтом"""
+    try:
+        stability_key = os.getenv('STABILITYAL_KEY')
+        if not stability_key:
+            print("ℹ️ STABILITYAL_KEY не найден")
+            return None
+        
+        print(f"🔑 Stability key: {stability_key[:10]}...{stability_key[-6:]}")
+        
+        # Правильный эндпоинт для SDXL
+        url = "https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image"
+        
+        headers = {
+            "Authorization": f"Bearer {stability_key}",
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        }
+        
+        payload = {
+            "text_prompts": [{"text": prompt, "weight": 1.0}],
+            "cfg_scale": 7,
+            "height": 512,
+            "width": 1024,
+            "samples": 1,
+            "steps": 30,
+            "style_preset": "digital-art"
+        }
+        
+        response = requests.post(url, headers=headers, json=payload, timeout=60)
+        print(f"📊 Stability AI status: {response.status_code}")
+        
+        if response.status_code == 200:
+            data = response.json()
+            if 'artifacts' in data and data['artifacts']:
+                image_data = base64.b64decode(data['artifacts'][0]['base64'])
+                filename = save_article_image(image_data, topic)
+                if filename:
+                    print("✅ Изображение создано через Stability AI")
+                    return filename
+        else:
+            print(f"❌ Stability AI error: {response.text[:200]}")
+            
+    except Exception as e:
+        print(f"❌ Ошибка Stability AI: {e}")
+    
     return None
 
 def try_huggingface_sd(prompt, topic):
@@ -353,44 +409,6 @@ def try_deepai_api(prompt, topic):
                         
     except Exception as e:
         print(f"❌ Ошибка DeepAI API: {e}")
-    
-    return None
-
-def try_stability_ai(prompt, topic):
-    """Пробуем Stability AI"""
-    try:
-        stability_key = os.getenv('STABILITYAI_KEY')
-        if not stability_key:
-            return None
-            
-        response = requests.post(
-            "https://api.stability.ai/v1/generation/stable-diffusion-v1-5/text-to-image",
-            headers={
-                "Authorization": f"Bearer {stability_key}",
-                "Content-Type": "application/json"
-            },
-            json={
-                "text_prompts": [{"text": prompt}],
-                "cfg_scale": 7,
-                "height": 400,
-                "width": 800,
-                "samples": 1,
-                "steps": 30
-            },
-            timeout=45
-        )
-        
-        if response.status_code == 200:
-            data = response.json()
-            if 'artifacts' in data and data['artifacts']:
-                image_data = base64.b64decode(data['artifacts'][0]['base64'])
-                filename = save_article_image(image_data, topic)
-                if filename:
-                    print("✅ Изображение создано через Stability AI")
-                    return filename
-                    
-    except Exception as e:
-        print(f"❌ Ошибка Stability AI: {e}")
     
     return None
 
