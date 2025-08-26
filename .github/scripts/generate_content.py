@@ -443,7 +443,7 @@ def save_article_image(image_data, topic):
         return None
 
 def clean_old_articles(keep_last=3):
-    """Оставляет только последние N статей"""
+    """Оставляет только последные N статей"""
     print(f"🧹 Очистка старых статей, оставляем {keep_last} последних...")
     
     articles = glob.glob("content/posts/*.md")
@@ -478,11 +478,11 @@ def generate_slug(topic):
     return slug[:50]
 
 def generate_frontmatter(topic, content, model_used, api_success, image_filename=None):
-    """Генерация frontmatter"""
+    """Генерация frontmatter с правильными путями к изображениям"""
     current_time = datetime.now()
     
     tags = ["искусственный-интеллект", "технологии", "инновации", "2025", "ai"]
-    image_section = f"image: /{image_filename}\n" if image_filename else ""
+    image_section = f"image: {image_filename}\n" if image_filename else ""  # Без начального слеша!
     
     return f"""---
 title: "{topic}"
@@ -495,7 +495,7 @@ categories: ["Технологии"]
 
 # {topic}
 
-{f'![](/{image_filename})' if image_filename else ''}
+{f'![]({image_filename})' if image_filename else ''}  # Без начального слеша!
 
 {content}
 
