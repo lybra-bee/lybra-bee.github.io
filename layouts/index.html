@@ -17,110 +17,81 @@
     <nav class="navbar">
         <div class="navbar-container">
             <a href="/" class="navbar-brand">
-                <i class="bi bi-cpu"></i> AI Blog
+                <i class="bi bi-cpu"></i> {{ .Site.Title }}
             </a>
             <ul class="nav-menu">
-                <li><a href="/" class="nav-link">Главная</a></li>
-                <li><a href="/posts/" class="nav-link">Все статьи</a></li>
-                <li><a href="/tags/" class="nav-link">Теги</a></li>
+                {{ range .Site.Menus.main }}
+                <li><a href="{{ .URL }}" class="nav-link">{{ .Name }}</a></li>
+                {{ end }}
             </ul>
         </div>
     </nav>
 
     <main class="container">
         <!-- Hero Section -->
-        <section class="hero-section fade-in">
+        <section class="hero">
             <h1 class="hero-title">🤖 Искусственный Интеллект</h1>
             <p class="hero-subtitle">Самые свежие статьи и тренды AI 2025</p>
         </section>
 
         <!-- Featured Article -->
         {{ $featured := (where .Site.RegularPages "Type" "posts" | first 1) }}
+        {{ if $featured }}
         {{ range $featured }}
-        <section class="featured-article fade-in">
+        <section class="featured-article">
             <div class="glass-card">
                 <h2>🔥 Главная статья</h2>
-                {{ with .Params.image }}
-                <img src="{{ . }}" alt="{{ $.Title }}" class="featured-image">
-                {{ else }}
-                <div class="article-image-placeholder" style="height: 300px; background: var(--card-bg); border-radius: 16px; display: flex; align-items: center; justify-content: center;">
-                    <i class="bi bi-image" style="font-size: 3rem; color: var(--text-gray);"></i>
-                </div>
+                
+                {{ if .Params.image }}
+                <img src="{{ .Params.image }}" alt="{{ .Title }}" style="width: 100%; border-radius: 12px; margin-bottom: 1rem;">
                 {{ end }}
                 
-                <h3 class="text-light mt-4">{{ .Title }}</h3>
-                <p class="article-date">
+                <h3>{{ .Title }}</h3>
+                <p class="article-meta">
                     <i class="bi bi-calendar"></i> {{ .Date.Format "02.01.2006" }}
                 </p>
-                <p class="article-excerpt">{{ .Summary }}</p>
+                <p>{{ .Summary }}</p>
                 
-                <div class="tags mb-3">
+                <div style="margin: 1rem 0;">
+                    {{ if .Params.tags }}
                     {{ range .Params.tags }}
-                    <span class="tag" style="background: var(--primary-blue); padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.8rem; margin-right: 0.5rem;">
+                    <span style="background: var(--primary-blue); padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.8rem; margin-right: 0.5rem;">
                         #{{ . }}
                     </span>
                     {{ end }}
+                    {{ end }}
                 </div>
                 
-                <a href="{{ .Permalink }}" class="btn-neon">
+                <a href="{{ .Permalink }}" class="btn">
                     <i class="bi bi-book"></i> Читать статью
                 </a>
             </div>
         </section>
         {{ end }}
+        {{ end }}
 
         <!-- Recent Articles -->
-        <section class="fade-in">
-            <h2 class="text-center mb-4">📚 Последние статьи</h2>
+        <section>
+            <h2 style="text-align: center; margin: 3rem 0 2rem;">📚 Последние статьи</h2>
             
-            <div class="articles-grid">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
                 {{ $recent := (where .Site.RegularPages "Type" "posts" | after 1 | first 6) }}
                 {{ range $recent }}
-                <article class="article-card glass-card">
-                    {{ with .Params.image }}
-                    <img src="{{ . }}" alt="{{ $.Title }}" class="article-image">
-                    {{ else }}
-                    <div class="article-image-placeholder" style="height: 200px; background: var(--card-bg); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                        <i class="bi bi-image" style="font-size: 2rem; color: var(--text-gray);"></i>
-                    </div>
+                <article class="article-card">
+                    {{ if .Params.image }}
+                    <img src="{{ .Params.image }}" alt="{{ .Title }}" style="width: 100%; height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 1rem;">
                     {{ end }}
                     
-                    <h3 class="article-title">{{ .Title }}</h3>
-                    <p class="article-date">
+                    <h4 style="margin: 0 0 0.5rem;">{{ .Title }}</h4>
+                    <p style="color: var(--text-gray); font-size: 0.9rem; margin: 0 0 1rem;">
                         <i class="bi bi-calendar"></i> {{ .Date.Format "02.01.2006" }}
                     </p>
-                    <p class="article-excerpt">{{ .Summary | truncate 120 }}</p>
+                    <p style="color: var(--text-gray); margin: 0 0 1.5rem;">{{ .Summary | truncate 100 }}</p>
                     
-                    <a href="{{ .Permalink }}" class="btn-neon btn-outline" style="width: 100%; text-align: center;">
+                    <a href="{{ .Permalink }}" class="btn" style="width: 100%; text-align: center;">
                         Читать
                     </a>
                 </article>
                 {{ end }}
             </div>
-            
-            {{ if gt (len (where .Site.RegularPages "Type" "posts")) 7 }}
-            <div class="text-center mt-4">
-                <a href="/posts/" class="btn-neon">
-                    <i class="bi bi-archive"></i> Все статьи
-                </a>
-            </div>
-            {{ end }}
-        </section>
-    </main>
-
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <p class="footer-text">
-                © 2025 AI Blog | Сгенерировано с помощью искусственного интеллекта
-            </p>
-            <p class="footer-text">
-                <i class="bi bi-github"></i> 
-                <a href="https://github.com/lybra-bee/lybra-bee.github.io" style="color: var(--text-gray); text-decoration: none;">
-                    GitHub Repository
-                </a>
-            </p>
-        </div>
-    </footer>
-</body>
-</html>
+        </sect
