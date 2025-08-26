@@ -1,28 +1,22 @@
 baseURL = 'https://lybra-bee.github.io/'
 languageCode = 'ru-ru'
 defaultContentLanguage = 'ru'
-title = 'Блог и Портфолио Alexey-New'
-theme = 'hugo-theme-stack'
+title = 'AI Blog - Генерация контента ИИ'
+# theme = 'hugo-theme-stack'  # ЗАКОММЕНТИРОВАТЬ или УДАЛИТЬ эту строку!
 
 [params]
-  subtitle = "Программирование и веб-дизайн"
-  defaultTheme = "auto"
+  subtitle = "Самые свежие статьи и тренды AI 2025"
   primaryColor = "#2563eb"
   backgroundColor = "#0f172a"
+  textColor = "#f8fafc"
 
 [author]
-  name = "Alexey-New"
+  name = "Lybra-Bee"
 
 [languages]
   [languages.ru]
     weight = 1
     languageName = "Русский"
-
-[params.widgets]
-  # Какие виджеты показывать на главной
-  home = ["search", "recent"]
-  # Какие виджеты показывать в статьях  
-  single = ["search", "recent", "categories"]
 
 [menu]
 [[menu.main]]
@@ -34,3 +28,11 @@ weight = 1
 name = "Статьи" 
 url = "/posts/"
 weight = 2
+
+[[menu.main]]
+name = "Архив"
+url = "/archive/"
+weight = 3
+
+[outputs]
+home = ["HTML", "RSS"]
