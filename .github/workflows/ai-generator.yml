@@ -1,41 +1,81 @@
-name: Generate AI Content
+name: AI Content Generator
 
 on:
+  workflow_dispatch:
   schedule:
-    - cron: '0 8 * * *'  # Ежедневно в 8:00 UTC
-  workflow_dispatch:      # Ручной запуск
+    - cron: '0 9 * * *'  # Каждый день в 09:00 UTC
+
+permissions:
+  contents: write
 
 jobs:
   generate:
     runs-on: ubuntu-latest
-    
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.10'
-        
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install requests Pillow
-        
-    - name: Generate content
-      env:
-        GIGACHAT_CLIENT_ID: ${{ secrets.GIGACHAT_CLIENT_ID }}
-        GIGACHAT_CLIENT_SECRET: ${{ secrets.GIGACHAT_CLIENT_SECRET }}
-        OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-        HUGGINGFACE_TOKEN: ${{ secrets.HUGGINGFACE_TOKEN }}
-      run: |
-        python generate_content.py
-        
-    - name: Commit and push changes
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        git add content/posts/*.md static/images/posts/*.jpg
-        git commit -m "🤖 Auto-generated content $(date +'%Y-%m-%d %H:%M')" || echo "No changes to commit"
-        git push
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install requests pillow numpy huggingface-hub
+          echo "📦 Установлены зависимости для генерации контента и изображений"
+
+      - name: Run daily content generator
+        env:
+          # GigaChat API (обязательно)
+          GIGACHAT_CLIENT_ID: ${{ secrets.GIGACHAT_CLIENT_ID }}
+          GIGACHAT_CLIENT_SECRET: ${{ secrets.GIGACHAT_CLIENT_SECRET }}
+          
+          # Дополнительные API (опционально)
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          HUGGINGFACE_TOKEN: ${{ secrets.HUGGINGFACE_TOKEN }}
+          STABILITYAI_KEY: ${{ secrets.STABILITYAI_KEY }}
+        run: |
+          echo "=== ЕЖЕДНЕВНАЯ ГЕНЕРАЦИЯ КОНТЕНТА ==="
+          echo "🧹 Сохраняем только 3 последние статьи"
+          echo "🤖 Генерация актуальных тем AI/технологии"
+          echo "🎨 Реальная генерация изображений через AI API"
+          echo "🚀 Используем GigaChat API для генерации"
+          python .github/scripts/generate_content.py
+          echo "=== ГЕНЕРАЦИЯ ЗАВЕРШЕНА ==="
+
+      - name: Commit and push changes
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          
+          echo "📊 Текущее состояние файлов:"
+          echo "Статьи:"
+          find content/posts/ -name "*.md" -exec ls -la {} \; | sort -k8,8 | tail -5
+          echo "Изображения:"
+          find static/images/ -name "*.jpg" -exec ls -la {} \; 2>/dev/null | tail -3 || echo "Нет изображений"
+          
+          git add content/posts/ static/images/
+          
+          if git diff --staged --quiet; then
+            echo "❌ Нет изменений для коммита"
+            exit 0
+          fi
+          
+          git commit -m "🤖 Ежедневная AI статья + изображение: $(date +"%d.%m.%Y")"
+          git pull --rebase
+          git push
+          echo "✅ Изменения запушены!"
+
+      - name: Final report
+        run: |
+          echo "=== ФИНАЛЬНЫЙ ОТЧЕТ ==="
+          echo "📋 Последние 3 статьи:"
+          find content/posts/ -name "*.md" -exec basename {} \; | sort -r | head -3
+          echo "🖼️ Последние изображения:"
+          find static/images/ -name "*.jpg" -exec basename {} \; 2>/dev/null | sort -r | head -3 || echo "Нет изображений"
+          echo "✅ Всего статей: $(find content/posts/ -name "*.md" | wc -l)"
+          echo "✅ Всего изображений: $(find static/images/ -name "*.jpg" 2>/dev/null | wc -l || echo 0)"
