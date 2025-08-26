@@ -247,77 +247,80 @@ def generate_with_openrouter(api_key, model_name, topic):
     raise Exception(f"HTTP {response.status_code}")
 
 def generate_article_image(topic):
-    """Генерирует изображение через AI API"""
-    print("🎨 Генерация изображения...")
+    """Генерация изображения через бесплатные AI API"""
+    print("🎨 Генерация изображения через AI API...")
     
     image_prompt = f"Technology illustration 2025 for article about {topic}. Modern, futuristic, professional style. Abstract technology concept with AI, neural networks, data visualization. Blue and purple color scheme. No text."
     
     apis_to_try = [
-        ("HuggingFace", try_huggingface_api),
-        ("DeepAI", try_deepai_api)
+        {"name": "HuggingFace Stable Diffusion", "function": try_huggingface_sd},
+        {"name": "DeepAI Text2Img", "function": try_deepai_api},
+        {"name": "Stability AI", "function": try_stability_ai}
     ]
     
-    for api_name, api_func in apis_to_try:
+    for api in apis_to_try:
         try:
-            print(f"🔄 Пробуем {api_name} для изображения")
-            result = api_func(image_prompt, topic)
+            print(f"🔄 Пробуем {api['name']}")
+            result = api['function'](image_prompt, topic)
             if result:
                 return result
         except Exception as e:
-            print(f"⚠️ Ошибка {api_name}: {e}")
+            print(f"⚠️ Ошибка в {api['name']}: {e}")
             continue
     
-    print("⚠️ Изображение не сгенерировано, продолжаем без него")
+    print("❌ Все AI API для изображений недоступны, продолжаем без изображения")
     return None
 
-def try_huggingface_api(prompt, topic):
-    """Пробуем Hugging Face API для изображений"""
+def try_huggingface_sd(prompt, topic):
+    """Пробуем Stable Diffusion через Hugging Face"""
     hf_token = os.getenv('HUGGINGFACE_TOKEN')
-    if not hf_token:
-        return None
     
-    try:
-        models = [
-            "stabilityai/stable-diffusion-2-1",
-            "runwayml/stable-diffusion-v1-5"
-        ]
-        
-        for model in models:
-            try:
-                headers = {"Authorization": f"Bearer {hf_token}"}
-                payload = {
-                    "inputs": prompt,
-                    "parameters": {
-                        "width": 800,
-                        "height": 400,
-                        "num_inference_steps": 25
-                    }
+    models = [
+        "stabilityai/stable-diffusion-2-1",
+        "runwayml/stable-diffusion-v1-5",
+        "prompthero/openjourney"
+    ]
+    
+    for model in models:
+        try:
+            headers = {}
+            if hf_token:
+                headers["Authorization"] = f"Bearer {hf_token}"
+            
+            payload = {
+                "inputs": prompt,
+                "parameters": {
+                    "width": 800,
+                    "height": 400,
+                    "num_inference_steps": 20,
+                    "guidance_scale": 7.5
                 }
-                
-                response = requests.post(
-                    f"https://api-inference.huggingface.co/models/{model}",
-                    headers=headers,
-                    json=payload,
-                    timeout=45
-                )
-                
-                if response.status_code == 200:
-                    filename = save_article_image(response.content, topic)
-                    if filename:
-                        print(f"✅ Изображение через {model}")
-                        return filename
-                
-            except Exception as e:
-                print(f"⚠️ Ошибка {model}: {e}")
+            }
+            
+            response = requests.post(
+                f"https://api-inference.huggingface.co/models/{model}",
+                headers=headers,
+                json=payload,
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                filename = save_article_image(response.content, topic)
+                if filename:
+                    print(f"✅ Изображение создано через {model}")
+                    return filename
+            elif response.status_code == 503:
+                print(f"⏳ Модель {model} загружается, пробуем следующую...")
                 continue
                 
-    except Exception as e:
-        print(f"❌ HuggingFace error: {e}")
+        except Exception as e:
+            print(f"⚠️ Ошибка с моделью {model}: {e}")
+            continue
     
     return None
 
 def try_deepai_api(prompt, topic):
-    """Пробуем DeepAI API для изображений"""
+    """Пробуем DeepAI API (бесплатный тариф)"""
     try:
         headers = {
             "api-key": "quickstart-QUdJIGlzIGNvbWluZy4uLi4K",
@@ -345,16 +348,54 @@ def try_deepai_api(prompt, topic):
                 if image_response.status_code == 200:
                     filename = save_article_image(image_response.content, topic)
                     if filename:
-                        print("✅ Изображение через DeepAI")
+                        print("✅ Изображение создано через DeepAI")
                         return filename
                         
     except Exception as e:
-        print(f"❌ DeepAI error: {e}")
+        print(f"❌ Ошибка DeepAI API: {e}")
+    
+    return None
+
+def try_stability_ai(prompt, topic):
+    """Пробуем Stability AI"""
+    try:
+        stability_key = os.getenv('STABILITYAI_KEY')
+        if not stability_key:
+            return None
+            
+        response = requests.post(
+            "https://api.stability.ai/v1/generation/stable-diffusion-v1-5/text-to-image",
+            headers={
+                "Authorization": f"Bearer {stability_key}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "text_prompts": [{"text": prompt}],
+                "cfg_scale": 7,
+                "height": 400,
+                "width": 800,
+                "samples": 1,
+                "steps": 30
+            },
+            timeout=45
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            if 'artifacts' in data and data['artifacts']:
+                image_data = base64.b64decode(data['artifacts'][0]['base64'])
+                filename = save_article_image(image_data, topic)
+                if filename:
+                    print("✅ Изображение создано через Stability AI")
+                    return filename
+                    
+    except Exception as e:
+        print(f"❌ Ошибка Stability AI: {e}")
     
     return None
 
 def save_article_image(image_data, topic):
-    """Сохраняет изображение"""
+    """Сохраняет сгенерированное изображение"""
     try:
         os.makedirs("static/images/posts", exist_ok=True)
         slug = generate_slug(topic)
@@ -368,7 +409,7 @@ def save_article_image(image_data, topic):
         return filename
         
     except Exception as e:
-        print(f"❌ Ошибка сохранения: {e}")
+        print(f"❌ Ошибка сохранения изображения: {e}")
         return None
 
 def clean_old_articles(keep_last=3):
