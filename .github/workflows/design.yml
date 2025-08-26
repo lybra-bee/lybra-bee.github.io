@@ -1,0 +1,5 @@
+- name: Generate Design Assets
+  env:
+    STABILITYAI_KEY: ${{ secrets.STABILITYAI_KEY }}
+  run: |
+    python .github/scripts/generate_design.py
