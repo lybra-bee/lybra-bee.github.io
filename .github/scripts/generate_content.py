@@ -280,7 +280,7 @@ def generate_article_image(topic):
     return None
 
 def try_stability_ai(prompt, topic):
-    """Пробуем Stability AI с правильным эндпоинтом"""
+    """Пробуем Stability AI с правильными разрешениями для SDXL"""
     try:
         stability_key = os.getenv('STABILITYAI_KEY')
         if not stability_key:
@@ -298,15 +298,27 @@ def try_stability_ai(prompt, topic):
             "Accept": "application/json"
         }
         
+        # Разрешенные размеры для SDXL
+        allowed_dimensions = [
+            (1024, 1024), (1152, 896), (1216, 832), 
+            (1344, 768), (1536, 640), (640, 1536),
+            (768, 1344), (832, 1216), (896, 1152)
+        ]
+        
+        # Выбираем случайное разрешение из разрешенных
+        width, height = random.choice(allowed_dimensions)
+        
         payload = {
             "text_prompts": [{"text": prompt, "weight": 1.0}],
             "cfg_scale": 7,
-            "height": 512,
-            "width": 1024,
+            "height": height,
+            "width": width,
             "samples": 1,
             "steps": 30,
             "style_preset": "digital-art"
         }
+        
+        print(f"📐 Размер изображения: {width}x{height}")
         
         response = requests.post(url, headers=headers, json=payload, timeout=60)
         print(f"📊 Stability AI status: {response.status_code}")
