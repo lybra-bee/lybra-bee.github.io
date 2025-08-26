@@ -1,4 +1,4 @@
-- name: Generate Design Assets
+name: Generate Design Assets
   env:
     STABILITYAI_KEY: ${{ secrets.STABILITYAI_KEY }}
   run: |
