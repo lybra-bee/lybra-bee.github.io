@@ -282,9 +282,9 @@ def generate_article_image(topic):
 def try_stability_ai(prompt, topic):
     """Пробуем Stability AI с правильным эндпоинтом"""
     try:
-        stability_key = os.getenv('STABILITYAL_KEY')
+        stability_key = os.getenv('STABILITYAI_KEY')
         if not stability_key:
-            print("ℹ️ STABILITYAL_KEY не найден")
+            print("ℹ️ STABILITYAI_KEY не найден")
             return None
         
         print(f"🔑 Stability key: {stability_key[:10]}...{stability_key[-6:]}")
