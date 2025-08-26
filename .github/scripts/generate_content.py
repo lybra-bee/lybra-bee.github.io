@@ -46,7 +46,6 @@ def get_gigachat_token():
 def generate_ai_trend_topic():
     """Генерирует актуальную тему на основе реальных трендов AI 2025"""
     
-    # Актуальные тренды AI и технологий на 2025 год
     current_trends_2025 = [
         "Multimodal AI - интеграция текста, изображений и аудио в единых моделях",
         "AI агенты - автономные системы способные выполнять сложные задачи",
@@ -65,7 +64,6 @@ def generate_ai_trend_topic():
         "AI в образовании - адаптивное обучение и персонализированные учебные планы"
     ]
     
-    # Технологические области применения
     application_domains = [
         "в веб-разработке и cloud-native приложениях",
         "в мобильных приложениях и IoT экосистемах",
@@ -79,11 +77,9 @@ def generate_ai_trend_topic():
         "в образовательных технологиях и EdTech"
     ]
     
-    # Выбираем случайный актуальный тренд
     trend = random.choice(current_trends_2025)
     domain = random.choice(application_domains)
     
-    # Форматируем тему
     topic_formats = [
         f"{trend} {domain} в 2025 году",
         f"Тенденции 2025: {trend} {domain}",
@@ -101,17 +97,12 @@ def generate_content():
     KEEP_LAST_ARTICLES = 3
     clean_old_articles(KEEP_LAST_ARTICLES)
     
-    # Генерируем актуальную тему
     selected_topic = generate_ai_trend_topic()
     print(f"📝 Актуальная тема 2025: {selected_topic}")
     
-    # Генерируем изображение
     image_filename = generate_article_image(selected_topic)
-    
-    # Генерируем контент статьи
     content, model_used = generate_article_content(selected_topic)
     
-    # Создаем файл статьи
     date = datetime.now().strftime("%Y-%m-%d")
     slug = generate_slug(selected_topic)
     filename = f"content/posts/{date}-{slug}.md"
@@ -132,9 +123,9 @@ def generate_article_content(topic):
     
     models_to_try = []
     
-    # Порядок приоритета API
     if gigachat_token:
-        models_to_try.append(("GigaChat", lambda: generate_with_gigachat(gigachat_token, topic)))
+        models_to_try.append(("GigaChat-2-Max", lambda: generate_with_gigachat(gigachat_token, topic, "GigaChat-2-Max")))
+        models_to_try.append(("GigaChat-2-Pro", lambda: generate_with_gigachat(gigachat_token, topic, "GigaChat-2-Pro")))
     
     if api_key:
         openrouter_models = [
@@ -146,7 +137,6 @@ def generate_article_content(topic):
         for model_name in openrouter_models:
             models_to_try.append((model_name, lambda m=model_name: generate_with_openrouter(api_key, m, topic)))
     
-    # Пробуем все доступные модели
     for model_name, generate_func in models_to_try:
         try:
             print(f"🔄 Пробуем: {model_name}")
@@ -158,11 +148,10 @@ def generate_article_content(topic):
             print(f"⚠️ Ошибка {model_name}: {e}")
             continue
     
-    # Если все API недоступны - вызываем исключение
     raise Exception("❌ Все AI API недоступны. Проверьте настройки и подключение.")
 
-def generate_with_gigachat(token, topic):
-    """Генерация через GigaChat"""
+def generate_with_gigachat(token, topic, model_name):
+    """Генерация через GigaChat с выбором модели"""
     url = "https://gigachat.devices.sberbank.ru/api/v1/chat/completions"
     headers = {
         "Content-Type": "application/json",
@@ -194,10 +183,11 @@ def generate_with_gigachat(token, topic):
 - Ссылки на современные технологии и frameworks 2025 года"""
     
     payload = {
-        "model": "GigaChat",
+        "model": model_name,
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.7,
-        "max_tokens": 2000
+        "max_tokens": 2000,
+        "repetition_penalty": 1.1
     }
     
     response = requests.post(url, headers=headers, json=payload, timeout=60)
@@ -205,7 +195,7 @@ def generate_with_gigachat(token, topic):
     if response.status_code == 200:
         data = response.json()
         return data['choices'][0]['message']['content']
-    raise Exception(f"HTTP {response.status_code}")
+    raise Exception(f"HTTP {response.status_code}: {response.text}")
 
 def generate_with_openrouter(api_key, model_name, topic):
     """Генерация через OpenRouter"""
@@ -277,12 +267,109 @@ def generate_article_image(topic):
             print(f"⚠️ Ошибка {api_name}: {e}")
             continue
     
-    # Если изображение не сгенерировалось - статья все равно создается
     print("⚠️ Изображение не сгенерировано, продолжаем без него")
     return None
 
-# Остальные функции (try_huggingface_api, try_deepai_api, save_article_image, 
-# clean_old_articles, generate_slug, generate_frontmatter) остаются без изменений
+def try_huggingface_api(prompt, topic):
+    """Пробуем Hugging Face API для изображений"""
+    hf_token = os.getenv('HUGGINGFACE_TOKEN')
+    if not hf_token:
+        return None
+    
+    try:
+        models = [
+            "stabilityai/stable-diffusion-2-1",
+            "runwayml/stable-diffusion-v1-5"
+        ]
+        
+        for model in models:
+            try:
+                headers = {"Authorization": f"Bearer {hf_token}"}
+                payload = {
+                    "inputs": prompt,
+                    "parameters": {
+                        "width": 800,
+                        "height": 400,
+                        "num_inference_steps": 25
+                    }
+                }
+                
+                response = requests.post(
+                    f"https://api-inference.huggingface.co/models/{model}",
+                    headers=headers,
+                    json=payload,
+                    timeout=45
+                )
+                
+                if response.status_code == 200:
+                    filename = save_article_image(response.content, topic)
+                    if filename:
+                        print(f"✅ Изображение через {model}")
+                        return filename
+                
+            except Exception as e:
+                print(f"⚠️ Ошибка {model}: {e}")
+                continue
+                
+    except Exception as e:
+        print(f"❌ HuggingFace error: {e}")
+    
+    return None
+
+def try_deepai_api(prompt, topic):
+    """Пробуем DeepAI API для изображений"""
+    try:
+        headers = {
+            "api-key": "quickstart-QUdJIGlzIGNvbWluZy4uLi4K",
+            "Content-Type": "application/x-www-form-urlencoded"
+        }
+        
+        data = {
+            "text": prompt,
+            "grid_size": "1",
+            "width": "800",
+            "height": "400"
+        }
+        
+        response = requests.post(
+            "https://api.deepai.org/api/text2img",
+            headers=headers,
+            data=data,
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            if 'output_url' in data:
+                image_response = requests.get(data['output_url'], timeout=30)
+                if image_response.status_code == 200:
+                    filename = save_article_image(image_response.content, topic)
+                    if filename:
+                        print("✅ Изображение через DeepAI")
+                        return filename
+                        
+    except Exception as e:
+        print(f"❌ DeepAI error: {e}")
+    
+    return None
+
+def save_article_image(image_data, topic):
+    """Сохраняет изображение"""
+    try:
+        os.makedirs("static/images/posts", exist_ok=True)
+        slug = generate_slug(topic)
+        filename = f"images/posts/{slug}.jpg"
+        full_path = f"static/{filename}"
+        
+        with open(full_path, 'wb') as f:
+            f.write(image_data)
+        
+        print(f"💾 Изображение сохранено: {filename}")
+        return filename
+        
+    except Exception as e:
+        print(f"❌ Ошибка сохранения: {e}")
+        return None
 
 def clean_old_articles(keep_last=3):
     """Оставляет только последние N статей"""
