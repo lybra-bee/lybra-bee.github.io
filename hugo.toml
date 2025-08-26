@@ -7,6 +7,8 @@ theme = 'hugo-theme-stack'
 [params]
   subtitle = "Программирование и веб-дизайн"
   defaultTheme = "auto"
+  primaryColor = "#2563eb"
+  backgroundColor = "#0f172a"
 
 [author]
   name = "Alexey-New"
@@ -21,9 +23,6 @@ theme = 'hugo-theme-stack'
   home = ["search", "recent"]
   # Какие виджеты показывать в статьях  
   single = ["search", "recent", "categories"]
-[params]
-primaryColor = "#2563eb"
-backgroundColor = "#0f172a"
 
 [menu]
 [[menu.main]]
