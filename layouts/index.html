@@ -1,137 +1,160 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{ .Site.Title }}</title>
-  <style>
-    /* Динамический анимированный фон */
-    body {
-      margin: 0;
-      font-family: 'Arial', sans-serif;
-      color: {{ .Site.Params.textColor }};
-      background: linear-gradient(-45deg, #0f172a, #1e293b, #2563eb, #7c3aed);
-      background-size: 400% 400%;
-      animation: gradientBG 15s ease infinite;
-    }
-    @keyframes gradientBG {
-      0% {background-position:0% 50%;}
-      50% {background-position:100% 50%;}
-      100% {background-position:0% 50%;}
-    }
-
-    header {
-      text-align: center;
-      padding: 3rem 1rem;
-      background: rgba(0,0,0,0.2);
-    }
-    header h1 {
-      font-size: 3rem;
-      margin: 0;
-      color: {{ .Site.Params.primaryColor }};
-    }
-    header p {
-      font-size: 1.2rem;
-      margin: 0.5rem 0 0 0;
-    }
-
-    main {
-      max-width: 1200px;
-      margin: 2rem auto;
-      padding: 0 1rem;
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 2rem;
-    }
-
-    .post-card {
-      background: rgba(255,255,255,0.05);
-      border-radius: 15px;
-      overflow: hidden;
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-      display: flex;
-      flex-direction: column;
-    }
-    .post-card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-    }
-
-    .post-card img {
-      width: 100%;
-      height: 200px;
-      object-fit: cover;
-      display: block;
-    }
-
-    .post-card-content {
-      padding: 1rem;
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-    }
-    .post-card-content h2 {
-      margin: 0 0 0.5rem 0;
-      font-size: 1.5rem;
-      color: {{ .Site.Params.primaryColor }};
-    }
-    .post-card-content p {
-      flex: 1;
-      margin: 0 0 1rem 0;
-    }
-    .post-card-content a {
-      align-self: flex-start;
-      padding: 0.5rem 1rem;
-      background: {{ .Site.Params.primaryColor }};
-      color: #fff;
-      border-radius: 5px;
-      text-decoration: none;
-      transition: background 0.3s ease;
-    }
-    .post-card-content a:hover {
-      background: #7c3aed;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .Site.Title }}</title>
+    {{ $css := resources.Get "css/main.css" | minify | fingerprint }}
+    <link rel="stylesheet" href="{{ $css.Permalink }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', sans-serif;
+            background: #0f172a;
+            color: var(--text-color, #f8fafc);
+            overflow-x: hidden;
+        }
+        canvas#starfield {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: -1;
+        }
+        .glass-card {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+            padding: 1.5rem;
+            border-radius: 1rem;
+            transition: transform 0.3s;
+        }
+        .glass-card:hover { transform: translateY(-5px); }
+        .btn {
+            background: #2563eb;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 0.5rem;
+        }
+    </style>
 </head>
 <body>
+<canvas id="starfield"></canvas>
 
-<header>
-  <h1>{{ .Site.Title }}</h1>
-  <p>{{ .Site.Params.subtitle }}</p>
-</header>
-
-<main>
-  {{ $posts := first 6 (where .Site.RegularPages "Type" "posts") }}
-  {{ range $posts }}
-  <div class="post-card">
-    {{ if .Params.image }}
-      <img src="{{ .Params.image | relURL }}" alt="{{ .Title }}">
-    {{ end }}
-    <div class="post-card-content">
-      <h2>{{ .Title }}</h2>
-      <p>{{ .Summary | plainify | truncate 120 }}</p>
-      <a href="{{ .RelPermalink }}">Читать далее</a>
+<nav class="navbar">
+    <div class="navbar-container" style="display:flex; justify-content:space-between; padding:1rem;">
+        <a href="/" class="navbar-brand" style="font-size:1.2rem;">
+            <i class="bi bi-cpu"></i> {{ .Site.Title }}
+        </a>
+        <ul class="nav-menu" style="display:flex; list-style:none; gap:1rem;">
+            {{ range .Site.Menus.main }}
+            <li><a href="{{ .URL }}" class="nav-link" style="color:white; text-decoration:none;">{{ .Name }}</a></li>
+            {{ end }}
+        </ul>
     </div>
-  </div>
-  {{ end }}
+</nav>
+
+<main class="container" style="padding:2rem;">
+    <section class="hero" style="text-align:center; margin-bottom:3rem;">
+        <h1 class="hero-title" style="font-size:2.5rem;">🤖 Искусственный Интеллект</h1>
+        <p class="hero-subtitle">{{ .Site.Params.subtitle }}</p>
+    </section>
+
+    {{ $featured := (where .Site.RegularPages "Type" "posts" | first 1) }}
+    {{ if $featured }}
+    {{ range $featured }}
+    <section class="featured-article" style="margin-bottom:3rem;">
+        <div class="glass-card">
+            <h2>🔥 Главная статья</h2>
+            {{ if .Params.image }}
+            <img src="/{{ .Params.image }}" alt="{{ .Title }}" style="width:100%; border-radius:12px; margin-bottom:1rem;">
+            {{ end }}
+            <h3>{{ .Title }}</h3>
+            <p style="color:var(--text-gray);"><i class="bi bi-calendar"></i> {{ .Date.Format "02.01.2006" }}</p>
+            <p>{{ .Summary }}</p>
+            {{ if .Params.tags }}
+            <div style="margin:1rem 0;">
+                {{ range .Params.tags }}
+                <span style="background: var(--primaryColor, #2563eb); padding:0.3rem 0.8rem; border-radius:20px; font-size:0.8rem; margin-right:0.5rem;">
+                    #{{ . }}
+                </span>
+                {{ end }}
+            </div>
+            {{ end }}
+            <a href="{{ .Permalink }}" class="btn"><i class="bi bi-book"></i> Читать статью</a>
+        </div>
+    </section>
+    {{ end }}
+    {{ end }}
+
+    <section>
+        <h2 style="text-align:center; margin:3rem 0 2rem;">📚 Последние статьи</h2>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px,1fr)); gap:1.5rem;">
+            {{ $recent := (where .Site.RegularPages "Type" "posts" | after 1 | first 6) }}
+            {{ range $recent }}
+            <article class="article-card glass-card">
+                {{ if .Params.image }}
+                <img src="/{{ .Params.image }}" alt="{{ .Title }}" style="width:100%; height:200px; object-fit:cover; border-radius:8px; margin-bottom:1rem;">
+                {{ end }}
+                <h4 style="margin:0 0 0.5rem;">{{ .Title }}</h4>
+                <p style="color:var(--text-gray); font-size:0.9rem; margin:0 0 1rem;">
+                    <i class="bi bi-calendar"></i> {{ .Date.Format "02.01.2006" }}
+                </p>
+                <p style="color:var(--text-gray); margin:0 0 1.5rem;">{{ .Summary | truncate 100 }}</p>
+                <a href="{{ .Permalink }}" class="btn" style="width:100%; text-align:center;">Читать</a>
+            </article>
+            {{ end }}
+        </div>
+    </section>
 </main>
 
-<script>
-  // Простая динамика: плавное появление карточек
-  document.addEventListener('DOMContentLoaded', () => {
-    const cards = document.querySelectorAll('.post-card');
-    cards.forEach((card, i) => {
-      card.style.opacity = 0;
-      card.style.transform = 'translateY(20px)';
-      setTimeout(() => {
-        card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
-        card.style.opacity = 1;
-        card.style.transform = 'translateY(0)';
-      }, i * 150);
-    });
-  });
-</script>
+<footer style="background: rgba(15,23,42,0.9); padding:3rem 0; text-align:center;">
+    <div class="container">
+        <p style="color:var(--text-gray);">© 2025 AI Blog | Сгенерировано с помощью искусственного интеллекта</p>
+    </div>
+</footer>
 
+<script>
+    // Динамический фон со звездами
+    const canvas = document.getElementById('starfield');
+    const ctx = canvas.getContext('2d');
+    let stars = [];
+
+    function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    function createStars(count) {
+        stars = [];
+        for(let i=0;i<count;i++){
+            stars.push({
+                x: Math.random()*canvas.width,
+                y: Math.random()*canvas.height,
+                r: Math.random()*1.2+0.3,
+                speed: Math.random()*0.5+0.2
+            });
+        }
+    }
+    createStars(200);
+
+    function animate() {
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        for(let s of stars){
+            s.y -= s.speed;
+            if(s.y<0) s.y = canvas.height;
+            ctx.beginPath();
+            ctx.arc(s.x,s.y,s.r,0,2*Math.PI);
+            ctx.fillStyle = 'white';
+            ctx.fill();
+        }
+        requestAnimationFrame(animate);
+    }
+    animate();
+</script>
 </body>
 </html>
