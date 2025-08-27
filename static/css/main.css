@@ -162,3 +162,13 @@ footer {
         font-size: 1.2rem;
     }
 }
+.show {
+    opacity: 1 !important;
+    transform: translateY(0) !important;
+}
+
+.glass-card, .article-card {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.8s ease;
+        }
