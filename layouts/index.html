@@ -4,64 +4,153 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ .Site.Title }}</title>
+
+    <!-- Основные стили -->
     {{ $css := resources.Get "css/main.css" | minify | fingerprint }}
     <link rel="stylesheet" href="{{ $css.Permalink }}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+
+    <!-- AOS анимации -->
+    <link rel="stylesheet" href="https://unpkg.com/aos@2.3.1/dist/aos.css" />
+    
+    <!-- Typed.js для анимации текста -->
+    <script src="https://cdn.jsdelivr.net/npm/typed.js@2.0.12"></script>
+    
+    <!-- tsParticles для частиц -->
+    <script src="https://cdn.jsdelivr.net/npm/tsparticles@2.11.1/tsparticles.min.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: url('/images/backgrounds/bg-dark.jpg') no-repeat center center fixed;
+            background-size: cover;
+            color: #e0e0e0;
+        }
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+            background: rgba(15, 23, 42, 0.9);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .nav-menu {
+            display: flex;
+            list-style: none;
+            gap: 1rem;
+        }
+        .nav-link {
+            text-decoration: none;
+            color: #e0e0e0;
+            transition: color 0.3s;
+        }
+        .nav-link:hover { color: #0af; }
+        .hero {
+            position: relative;
+            height: 80vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            color: white;
+            overflow: hidden;
+        }
+        .hero h1 { font-size: 3rem; margin: 0; }
+        .hero p { font-size: 1.2rem; margin-top: 1rem; }
+
+        /* Glass cards */
+        .glass-card {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(12px);
+            border-radius: 16px;
+            padding: 1.5rem;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .glass-card:hover {
+            transform: scale(1.05) rotate(1deg);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+        }
+
+        .article-card img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+        .btn {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background: #0af;
+            color: #fff;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: background 0.3s;
+        }
+        .btn:hover { background: #08c; }
+
+        footer {
+            background: rgba(15, 23, 42, 0.95);
+            padding: 3rem 1rem;
+            text-align: center;
+        }
+
+        /* Частицы */
+        #tsparticles {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: 0;
+        }
+    </style>
 </head>
 <body>
     <nav class="navbar">
-        <div class="navbar-container">
-            <a href="/" class="navbar-brand">
-                <i class="bi bi-cpu"></i> {{ .Site.Title }}
-            </a>
-            <ul class="nav-menu">
-                {{ range .Site.Menus.main }}
-                <li><a href="{{ .URL }}" class="nav-link">{{ .Name }}</a></li>
-                {{ end }}
-            </ul>
-        </div>
+        <a href="/" class="navbar-brand"><i class="bi bi-cpu"></i> {{ .Site.Title }}</a>
+        <ul class="nav-menu">
+            {{ range .Site.Menus.main }}
+            <li><a href="{{ .URL }}" class="nav-link">{{ .Name }}</a></li>
+            {{ end }}
+        </ul>
     </nav>
 
-    <main class="container">
-        <section class="hero">
-            <h1 class="hero-title">🤖 Искусственный Интеллект</h1>
-            <p class="hero-subtitle">Самые свежие статьи и тренды AI 2025</p>
-        </section>
+    <section class="hero">
+        <div id="tsparticles"></div>
+        <h1 id="typed"></h1>
+        <p>Самые свежие статьи и тренды AI 2025</p>
+    </section>
 
+    <main class="container" style="padding: 2rem 1rem;">
         {{ $featured := (where .Site.RegularPages "Type" "posts" | first 1) }}
         {{ if $featured }}
         {{ range $featured }}
-        <section class="featured-article">
+        <section class="featured-article" data-aos="fade-up">
             <div class="glass-card">
                 <h2>🔥 Главная статья</h2>
-                
                 {{ if .Params.image }}
-                <img src="/{{ .Params.image }}" alt="{{ .Title }}" style="width: 100%; border-radius: 12px; margin-bottom: 1rem;">
+                <img src="{{ .Params.image }}" alt="{{ .Title }}">
                 {{ else }}
                 <div style="background: rgba(255,255,255,0.1); height: 200px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
-                    <i class="bi bi-image" style="font-size: 3rem; color: var(--text-gray);"></i>
+                    <i class="bi bi-image" style="font-size: 3rem; color: #999;"></i>
                 </div>
                 {{ end }}
-                
                 <h3>{{ .Title }}</h3>
-                <p style="color: var(--text-gray);">
-                    <i class="bi bi-calendar"></i> {{ .Date.Format "02.01.2006" }}
-                </p>
+                <p style="color: #aaa;"><i class="bi bi-calendar"></i> {{ .Date.Format "02.01.2006" }}</p>
                 <p>{{ .Summary }}</p>
-                
                 {{ if .Params.tags }}
                 <div style="margin: 1rem 0;">
                     {{ range .Params.tags }}
-                    <span style="background: var(--primary-blue); padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.8rem; margin-right: 0.5rem;">
-                        #{{ . }}
-                    </span>
+                    <span style="background: #0af; padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.8rem; margin-right: 0.5rem;">#{{ . }}</span>
                     {{ end }}
                 </div>
                 {{ end }}
-                
-                <a href="{{ .Permalink }}" class="btn">
-                    <i class="bi bi-book"></i> Читать статью
-                </a>
+                <a href="{{ .Permalink }}" class="btn"><i class="bi bi-book"></i> Читать статью</a>
             </div>
         </section>
         {{ end }}
@@ -69,40 +158,58 @@
 
         <section>
             <h2 style="text-align: center; margin: 3rem 0 2rem;">📚 Последние статьи</h2>
-            
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
                 {{ $recent := (where .Site.RegularPages "Type" "posts" | after 1 | first 6) }}
                 {{ range $recent }}
-                <article class="article-card">
+                <article class="article-card" data-aos="fade-up">
                     {{ if .Params.image }}
-                    <img src="/{{ .Params.image }}" alt="{{ .Title }}" style="width: 100%; height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 1rem;">
+                    <img src="{{ .Params.image }}" alt="{{ .Title }}">
                     {{ else }}
                     <div style="background: rgba(255,255,255,0.1); height: 200px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
-                        <i class="bi bi-image" style="font-size: 2rem; color: var(--text-gray);"></i>
+                        <i class="bi bi-image" style="font-size: 2rem; color: #999;"></i>
                     </div>
                     {{ end }}
-                    
                     <h4 style="margin: 0 0 0.5rem;">{{ .Title }}</h4>
-                    <p style="color: var(--text-gray); font-size: 0.9rem; margin: 0 0 1rem;">
-                        <i class="bi bi-calendar"></i> {{ .Date.Format "02.01.2006" }}
-                    </p>
-                    <p style="color: var(--text-gray); margin: 0 0 1.5rem;">{{ .Summary | truncate 100 }}</p>
-                    
-                    <a href="{{ .Permalink }}" class="btn" style="width: 100%; text-align: center;">
-                        Читать
-                    </a>
+                    <p style="color: #aaa; font-size: 0.9rem; margin: 0 0 1rem;"><i class="bi bi-calendar"></i> {{ .Date.Format "02.01.2006" }}</p>
+                    <p style="color: #aaa; margin: 0 0 1.5rem;">{{ .Summary | truncate 100 }}</p>
+                    <a href="{{ .Permalink }}" class="btn" style="width: 100%; text-align: center;">Читать</a>
                 </article>
                 {{ end }}
             </div>
         </section>
     </main>
 
-    <footer style="background: rgba(15, 23, 42, 0.9); padding: 3rem 0; margin-top: 4rem; text-align: center;">
-        <div class="container">
-            <p style="color: var(--text-gray);">
-                © 2025 AI Blog | Сгенерировано с помощью искусственного интеллекта
-            </p>
-        </div>
+    <footer>
+        <p>© 2025 AI Blog | Сгенерировано с помощью искусственного интеллекта</p>
     </footer>
+
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script>
+        AOS.init({ duration: 1000, once: true });
+
+        // Typed.js
+        var typed = new Typed('#typed', {
+            strings: ["🤖 Искусственный Интеллект", "🚀 AI Тренды 2025", "💡 Автоматизация и генерация контента"],
+            typeSpeed: 70,
+            backSpeed: 50,
+            loop: true
+        });
+
+        // tsParticles
+        tsParticles.load("tsparticles", {
+            particles: {
+                number: { value: 80 },
+                color: { value: ["#0af","#0ff","#08c"] },
+                shape: { type: "circle" },
+                opacity: { value: 0.5 },
+                size: { value: { min: 1, max: 4 } },
+                move: { enable: true, speed: 1.5, random: true, outModes: { default: "out" } }
+            },
+            interactivity: {
+                events: { onhover: { enable: true, mode: "repulse" } }
+            },
+            detectRetina: true
+        });
+    </script>
 </body>
 </html>
