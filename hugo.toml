@@ -1,8 +1,7 @@
-baseURL = 'https://lybra-bee.github.io/'
-languageCode = 'ru-ru'
-defaultContentLanguage = 'ru'
-title = 'AI Blog - Генерация контента ИИ'
-# theme = 'hugo-theme-stack'  # ЗАКОММЕНТИРОВАТЬ или УДАЛИТЬ эту строку!
+baseURL = "https://lybra-bee.github.io/"
+languageCode = "ru-ru"
+defaultContentLanguage = "ru"
+title = "AI Blog - Генерация контента ИИ"
 
 [params]
   subtitle = "Самые свежие статьи и тренды AI 2025"
@@ -13,11 +12,6 @@ title = 'AI Blog - Генерация контента ИИ'
 [author]
   name = "Lybra-Bee"
 
-[languages]
-  [languages.ru]
-    weight = 1
-    languageName = "Русский"
-
 [menu]
 [[menu.main]]
 name = "Главная"
@@ -25,7 +19,7 @@ url = "/"
 weight = 1
 
 [[menu.main]]
-name = "Статьи" 
+name = "Статьи"
 url = "/posts/"
 weight = 2
 
