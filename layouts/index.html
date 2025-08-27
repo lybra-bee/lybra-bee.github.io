@@ -26,9 +26,18 @@
             backdrop-filter: blur(10px);
             padding: 1.5rem;
             border-radius: 1rem;
-            transition: transform 0.3s;
+            transition: transform 0.3s, box-shadow 0.3s, opacity 0.6s;
+            opacity: 0;
+            transform: translateY(30px);
         }
-        .glass-card:hover { transform: translateY(-5px); }
+        .glass-card.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .glass-card:hover { 
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
         .btn {
             background: #2563eb;
             color: white;
@@ -37,6 +46,17 @@
             text-decoration: none;
             display: inline-block;
             margin-top: 0.5rem;
+            transition: background 0.3s;
+        }
+        .btn:hover {
+            background: #1e40af;
+        }
+        img.fade-in {
+            opacity: 0;
+            transition: opacity 1s ease-in;
+        }
+        img.fade-in.loaded {
+            opacity: 1;
         }
     </style>
 </head>
@@ -69,7 +89,7 @@
         <div class="glass-card">
             <h2>🔥 Главная статья</h2>
             {{ if .Params.image }}
-            <img src="/{{ .Params.image }}" alt="{{ .Title }}" style="width:100%; border-radius:12px; margin-bottom:1rem;">
+            <img class="fade-in" src="/{{ .Params.image }}" alt="{{ .Title }}" style="width:100%; border-radius:12px; margin-bottom:1rem;">
             {{ end }}
             <h3>{{ .Title }}</h3>
             <p style="color:var(--text-gray);"><i class="bi bi-calendar"></i> {{ .Date.Format "02.01.2006" }}</p>
@@ -96,7 +116,7 @@
             {{ range $recent }}
             <article class="article-card glass-card">
                 {{ if .Params.image }}
-                <img src="/{{ .Params.image }}" alt="{{ .Title }}" style="width:100%; height:200px; object-fit:cover; border-radius:8px; margin-bottom:1rem;">
+                <img class="fade-in" src="/{{ .Params.image }}" alt="{{ .Title }}" style="width:100%; height:200px; object-fit:cover; border-radius:8px; margin-bottom:1rem;">
                 {{ end }}
                 <h4 style="margin:0 0 0.5rem;">{{ .Title }}</h4>
                 <p style="color:var(--text-gray); font-size:0.9rem; margin:0 0 1rem;">
@@ -117,44 +137,29 @@
 </footer>
 
 <script>
-    // Динамический фон со звездами
+    // ⭐ Динамический фон (не трогаем)
     const canvas = document.getElementById('starfield');
     const ctx = canvas.getContext('2d');
     let stars = [];
-
-    function resizeCanvas() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-    }
-    window.addEventListener('resize', resizeCanvas);
-    resizeCanvas();
-
-    function createStars(count) {
-        stars = [];
-        for(let i=0;i<count;i++){
-            stars.push({
-                x: Math.random()*canvas.width,
-                y: Math.random()*canvas.height,
-                r: Math.random()*1.2+0.3,
-                speed: Math.random()*0.5+0.2
-            });
-        }
-    }
+    function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+    window.addEventListener('resize', resizeCanvas); resizeCanvas();
+    function createStars(count){ stars=[]; for(let i=0;i<count;i++){stars.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,r:Math.random()*1.2+0.3,speed:Math.random()*0.5+0.2}) } }
     createStars(200);
-
-    function animate() {
-        ctx.clearRect(0,0,canvas.width,canvas.height);
-        for(let s of stars){
-            s.y -= s.speed;
-            if(s.y<0) s.y = canvas.height;
-            ctx.beginPath();
-            ctx.arc(s.x,s.y,s.r,0,2*Math.PI);
-            ctx.fillStyle = 'white';
-            ctx.fill();
-        }
-        requestAnimationFrame(animate);
-    }
+    function animate(){ ctx.clearRect(0,0,canvas.width,canvas.height); for(let s of stars){ s.y -= s.speed; if(s.y<0)s.y=canvas.height; ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,2*Math.PI); ctx.fillStyle='white'; ctx.fill() } requestAnimationFrame(animate) }
     animate();
+
+    // ✨ Анимация появления карточек и плавная загрузка изображений
+    window.addEventListener('DOMContentLoaded', () => {
+        const cards = document.querySelectorAll('.glass-card');
+        cards.forEach((card, i) => {
+            setTimeout(() => card.classList.add('visible'), i*150);
+        });
+        const imgs = document.querySelectorAll('img.fade-in');
+        imgs.forEach(img => {
+            if(img.complete){ img.classList.add('loaded'); }
+            else{ img.addEventListener('load', () => img.classList.add('loaded')); }
+        });
+    });
 </script>
 </body>
 </html>
