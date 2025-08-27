@@ -1,127 +1,136 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{{ .Site.Title }}</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-<style>
-  body { margin:0; font-family: Arial, sans-serif; background: {{ .Site.Params.backgroundColor }}; color: {{ .Site.Params.textColor }}; }
-  h2 { color: {{ .Site.Params.primaryColor }}; }
-  
-  /* Карусель */
-  .carousel-container { position:relative; display:flex; align-items:center; }
-  .carousel { display:flex; overflow-x:auto; scroll-behavior:smooth; gap:1rem; padding:1rem 0; }
-  .carousel::-webkit-scrollbar { display:none; }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ .Site.Title }}</title>
+  <style>
+    /* Динамический анимированный фон */
+    body {
+      margin: 0;
+      font-family: 'Arial', sans-serif;
+      color: {{ .Site.Params.textColor }};
+      background: linear-gradient(-45deg, #0f172a, #1e293b, #2563eb, #7c3aed);
+      background-size: 400% 400%;
+      animation: gradientBG 15s ease infinite;
+    }
+    @keyframes gradientBG {
+      0% {background-position:0% 50%;}
+      50% {background-position:100% 50%;}
+      100% {background-position:0% 50%;}
+    }
 
-  .article-card {
-    flex:0 0 300px; background: rgba(255,255,255,0.05); border-radius:8px; padding:0.8rem;
-    transition: transform 0.3s, box-shadow 0.3s;
-    cursor:pointer;
-  }
-  .article-card:hover { transform: scale(1.05); box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
+    header {
+      text-align: center;
+      padding: 3rem 1rem;
+      background: rgba(0,0,0,0.2);
+    }
+    header h1 {
+      font-size: 3rem;
+      margin: 0;
+      color: {{ .Site.Params.primaryColor }};
+    }
+    header p {
+      font-size: 1.2rem;
+      margin: 0.5rem 0 0 0;
+    }
 
-  .article-card img { width:100%; height:180px; object-fit:cover; border-radius:8px; margin-bottom:0.5rem; transition: transform 0.3s; }
-  .article-card img:hover { transform: scale(1.08); }
+    main {
+      max-width: 1200px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 2rem;
+    }
 
-  .btn { display:inline-block; padding:0.4rem; background: {{ .Site.Params.primaryColor }}; color:#fff; border-radius:4px; text-decoration:none; }
-  .filter-tags span { cursor:pointer; margin-right:0.5rem; padding:0.2rem 0.5rem; background: rgba(255,255,255,0.1); border-radius:4px; }
-  .filter-tags span.active { background: {{ .Site.Params.primaryColor }}; color:#fff; }
+    .post-card {
+      background: rgba(255,255,255,0.05);
+      border-radius: 15px;
+      overflow: hidden;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      display: flex;
+      flex-direction: column;
+    }
+    .post-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    }
 
-  .carousel-btn {
-    display:flex; align-items:center; justify-content:center; font-size:2rem; color:#fff;
-    background: rgba(37,99,235,0.8); border:none; border-radius:50%;
-    width:40px; height:40px; cursor:pointer; position:absolute; top:50%; transform:translateY(-50%); z-index:10;
-    transition: background 0.2s;
-  }
-  .carousel-btn:hover { background: {{ .Site.Params.primaryColor }}; }
-  .carousel-btn.left { left:0; }
-  .carousel-btn.right { right:0; }
-</style>
+    .post-card img {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      display: block;
+    }
+
+    .post-card-content {
+      padding: 1rem;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .post-card-content h2 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.5rem;
+      color: {{ .Site.Params.primaryColor }};
+    }
+    .post-card-content p {
+      flex: 1;
+      margin: 0 0 1rem 0;
+    }
+    .post-card-content a {
+      align-self: flex-start;
+      padding: 0.5rem 1rem;
+      background: {{ .Site.Params.primaryColor }};
+      color: #fff;
+      border-radius: 5px;
+      text-decoration: none;
+      transition: background 0.3s ease;
+    }
+    .post-card-content a:hover {
+      background: #7c3aed;
+    }
+  </style>
 </head>
 <body>
 
-<header style="text-align:center; padding:2rem;">
+<header>
   <h1>{{ .Site.Title }}</h1>
   <p>{{ .Site.Params.subtitle }}</p>
 </header>
 
-<section>
-  <h2 style="text-align:center; margin:2rem 0;">📚 Последние статьи</h2>
-
-  <!-- Фильтр тегов -->
-  <div class="filter-tags" id="filter-tags" style="text-align:center; margin-bottom:1rem;">
-    <span class="active" data-tag="all">Все</span>
-    {{ $tags := slice }}
-    {{ range .Site.RegularPages }}
-      {{ range .Params.tags }}
-        {{ if not (in $tags .) }}
-          {{ $tags = $tags | append . }}
-        {{ end }}
-      {{ end }}
+<main>
+  {{ $posts := first 6 (where .Site.RegularPages "Type" "posts") }}
+  {{ range $posts }}
+  <div class="post-card">
+    {{ if .Params.image }}
+      <img src="{{ .Params.image | relURL }}" alt="{{ .Title }}">
     {{ end }}
-    {{ range $tags }}
-      <span data-tag="{{ . }}">#{{ . }}</span>
-    {{ end }}
-  </div>
-
-  <!-- Карусель с кнопками -->
-  <div class="carousel-container">
-    <button class="carousel-btn left">&#10094;</button>
-    <div class="carousel" id="articles-carousel">
-      {{ $recent := (where .Site.RegularPages "Type" "posts" | first 20) }}
-      {{ range $recent }}
-      <article class="article-card" data-tags="{{ delimit .Params.tags "," }}">
-        {{ if .Params.image }}
-        <img src="{{ .Params.image | relURL }}" alt="{{ .Title }}">
-        {{ else }}
-        <div style="background: rgba(255,255,255,0.1); height:180px; border-radius:8px; display:flex; align-items:center; justify-content:center; margin-bottom:0.5rem;">
-          <i class="bi bi-image" style="font-size:2rem; color:#94a3b8;"></i>
-        </div>
-        {{ end }}
-        <h4 style="margin:0 0 0.3rem;">{{ .Title }}</h4>
-        <p style="color:#94a3b8; font-size:0.8rem; margin:0 0 0.5rem;"><i class="bi bi-calendar"></i> {{ .Date.Format "02.01.2006" }}</p>
-        <a href="{{ .Permalink }}" class="btn">Читать</a>
-      </article>
-      {{ end }}
+    <div class="post-card-content">
+      <h2>{{ .Title }}</h2>
+      <p>{{ .Summary | plainify | truncate 120 }}</p>
+      <a href="{{ .RelPermalink }}">Читать далее</a>
     </div>
-    <button class="carousel-btn right">&#10095;</button>
   </div>
-</section>
+  {{ end }}
+</main>
 
 <script>
-const carousel = document.getElementById('articles-carousel');
-const btnLeft = document.querySelector('.carousel-btn.left');
-const btnRight = document.querySelector('.carousel-btn.right');
-const scrollAmount = 300;
-
-// Кнопки перелистывания
-btnLeft.addEventListener('click', () => { carousel.scrollBy({ left:-scrollAmount, behavior:'smooth' }); });
-btnRight.addEventListener('click', () => { carousel.scrollBy({ left:scrollAmount, behavior:'smooth' }); });
-
-// Автопрокрутка карусели
-let autoScroll = setInterval(() => { carousel.scrollBy({ left:2, behavior:'smooth' }); }, 20);
-
-// Остановка при наведении
-carousel.addEventListener('mouseenter', () => clearInterval(autoScroll));
-carousel.addEventListener('mouseleave', () => {
-  autoScroll = setInterval(() => { carousel.scrollBy({ left:2, behavior:'smooth' }); }, 20);
-});
-
-// Фильтр по тегам
-const filterTags = document.querySelectorAll('#filter-tags span');
-const articles = document.querySelectorAll('.article-card');
-filterTags.forEach(tagEl => {
-  tagEl.addEventListener('click', () => {
-    filterTags.forEach(t => t.classList.remove('active'));
-    tagEl.classList.add('active');
-    const selectedTag = tagEl.dataset.tag;
-    articles.forEach(article => {
-      const tags = article.dataset.tags.split(',');
-      article.style.display = (selectedTag==='all'||tags.includes(selectedTag)) ? 'block' : 'none';
+  // Простая динамика: плавное появление карточек
+  document.addEventListener('DOMContentLoaded', () => {
+    const cards = document.querySelectorAll('.post-card');
+    cards.forEach((card, i) => {
+      card.style.opacity = 0;
+      card.style.transform = 'translateY(20px)';
+      setTimeout(() => {
+        card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+        card.style.opacity = 1;
+        card.style.transform = 'translateY(0)';
+      }, i * 150);
     });
   });
-});
 </script>
 
 </body>
