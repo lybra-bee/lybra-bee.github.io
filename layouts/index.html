@@ -1,132 +1,99 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ .Site.Title }}</title>
-    {{ $css := resources.Get "css/main.css" | minify | fingerprint }}
-    <link rel="stylesheet" href="{{ $css.Permalink }}">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
-    <script src="https://cdn.jsdelivr.net/npm/vanilla-tilt@1.7.0/dist/vanilla-tilt.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ .Site.Title }}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <style>
+    body { margin:0; font-family: Arial, sans-serif; background: {{ .Site.Params.backgroundColor }}; color: {{ .Site.Params.textColor }}; }
+    h2 { color: {{ .Site.Params.primaryColor }}; }
+    .carousel { display:flex; overflow-x:auto; scroll-behavior:smooth; gap:1rem; padding:1rem 0; }
+    .carousel::-webkit-scrollbar { display:none; }
+    .article-card { flex:0 0 300px; background: rgba(255,255,255,0.05); border-radius:8px; padding:0.8rem; transition: transform 0.2s; }
+    .article-card:hover { transform: translateY(-5px); }
+    .btn { display:inline-block; padding:0.4rem; background: {{ .Site.Params.primaryColor }}; color:#fff; border-radius:4px; text-decoration:none; }
+    .filter-tags span { cursor:pointer; margin-right:0.5rem; padding:0.2rem 0.5rem; background: rgba(255,255,255,0.1); border-radius:4px; }
+    .filter-tags span.active { background: {{ .Site.Params.primaryColor }}; color:#fff; }
+    .carousel-btn { display:flex; align-items:center; justify-content:center; font-size:2rem; color:#fff; background: rgba(37,99,235,0.8); border:none; border-radius:50%; width:40px; height:40px; cursor:pointer; position:absolute; top:50%; transform:translateY(-50%); z-index:10; }
+    .carousel-btn.left { left:0; }
+    .carousel-btn.right { right:0; }
+  </style>
 </head>
 <body>
-    <!-- NAVBAR -->
-    <nav class="navbar">
-        <div class="navbar-container">
-            <a href="/" class="navbar-brand">
-                <i class="bi bi-cpu"></i> {{ .Site.Title }}
-            </a>
-            <ul class="nav-menu">
-                {{ range .Site.Menus.main }}
-                <li><a href="{{ .URL }}" class="nav-link">{{ .Name }}</a></li>
-                {{ end }}
-            </ul>
+
+<header style="text-align:center; padding:2rem;">
+  <h1>{{ .Site.Title }}</h1>
+  <p>{{ .Site.Params.subtitle }}</p>
+</header>
+
+<section>
+  <h2 style="text-align:center; margin:2rem 0;">📚 Последние статьи</h2>
+
+  <!-- Фильтр тегов -->
+  <div class="filter-tags" id="filter-tags" style="text-align:center; margin-bottom:1rem;">
+    <span class="active" data-tag="all">Все</span>
+    {{ $tags := slice }}
+    {{ range .Site.RegularPages }}
+      {{ range .Params.tags }}
+        {{ if not (in $tags .) }}
+          {{ $tags = $tags | append . }}
+        {{ end }}
+      {{ end }}
+    {{ end }}
+    {{ range $tags }}
+      <span data-tag="{{ . }}">#{{ . }}</span>
+    {{ end }}
+  </div>
+
+  <!-- Карусель с кнопками -->
+  <div style="position:relative; display:flex; align-items:center;">
+    <button class="carousel-btn left">&#10094;</button>
+    <div class="carousel" id="articles-carousel">
+      {{ $recent := (where .Site.RegularPages "Type" "posts" | first 20) }}
+      {{ range $recent }}
+      <article class="article-card" data-tags="{{ delimit .Params.tags "," }}">
+        {{ if .Params.image }}
+        <img src="{{ .Params.image | relURL }}" alt="{{ .Title }}" style="width:100%; height:180px; object-fit:cover; border-radius:8px; margin-bottom:0.5rem;">
+        {{ else }}
+        <div style="background: rgba(255,255,255,0.1); height:180px; border-radius:8px; display:flex; align-items:center; justify-content:center; margin-bottom:0.5rem;">
+          <i class="bi bi-image" style="font-size:2rem; color:#94a3b8;"></i>
         </div>
-    </nav>
-
-    <!-- HERO SECTION -->
-    <main class="container">
-        <section class="hero">
-            <h1 class="hero-title">🤖 Искусственный Интеллект</h1>
-            <p class="hero-subtitle">Самые свежие статьи и тренды AI 2025</p>
-        </section>
-
-        <!-- FEATURED ARTICLE -->
-        {{ $featured := (where .Site.RegularPages "Type" "posts" | first 1) }}
-        {{ if $featured }}
-        {{ range $featured }}
-        <section class="featured-article">
-            <div class="glass-card featured" data-tilt data-tilt-max="10" data-tilt-speed="400">
-                <h2>🔥 Главная статья</h2>
-
-                {{ with .Params.image }}
-                <img src="{{ . | relURL }}" alt="{{ .Title }}" style="width:100%; border-radius:12px; margin-bottom:1rem;">
-                {{ else }}
-                <div style="background: rgba(255,255,255,0.1); height:300px; border-radius:12px; display:flex; align-items:center; justify-content:center; margin-bottom:1rem;">
-                    <i class="bi bi-image" style="font-size:3rem; color: var(--text-gray);"></i>
-                </div>
-                {{ end }}
-
-                <h3>{{ .Title }}</h3>
-                <p style="color: var(--text-gray);">
-                    <i class="bi bi-calendar"></i> {{ .Date.Format "02.01.2006" }}
-                </p>
-                <p>{{ .Summary }}</p>
-
-                {{ with .Params.tags }}
-                <div style="margin:1rem 0;">
-                    {{ range . }}
-                    <span class="tag">#{{ . }}</span>
-                    {{ end }}
-                </div>
-                {{ end }}
-
-                <a href="{{ .Permalink }}" class="btn">
-                    <i class="bi bi-book"></i> Читать статью
-                </a>
-            </div>
-        </section>
         {{ end }}
-        {{ end }}
+        <h4 style="margin:0 0 0.3rem;">{{ .Title }}</h4>
+        <p style="color:#94a3b8; font-size:0.8rem; margin:0 0 0.5rem;"><i class="bi bi-calendar"></i> {{ .Date.Format "02.01.2006" }}</p>
+        <a href="{{ .Permalink }}" class="btn">Читать</a>
+      </article>
+      {{ end }}
+    </div>
+    <button class="carousel-btn right">&#10095;</button>
+  </div>
+</section>
 
-        <!-- RECENT ARTICLES -->
-        <section>
-            <h2 style="text-align:center; margin:3rem 0 2rem;">📚 Последние статьи</h2>
-            <div class="articles-grid">
-                {{ $recent := (where .Site.RegularPages "Type" "posts" | after 1 | first 6) }}
-                {{ range $recent }}
-                <article class="article-card" data-tilt data-tilt-max="5" data-tilt-speed="300">
-                    {{ with .Params.image }}
-                    <img src="{{ . | relURL }}" alt="{{ .Title }}" style="width:100%; height:200px; object-fit:cover; border-radius:8px; margin-bottom:1rem;">
-                    {{ else }}
-                    <div style="background: rgba(255,255,255,0.1); height:200px; border-radius:8px; display:flex; align-items:center; justify-content:center; margin-bottom:1rem;">
-                        <i class="bi bi-image" style="font-size:2rem; color: var(--text-gray);"></i>
-                    </div>
-                    {{ end }}
-                    <h4>{{ .Title }}</h4>
-                    <p class="article-meta">
-                        <i class="bi bi-calendar"></i> {{ .Date.Format "02.01.2006" }}
-                    </p>
-                    <p class="article-summary">{{ .Summary | truncate 120 }}</p>
-                    <a href="{{ .Permalink }}" class="btn read-more">Читать</a>
-                </article>
-                {{ end }}
-            </div>
-        </section>
-    </main>
+<script>
+  const carousel = document.getElementById('articles-carousel');
+  const btnLeft = document.querySelector('.carousel-btn.left');
+  const btnRight = document.querySelector('.carousel-btn.right');
+  const scrollAmount = 300;
 
-    <!-- FOOTER -->
-    <footer class="footer">
-        <p>© 2025 AI Blog | Сгенерировано с помощью искусственного интеллекта</p>
-    </footer>
+  btnLeft.addEventListener('click', () => { carousel.scrollBy({ left:-scrollAmount, behavior:'smooth' }); });
+  btnRight.addEventListener('click', () => { carousel.scrollBy({ left:scrollAmount, behavior:'smooth' }); });
 
-    <script>
-        VanillaTilt.init(document.querySelectorAll("[data-tilt]"), {
-            glare: true,
-            "max-glare": 0.3
-        });
-    </script>
+  // Фильтр тегов
+  const filterTags = document.querySelectorAll('#filter-tags span');
+  const articles = document.querySelectorAll('.article-card');
+  filterTags.forEach(tagEl => {
+    tagEl.addEventListener('click', () => {
+      filterTags.forEach(t => t.classList.remove('active'));
+      tagEl.classList.add('active');
+      const selectedTag = tagEl.dataset.tag;
+      articles.forEach(article => {
+        const tags = article.dataset.tags.split(',');
+        article.style.display = (selectedTag==='all'||tags.includes(selectedTag)) ? 'block' : 'none';
+      });
+    });
+  });
+</script>
 
-    <style>
-        body { margin:0; font-family: 'Inter', sans-serif; background:#0f172a; color:#e0e0e0; }
-        a { text-decoration:none; color:inherit; }
-        .navbar { background: rgba(15,23,42,0.95); padding:1rem; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:999; }
-        .nav-menu { list-style:none; display:flex; gap:1rem; margin:0; padding:0; }
-        .nav-link:hover { color:#4f46e5; }
-        .hero { text-align:center; margin:3rem 0; }
-        .hero-title { font-size:2.5rem; margin-bottom:0.5rem; }
-        .hero-subtitle { font-size:1.2rem; color:#a1a1aa; }
-        .glass-card { background: rgba(255,255,255,0.05); padding:2rem; border-radius:12px; box-shadow:0 8px 20px rgba(0,0,0,0.5); transition: transform 0.3s; }
-        .glass-card.featured { max-width:900px; margin:2rem auto; }
-        .articles-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:1.5rem; }
-        .article-card { background: rgba(255,255,255,0.03); padding:1rem; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.4); transition: transform 0.3s; }
-        .article-card:hover { transform: translateY(-5px); }
-        .tag { background:#4f46e5; padding:0.3rem 0.8rem; border-radius:20px; font-size:0.8rem; margin-right:0.5rem; display:inline-block; }
-        .btn { display:inline-block; padding:0.5rem 1rem; border-radius:8px; background:#4f46e5; color:#fff; font-weight:600; transition:0.3s; }
-        .btn:hover { background:#6366f1; }
-        .article-meta { font-size:0.85rem; color:#a1a1aa; margin:0 0 0.5rem; }
-        .article-summary { font-size:0.9rem; color:#d1d5db; margin:0 0 1rem; }
-        .footer { background: rgba(15,23,42,0.95); padding:3rem 0; text-align:center; margin-top:4rem; color:#9ca3af; }
-    </style>
 </body>
 </html>
