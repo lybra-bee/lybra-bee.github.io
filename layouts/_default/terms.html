@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Теги | {{ .Site.Title }}</title>
+    {{ $css := resources.Get "css/main.css" | minify | fingerprint }}
+    <link rel="stylesheet" href="{{ $css.Permalink }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="/" class="navbar-brand">{{ .Site.Title }}</a>
+        </div>
+    </nav>
+
+    <main class="container">
+        <h1>Теги</h1>
+        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+            {{ range .Data.Terms }}
+            <a href="{{ .Page.Permalink }}" style="background: var(--primary-blue); padding: 0.5rem 1rem; border-radius: 20px; color: white; text-decoration: none;">
+                {{ .Page.Title }} ({{ .Count }})
+            </a>
+            {{ end }}
+        </div>
+    </main>
+</body>
+</html>
