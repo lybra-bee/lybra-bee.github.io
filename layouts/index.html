@@ -4,67 +4,45 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ .Site.Title }}</title>
-    <link rel="stylesheet" href="{{ "css/style.css" | relURL }}">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
-    <style>
-        :root {
-            --primary-blue: #4f7ef6;
-            --text-gray: #d0d0d0;
-            --bg-dark: #111;
-            --bg-card: rgba(255,255,255,0.05);
-        }
-        body {
-            margin:0;
-            font-family: 'Inter', sans-serif;
-            background: var(--bg-dark);
-            color:#fff;
-        }
-        .glass-card {
-            background: var(--bg-card);
-            backdrop-filter: blur(12px);
-            padding: 1.5rem;
-            border-radius: 12px;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-        .glass-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.5);
-        }
-        .btn {
-            display:inline-block;
-            background: var(--primary-blue);
-            color:#fff;
-            text-decoration:none;
-            padding:0.5rem 1rem;
-            border-radius:8px;
-            transition:0.3s;
-        }
-        .btn:hover { background:#3b61d4; }
-        h2,h3,h4 { margin:0 0 1rem; }
-        .article-card { background: var(--bg-card); padding:1rem; border-radius:10px; transition:0.3s; }
-        .article-card:hover { transform: translateY(-4px); box-shadow:0 6px 16px rgba(0,0,0,0.4); }
-    </style>
+    {{ $css := resources.Get "css/main.css" | minify | fingerprint }}
+    <link rel="stylesheet" href="{{ $css.Permalink }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/vanilla-tilt@1.7.0/dist/vanilla-tilt.min.js"></script>
 </head>
 <body>
-    <header style="padding:2rem; text-align:center;">
-        <h1>{{ .Site.Title }}</h1>
-        <p style="color:var(--text-gray);">{{ .Site.Params.description }}</p>
-    </header>
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="/" class="navbar-brand">
+                <i class="bi bi-cpu"></i> {{ .Site.Title }}
+            </a>
+            <ul class="nav-menu">
+                {{ range .Site.Menus.main }}
+                <li><a href="{{ .URL }}" class="nav-link">{{ .Name }}</a></li>
+                {{ end }}
+            </ul>
+        </div>
+    </nav>
 
-    <main style="max-width:1200px; margin:0 auto; padding:1rem;">
+    <!-- HERO SECTION -->
+    <main class="container">
+        <section class="hero">
+            <h1 class="hero-title">🤖 Искусственный Интеллект</h1>
+            <p class="hero-subtitle">Самые свежие статьи и тренды AI 2025</p>
+        </section>
 
-        <!-- Главная статья -->
+        <!-- FEATURED ARTICLE -->
         {{ $featured := (where .Site.RegularPages "Type" "posts" | first 1) }}
         {{ if $featured }}
         {{ range $featured }}
-        <section class="featured-article" style="margin-bottom:3rem;">
-            <div class="glass-card">
+        <section class="featured-article">
+            <div class="glass-card featured" data-tilt data-tilt-max="10" data-tilt-speed="400">
                 <h2>🔥 Главная статья</h2>
 
                 {{ with .Params.image }}
-                <img src="{{ "images/posts/" | relURL }}{{ . | urlize }}" alt="{{ .Title }}" style="width:100%; border-radius:12px; margin-bottom:1rem;">
+                <img src="{{ . | relURL }}" alt="{{ .Title }}" style="width:100%; border-radius:12px; margin-bottom:1rem;">
                 {{ else }}
-                <div style="background: rgba(255,255,255,0.1); height:250px; border-radius:12px; display:flex; align-items:center; justify-content:center; margin-bottom:1rem;">
+                <div style="background: rgba(255,255,255,0.1); height:300px; border-radius:12px; display:flex; align-items:center; justify-content:center; margin-bottom:1rem;">
                     <i class="bi bi-image" style="font-size:3rem; color: var(--text-gray);"></i>
                 </div>
                 {{ end }}
@@ -75,12 +53,10 @@
                 </p>
                 <p>{{ .Summary }}</p>
 
-                {{ if .Params.tags }}
+                {{ with .Params.tags }}
                 <div style="margin:1rem 0;">
-                    {{ range .Params.tags }}
-                    <span style="background: var(--primary-blue); padding:0.3rem 0.8rem; border-radius:20px; font-size:0.8rem; margin-right:0.5rem;">
-                        #{{ . }}
-                    </span>
+                    {{ range . }}
+                    <span class="tag">#{{ . }}</span>
                     {{ end }}
                 </div>
                 {{ end }}
@@ -93,66 +69,64 @@
         {{ end }}
         {{ end }}
 
-        <!-- Последние статьи -->
+        <!-- RECENT ARTICLES -->
         <section>
             <h2 style="text-align:center; margin:3rem 0 2rem;">📚 Последние статьи</h2>
-            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px,1fr)); gap:1.5rem;">
+            <div class="articles-grid">
                 {{ $recent := (where .Site.RegularPages "Type" "posts" | after 1 | first 6) }}
                 {{ range $recent }}
-                <article class="article-card">
+                <article class="article-card" data-tilt data-tilt-max="5" data-tilt-speed="300">
                     {{ with .Params.image }}
-                    <img src="{{ "images/posts/" | relURL }}{{ . | urlize }}" alt="{{ .Title }}" style="width:100%; height:200px; object-fit:cover; border-radius:8px; margin-bottom:1rem;">
+                    <img src="{{ . | relURL }}" alt="{{ .Title }}" style="width:100%; height:200px; object-fit:cover; border-radius:8px; margin-bottom:1rem;">
                     {{ else }}
                     <div style="background: rgba(255,255,255,0.1); height:200px; border-radius:8px; display:flex; align-items:center; justify-content:center; margin-bottom:1rem;">
                         <i class="bi bi-image" style="font-size:2rem; color: var(--text-gray);"></i>
                     </div>
                     {{ end }}
-
-                    <h4 style="margin:0 0 0.5rem;">{{ .Title }}</h4>
-                    <p style="color: var(--text-gray); font-size:0.9rem; margin:0 0 1rem;">
+                    <h4>{{ .Title }}</h4>
+                    <p class="article-meta">
                         <i class="bi bi-calendar"></i> {{ .Date.Format "02.01.2006" }}
                     </p>
-                    <p style="color: var(--text-gray); margin:0 0 1.5rem;">{{ .Summary | truncate 100 }}</p>
-
-                    <a href="{{ .Permalink }}" class="btn" style="width:100%; text-align:center;">
-                        Читать
-                    </a>
+                    <p class="article-summary">{{ .Summary | truncate 120 }}</p>
+                    <a href="{{ .Permalink }}" class="btn read-more">Читать</a>
                 </article>
                 {{ end }}
             </div>
         </section>
-
     </main>
 
-    <footer style="padding:2rem; text-align:center; color:var(--text-gray);">
-        &copy; {{ now.Format "2006" }} {{ .Site.Title }}. Все права защищены.
+    <!-- FOOTER -->
+    <footer class="footer">
+        <p>© 2025 AI Blog | Сгенерировано с помощью искусственного интеллекта</p>
     </footer>
 
-    <!-- Динамика и анимации JS -->
     <script>
-        // Простая анимация появления карточек при скролле
-        const cards = document.querySelectorAll('.article-card, .glass-card');
-        const observer = new IntersectionObserver(entries => {
-            entries.forEach(entry => {
-                if(entry.isIntersecting) {
-                    entry.target.style.transform = 'translateY(0)';
-                    entry.target.style.opacity = 1;
-                    entry.target.style.transition = 'all 0.6s ease-out';
-                }
-            });
-        }, { threshold: 0.1 });
-        cards.forEach(card => {
-            card.style.transform = 'translateY(20px)';
-            card.style.opacity = 0;
-            observer.observe(card);
-        });
-
-        // Простая смена цвета заголовков при наведении
-        const headings = document.querySelectorAll('h2, h3, h4');
-        headings.forEach(h => {
-            h.addEventListener('mouseenter', () => h.style.color = '#4f7ef6');
-            h.addEventListener('mouseleave', () => h.style.color = '');
+        VanillaTilt.init(document.querySelectorAll("[data-tilt]"), {
+            glare: true,
+            "max-glare": 0.3
         });
     </script>
+
+    <style>
+        body { margin:0; font-family: 'Inter', sans-serif; background:#0f172a; color:#e0e0e0; }
+        a { text-decoration:none; color:inherit; }
+        .navbar { background: rgba(15,23,42,0.95); padding:1rem; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:999; }
+        .nav-menu { list-style:none; display:flex; gap:1rem; margin:0; padding:0; }
+        .nav-link:hover { color:#4f46e5; }
+        .hero { text-align:center; margin:3rem 0; }
+        .hero-title { font-size:2.5rem; margin-bottom:0.5rem; }
+        .hero-subtitle { font-size:1.2rem; color:#a1a1aa; }
+        .glass-card { background: rgba(255,255,255,0.05); padding:2rem; border-radius:12px; box-shadow:0 8px 20px rgba(0,0,0,0.5); transition: transform 0.3s; }
+        .glass-card.featured { max-width:900px; margin:2rem auto; }
+        .articles-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:1.5rem; }
+        .article-card { background: rgba(255,255,255,0.03); padding:1rem; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.4); transition: transform 0.3s; }
+        .article-card:hover { transform: translateY(-5px); }
+        .tag { background:#4f46e5; padding:0.3rem 0.8rem; border-radius:20px; font-size:0.8rem; margin-right:0.5rem; display:inline-block; }
+        .btn { display:inline-block; padding:0.5rem 1rem; border-radius:8px; background:#4f46e5; color:#fff; font-weight:600; transition:0.3s; }
+        .btn:hover { background:#6366f1; }
+        .article-meta { font-size:0.85rem; color:#a1a1aa; margin:0 0 0.5rem; }
+        .article-summary { font-size:0.9rem; color:#d1d5db; margin:0 0 1rem; }
+        .footer { background: rgba(15,23,42,0.95); padding:3rem 0; text-align:center; margin-top:4rem; color:#9ca3af; }
+    </style>
 </body>
 </html>
