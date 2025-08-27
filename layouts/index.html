@@ -1,24 +1,43 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{ .Site.Title }}</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-  <style>
-    body { margin:0; font-family: Arial, sans-serif; background: {{ .Site.Params.backgroundColor }}; color: {{ .Site.Params.textColor }}; }
-    h2 { color: {{ .Site.Params.primaryColor }}; }
-    .carousel { display:flex; overflow-x:auto; scroll-behavior:smooth; gap:1rem; padding:1rem 0; }
-    .carousel::-webkit-scrollbar { display:none; }
-    .article-card { flex:0 0 300px; background: rgba(255,255,255,0.05); border-radius:8px; padding:0.8rem; transition: transform 0.2s; }
-    .article-card:hover { transform: translateY(-5px); }
-    .btn { display:inline-block; padding:0.4rem; background: {{ .Site.Params.primaryColor }}; color:#fff; border-radius:4px; text-decoration:none; }
-    .filter-tags span { cursor:pointer; margin-right:0.5rem; padding:0.2rem 0.5rem; background: rgba(255,255,255,0.1); border-radius:4px; }
-    .filter-tags span.active { background: {{ .Site.Params.primaryColor }}; color:#fff; }
-    .carousel-btn { display:flex; align-items:center; justify-content:center; font-size:2rem; color:#fff; background: rgba(37,99,235,0.8); border:none; border-radius:50%; width:40px; height:40px; cursor:pointer; position:absolute; top:50%; transform:translateY(-50%); z-index:10; }
-    .carousel-btn.left { left:0; }
-    .carousel-btn.right { right:0; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ .Site.Title }}</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+<style>
+  body { margin:0; font-family: Arial, sans-serif; background: {{ .Site.Params.backgroundColor }}; color: {{ .Site.Params.textColor }}; }
+  h2 { color: {{ .Site.Params.primaryColor }}; }
+  
+  /* Карусель */
+  .carousel-container { position:relative; display:flex; align-items:center; }
+  .carousel { display:flex; overflow-x:auto; scroll-behavior:smooth; gap:1rem; padding:1rem 0; }
+  .carousel::-webkit-scrollbar { display:none; }
+
+  .article-card {
+    flex:0 0 300px; background: rgba(255,255,255,0.05); border-radius:8px; padding:0.8rem;
+    transition: transform 0.3s, box-shadow 0.3s;
+    cursor:pointer;
+  }
+  .article-card:hover { transform: scale(1.05); box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
+
+  .article-card img { width:100%; height:180px; object-fit:cover; border-radius:8px; margin-bottom:0.5rem; transition: transform 0.3s; }
+  .article-card img:hover { transform: scale(1.08); }
+
+  .btn { display:inline-block; padding:0.4rem; background: {{ .Site.Params.primaryColor }}; color:#fff; border-radius:4px; text-decoration:none; }
+  .filter-tags span { cursor:pointer; margin-right:0.5rem; padding:0.2rem 0.5rem; background: rgba(255,255,255,0.1); border-radius:4px; }
+  .filter-tags span.active { background: {{ .Site.Params.primaryColor }}; color:#fff; }
+
+  .carousel-btn {
+    display:flex; align-items:center; justify-content:center; font-size:2rem; color:#fff;
+    background: rgba(37,99,235,0.8); border:none; border-radius:50%;
+    width:40px; height:40px; cursor:pointer; position:absolute; top:50%; transform:translateY(-50%); z-index:10;
+    transition: background 0.2s;
+  }
+  .carousel-btn:hover { background: {{ .Site.Params.primaryColor }}; }
+  .carousel-btn.left { left:0; }
+  .carousel-btn.right { right:0; }
+</style>
 </head>
 <body>
 
@@ -47,14 +66,14 @@
   </div>
 
   <!-- Карусель с кнопками -->
-  <div style="position:relative; display:flex; align-items:center;">
+  <div class="carousel-container">
     <button class="carousel-btn left">&#10094;</button>
     <div class="carousel" id="articles-carousel">
       {{ $recent := (where .Site.RegularPages "Type" "posts" | first 20) }}
       {{ range $recent }}
       <article class="article-card" data-tags="{{ delimit .Params.tags "," }}">
         {{ if .Params.image }}
-        <img src="{{ .Params.image | relURL }}" alt="{{ .Title }}" style="width:100%; height:180px; object-fit:cover; border-radius:8px; margin-bottom:0.5rem;">
+        <img src="{{ .Params.image | relURL }}" alt="{{ .Title }}">
         {{ else }}
         <div style="background: rgba(255,255,255,0.1); height:180px; border-radius:8px; display:flex; align-items:center; justify-content:center; margin-bottom:0.5rem;">
           <i class="bi bi-image" style="font-size:2rem; color:#94a3b8;"></i>
@@ -71,28 +90,38 @@
 </section>
 
 <script>
-  const carousel = document.getElementById('articles-carousel');
-  const btnLeft = document.querySelector('.carousel-btn.left');
-  const btnRight = document.querySelector('.carousel-btn.right');
-  const scrollAmount = 300;
+const carousel = document.getElementById('articles-carousel');
+const btnLeft = document.querySelector('.carousel-btn.left');
+const btnRight = document.querySelector('.carousel-btn.right');
+const scrollAmount = 300;
 
-  btnLeft.addEventListener('click', () => { carousel.scrollBy({ left:-scrollAmount, behavior:'smooth' }); });
-  btnRight.addEventListener('click', () => { carousel.scrollBy({ left:scrollAmount, behavior:'smooth' }); });
+// Кнопки перелистывания
+btnLeft.addEventListener('click', () => { carousel.scrollBy({ left:-scrollAmount, behavior:'smooth' }); });
+btnRight.addEventListener('click', () => { carousel.scrollBy({ left:scrollAmount, behavior:'smooth' }); });
 
-  // Фильтр тегов
-  const filterTags = document.querySelectorAll('#filter-tags span');
-  const articles = document.querySelectorAll('.article-card');
-  filterTags.forEach(tagEl => {
-    tagEl.addEventListener('click', () => {
-      filterTags.forEach(t => t.classList.remove('active'));
-      tagEl.classList.add('active');
-      const selectedTag = tagEl.dataset.tag;
-      articles.forEach(article => {
-        const tags = article.dataset.tags.split(',');
-        article.style.display = (selectedTag==='all'||tags.includes(selectedTag)) ? 'block' : 'none';
-      });
+// Автопрокрутка карусели
+let autoScroll = setInterval(() => { carousel.scrollBy({ left:2, behavior:'smooth' }); }, 20);
+
+// Остановка при наведении
+carousel.addEventListener('mouseenter', () => clearInterval(autoScroll));
+carousel.addEventListener('mouseleave', () => {
+  autoScroll = setInterval(() => { carousel.scrollBy({ left:2, behavior:'smooth' }); }, 20);
+});
+
+// Фильтр по тегам
+const filterTags = document.querySelectorAll('#filter-tags span');
+const articles = document.querySelectorAll('.article-card');
+filterTags.forEach(tagEl => {
+  tagEl.addEventListener('click', () => {
+    filterTags.forEach(t => t.classList.remove('active'));
+    tagEl.classList.add('active');
+    const selectedTag = tagEl.dataset.tag;
+    articles.forEach(article => {
+      const tags = article.dataset.tags.split(',');
+      article.style.display = (selectedTag==='all'||tags.includes(selectedTag)) ? 'block' : 'none';
     });
   });
+});
 </script>
 
 </body>
