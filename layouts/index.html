@@ -12,10 +12,10 @@
 
     <!-- AOS анимации -->
     <link rel="stylesheet" href="https://unpkg.com/aos@2.3.1/dist/aos.css" />
-    
+
     <!-- Typed.js для анимации текста -->
     <script src="https://cdn.jsdelivr.net/npm/typed.js@2.0.12"></script>
-    
+
     <!-- tsParticles для частиц -->
     <script src="https://cdn.jsdelivr.net/npm/tsparticles@2.11.1/tsparticles.min.js"></script>
 
@@ -27,27 +27,66 @@
             background-size: cover;
             color: #e0e0e0;
         }
+
+        /* Navbar */
         .navbar {
             display: flex;
             justify-content: space-between;
             align-items: center;
             padding: 1rem 2rem;
-            background: rgba(15, 23, 42, 0.9);
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(8px);
             position: sticky;
             top: 0;
             z-index: 100;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .navbar-brand {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #0af;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
         .nav-menu {
             display: flex;
             list-style: none;
-            gap: 1rem;
+            gap: 2rem;
         }
+        .nav-menu li { position: relative; }
         .nav-link {
-            text-decoration: none;
             color: #e0e0e0;
-            transition: color 0.3s;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 0.3rem 0;
+            transition: color 0.3s, transform 0.3s;
         }
-        .nav-link:hover { color: #0af; }
+        .nav-link::after {
+            content: '';
+            display: block;
+            height: 2px;
+            width: 0;
+            background: #0af;
+            transition: width 0.3s;
+            margin-top: 3px;
+        }
+        .nav-link:hover {
+            color: #0af;
+            transform: translateY(-2px);
+        }
+        .nav-link:hover::after { width: 100%; }
+
+        @media (max-width: 768px) {
+            .nav-menu {
+                gap: 1rem;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+        }
+
+        /* Hero section */
         .hero {
             position: relative;
             height: 80vh;
@@ -114,6 +153,9 @@
     <nav class="navbar">
         <a href="/" class="navbar-brand"><i class="bi bi-cpu"></i> {{ .Site.Title }}</a>
         <ul class="nav-menu">
+            <li><a href="/about/" class="nav-link">Обо мне</a></li>
+            <li><a href="/posts/" class="nav-link">Статьи</a></li>
+            <li><a href="/archive/" class="nav-link">Архив</a></li>
             {{ range .Site.Menus.main }}
             <li><a href="{{ .URL }}" class="nav-link">{{ .Name }}</a></li>
             {{ end }}
@@ -183,33 +225,3 @@
         <p>© 2025 AI Blog | Сгенерировано с помощью искусственного интеллекта</p>
     </footer>
 
-    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
-    <script>
-        AOS.init({ duration: 1000, once: true });
-
-        // Typed.js
-        var typed = new Typed('#typed', {
-            strings: ["🤖 Искусственный Интеллект", "🚀 AI Тренды 2025", "💡 Автоматизация и генерация контента"],
-            typeSpeed: 70,
-            backSpeed: 50,
-            loop: true
-        });
-
-        // tsParticles
-        tsParticles.load("tsparticles", {
-            particles: {
-                number: { value: 80 },
-                color: { value: ["#0af","#0ff","#08c"] },
-                shape: { type: "circle" },
-                opacity: { value: 0.5 },
-                size: { value: { min: 1, max: 4 } },
-                move: { enable: true, speed: 1.5, random: true, outModes: { default: "out" } }
-            },
-            interactivity: {
-                events: { onhover: { enable: true, mode: "repulse" } }
-            },
-            detectRetina: true
-        });
-    </script>
-</body>
-</html>
