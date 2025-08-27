@@ -1,227 +1,91 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ .Site.Title }}</title>
+<nav class="navbar" id="navbar">
+    <a href="/" class="navbar-brand">AI Blog</a>
+    <ul class="nav-menu">
+        <li><a href="/about" class="nav-link btn-nav">Обо мне</a></li>
+        <li><a href="/posts" class="nav-link btn-nav">Статьи</a></li>
+        <li><a href="/archive" class="nav-link btn-nav">Архив</a></li>
+    </ul>
+</nav>
 
-    <!-- Основные стили -->
-    {{ $css := resources.Get "css/main.css" | minify | fingerprint }}
-    <link rel="stylesheet" href="{{ $css.Permalink }}">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+<style>
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    background: rgba(15, 23, 42, 0.7);
+    position: sticky;
+    top: -80px; /* скрыта при старте */
+    width: 100%;
+    z-index: 100;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    backdrop-filter: blur(10px);
+    transition: top 0.5s ease, background 0.3s ease;
+}
 
-    <!-- AOS анимации -->
-    <link rel="stylesheet" href="https://unpkg.com/aos@2.3.1/dist/aos.css" />
+.navbar.show {
+    top: 0;
+}
 
-    <!-- Typed.js для анимации текста -->
-    <script src="https://cdn.jsdelivr.net/npm/typed.js@2.0.12"></script>
+.navbar-brand {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #0af;
+    text-decoration: none;
+    transition: transform 0.2s;
+}
 
-    <!-- tsParticles для частиц -->
-    <script src="https://cdn.jsdelivr.net/npm/tsparticles@2.11.1/tsparticles.min.js"></script>
+.navbar-brand:hover {
+    transform: scale(1.05);
+}
 
-    <style>
-        body {
-            margin: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: url('/images/backgrounds/bg-dark.jpg') no-repeat center center fixed;
-            background-size: cover;
-            color: #e0e0e0;
-        }
+.nav-menu {
+    display: flex;
+    gap: 1rem;
+    list-style: none;
+}
 
-        /* Navbar */
-        .navbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1rem 2rem;
-            background: rgba(15, 23, 42, 0.85);
-            backdrop-filter: blur(8px);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
-        .navbar-brand {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: #0af;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        .nav-menu {
-            display: flex;
-            list-style: none;
-            gap: 2rem;
-        }
-        .nav-menu li { position: relative; }
-        .nav-link {
-            color: #e0e0e0;
-            text-decoration: none;
-            font-weight: 500;
-            padding: 0.3rem 0;
-            transition: color 0.3s, transform 0.3s;
-        }
-        .nav-link::after {
-            content: '';
-            display: block;
-            height: 2px;
-            width: 0;
-            background: #0af;
-            transition: width 0.3s;
-            margin-top: 3px;
-        }
-        .nav-link:hover {
-            color: #0af;
-            transform: translateY(-2px);
-        }
-        .nav-link:hover::after { width: 100%; }
+.nav-menu li {
+    display: flex;
+}
 
-        @media (max-width: 768px) {
-            .nav-menu {
-                gap: 1rem;
-                flex-wrap: wrap;
-                justify-content: center;
-            }
-        }
+.btn-nav {
+    display: inline-block;
+    padding: 0.6rem 1.2rem;
+    border-radius: 12px;
+    background: #0af;
+    color: #fff;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.3s;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
 
-        /* Hero section */
-        .hero {
-            position: relative;
-            height: 80vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            color: white;
-            overflow: hidden;
-        }
-        .hero h1 { font-size: 3rem; margin: 0; }
-        .hero p { font-size: 1.2rem; margin-top: 1rem; }
+.btn-nav:hover {
+    background: #08c;
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+}
 
-        /* Glass cards */
-        .glass-card {
-            background: rgba(15, 23, 42, 0.6);
-            backdrop-filter: blur(12px);
-            border-radius: 16px;
-            padding: 1.5rem;
-            transition: transform 0.3s, box-shadow 0.3s;
-        }
-        .glass-card:hover {
-            transform: scale(1.05) rotate(1deg);
-            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
-        }
+.btn-nav:active {
+    transform: translateY(1px) scale(0.98);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+</style>
 
-        .article-card img {
-            width: 100%;
-            height: 200px;
-            object-fit: cover;
-            border-radius: 8px;
-            margin-bottom: 1rem;
-        }
-        .btn {
-            display: inline-block;
-            padding: 0.5rem 1rem;
-            background: #0af;
-            color: #fff;
-            border-radius: 8px;
-            text-decoration: none;
-            transition: background 0.3s;
-        }
-        .btn:hover { background: #08c; }
+<script>
+let lastScroll = 0;
+const navbar = document.getElementById('navbar');
 
-        footer {
-            background: rgba(15, 23, 42, 0.95);
-            padding: 3rem 1rem;
-            text-align: center;
-        }
-
-        /* Частицы */
-        #tsparticles {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            top: 0;
-            left: 0;
-            z-index: 0;
-        }
-    </style>
-</head>
-<body>
-    <nav class="navbar">
-        <a href="/" class="navbar-brand"><i class="bi bi-cpu"></i> {{ .Site.Title }}</a>
-        <ul class="nav-menu">
-            <li><a href="/about/" class="nav-link">Обо мне</a></li>
-            <li><a href="/posts/" class="nav-link">Статьи</a></li>
-            <li><a href="/archive/" class="nav-link">Архив</a></li>
-            {{ range .Site.Menus.main }}
-            <li><a href="{{ .URL }}" class="nav-link">{{ .Name }}</a></li>
-            {{ end }}
-        </ul>
-    </nav>
-
-    <section class="hero">
-        <div id="tsparticles"></div>
-        <h1 id="typed"></h1>
-        <p>Самые свежие статьи и тренды AI 2025</p>
-    </section>
-
-    <main class="container" style="padding: 2rem 1rem;">
-        {{ $featured := (where .Site.RegularPages "Type" "posts" | first 1) }}
-        {{ if $featured }}
-        {{ range $featured }}
-        <section class="featured-article" data-aos="fade-up">
-            <div class="glass-card">
-                <h2>🔥 Главная статья</h2>
-                {{ if .Params.image }}
-                <img src="{{ .Params.image }}" alt="{{ .Title }}">
-                {{ else }}
-                <div style="background: rgba(255,255,255,0.1); height: 200px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
-                    <i class="bi bi-image" style="font-size: 3rem; color: #999;"></i>
-                </div>
-                {{ end }}
-                <h3>{{ .Title }}</h3>
-                <p style="color: #aaa;"><i class="bi bi-calendar"></i> {{ .Date.Format "02.01.2006" }}</p>
-                <p>{{ .Summary }}</p>
-                {{ if .Params.tags }}
-                <div style="margin: 1rem 0;">
-                    {{ range .Params.tags }}
-                    <span style="background: #0af; padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.8rem; margin-right: 0.5rem;">#{{ . }}</span>
-                    {{ end }}
-                </div>
-                {{ end }}
-                <a href="{{ .Permalink }}" class="btn"><i class="bi bi-book"></i> Читать статью</a>
-            </div>
-        </section>
-        {{ end }}
-        {{ end }}
-
-        <section>
-            <h2 style="text-align: center; margin: 3rem 0 2rem;">📚 Последние статьи</h2>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
-                {{ $recent := (where .Site.RegularPages "Type" "posts" | after 1 | first 6) }}
-                {{ range $recent }}
-                <article class="article-card" data-aos="fade-up">
-                    {{ if .Params.image }}
-                    <img src="{{ .Params.image }}" alt="{{ .Title }}">
-                    {{ else }}
-                    <div style="background: rgba(255,255,255,0.1); height: 200px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
-                        <i class="bi bi-image" style="font-size: 2rem; color: #999;"></i>
-                    </div>
-                    {{ end }}
-                    <h4 style="margin: 0 0 0.5rem;">{{ .Title }}</h4>
-                    <p style="color: #aaa; font-size: 0.9rem; margin: 0 0 1rem;"><i class="bi bi-calendar"></i> {{ .Date.Format "02.01.2006" }}</p>
-                    <p style="color: #aaa; margin: 0 0 1.5rem;">{{ .Summary | truncate 100 }}</p>
-                    <a href="{{ .Permalink }}" class="btn" style="width: 100%; text-align: center;">Читать</a>
-                </article>
-                {{ end }}
-            </div>
-        </section>
-    </main>
-
-    <footer>
-        <p>© 2025 AI Blog | Сгенерировано с помощью искусственного интеллекта</p>
-    </footer>
-
+window.addEventListener('scroll', () => {
+    const currentScroll = window.pageYOffset;
+    if (currentScroll > lastScroll && currentScroll > 100) {
+        // Скролл вниз – скрываем
+        navbar.classList.remove('show');
+    } else {
+        // Скролл вверх – показываем
+        navbar.classList.add('show');
+    }
+    lastScroll = currentScroll;
+});
+</script>
