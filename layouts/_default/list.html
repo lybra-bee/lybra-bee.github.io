@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .Title }} | {{ .Site.Title }}</title>
+    {{ $css := resources.Get "css/main.css" | minify | fingerprint }}
+    <link rel="stylesheet" href="{{ $css.Permalink }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="/" class="navbar-brand">{{ .Site.Title }}</a>
+            <ul class="nav-menu">
+                {{ range .Site.Menus.main }}
+                <li><a href="{{ .URL }}" class="nav-link">{{ .Name }}</a></li>
+                {{ end }}
+            </ul>
+        </div>
+    </nav>
+
+    <main class="container">
+        <h1>{{ .Title }}</h1>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+            {{ range .Pages }}
+            <article class="article-card">
+                <h3><a href="{{ .Permalink }}">{{ .Title }}</a></h3>
+                <p>{{ .Date.Format "02.01.2006" }}</p>
+                <p>{{ .Summary }}</p>
+            </article>
+            {{ end }}
+        </div>
+    </main>
+</body>
+</html>
