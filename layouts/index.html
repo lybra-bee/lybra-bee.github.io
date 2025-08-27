@@ -4,16 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ .Site.Title }}</title>
-    
-    <!-- CSS -->
     {{ $css := resources.Get "css/main.css" | minify | fingerprint }}
     <link rel="stylesheet" href="{{ $css.Permalink }}">
-    
-    <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
 </head>
 <body>
-    <!-- Navigation -->
     <nav class="navbar">
         <div class="navbar-container">
             <a href="/" class="navbar-brand">
@@ -28,13 +23,11 @@
     </nav>
 
     <main class="container">
-        <!-- Hero Section -->
         <section class="hero">
             <h1 class="hero-title">🤖 Искусственный Интеллект</h1>
             <p class="hero-subtitle">Самые свежие статьи и тренды AI 2025</p>
         </section>
 
-        <!-- Featured Article -->
         {{ $featured := (where .Site.RegularPages "Type" "posts" | first 1) }}
         {{ if $featured }}
         {{ range $featured }}
@@ -44,23 +37,27 @@
                 
                 {{ if .Params.image }}
                 <img src="{{ .Params.image }}" alt="{{ .Title }}" style="width: 100%; border-radius: 12px; margin-bottom: 1rem;">
+                {{ else }}
+                <div style="background: rgba(255,255,255,0.1); height: 200px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+                    <i class="bi bi-image" style="font-size: 3rem; color: var(--text-gray);"></i>
+                </div>
                 {{ end }}
                 
                 <h3>{{ .Title }}</h3>
-                <p class="article-meta">
+                <p style="color: var(--text-gray);">
                     <i class="bi bi-calendar"></i> {{ .Date.Format "02.01.2006" }}
                 </p>
                 <p>{{ .Summary }}</p>
                 
+                {{ if .Params.tags }}
                 <div style="margin: 1rem 0;">
-                    {{ if .Params.tags }}
                     {{ range .Params.tags }}
                     <span style="background: var(--primary-blue); padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.8rem; margin-right: 0.5rem;">
                         #{{ . }}
                     </span>
                     {{ end }}
-                    {{ end }}
                 </div>
+                {{ end }}
                 
                 <a href="{{ .Permalink }}" class="btn">
                     <i class="bi bi-book"></i> Читать статью
@@ -70,7 +67,6 @@
         {{ end }}
         {{ end }}
 
-        <!-- Recent Articles -->
         <section>
             <h2 style="text-align: center; margin: 3rem 0 2rem;">📚 Последние статьи</h2>
             
@@ -80,6 +76,10 @@
                 <article class="article-card">
                     {{ if .Params.image }}
                     <img src="{{ .Params.image }}" alt="{{ .Title }}" style="width: 100%; height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 1rem;">
+                    {{ else }}
+                    <div style="background: rgba(255,255,255,0.1); height: 200px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+                        <i class="bi bi-image" style="font-size: 2rem; color: var(--text-gray);"></i>
+                    </div>
                     {{ end }}
                     
                     <h4 style="margin: 0 0 0.5rem;">{{ .Title }}</h4>
@@ -94,4 +94,15 @@
                 </article>
                 {{ end }}
             </div>
-        </sect
+        </section>
+    </main>
+
+    <footer style="background: rgba(15, 23, 42, 0.9); padding: 3rem 0; margin-top: 4rem; text-align: center;">
+        <div class="container">
+            <p style="color: var(--text-gray);">
+                © 2025 AI Blog | Сгенерировано с помощью искусственного интеллекта
+            </p>
+        </div>
+    </footer>
+</body>
+</html>
