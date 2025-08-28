@@ -31,7 +31,7 @@ jobs:
         OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         STABILITYAI_KEY: ${{ secrets.STABILITYAI_KEY }}
       run: |
-        python .github/scripts/generate-content.py
+        python .github/scripts/generate_content.py
 
     - name: Setup Hugo
       uses: peaceiris/actions-hugo@v2
