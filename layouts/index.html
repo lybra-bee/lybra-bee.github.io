@@ -3,24 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Новости AI</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>{{ .Site.Title }}</title>
+    {{ $css := resources.Get "css/main.css" | minify | fingerprint }}
+    <link rel="stylesheet" href="{{ $css.Permalink }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
 </head>
 <body>
-    <header>
-        <h1>Новости Искусственного Интеллекта</h1>
-    </header>
-    <main>
-        <section class="news-list">
-            {% for article in articles %}
-            <article class="news-item">
-                <a href="single.html?id={{ article.id }}">
-                    <img src="images/{{ article.image }}" alt="{{ article.title }}" class="news-thumb">
-                    <h2>{{ article.title }}</h2>
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="/" class="navbar-brand">
+                <i class="bi bi-cpu"></i> {{ .Site.Title }}
+            </a>
+            <ul class="nav-menu">
+                {{ range .Site.Menus.main }}
+                <li><a href="{{ .URL }}" class="nav-link">{{ .Name }}</a></li>
+                {{ end }}
+            </ul>
+        </div>
+    </nav>
+
+    <main class="container">
+        <section class="posts" style="max-width: 1000px; margin: 2rem auto;">
+            {{ range .Site.RegularPages }}
+            <article style="margin-bottom: 2rem; border: 1px solid rgba(255,255,255,0.1); padding: 1rem; border-radius: 12px;">
+                {{ if .Params.image }}
+                <a href="{{ .RelPermalink }}">
+                    <img src="{{ .Params.image }}" alt="{{ .Title }}" style="width:100%; border-radius:8px; margin-bottom:1rem;">
                 </a>
-                <p>{{ article.summary }}</p>
+                {{ end }}
+                <h2><a href="{{ .RelPermalink }}">{{ .Title }}</a></h2>
+                <div style="color: var(--text-gray); font-size:0.9rem; margin-bottom:0.5rem;">
+                    <i class="bi bi-calendar"></i> {{ .Date.Format "02.01.2006" }}
+                </div>
+                <p>{{ .Summary }}</p>
+                <a href="{{ .RelPermalink }}" class="btn" style="margin-top:0.5rem;">Читать далее</a>
             </article>
-            {% endfor %}
+            {{ end }}
         </section>
     </main>
 </body>
