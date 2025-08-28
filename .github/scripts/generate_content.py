@@ -98,6 +98,17 @@ def generate_article_content(topic):
         for model_name in openrouter_models:
             models_to_try.append((model_name, lambda m=model_name: generate_with_openrouter(api_key, m, topic)))
     
+    # Groq API
+    groq_key = os.getenv('GROQ_API_KEY')
+    if groq_key:
+        groq_models = [
+            "llama3-70b-8192",
+            "mixtral-8x7b-32768",
+            "gemma-7b-it"
+        ]
+        for model_name in groq_models:
+            models_to_try.append((f"Groq-{model_name}", lambda m=model_name: generate_with_groq(groq_key, m, topic)))
+    
     for model_name, generate_func in models_to_try:
         try:
             print(f"🔄 Пробуем: {model_name}")
@@ -160,6 +171,53 @@ def generate_with_openrouter(api_key, model_name, topic):
     
     raise Exception(f"HTTP {response.status_code}")
 
+def generate_with_groq(api_key, model_name, topic):
+    """Генерация через Groq API"""
+    prompt = f"""Напиши развернутую техническую статью на тему: "{topic}".
+
+Требования:
+- Объем: 500-700 слов
+- Формат: Markdown с подзаголовками
+- Язык: русский, технический стиль
+- Аудитория: разработчики
+- Фокус на 2025 год и современные тренды
+
+Структура:
+1. Введение и актуальность 2025
+2. Технические детали
+3. Практические примеры
+4. Кейсы использования
+5. Перспективы развития
+6. Заключение
+
+Используй:
+- **Жирный шрифт** для терминов
+- Списки и конкретные примеры
+- Современные технологии 2025 года"""
+    
+    response = requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}"
+        },
+        json={
+            "model": model_name,
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": 1500,
+            "temperature": 0.7
+        },
+        timeout=30
+    )
+    
+    if response.status_code == 200:
+        data = response.json()
+        if data.get('choices'):
+            content = data['choices'][0]['message']['content']
+            return content.replace('"""', '').replace("'''", "").strip()
+    
+    raise Exception(f"HTTP {response.status_code}: {response.text}")
+
 def generate_article_image(topic):
     """Генерация изображения через AI API"""
     print("🎨 Генерация изображения через AI API...")
@@ -168,7 +226,9 @@ def generate_article_image(topic):
     
     apis_to_try = [
         {"name": "DeepAI Text2Img", "function": try_deepai_api},
+        {"name": "HuggingFace Inference", "function": try_huggingface_inference},
         {"name": "Stability AI", "function": try_stability_ai},
+        {"name": "Replicate API", "function": try_replicate_api},
     ]
     
     for api in apis_to_try:
@@ -185,19 +245,20 @@ def generate_article_image(topic):
     return None
 
 def try_deepai_api(prompt, topic):
-    """Пробуем DeepAI API с бесплатным токеном"""
+    """Пробуем DeepAI API с вашим токеном"""
     try:
-        print("🔑 Используем DeepAI бесплатный токен")
+        print("🔑 Используем DeepAI API с вашим токеном")
         
         headers = {
-            "api-key": "quickstart-QUdJIGlzIGNvbWluZy4uLi4K"
+            "Api-Key": "6d27650a"  # Ваш реальный токен
         }
         
         data = {
             "text": prompt,
             "grid_size": "1",
-            "width": "800",
-            "height": "400"
+            "width": "800", 
+            "height": "400",
+            "image_generator_version": "standard"
         }
         
         print("📡 Отправляем запрос к DeepAI...")
@@ -228,15 +289,69 @@ def try_deepai_api(prompt, topic):
             else:
                 print("❌ Нет output_url в ответе DeepAI")
         else:
-            print(f"❌ Ошибка DeepAI API: {response.text[:200]}")
+            print(f"❌ Ошибка DeepAI API: {response.text}")
             
     except Exception as e:
         print(f"❌ Исключение в DeepAI API: {e}")
     
     return None
 
+def try_huggingface_inference(prompt, topic):
+    """Пробуем Hugging Face Inference API"""
+    try:
+        hf_token = os.getenv('HUGGINGFACE_TOKEN')
+        if not hf_token:
+            print("ℹ️ HUGGINGFACE_TOKEN не найден, пропускаем")
+            return None
+            
+        print("🔑 Используем Hugging Face Inference API")
+        
+        # Попробуем несколько моделей
+        models = [
+            "stabilityai/stable-diffusion-2-1",
+            "runwayml/stable-diffusion-v1-5",
+            "prompthero/openjourney"
+        ]
+        
+        for model in models:
+            try:
+                headers = {"Authorization": f"Bearer {hf_token}"}
+                payload = {
+                    "inputs": prompt,
+                    "parameters": {
+                        "width": 800,
+                        "height": 400,
+                        "num_inference_steps": 20
+                    }
+                }
+                
+                response = requests.post(
+                    f"https://api-inference.huggingface.co/models/{model}",
+                    headers=headers,
+                    json=payload,
+                    timeout=60
+                )
+                
+                if response.status_code == 200:
+                    filename = save_article_image(response.content, topic)
+                    if filename:
+                        print(f"✅ Изображение создано через {model}")
+                        return filename
+                elif response.status_code == 503:
+                    print(f"⏳ Модель {model} загружается, пробуем следующую...")
+                    continue
+                    
+            except Exception as e:
+                print(f"⚠️ Ошибка с моделью {model}: {e}")
+                continue
+                
+    except Exception as e:
+        print(f"❌ Исключение в Hugging Face API: {e}")
+    
+    return None
+
 def try_stability_ai(prompt, topic):
-    """Пробуем Stability AI как fallback"""
+    """Пробуем Stability AI"""
     try:
         stability_key = os.getenv('STABILITYAI_KEY')
         if not stability_key:
@@ -278,6 +393,71 @@ def try_stability_ai(prompt, topic):
             
     except Exception as e:
         print(f"❌ Ошибка Stability AI: {e}")
+    
+    return None
+
+def try_replicate_api(prompt, topic):
+    """Пробуем Replicate API"""
+    try:
+        replicate_token = os.getenv('REPLICATE_API_TOKEN')
+        if not replicate_token:
+            print("ℹ️ REPLICATE_API_TOKEN не найден, пропускаем")
+            return None
+            
+        print("🔑 Используем Replicate API")
+        
+        headers = {
+            "Authorization": f"Token {replicate_token}",
+            "Content-Type": "application/json"
+        }
+        
+        payload = {
+            "version": "db21e45d3f7023abc2a46ee38a23973f6dce16bb082a930b0c49861f96d1e5bf",
+            "input": {
+                "prompt": prompt,
+                "width": 800,
+                "height": 400
+            }
+        }
+        
+        response = requests.post(
+            "https://api.replicate.com/v1/predictions",
+            headers=headers,
+            json=payload,
+            timeout=60
+        )
+        
+        if response.status_code == 201:
+            prediction_id = response.json()["id"]
+            print(f"⏳ Ожидаем генерации изображения: {prediction_id}")
+            
+            # Ожидаем завершения генерации
+            for _ in range(10):
+                time.sleep(3)
+                status_response = requests.get(
+                    f"https://api.replicate.com/v1/predictions/{prediction_id}",
+                    headers=headers
+                )
+                
+                if status_response.status_code == 200:
+                    status_data = status_response.json()
+                    if status_data["status"] == "succeeded":
+                        image_url = status_data["output"]
+                        image_response = requests.get(image_url, timeout=60)
+                        if image_response.status_code == 200:
+                            filename = save_article_image(image_response.content, topic)
+                            if filename:
+                                print("✅ Изображение создано через Replicate")
+                                return filename
+                        break
+                    elif status_data["status"] == "failed":
+                        print("❌ Генерация через Replicate не удалась")
+                        break
+            else:
+                print("⏰ Таймаут ожидания Replicate")
+                
+    except Exception as e:
+        print(f"❌ Исключение в Replicate API: {e}")
     
     return None
 
