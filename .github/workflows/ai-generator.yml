@@ -5,6 +5,11 @@ on:
     - cron: '0 12 * * *'  # Ежедневно в 12:00 UTC (15:00 МСК)
   workflow_dispatch:  # Ручной запуск
 
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
 jobs:
   generate-content:
     runs-on: ubuntu-latest
@@ -28,11 +33,7 @@ jobs:
 
     - name: Generate AI content
       env:
-        OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-        GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-        STABILITYAI_KEY: ${{ secrets.STABILITYAI_KEY }}
-        HUGGINGFACE_TOKEN: ${{ secrets.HUGGINGFACE_TOKEN }}
-        REPLICATE_API_TOKEN: ${{ secrets.REPLICATE_API_TOKEN }}
+        OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}  # Только основной ключ
       run: |
         python .github/scripts/generate_content.py
 
