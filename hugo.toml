@@ -1,5 +1,6 @@
 baseURL = 'https://lybra-bee.github.io/'
 languageCode = 'ru-ru'
+defaultContentLanguage = 'ru'  # Добавьте эту строку
 title = 'AI Blog - Генерация контента ИИ'
 theme = ''
 
