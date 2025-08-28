@@ -90,35 +90,41 @@ def generate_content():
 
 def generate_article_content(topic):
     """Генерация содержания статьи через доступные API"""
-    api_key = os.getenv('OPENROUTER_API_KEY')
+    openrouter_key = os.getenv('OPENROUTER_API_KEY')
+    groq_key = os.getenv('GROQ_API_KEY')
     
-    if not api_key:
-        print("❌ OPENROUTER_API_KEY не найден")
-        # Создаем заглушечный контент
-        dummy_content = f"""# {topic}
-
-## Введение
-Это тестовая статья о {topic}. Статья была сгенерирована автоматически.
-
-## Основное содержание
-{topic} представляет собой одну из ключевых технологических тенденций 2025 года. 
-
-## Заключение
-Перспективы развития {topic} выглядят очень promising в ближайшие годы.
-"""
-        return dummy_content, "dummy-generator"
+    models_to_try = []
     
-    models_to_try = [
-        ("anthropic/claude-3-haiku", lambda: generate_with_openrouter(api_key, "anthropic/claude-3-haiku", topic)),
-        ("google/gemini-pro", lambda: generate_with_openrouter(api_key, "google/gemini-pro", topic)),
-        ("mistralai/mistral-7b-instruct", lambda: generate_with_openrouter(api_key, "mistralai/mistral-7b-instruct", topic)),
-    ]
+    # Добавляем Groq модели в первую очередь (бесплатные и быстрые)
+    if groq_key:
+        print("🔑 Groq API ключ найден")
+        groq_models = [
+            "llama-3.1-8b-instant",  # Быстрая и бесплатная
+            "llama-3.1-70b-versatile",  # Мощная
+            "mixtral-8x7b-32768",  # Хорошая для текста
+            "gemma-7b-it"  # Легкая и эффективная
+        ]
+        for model_name in groq_models:
+            models_to_try.append((f"Groq-{model_name}", lambda m=model_name: generate_with_groq(groq_key, m, topic)))
     
+    # Добавляем OpenRouter модели
+    if openrouter_key:
+        print("🔑 OpenRouter API ключ найден")
+        openrouter_models = [
+            "anthropic/claude-3-haiku",
+            "google/gemini-pro", 
+            "mistralai/mistral-7b-instruct",
+            "meta-llama/llama-3-8b-instruct",
+        ]
+        for model_name in openrouter_models:
+            models_to_try.append((model_name, lambda m=model_name: generate_with_openrouter(openrouter_key, m, topic)))
+    
+    # Пробуем все доступные модели
     for model_name, generate_func in models_to_try:
         try:
             print(f"🔄 Пробуем: {model_name}")
             result = generate_func()
-            if result:
+            if result and len(result.strip()) > 100:  # Проверяем что контент не пустой
                 print(f"✅ Успешно через {model_name}")
                 return result, model_name
             time.sleep(1)
@@ -131,24 +137,75 @@ def generate_article_content(topic):
     fallback_content = f"""# {topic}
 
 ## Введение
-{topic} - это важное направление в развитии искусственного интеллекта.
+{topic} - это важное направление в развитии искусственного интеллекта на 2025 год.
 
 ## Основные аспекты
-- Первый аспект {topic}
-- Второй аспект {topic}
-- Третий аспект {topic}
+- **Технологические инновации**: {topic} включает передовые разработки в области AI
+- **Практическое применение**: Технология находит применение в различных отраслях
+- **Перспективы развития**: Ожидается значительный рост в ближайшие годы
+
+## Технические детали
+Модели искусственного интеллекта для {topic} используют современные архитектуры нейросетей, включая трансформеры и генеративные модели.
 
 ## Заключение
-{topic} будет играть ключевую роль в технологическом развитии 2025 года.
+{topic} представляет собой ключевое направление развития искусственного интеллекта с большим потенциалом для инноваций.
 """
     return fallback_content, "fallback-generator"
+
+def generate_with_groq(api_key, model_name, topic):
+    """Генерация через Groq API"""
+    prompt = f"""Напиши развернутую техническую статью на тему: "{topic}".
+
+Требования:
+- Объем: 400-600 слов
+- Формат: Markdown с подзаголовками ##
+- Язык: русский, технический стиль
+- Аудитория: разработчики и IT-специалисты
+- Фокус на 2025 год и современные технологии
+
+Структура:
+1. Введение и актуальность темы
+2. Технические особенности и архитектура
+3. Примеры использования и кейсы
+4. Перспективы развития
+5. Заключение и выводы
+
+Используй:
+- **Жирный шрифт** для ключевых терминов
+- Маркированные списки для перечислений
+- Конкретные примеры и технические детали
+- Современные технологии и frameworks"""
+
+    response = requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}"
+        },
+        json={
+            "model": model_name,
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": 1500,
+            "temperature": 0.7,
+            "top_p": 0.9
+        },
+        timeout=30
+    )
+    
+    if response.status_code == 200:
+        data = response.json()
+        if data.get('choices'):
+            content = data['choices'][0]['message']['content']
+            return content.strip()
+    
+    raise Exception(f"HTTP {response.status_code}: {response.text[:200]}")
 
 def generate_with_openrouter(api_key, model_name, topic):
     """Генерация через OpenRouter"""
     prompt = f"""Напиши развернутую техническую статью на тему: "{topic}".
 
 Требования:
-- Объем: 300-500 слов
+- Объем: 400-600 слов
 - Формат: Markdown с подзаголовками
 - Язык: русский
 - Стиль: технический, для разработчиков
@@ -156,14 +213,14 @@ def generate_with_openrouter(api_key, model_name, topic):
 
 Структура:
 1. Введение
-2. Основная часть
+2. Основная часть с техническими деталями
 3. Примеры использования
 4. Заключение
 
 Используй:
 - **Жирный шрифт** для терминов
 - Списки для перечисления
-- Конкретные примеры"""
+- Конкретные примеры и технологии"""
     
     response = requests.post(
         "https://openrouter.ai/api/v1/chat/completions",
@@ -176,7 +233,7 @@ def generate_with_openrouter(api_key, model_name, topic):
         json={
             "model": model_name,
             "messages": [{"role": "user", "content": prompt}],
-            "max_tokens": 1000,
+            "max_tokens": 1500,
             "temperature": 0.7
         },
         timeout=30
@@ -197,7 +254,7 @@ def generate_article_image(topic):
     try:
         # Создаем простое изображение через внешний сервис
         encoded_topic = urllib.parse.quote(topic[:30])
-        image_url = f"https://placehold.co/800x400/0f172a/ffffff/png?text={encoded_topic}"
+        image_url = f"https://placehold.co/800x400/0f172a/6366f1/png?text={encoded_topic}"
         
         response = requests.get(image_url, timeout=30)
         if response.status_code == 200:
@@ -250,6 +307,14 @@ def clean_old_articles(keep_last=3):
             try:
                 os.remove(article_path)
                 print(f"❌ Удалено: {os.path.basename(article_path)}")
+                
+                # Также удаляем связанное изображение если есть
+                slug = os.path.basename(article_path).replace('.md', '')
+                image_path = f"assets/images/posts/{slug}.jpg"
+                if os.path.exists(image_path):
+                    os.remove(image_path)
+                    print(f"❌ Удалено изображение: {slug}.jpg")
+                    
             except Exception as e:
                 print(f"⚠️ Ошибка удаления {article_path}: {e}")
                 
@@ -308,6 +373,13 @@ if __name__ == "__main__":
         print("🤖 AI CONTENT GENERATOR")
         print("=" * 50)
         
+        # Проверяем доступные API ключи
+        openrouter_key = os.getenv('OPENROUTER_API_KEY')
+        groq_key = os.getenv('GROQ_API_KEY')
+        
+        print(f"🔑 OPENROUTER_API_KEY: {'✅ есть' if openrouter_key else '❌ нет'}")
+        print(f"🔑 GROQ_API_KEY: {'✅ есть' if groq_key else '❌ нет'}")
+        
         generate_content()
         
         print("=" * 50)
@@ -318,4 +390,4 @@ if __name__ == "__main__":
         print("❌ Критическая ошибка:")
         print(f"Ошибка: {e}")
         print("🔄 Продолжаем без генерации контента")
-        exit(0)  # Выходим с кодом 0 чтобы не ломать workflow
+        exit(0)
