@@ -37,19 +37,34 @@ jobs:
         OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
       run: |
-        echo "🔑 Проверка переменных окружения..."
-        echo "OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:0:5}..." 
-        echo "GROQ_API_KEY: ${GROQ_API_KEY:0:5}..."
+        echo "🔍 Проверка структуры папок..."
+        ls -la
+        ls -la content/ || mkdir -p content/
+        ls -la assets/ || mkdir -p assets/
+        
         echo "🚀 Запуск генерации контента..."
         python .github/scripts/generate_content.py
+        
+        echo "📁 Проверка созданных файлов:"
+        find content/ -name "*.md" -exec ls -la {} \; || echo "Нет Markdown файлов"
+        find assets/ -name "*.jpg" -exec ls -la {} \; || echo "Нет изображений"
 
-    - name: Commit generated content
+    - name: Commit and push generated content
       run: |
-        git config --local user.email "github-actions@github.com"
-        git config --local user.name "GitHub Actions"
-        git add content/posts/ assets/images/
-        git diff --cached --quiet || git commit -m "Auto-generated content [skip ci]"
-        git push
+        git config --global user.email "github-actions@github.com"
+        git config --global user.name "GitHub Actions"
+        
+        # Добавляем все новые файлы
+        git add .
+        
+        # Проверяем есть ли изменения для коммита
+        if git diff --cached --quiet; then
+          echo "ℹ️ Нет изменений для коммита"
+        else
+          echo "💾 Коммит изменений"
+          git commit -m "Auto-generated content: $(date +'%Y-%m-%d %H:%M')"
+          git push
+        fi
 
     - name: Setup Hugo
       uses: peaceiris/actions-hugo@v2
@@ -58,7 +73,12 @@ jobs:
         extended: true
 
     - name: Build site
-      run: hugo --minify
+      run: |
+        echo "🏗️ Сборка сайта Hugo..."
+        hugo --minify --verbose
+        
+        echo "📁 Содержимое public/:"
+        ls -la public/ || echo "Папка public/ не создана"
 
     - name: Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v3
@@ -66,3 +86,10 @@ jobs:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_dir: ./public
         force_orphan: true
+        keep_files: false
+
+    - name: Verify deployment
+      run: |
+        echo "✅ Workflow завершен"
+        echo "🌐 Сайт должен быть доступен по адресу: https://lybra-bee.github.io"
+        echo "🕒 Обновление может занять 1-2 минуты"
