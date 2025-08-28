@@ -5,6 +5,12 @@ on:
     - cron: '0 12 * * *'  # Ежедневно в 12:00 UTC (15:00 МСК)
   workflow_dispatch:  # Ручной запуск
 
+# Добавьте эти permissions
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
 jobs:
   generate-content:
     runs-on: ubuntu-latest
@@ -51,3 +57,5 @@ jobs:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_dir: ./public
         force_orphan: true
+        # Добавьте эту строку:
+        keep_files: false
