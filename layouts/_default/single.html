@@ -3,29 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ article.title }}</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+    <title>{{ .Title }} | {{ .Site.Title }}</title>
+    {{ $css := resources.Get "css/main.css" | minify | fingerprint }}
+    <link rel="stylesheet" href="{{ $css.Permalink }}">
 </head>
 <body>
     <header>
-        <nav>
-            <a href="/">Главная</a>
-            <a href="/blog">Блог</a>
-        </nav>
+        <a href="/">← Назад к новостям</a>
     </header>
+    <main>
+        <article style="max-width:800px; margin:2rem auto;">
+            <h1>{{ .Title }}</h1>
+            
+            {{ if .Params.image }}
+            <img src="{{ .Params.image }}" alt="{{ .Title }}" style="width:100%; border-radius:12px; margin-bottom:2rem;">
+            {{ end }}
 
-    <main class="article-page">
-        <article>
-            <h1>{{ article.title }}</h1>
-            {% if article.image_url %}
-                <img src="{{ article.image_url }}" alt="{{ article.title }}">
-            {% endif %}
-            <p>{{ article.content | safe }}</p>
+            <div style="line-height:1.8;">
+                {{ .Content }}
+            </div>
         </article>
     </main>
-
-    <footer>
-        <p>© {{ current_year }} Alexey AI</p>
-    </footer>
 </body>
 </html>
