@@ -1,32 +1,118 @@
-baseURL = "https://lybra-bee.github.io/"
-languageCode = "ru-ru"
-defaultContentLanguage = "ru"
-title = "AI Blog - Генерация контента ИИ"
+baseURL = 'https://lybra-bee.github.io/'
+languageCode = 'ru-ru'
+title = 'AI Blog - Генерация контента ИИ'
+theme = ''
 
+# Параметры сайта
 [params]
-  subtitle = "Самые свежие статьи и тренды AI 2025"
-  primaryColor = "#2563eb"
-  backgroundColor = "#0f172a"
-  textColor = "#f8fafc"
+  description = 'Автоматически генерируемый блог об искусственном интеллекте и технологиях 2025 года'
+  primaryColor = '#2563eb'
+  backgroundColor = '#0f172a'
+  textColor = '#f8fafc'
+  subtitle = 'Самые свежие статьи и тренды AI 2025'
 
+# Настройки автора
 [author]
-  name = "Lybra-Bee"
+  name = 'Lybra-Bee'
 
+# Языковые настройки
+[languages]
+  [languages.ru]
+    languageName = 'Русский'
+    weight = 1
+    title = 'AI Blog - Генерация контента ИИ'
+    description = 'Автоматически генерируемый блог об искусственном интеллекте и технологиях 2025 года'
+
+# Настройки меню
 [menu]
-[[menu.main]]
-name = "Главная"
-url = "/"
-weight = 1
+  [[menu.main]]
+    name = 'Главная'
+    url = '/'
+    weight = 1
 
-[[menu.main]]
-name = "Статьи"
-url = "/posts/"
-weight = 2
+  [[menu.main]]
+    name = 'Статьи'
+    url = '/posts/'
+    weight = 2
 
-[[menu.main]]
-name = "Архив"
-url = "/archive/"
-weight = 3
+  [[menu.main]]
+    name = 'Архив'
+    url = '/archive/'
+    weight = 3
 
+  [[menu.main]]
+    name = 'Теги'
+    url = '/tags/'
+    weight = 4
+
+# Настройки сборки
+[build]
+  writeStats = true
+  buildFuture = true
+  buildExpired = true
+
+# Настройки модулей
+[module]
+  [[module.mounts]]
+    source = 'assets'
+    target = 'assets'
+
+  [[module.mounts]]
+    source = 'content'
+    target = 'content'
+
+  [[module.mounts]]
+    source = 'static'
+    target = 'static'
+
+  [[module.mounts]]
+    source = 'layouts'
+    target = 'layouts'
+
+# Настройки обработки изображений
+[imaging]
+  quality = 80
+  resampleFilter = 'Lanczos'
+  anchor = 'smart'
+
+# Настройки Markdown
+[markup]
+  [markup.goldmark]
+    [markup.goldmark.renderer]
+      unsafe = true
+  [markup.highlight]
+    style = 'monokai'
+    lineNos = true
+
+# Настройки налоговомий
+[taxonomies]
+  category = 'categories'
+  tag = 'tags'
+  series = 'series'
+
+# Настройки социальных сетей (опционально)
+[social]
+  GitHub = 'https://github.com/lybra-bee'
+
+# Настройки sitemap
+[sitemap]
+  changefreq = 'weekly'
+  priority = 0.5
+
+# Настройки безопасности
+[security]
+  [security.exec]
+    allow = ['^dart-sass-embedded$', '^go$', '^npx$', '^postcss$']
+
+# Отключение ненужных видов output
 [outputs]
-home = ["HTML", "RSS"]
+  home = ['HTML', 'RSS']
+  page = ['HTML']
+  section = ['HTML']
+  taxonomy = ['HTML']
+  term = ['HTML']
+
+# Настройки RSS
+[services]
+  [services.rss]
+    limit = 20
