@@ -54,6 +54,9 @@ jobs:
         git config --global user.email "github-actions@github.com"
         git config --global user.name "GitHub Actions"
         
+        # Получаем последние изменения с удаленного репозитория
+        git pull origin main --rebase
+        
         # Добавляем все новые файлы
         git add .
         
@@ -63,7 +66,7 @@ jobs:
         else
           echo "💾 Коммит изменений"
           git commit -m "Auto-generated content: $(date +'%Y-%m-%d %H:%M')"
-          git push
+          git push origin main
         fi
 
     - name: Setup Hugo
