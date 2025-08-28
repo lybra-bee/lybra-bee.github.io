@@ -32,14 +32,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install requests
 
-    - name: Debug info
-      run: |
-        echo "🔍 Проверка структуры файлов..."
-        ls -la
-        echo "🔍 Проверка скрипта..."
-        ls -la .github/scripts/
-        python -m py_compile .github/scripts/generate_content.py && echo "✅ Синтаксис Python правильный"
-
     - name: Generate AI content
       env:
         OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
@@ -51,6 +43,14 @@ jobs:
         echo "🚀 Запуск генерации контента..."
         python .github/scripts/generate_content.py
 
+    - name: Commit generated content
+      run: |
+        git config --local user.email "github-actions@github.com"
+        git config --local user.name "GitHub Actions"
+        git add content/posts/ assets/images/
+        git diff --cached --quiet || git commit -m "Auto-generated content [skip ci]"
+        git push
+
     - name: Setup Hugo
       uses: peaceiris/actions-hugo@v2
       with:
@@ -58,9 +58,7 @@ jobs:
         extended: true
 
     - name: Build site
-      run: |
-        echo "🏗️ Сборка сайта Hugo..."
-        hugo --minify --verbose
+      run: hugo --minify
 
     - name: Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v3
@@ -68,4 +66,3 @@ jobs:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_dir: ./public
         force_orphan: true
-        keep_files: false
