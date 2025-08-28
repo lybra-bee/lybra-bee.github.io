@@ -196,7 +196,7 @@ def generate_article_image(topic):
     
     try:
         # Создаем простое изображение через внешний сервис
- encoded_topic = urllib.parse.quote(topic[:30])
+        encoded_topic = urllib.parse.quote(topic[:30])
         image_url = f"https://placehold.co/800x400/0f172a/ffffff/png?text={encoded_topic}"
         
         response = requests.get(image_url, timeout=30)
