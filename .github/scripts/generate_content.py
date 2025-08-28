@@ -8,56 +8,25 @@ import glob
 import base64
 import time
 
-def get_gigachat_token():
-    """Получает Access Token для GigaChat API"""
-    client_id = os.getenv('GIGACHAT_CLIENT_ID')
-    client_secret = os.getenv('GIGACHAT_CLIENT_SECRET')
-    
-    if not client_id or not client_secret:
-        print("❌ GIGACHAT_CLIENT_ID или GIGACHAT_CLIENT_SECRET не найдены")
-        return None
-    
-    auth_string = f"{client_id}:{client_secret}"
-    auth_key = base64.b64encode(auth_string.encode()).decode()
-    
-    url = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth"
-    headers = {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "Accept": "application/json",
-        "RqUID": f"rq-{random.randint(100000, 999999)}-{int(time.time())}",
-        "Authorization": f"Basic {auth_key}"
-    }
-    data = {"scope": "GIGACHAT_API_PERS"}
-    
-    try:
-        response = requests.post(url, headers=headers, data=data, verify=False, timeout=30)
-        if response.status_code == 200:
-            token_data = response.json()
-            return token_data.get("access_token")
-        print(f"❌ Не удалось получить токен GigaChat: HTTP {response.status_code} {getattr(response, 'text', '')}")
-        return None
-    except Exception as e:
-        print(f"❌ Исключение при получении токена GigaChat: {e}")
-        return None
-
 def generate_ai_trend_topic():
-    """Генерирует актуальную тему на основе трендов AI 2025"""
+    """Генерирует актуальную тему на основе реальных трендов AI 2025"""
+    
     current_trends_2025 = [
-        "Multimodal AI - интеграция текста, изображений и аудио",
-        "AI агенты - автономные системы",
-        "Квантовые вычисления и машинное обучение",
-        "Нейроморфные вычисления - энергоэффективные архитектуры",
-        "Generative AI - создание контента, кода и дизайнов",
-        "Edge AI - обработка данных на устройстве",
-        "AI для кибербезопасности - предиктивная защита",
-        "Этичный AI - ответственное использование",
-        "AI в healthcare - диагностика и персонализированная медицина",
-        "Автономные системы - беспилотный транспорт",
+        "Multimodal AI - интеграция текста, изображений и аудио в единых моделях",
+        "AI агенты - автономные системы способные выполнять сложные задачи",
+        "Квантовые вычисления и машинное обучение - прорыв в производительности",
+        "Нейроморфные вычисления - энергоэффективные архитектуры нейросетей",
+        "Generative AI - создание контента, кода и дизайнов искусственным интеллектом",
+        "Edge AI - обработка данных на устройстве без облачной зависимости",
+        "AI для кибербезопасности - предиктивная защита от угроз",
+        "Этичный AI - ответственное развитие и использование искусственного интеллекта",
+        "AI в healthcare - диагностика, разработка лекарств и персонализированная медицина",
+        "Автономные системы - беспилотный транспорт и робототехника",
         "AI оптимизация - сжатие моделей и ускорение inference",
-        "Доверенный AI - объяснимые алгоритмы",
-        "AI для климата - оптимизация энергопотребления",
-        "Персональные AI ассистенты - индивидуальные помощники",
-        "AI в образовании - адаптивное обучение"
+        "Доверенный AI - объяснимые и прозрачные алгоритмы",
+        "AI для климата - оптимизация энергопотребления и экологические решения",
+        "Персональные AI ассистенты - индивидуализированные цифровые помощники",
+        "AI в образовании - адаптивное обучение и персонализированные учебные планы"
     ]
     
     application_domains = [
@@ -65,12 +34,12 @@ def generate_ai_trend_topic():
         "в мобильных приложениях и IoT экосистемах",
         "в облачных сервисах и распределенных системах",
         "в анализе больших данных и бизнес-аналитике",
-        "в компьютерной безопасности",
+        "в компьютерной безопасности и киберзащите",
         "в медицинской диагностике и биотехнологиях",
         "в финансовых технологиях и финтехе",
         "в автономных транспортных системах",
         "в smart city и умной инфраструктуре",
-        "в образовательных технологиях"
+        "в образовательных технологиях и EdTech"
     ]
     
     trend = random.choice(current_trends_2025)
@@ -79,7 +48,7 @@ def generate_ai_trend_topic():
     topic_formats = [
         f"{trend} {domain} в 2025 году",
         f"Тенденции 2025: {trend} {domain}",
-        f"{trend} - изменения {domain} в 2025",
+        f"{trend} - революционные изменения {domain} в 2025",
         f"Как {trend} трансформирует {domain} в 2025 году",
         f"Инновации 2025: {trend} для {domain}",
         f"{trend} - будущее {domain} в 2025 году",
@@ -90,13 +59,13 @@ def generate_ai_trend_topic():
 
 def generate_content():
     """Генерирует контент статьи через AI API"""
-    KEEP_LAST_ARTICLES = 3
+    KEEP_LAST_ARTICLES = 5
     clean_old_articles(KEEP_LAST_ARTICLES)
     
     selected_topic = generate_ai_trend_topic()
     print(f"📝 Актуальная тема 2025: {selected_topic}")
     
-    image_filename = generate_article_image(selected_topic)  # вернёт строку вида "images/posts/slug.jpg" или None
+    image_filename = generate_article_image(selected_topic)
     content, model_used = generate_article_content(selected_topic)
     
     date = datetime.now().strftime("%Y-%m-%d")
@@ -115,17 +84,19 @@ def generate_content():
 def generate_article_content(topic):
     """Генерация содержания статьи через доступные API"""
     api_key = os.getenv('OPENROUTER_API_KEY')
-    gigachat_token = get_gigachat_token()
     
     models_to_try = []
     
+    # OpenRouter модели
     if api_key:
-        openrouter_models = ["anthropic/claude-3-haiku", "google/gemini-pro"]
+        openrouter_models = [
+            "anthropic/claude-3-haiku",
+            "google/gemini-pro",
+            "mistralai/mistral-7b-instruct",
+            "meta-llama/llama-3-8b-instruct",
+        ]
         for model_name in openrouter_models:
             models_to_try.append((model_name, lambda m=model_name: generate_with_openrouter(api_key, m, topic)))
-    
-    if gigachat_token:
-        models_to_try.append(("GigaChat-2-Max", lambda: generate_with_gigachat(gigachat_token, topic, "GigaChat-2-Max")))
     
     for model_name, generate_func in models_to_try:
         try:
@@ -138,100 +109,230 @@ def generate_article_content(topic):
             print(f"⚠️ Ошибка {model_name}: {e}")
             continue
     
-    raise Exception("❌ Все AI API недоступны")
-
-def generate_with_gigachat(token, topic, model_name):
-    """Генерация через GigaChat"""
-    url = "https://gigachat.devices.sberbank.ru/api/v1/chat/completions"
-    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {token}"}
-    
-    prompt = f"Напиши техническую статью на тему: '{topic}' на русском языке, 500-700 слов, Markdown с заголовками ## и ###."
-    
-    payload = {"model": model_name, "messages": [{"role": "user", "content": prompt}], "temperature": 0.7, "max_tokens": 2000}
-    
-    response = requests.post(url, headers=headers, json=payload, timeout=60)
-    if response.status_code == 200:
-        data = response.json()
-        return data['choices'][0]['message']['content']
-    raise Exception(f"HTTP {response.status_code}: {getattr(response, 'text', '')}")
+    raise Exception("❌ Все AI API недоступны. Проверьте настройки и подключение.")
 
 def generate_with_openrouter(api_key, model_name, topic):
     """Генерация через OpenRouter"""
-    prompt = f"Напиши техническую статью на тему: '{topic}' на русском языке, 500-700 слов, Markdown."
+    prompt = f"""Напиши развернутую техническую статью на тему: "{topic}".
+
+Требования:
+- Объем: 500-700 слов
+- Формат: Markdown с подзаголовками
+- Язык: русский, технический стиль
+- Аудитория: разработчики
+- Фокус на 2025 год и современные тренды
+
+Структура:
+1. Введение и актуальность 2025
+2. Технические детали
+3. Практические примеры
+4. Кейсы использования
+5. Перспективы развития
+6. Заключение
+
+Используй:
+- **Жирный шрифт** для терминов
+- Списки и конкретные примеры
+- Современные технологии 2025 года"""
+    
     response = requests.post(
         "https://openrouter.ai/api/v1/chat/completions",
-        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-        json={"model": model_name, "messages": [{"role": "user", "content": prompt}], "max_tokens": 1500, "temperature": 0.7},
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}",
+            "HTTP-Referer": "https://github.com",
+            "X-Title": "AI Blog Generator"
+        },
+        json={
+            "model": model_name,
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": 1500,
+            "temperature": 0.7
+        },
         timeout=30
     )
+    
     if response.status_code == 200:
         data = response.json()
         if data.get('choices'):
-            return data['choices'][0]['message']['content'].strip()
-    raise Exception(f"HTTP {response.status_code}: {getattr(response, 'text', '')}")
+            content = data['choices'][0]['message']['content']
+            return content.replace('"""', '').replace("'''", "").strip()
+    
+    raise Exception(f"HTTP {response.status_code}")
 
 def generate_article_image(topic):
-    """Генерация изображения через DeepAI (сохранение в static/images/posts, возврат пути images/posts/slug.jpg без ведущего слэша)"""
-    print("🎨 Генерация изображения через DeepAI...")
+    """Генерация изображения через AI API"""
+    print("🎨 Генерация изображения через AI API...")
     
-    image_prompt = f"Technology illustration 2025 for article about {topic}. Futuristic style, AI, neural networks, abstract."
+    image_prompt = f"Technology illustration 2025 for article about {topic}. Modern, futuristic, professional style. Abstract technology concept with AI, neural networks, data visualization. Blue and purple color scheme. No text."
     
-    filename = try_deepai_api(image_prompt, topic)
-    if filename:
-        return filename  # например "images/posts/slug.jpg"
-    print("⚠️ DeepAI не дал изображение, статья будет без image (шаблон покажет плейсхолдер).")
+    apis_to_try = [
+        {"name": "DeepAI Text2Img", "function": try_deepai_api},
+        {"name": "Stability AI", "function": try_stability_ai},
+    ]
+    
+    for api in apis_to_try:
+        try:
+            print(f"🔄 Пробуем {api['name']}")
+            result = api['function'](image_prompt, topic)
+            if result:
+                return result
+        except Exception as e:
+            print(f"⚠️ Ошибка в {api['name']}: {e}")
+            continue
+    
+    print("❌ Все AI API для изображений недоступны, продолжаем без изображения")
     return None
 
 def try_deepai_api(prompt, topic):
-    """Используем тестовый ключ DeepAI"""
+    """Пробуем DeepAI API с бесплатным токеном"""
     try:
-        headers = {"api-key": "quickstart-QUdJIGlzIGNvbWluZy4uLi4K"}
-        data = {"text": prompt, "grid_size": "1", "width": "800", "height": "400"}
-        response = requests.post("https://api.deepai.org/api/text2img", headers=headers, data=data, timeout=30)
+        print("🔑 Используем DeepAI бесплатный токен")
+        
+        headers = {
+            "api-key": "quickstart-QUdJIGlzIGNvbWluZy4uLi4K"
+        }
+        
+        data = {
+            "text": prompt,
+            "grid_size": "1",
+            "width": "800",
+            "height": "400"
+        }
+        
+        print("📡 Отправляем запрос к DeepAI...")
+        response = requests.post(
+            "https://api.deepai.org/api/text2img",
+            headers=headers,
+            data=data,
+            timeout=60
+        )
+        
+        print(f"📊 DeepAI status: {response.status_code}")
         
         if response.status_code == 200:
             data = response.json()
+            print(f"✅ DeepAI response: {data}")
+            
             if 'output_url' in data and data['output_url']:
-                img_response = requests.get(data['output_url'], timeout=30)
-                if img_response.status_code == 200:
-                    return save_article_image(img_response.content, topic)
+                print("📥 Загружаем изображение...")
+                image_response = requests.get(data['output_url'], timeout=60)
+                
+                if image_response.status_code == 200:
+                    filename = save_article_image(image_response.content, topic)
+                    if filename:
+                        print("✅ Изображение создано через DeepAI")
+                        return filename
                 else:
-                    print(f"❌ Ошибка загрузки изображения DeepAI: HTTP {img_response.status_code}")
+                    print(f"❌ Ошибка загрузки изображения: {image_response.status_code}")
+            else:
+                print("❌ Нет output_url в ответе DeepAI")
         else:
-            print(f"❌ DeepAI ответ: HTTP {response.status_code} {getattr(response, 'text', '')}")
+            print(f"❌ Ошибка DeepAI API: {response.text[:200]}")
+            
     except Exception as e:
-        print(f"❌ Ошибка DeepAI API: {e}")
+        print(f"❌ Исключение в DeepAI API: {e}")
+    
+    return None
+
+def try_stability_ai(prompt, topic):
+    """Пробуем Stability AI как fallback"""
+    try:
+        stability_key = os.getenv('STABILITYAI_KEY')
+        if not stability_key:
+            print("ℹ️ STABILITYAI_KEY не найден, пропускаем")
+            return None
+        
+        print("🔑 Используем Stability AI")
+        
+        url = "https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image"
+        
+        headers = {
+            "Authorization": f"Bearer {stability_key}",
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        }
+        
+        payload = {
+            "text_prompts": [{"text": prompt, "weight": 1.0}],
+            "cfg_scale": 7,
+            "height": 768,
+            "width": 512,
+            "samples": 1,
+            "steps": 30,
+            "style_preset": "digital-art"
+        }
+        
+        response = requests.post(url, headers=headers, json=payload, timeout=60)
+        
+        if response.status_code == 200:
+            data = response.json()
+            if 'artifacts' in data and data['artifacts']:
+                image_data = base64.b64decode(data['artifacts'][0]['base64'])
+                filename = save_article_image(image_data, topic)
+                if filename:
+                    print("✅ Изображение создано через Stability AI")
+                    return filename
+        else:
+            print(f"❌ Stability AI error: {response.status_code}")
+            
+    except Exception as e:
+        print(f"❌ Ошибка Stability AI: {e}")
+    
     return None
 
 def save_article_image(image_data, topic):
-    """Сохраняет сгенерированное изображение и возвращает относительный путь 'images/posts/slug.jpg' (без ведущего слэша)"""
+    """Сохраняет сгенерированное изображение"""
     try:
-        os.makedirs("static/images/posts", exist_ok=True)
+        os.makedirs("assets/images/posts", exist_ok=True)
         slug = generate_slug(topic)
-        relative_path = f"images/posts/{slug}.jpg"   # <-- без ведущего слэша
-        full_path = os.path.join("static", relative_path)
+        filename = f"posts/{slug}.jpg"
+        full_path = f"assets/images/{filename}"
+        
         with open(full_path, 'wb') as f:
             f.write(image_data)
-        print(f"💾 Изображение сохранено: {relative_path}")
-        return relative_path
+        
+        print(f"💾 Изображение сохранено: {filename}")
+        return f"/images/{filename}"
+        
     except Exception as e:
         print(f"❌ Ошибка сохранения изображения: {e}")
         return None
 
-def clean_old_articles(keep_last=3):
-    """Удаляет старые статьи, оставляя последние N"""
+def clean_old_articles(keep_last=5):
+    """Оставляет только последние N статей"""
+    print(f"🧹 Очистка старых статей, оставляем {keep_last} последних...")
+    
     articles = glob.glob("content/posts/*.md")
     if not articles:
+        print("📁 Нет статей для очистки")
         return
-    articles.sort(key=os.path.getmtime)
-    for article_path in articles[:-keep_last]:
+    
+    articles.sort(key=os.path.getmtime, reverse=True)
+    articles_to_keep = articles[:keep_last]
+    articles_to_delete = articles[keep_last:]
+    
+    print(f"📊 Всего статей: {len(articles)}")
+    print(f"💾 Сохраняем: {len(articles_to_keep)}")
+    print(f"🗑️ Удаляем: {len(articles_to_delete)}")
+    
+    for article_path in articles_to_delete:
         try:
             os.remove(article_path)
-            print(f"🧹 Удалена старая статья: {os.path.basename(article_path)}")
+            print(f"❌ Удалено: {os.path.basename(article_path)}")
+            
+            # Также удаляем связанное изображение если есть
+            slug = os.path.basename(article_path).replace('.md', '')
+            image_path = f"assets/images/posts/{slug}.jpg"
+            if os.path.exists(image_path):
+                os.remove(image_path)
+                print(f"❌ Удалено изображение: {slug}.jpg")
+                
         except Exception as e:
-            print(f"⚠️ Не удалось удалить {article_path}: {e}")
+            print(f"⚠️ Ошибка удаления {article_path}: {e}")
 
 def generate_slug(topic):
+    """Генерация slug из названия темы"""
     slug = topic.lower()
     replacements = {' ': '-', ':': '', '(': '', ')': '', '/': '-', '\\': '-', '.': '', ',': '', '--': '-'}
     for old, new in replacements.items():
@@ -242,23 +343,45 @@ def generate_slug(topic):
     return slug[:50]
 
 def generate_frontmatter(topic, content, model_used, api_success, image_filename=None):
+    """Генерация frontmatter"""
     current_time = datetime.now()
-    tags = ["искусственный-интеллект", "технологии", "инновации", "2025"]
-    # Записываем относительный путь (без ведущего слэша), либо пустую строку
-    image_line = f'image: "{image_filename}"' if image_filename else 'image: ""'
-    frontmatter = (
-        "---\n"
-        f'title: "{topic}"\n'
-        f"date: {current_time.isoformat()}\n"
-        f"tags: {json.dumps(tags, ensure_ascii=False)}\n"
-        'author: "AI Content Generator"\n'
-        f'model_used: "{model_used}"\n'
-        f"{image_line}\n"
-        "draft: false\n"
-        "---\n\n"
-        f"{content}"
-    )
-    return frontmatter
+    
+    tags = ["искусственный-интеллект", "технологии", "инновации", "2025", "ai"]
+    image_section = f"image: {image_filename}\n" if image_filename else ""
+    
+    return f"""---
+title: "{topic}"
+date: {current_time.strftime("%Y-%m-%dT%H:%M:%SZ")}
+draft: false
+description: "Автоматически сгенерированная статья о {topic}"
+{image_section}tags: {json.dumps(tags, ensure_ascii=False)}
+categories: ["Технологии"]
+---
+
+# {topic}
+
+{f'![]({image_filename})' if image_filename else ''}
+
+{content}
+
+---
+
+### 🔧 Технические детали
+
+- **Модель AI:** {model_used}
+- **Дата генерации:** {current_time.strftime("%d.%m.%Y %H:%M UTC")}
+- **Тема:** {topic}
+- **Год актуальности:** 2025
+- **Статус:** Чистая AI генерация
+
+> *Сгенерировано автоматически через GitHub Actions*
+"""
 
 if __name__ == "__main__":
-    generate_content()
+    try:
+        print("🚀 Запуск генерации контента...")
+        generate_content()
+        print("✅ Генерация завершена успешно!")
+    except Exception as e:
+        print(f"❌ Критическая ошибка: {e}")
+        exit(1)
