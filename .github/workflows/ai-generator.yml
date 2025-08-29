@@ -2,8 +2,8 @@ name: AI Content Generator
 
 on:
   schedule:
-    - cron: '0 12 * * *'  # Ежедневно в 12:00 UTC (15:00 МСК)
-  workflow_dispatch:       # Ручной запуск
+    - cron: '0 12 * * *'  # Ежедневно в 12:00 UTC
+  workflow_dispatch:  # Ручной запуск
 
 permissions:
   contents: write
@@ -13,15 +13,15 @@ permissions:
 jobs:
   generate-content:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
           submodules: recursive
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Python
         uses: actions/setup-python@v4
@@ -33,29 +33,31 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests
 
-      - name: Generate AI content (text + images)
+      - name: Generate AI content
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: |
           echo "🔍 Проверка структуры папок..."
-          mkdir -p content assets layouts static
+          ls -la
+          ls -la content/posts || mkdir -p content/posts
+          ls -la assets/images/posts || mkdir -p assets/images/posts
           
-          echo "🚀 Запуск генерации текста и изображений..."
+          echo "🚀 Запуск генерации контента..."
           python .github/scripts/generate_content.py
           
           echo "📁 Проверка созданных файлов:"
-          find content/ -name "*.md" -exec ls -la {} \; || echo "Нет Markdown файлов"
-          find assets/ -name "*.jpg" -exec ls -la {} \; || echo "Нет изображений"
+          find content/posts/ -name "*.md" -exec ls -la {} \; || echo "Нет Markdown файлов"
+          find assets/images/posts/ -name "*.jpg" -exec ls -la {} \; || echo "Нет изображений"
 
-      - name: Commit generated content
+      - name: Commit new articles and images
         run: |
-          echo "💾 Добавляем новые файлы в git..."
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add content/ assets/
-          git commit -m "🤖 Автогенерация контента: $(date +'%Y-%m-%d %H:%M:%S')" || echo "Нет изменений для коммита"
-          git push
+          
+          git add content/posts/ assets/images/posts/
+          git diff-index --quiet HEAD || git commit -m "📝 Автогенерация статьи и изображения через AI"
+          git push origin HEAD
 
       - name: Setup Hugo
         uses: peaceiris/actions-hugo@v2
@@ -67,8 +69,6 @@ jobs:
         run: |
           echo "🏗️ Сборка сайта Hugo..."
           hugo --minify --logLevel info
-          
-          echo "📁 Содержимое public/:"
           ls -la public/ || echo "Папка public/ не создана"
 
       - name: Deploy to GitHub Pages
@@ -82,5 +82,5 @@ jobs:
       - name: Verify deployment
         run: |
           echo "✅ Workflow завершен"
-          echo "🌐 Сайт доступен: https://lybra-bee.github.io"
+          echo "🌐 Сайт должен быть доступен по адресу: https://lybra-bee.github.io"
           echo "🕒 Обновление может занять 1-2 минуты"
