@@ -1,47 +1,74 @@
 name: AI Content Generator
 
 on:
-  workflow_dispatch: # позволяет запускать вручную
+  workflow_dispatch:         # ручной запуск
   schedule:
-    - cron: '0 12 * * *' # ежедневно в 12:00 UTC, можешь поменять
+    - cron: '0 12 * * *'     # каждый день 12:00 UTC (15:00 МСК)
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
 
 jobs:
   generate:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
-    - name: Checkout repository
+    - name: Checkout repo
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Setup Python
       uses: actions/setup-python@v4
       with:
-        python-version: 3.12
+        python-version: '3.12'
 
-    - name: Install dependencies
+    - name: Install Python deps
       run: |
         python -m pip install --upgrade pip
         pip install requests
 
-    - name: Generate AI content
+    - name: Generate AI content (Groq/OpenRouter + Groq/Stability images)
       env:
         OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         STABILITYAI_KEY: ${{ secrets.STABILITYAI_KEY }}
       run: |
-        echo "🚀 Запуск генерации контента..."
-        python .github/scripts/generate_content.py || echo "⚠️ Генерация завершилась с ошибкой, продолжаем"
+        echo "🚀 Генерация..."
+        python .github/scripts/generate_content.py || echo "⚠️ Генерация завершилась с ошибкой — продолжаем"
 
-    - name: Build site with Hugo
-      run: |
-        echo "📦 Запуск Hugo..."
-        sudo apt-get update && sudo apt-get install -y hugo
-        hugo --minify
-
-    - name: Commit and push generated content
+    - name: Commit & push content
       run: |
         git config user.name "github-actions"
         git config user.email "github-actions@github.com"
-        git add content/ assets/
-        git commit -m "🤖 Автоматически сгенерированная статья и изображения [skip ci]" || echo "Нет изменений для коммита"
+        git add content/ static/images/posts/ || true
+        git commit -m "🤖 Автогенерация статьи и изображений [skip ci]" || echo "Нет изменений"
         git push origin main --force
+
+    - name: Setup Hugo
+      uses: peaceiris/actions-hugo@v2
+      with:
+        hugo-version: '0.125.7'
+        extended: true
+
+    - name: Build site
+      run: |
+        echo "🏗️ Сборка Hugo..."
+        hugo --minify
+        ls -la public || true
+
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./public
+        force_orphan: true
+        keep_files: false
+
+    - name: Done
+      run: |
+        echo "✅ Готово. Сайт: https://lybra-bee.github.io"
