@@ -39,35 +39,18 @@ jobs:
       run: |
         echo "🔍 Проверка структуры папок..."
         ls -la
-        ls -la content/ || mkdir -p content/
-        ls -la assets/ || mkdir -p assets/
+        mkdir -p content/posts
+        mkdir -p assets/images/posts
+        mkdir -p static/css
+        mkdir -p layouts/_default
+        mkdir -p layouts/partials
         
         echo "🚀 Запуск генерации контента..."
-        python .github/scripts/generate_content.py
+        python generate_content.py
         
         echo "📁 Проверка созданных файлов:"
         find content/ -name "*.md" -exec ls -la {} \; || echo "Нет Markdown файлов"
         find assets/ -name "*.jpg" -exec ls -la {} \; || echo "Нет изображений"
-
-    - name: Commit and push generated content
-      run: |
-        git config --global user.email "github-actions@github.com"
-        git config --global user.name "GitHub Actions"
-        
-        # Получаем последние изменения с удаленного репозитория
-        git pull origin main --rebase
-        
-        # Добавляем все новые файлы
-        git add .
-        
-        # Проверяем есть ли изменения для коммита
-        if git diff --cached --quiet; then
-          echo "ℹ️ Нет изменений для коммита"
-        else
-          echo "💾 Коммит изменений"
-          git commit -m "Auto-generated content: $(date +'%Y-%m-%d %H:%M')"
-          git push origin main
-        fi
 
     - name: Setup Hugo
       uses: peaceiris/actions-hugo@v2
@@ -78,7 +61,7 @@ jobs:
     - name: Build site
       run: |
         echo "🏗️ Сборка сайта Hugo..."
-        hugo --minify --verbose
+        hugo --minify --logLevel info
         
         echo "📁 Содержимое public/:"
         ls -la public/ || echo "Папка public/ не создана"
