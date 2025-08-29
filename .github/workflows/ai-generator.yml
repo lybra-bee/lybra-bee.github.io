@@ -21,7 +21,6 @@ jobs:
       with:
         fetch-depth: 0
         token: ${{ secrets.GITHUB_TOKEN }}
-        submodules: recursive  # Добавьте эту строку для подмодулей
 
     - name: Setup Python
       uses: actions/setup-python@v4
@@ -33,24 +32,96 @@ jobs:
         python -m pip install --upgrade pip
         pip install requests
 
+    - name: Create directory structure
+      run: |
+        echo "📁 Создание структуры папок..."
+        mkdir -p content/posts
+        mkdir -p assets/images/posts
+        mkdir -p static/css
+        mkdir -p layouts/_default
+        mkdir -p layouts/partials
+        echo "✅ Структура папок создана"
+
+    - name: Check for generate script
+      run: |
+        echo "🔍 Поиск generate_content.py..."
+        if [ -f ".github/scripts/generate_content.py" ]; then
+            echo "✅ Найден в .github/scripts/"
+        elif [ -f "generate_content.py" ]; then
+            echo "✅ Найден в корне"
+        else
+            echo "❌ Не найден, создаем базовый скрипт..."
+            # Создаем простой генератор
+            cat > generate_content.py << 'EOF'
+import os
+import random
+from datetime import datetime, timedelta
+
+def main():
+    print("📝 Генерация контента...")
+    
+    topics = [
+        "Искусственный интеллект 2025: тренды и перспективы",
+        "Нейросети и машинное обучение: новые возможности",
+        "Генеративный AI: творчество и инновации",
+        "Компьютерное зрение: современные применения"
+    ]
+    
+    os.makedirs("content/posts", exist_ok=True)
+    
+    for i in range(3):
+        topic = random.choice(topics)
+        date = (datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d")
+        filename = f"content/posts/{date}-ai-article-{i+1}.md"
+        
+        content = f"""---
+title: "{topic}"
+date: {date}
+tags: ["AI", "технологии", "2025"]
+draft: false
+---
+
+## Введение
+{topic} - это rapidly развивающаяся область.
+
+## Основные аспекты
+- Новые технологии и алгоритмы
+- Практическое применение
+- Перспективы развития
+
+## Заключение
+{topic} предлагает exciting возможности для инноваций.
+"""
+        
+        with open(filename, 'w', encoding='utf-8') as f:
+            f.write(content)
+        
+        print(f"✅ Создано: {filename}")
+
+if __name__ == "__main__":
+    main()
+EOF
+        fi
+
     - name: Generate AI content
       env:
         OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
       run: |
-        echo "🔍 Проверка структуры папок..."
-        ls -la
-        ls -la content/ || mkdir -p content/
-        ls -la assets/ || mkdir -p assets/
-        ls -la layouts/ || mkdir -p layouts/
-        ls -la static/ || mkdir -p static/
-        
         echo "🚀 Запуск генерации контента..."
-        python generate_content.py
         
-        echo "📁 Проверка созданных файлов:"
-        find content/ -name "*.md" -exec ls -la {} \; || echo "Нет Markdown файлов"
-        find assets/ -name "*.jpg" -exec ls -la {} \; || echo "Нет изображений"
+        if [ -f ".github/scripts/generate_content.py" ]; then
+            echo "📝 Используем скрипт из .github/scripts/"
+            cd .github/scripts/
+            python generate_content.py
+            cd ../../
+        else
+            echo "📝 Используем скрипт из корня"
+            python generate_content.py
+        fi
+        
+        echo "📁 Результат генерации:"
+        find content/ -name "*.md" -exec echo "📄 {}" \;
 
     - name: Setup Hugo
       uses: peaceiris/actions-hugo@v2
@@ -64,7 +135,7 @@ jobs:
         hugo --minify --logLevel info
         
         echo "📁 Содержимое public/:"
-        ls -la public/ || echo "Папка public/ не создана"
+        ls -la public/ || echo "❌ Папка public/ не создана"
 
     - name: Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v3
@@ -77,5 +148,5 @@ jobs:
     - name: Verify deployment
       run: |
         echo "✅ Workflow завершен"
-        echo "🌐 Сайт должен быть доступен по адресу: https://lybra-bee.github.io"
+        echo "🌐 Сайт: https://lybra-bee.github.io"
         echo "🕒 Обновление может занять 1-2 минуты"
