@@ -10,10 +10,16 @@ permissions:
   pages: write
   id-token: write
 
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
 jobs:
   generate-content:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      TZ: Europe/Moscow
     
     steps:
     - name: Checkout repository
@@ -26,31 +32,81 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: '3.10'
+        cache: 'pip'
 
-    - name: Install dependencies
+    - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
         pip install requests
 
-    - name: Generate AI content
-      env:
-        OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-        GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+    - name: Check repository structure
       run: |
-        echo "🔍 Проверка структуры папок..."
+        echo "🔍 Проверка структуры репозитория..."
+        echo "📁 Содержимое корневой папки:"
         ls -la
+        
+        echo "📁 Содержимое .github:"
+        ls -la .github/ || echo "Папка .github не найдена"
+        
+        echo "📁 Содержимое .github/scripts:"
+        ls -la .github/scripts/ || echo "Папка .github/scripts не найдена"
+        
+        echo "📁 Поиск generate_content.py:"
+        find . -name "generate_content.py" -type f
+
+    - name: Create necessary directories
+      run: |
+        echo "📁 Создание структуры папок..."
         mkdir -p content/posts
         mkdir -p assets/images/posts
         mkdir -p static/css
         mkdir -p layouts/_default
         mkdir -p layouts/partials
-        
+
+    - name: Generate AI content
+      env:
+        OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        STABILITYAI_KEY: ${{ secrets.STABILITYAI_KEY }}
+      run: |
         echo "🚀 Запуск генерации контента..."
-        python generate_content.py
         
+        # Проверяем наличие скрипта в разных местах
+        if [ -f ".github/scripts/generate_content.py" ]; then
+            echo "📝 Найден скрипт в .github/scripts/generate_content.py"
+            cd .github/scripts/
+            python generate_content.py
+            cd ../../
+        elif [ -f "generate_content.py" ]; then
+            echo "📝 Найден скрипт в корне"
+            python generate_content.py
+        else
+            echo "❌ Файл generate_content.py не найден!"
+            echo "📋 Доступные файлы:"
+            find . -name "*.py" -type f
+            exit 1
+        fi
+        
+        echo "✅ Генерация завершена"
         echo "📁 Проверка созданных файлов:"
-        find content/ -name "*.md" -exec ls -la {} \; || echo "Нет Markdown файлов"
-        find assets/ -name "*.jpg" -exec ls -la {} \; || echo "Нет изображений"
+        
+        # Проверяем статьи
+        articles=$(find content/ -name "*.md" | wc -l)
+        echo "📄 Статей создано: $articles"
+        if [ $articles -gt 0 ]; then
+            find content/ -name "*.md" -exec ls -la {} \;
+        else
+            echo "⚠️ Статьи не созданы"
+        fi
+        
+        # Проверяем изображения
+        images=$(find assets/ -name "*.jpg" -o -name "*.png" | wc -l)
+        echo "🖼️ Изображений создано: $images"
+        if [ $images -gt 0 ]; then
+            find assets/ -name "*.jpg" -o -name "*.png" | head -5
+        else
+            echo "⚠️ Изображения не созданы"
+        fi
 
     - name: Setup Hugo
       uses: peaceiris/actions-hugo@v2
@@ -58,13 +114,54 @@ jobs:
         hugo-version: '0.125.7'
         extended: true
 
-    - name: Build site
+    - name: Build Hugo site
       run: |
         echo "🏗️ Сборка сайта Hugo..."
+        echo "📊 Версия Hugo:"
+        hugo version
+        
+        echo "📁 Структура перед сборкой:"
+        ls -la
+        ls -la content/ || echo "❌ Нет content/"
+        ls -la layouts/ || echo "❌ Нет layouts/"
+        ls -la static/ || echo "❌ Нет static/"
+        
+        # Сборка с подробным логированием
         hugo --minify --logLevel info
         
         echo "📁 Содержимое public/:"
-        ls -la public/ || echo "Папка public/ не создана"
+        if [ -d "public" ]; then
+            ls -la public/
+            echo "📊 Статистика:"
+            find public/ -name "*.html" | wc -l
+            find public/ -name "*.css" | wc -l
+            du -sh public/
+        else
+            echo "❌ Папка public/ не создана"
+            exit 1
+        fi
+
+    - name: Test built site
+      run: |
+        echo "🧪 Тестирование собранного сайта..."
+        if [ -d "public" ]; then
+            # Проверяем наличие index.html
+            if [ -f "public/index.html" ]; then
+                echo "✅ index.html существует"
+                # Проверяем базовую валидность HTML
+                if grep -q "<!DOCTYPE html>" public/index.html; then
+                    echo "✅ HTML doctype найден"
+                else
+                    echo "⚠️ HTML doctype не найден"
+                fi
+            else
+                echo "❌ index.html не найден"
+                exit 1
+            fi
+        else
+            echo "❌ Папка public/ не существует"
+            exit 1
+        fi
 
     - name: Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v3
@@ -73,9 +170,13 @@ jobs:
         publish_dir: ./public
         force_orphan: true
         keep_files: false
+        enable_jekyll: false
 
     - name: Verify deployment
       run: |
-        echo "✅ Workflow завершен"
-        echo "🌐 Сайт должен быть доступен по адресу: https://lybra-bee.github.io"
-        echo "🕒 Обновление может занять 1-2 минуты"
+        echo "✅ Workflow успешно завершен!"
+        echo "🌐 Сайт будет доступен по адресу: https://lybra-bee.github.io"
+        echo "⏰ Обновление может занять 1-5 минут"
+        
+        # Получаем текущее время
+        echo "🕒 Время завершения: $(date '+%Y-%m-%d %H:%M:%S %Z')"
