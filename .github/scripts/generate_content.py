@@ -9,11 +9,11 @@ import base64
 import time
 import re
 
-# ====== Настройки генераторов ======
+# ====== Настройки ======
 DEEPAI_KEY = "98c841c4"
 HF_TOKEN = "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"
 
-# ====== Тема статьи ======
+# ====== Генерация темы ======
 def generate_ai_trend_topic():
     current_trends_2025 = [
         "Multimodal AI интеграция текста изображений и аудио в единых моделях",
@@ -66,6 +66,7 @@ def generate_content():
     topic = generate_ai_trend_topic()
     print(f"📝 Актуальная тема 2025: {topic}")
 
+    # Генерация изображения: HuggingFace первым
     image_filename = generate_article_image(topic)
     content, model_used = generate_article_content(topic)
 
@@ -115,40 +116,19 @@ def generate_article_content(topic):
             print(f"⚠️ Ошибка {model_name}: {str(e)[:100]}")
     
     print("⚠️ Все API недоступны, создаем заглушку")
-    fallback_content = f"""# {topic}
-
-## Введение
-{topic} - это важное направление AI 2025.
-
-## Основные аспекты
-- Технологические инновации
-- Практическое применение
-- Перспективы развития
-
-## Заключение
-{topic} представляет собой ключевое направление развития AI.
-"""
+    fallback_content = f"# {topic}\n\nАвтоматическая статья-заглушка."
     return fallback_content, "fallback-generator"
 
 def generate_with_openrouter(api_key, model_name, topic):
     prompt = f"Напиши статью на тему: {topic}, 400-600 слов, Markdown, русский, технический стиль"
     response = requests.post(
         "https://openrouter.ai/api/v1/chat/completions",
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {api_key}"
-        },
-        json={
-            "model": model_name,
-            "messages": [{"role": "user", "content": prompt}],
-            "max_tokens": 1500,
-            "temperature": 0.7
-        },
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
+        json={"model": model_name, "messages":[{"role":"user","content":prompt}], "max_tokens":1500},
         timeout=30
     )
     if response.status_code == 200:
-        data = response.json()
-        return data['choices'][0]['message']['content'].strip()
+        return response.json()['choices'][0]['message']['content'].strip()
     raise Exception(f"HTTP {response.status_code}")
 
 def generate_with_groq(api_key, model_name, topic):
@@ -160,19 +140,18 @@ def generate_with_groq(api_key, model_name, topic):
         timeout=30
     )
     if response.status_code == 200:
-        data = response.json()
-        return data['choices'][0]['message']['content'].strip()
+        return response.json()['choices'][0]['message']['content'].strip()
     raise Exception(f"HTTP {response.status_code}: {response.text[:200]}")
 
 # ====== Генерация изображений ======
 def generate_article_image(topic):
     generators = [
+        ("HuggingFace", generate_image_huggingface),
         ("DeepAI", generate_image_deepai),
         ("Craiyon", generate_image_craiyon),
         ("Lexica", generate_image_lexica),
         ("Artbreeder", generate_image_artbreeder),
-        ("Picsum", generate_image_picsum),
-        ("HuggingFace", generate_image_huggingface)
+        ("Picsum", generate_image_picsum)
     ]
     for name, func in generators:
         print(f"🔄 Пробуем генератор: {name}")
@@ -194,7 +173,18 @@ def save_article_image(image_data, topic):
         f.write(image_data)
     return f"/images/{filename}"
 
-# ====== Примеры генераторов (без ключа или с токеном) ======
+# ====== Реализация генераторов ======
+def generate_image_huggingface(topic):
+    try:
+        url = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0"
+        headers = {"Authorization": f"Bearer {HF_TOKEN}"}
+        payload = {"inputs": topic}
+        r = requests.post(url, headers=headers, json=payload, timeout=60)
+        if r.status_code == 200:
+            return save_article_image(r.content, topic)
+    except: pass
+    return None
+
 def generate_image_deepai(topic):
     try:
         url = "https://api.deepai.org/api/text2img"
@@ -220,8 +210,7 @@ def generate_image_craiyon(topic):
 
 def generate_image_lexica(topic):
     try:
-        search_url = f"https://lexica.art/api/v1/search?q={topic}"
-        r = requests.get(search_url, timeout=30)
+        r = requests.get(f"https://lexica.art/api/v1/search?q={topic}", timeout=30)
         if r.status_code == 200 and r.json()['images']:
             img_url = r.json()['images'][0]['srcSmall']
             img_data = requests.get(img_url).content
@@ -230,24 +219,11 @@ def generate_image_lexica(topic):
     return None
 
 def generate_image_artbreeder(topic):
-    # Заглушка, Artbreeder требует аккаунт
     return generate_image_picsum(topic)
 
 def generate_image_picsum(topic):
     r = requests.get("https://picsum.photos/1024", timeout=30)
     return save_article_image(r.content, topic)
-
-def generate_image_huggingface(topic):
-    try:
-        url = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0"
-        headers = {"Authorization": f"Bearer {HF_TOKEN}"}
-        payload = {"inputs": topic}
-        r = requests.post(url, headers=headers, json=payload, timeout=60)
-        if r.status_code == 200:
-            img_b64 = r.content
-            return save_article_image(img_b64, topic)
-    except: pass
-    return None
 
 # ====== Утилиты ======
 def generate_slug(text):
