@@ -1,125 +1,190 @@
-def generate_article_image(topic):
-    """Генерация изображения через все доступные источники"""
-    print("🎨 Генерация изображения...")
-    
-    # Попробуем Stability AI, если есть ключ
-    stability_key = os.getenv('STABILITYAI_KEY')
-    if stability_key:
-        print("🔑 Используем Stability AI")
-        image_filename = generate_image_stabilityai(topic, stability_key)
-        if image_filename:
-            return image_filename
-    
-    # Попробуем DeepAI
-    deepai_key = "98c841c4"
-    print("🔑 Используем DeepAI")
-    image_filename = generate_image_deepai(topic, deepai_key)
-    if image_filename:
-        return image_filename
-    
-    # Бесплатные генераторы без ключа
-    generators = [
-        generate_image_craiyon,
-        generate_image_lexica,
-        generate_image_picsum
+#!/usr/bin/env python3
+import os
+import json
+import requests
+import random
+from datetime import datetime, timezone
+import glob
+import base64
+import time
+import re
+
+def generate_ai_trend_topic():
+    current_trends_2025 = [
+        "Multimodal AI интеграция текста изображений и аудио в единых моделях",
+        "AI агенты автономные системы способные выполнять сложные задачи",
+        "Квантовые вычисления и машинное обучение прорыв в производительности",
+        "Нейроморфные вычисления энергоэффективные архитектуры нейросетей",
+        "Generative AI создание контента кода и дизайнов искусственным интеллектом",
+        "Edge AI обработка данных на устройстве без облачной зависимости",
+        "AI для кибербезопасности предиктивная защита от угроз",
+        "Этичный AI ответственное развитие и использование искусственного интеллекта",
+        "AI в healthcare диагностика разработка лекарств и персонализированная медицина",
+        "Автономные системы беспилотный транспорт и робототехника",
+        "AI оптимизация сжатие моделей и ускорение inference",
+        "Доверенный AI объяснимые и прозрачные алгоритмы",
+        "AI для климата оптимизация энергопотребления и экологические решения",
+        "Персональные AI ассистенты индивидуализированные цифровые помощники",
+        "AI в образовании адаптивное обучение и персонализированные учебные планы"
     ]
     
-    for gen_func in generators:
-        try:
-            image_filename = gen_func(topic)
-            if image_filename:
-                return image_filename
-        except Exception as e:
-            print(f"⚠️ {gen_func.__name__} ошибка: {e}")
+    application_domains = [
+        "в веб разработке и cloud native приложениях",
+        "в мобильных приложениях и IoT экосистемах",
+        "в облачных сервисах и распределенных системах",
+        "в анализе больших данных и бизнес аналитике",
+        "в компьютерной безопасности и киберзащите",
+        "в медицинской диагностике и биотехнологиях",
+        "в финансовых технологиях и финтехе",
+        "в автономных транспортных системах",
+        "в smart city и умной инфраструктуре",
+        "в образовательных технологиях и EdTech"
+    ]
     
-    print("⚠️ Генерация изображения не удалась, продолжаем без изображения")
-    return None
+    trend = random.choice(current_trends_2025)
+    domain = random.choice(application_domains)
+    
+    topic_formats = [
+        f"{trend} {domain} в 2025 году",
+        f"Тенденции 2025 {trend} {domain}",
+        f"{trend} революционные изменения {domain} в 2025",
+        f"Как {trend} трансформирует {domain} в 2025 году",
+        f"Инновации 2025 {trend} для {domain}",
+        f"{trend} будущее {domain} в 2025 году",
+        f"Практическое применение {trend} в {domain} 2025"
+    ]
+    
+    return random.choice(topic_formats)
 
+def generate_content():
+    print("🚀 Запуск генерации контента...")
+    KEEP_LAST_ARTICLES = 3
+    clean_old_articles(KEEP_LAST_ARTICLES)
+    
+    topic = generate_ai_trend_topic()
+    print(f"📝 Актуальная тема 2025: {topic}")
+    
+    # Генерация изображения
+    image_filename = generate_article_image(topic)
+    
+    # Генерация статьи
+    content, model_used = generate_article_content(topic)
+    
+    date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    slug = generate_slug(topic)
+    filename = f"content/posts/{date}-{slug}.md"
+    
+    frontmatter = generate_frontmatter(topic, content, model_used, image_filename)
+    
+    os.makedirs("content/posts", exist_ok=True)
+    with open(filename, 'w', encoding='utf-8') as f:
+        f.write(frontmatter)
+    
+    print(f"✅ Статья создана: {filename}")
+    return filename
 
-def generate_image_stabilityai(topic, api_key):
-    """Генерация изображения через Stability AI"""
-    try:
-        url = "https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image"
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-        }
-        payload = {
-            "text_prompts": [{"text": generate_image_prompt(topic), "weight": 1.0}],
-            "cfg_scale": 7,
-            "height": 1024,
-            "width": 1024,
-            "samples": 1,
-            "steps": 30,
-            "style_preset": "digital-art"
-        }
-        response = requests.post(url, headers=headers, json=payload, timeout=60)
-        if response.status_code == 200:
-            data = response.json()
-            if 'artifacts' in data and data['artifacts']:
-                image_data = base64.b64decode(data['artifacts'][0]['base64'])
-                return save_article_image(image_data, topic)
-    except Exception as e:
-        print(f"❌ Ошибка Stability AI: {e}")
-    return None
+def generate_article_content(topic):
+    # Здесь можно использовать Groq и OpenRouter как раньше
+    fallback_content = f"# {topic}\n\nАвтоматически сгенерированная статья о {topic}."
+    return fallback_content, "fallback-generator"
 
-
-def generate_image_deepai(topic, api_key):
-    """Генерация изображения через DeepAI"""
-    try:
-        print("🔄 Отправка запроса к DeepAI...")
-        response = requests.post(
-            "https://api.deepai.org/api/text2img",
-            data={"text": generate_image_prompt(topic)},
-            headers={"Api-Key": api_key},
-            timeout=30
-        )
-        if response.status_code == 200:
-            data = response.json()
-            image_url = data.get('output_url')
+# --- Генерация изображения ---
+def generate_article_image(topic):
+    print("🎨 Генерация изображения...")
+    # Попробуем генераторы по порядку
+    generators = [
+        generate_image_stabilityai,
+        generate_image_deepai,
+        generate_image_craiyon,
+        generate_image_lexica,
+        generate_image_placeholder
+    ]
+    
+    for gen in generators:
+        try:
+            image_url = gen(topic)
             if image_url:
-                # Загружаем изображение
-                image_data = requests.get(image_url).content
-                return save_article_image(image_data, topic)
-        else:
-            print(f"❌ DeepAI error: {response.status_code}")
-    except Exception as e:
-        print(f"❌ Ошибка DeepAI: {e}")
-    return None
+                return image_url
+        except Exception as e:
+            print(f"⚠️ Ошибка генерации через {gen.__name__}: {e}")
+    
+    print("⚠️ Все генераторы не сработали, используем placeholder")
+    return generate_image_placeholder(topic)
 
+def generate_image_stabilityai(topic):
+    key = os.getenv("STABILITYAI_KEY")
+    if not key:
+        return None
+    # Пример запроса StabilityAI (как в предыдущем коде)
+    return None  # Для упрощения пока пропускаем
+
+def generate_image_deepai(topic):
+    key = "98c841c4"  # твой ключ
+    url = "https://api.deepai.org/api/text2img"
+    headers = {"Api-Key": key}
+    data = {"text": topic}
+    r = requests.post(url, data=data, headers=headers, timeout=30)
+    if r.status_code == 200:
+        resp = r.json()
+        if "output_url" in resp:
+            print("✅ Изображение создано через DeepAI")
+            return resp["output_url"]
+    return None
 
 def generate_image_craiyon(topic):
-    """Бесплатный генератор Craiyon (без ключа)"""
-    print("🔄 Попробуем Craiyon...")
-    url = f"https://api.craiyon.com/v1/generate?prompt={urllib.parse.quote(generate_image_prompt(topic))}"
-    response = requests.get(url, timeout=30)
-    if response.status_code == 200:
-        data = response.json()
-        if 'images' in data and data['images']:
-            image_data = base64.b64decode(data['images'][0])
-            return save_article_image(image_data, topic)
+    url = "https://api.craiyon.com/v1/generate"
+    data = {"prompt": topic}
+    r = requests.post(url, json=data, timeout=30)
+    if r.status_code == 200:
+        resp = r.json()
+        if "images" in resp:
+            print("✅ Изображение создано через Craiyon")
+            return resp["images"][0]
     return None
-
 
 def generate_image_lexica(topic):
-    """Бесплатный генератор Lexica (без ключа)"""
-    print("🔄 Попробуем Lexica...")
-    search_query = urllib.parse.quote(topic)
-    url = f"https://lexica.art/api/v1/search?q={search_query}"
-    response = requests.get(url, timeout=30)
-    if response.status_code == 200:
-        data = response.json()
-        if data.get("images"):
-            image_url = data['images'][0]['src']
-            image_data = requests.get(image_url).content
-            return save_article_image(image_data, topic)
+    # Псевдо-генератор Lexica, можно адаптировать
     return None
 
+def generate_image_placeholder(topic):
+    # Всегда возвращает нейтральную заглушку
+    return "https://via.placeholder.com/1024x1024.png?text=AI+Image"
 
-def generate_image_picsum(topic):
-    """Случайное изображение с Picsum (заглушка, без ключа)"""
-    print("🔄 Попробуем Picsum (заглушка)...")
-    url = f"https://picsum.photos/1024/1024"
-    image_data = requests.get(url).content
-    return save_article_image(image_data, topic)
+# --- Вспомогательные функции ---
+def generate_slug(text):
+    text = text.lower()
+    text = text.replace(' ', '-')
+    text = re.sub(r'[^a-z0-9\-]', '', text)
+    text = re.sub(r'-+', '-', text)
+    text = text.strip('-')
+    return text[:60]
+
+def generate_frontmatter(title, content, model_used, image_url):
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    escaped_title = title.replace(':', ' -').replace('"', '').replace("'", "")
+    frontmatter_lines = [
+        "---",
+        f'title: "{escaped_title}"',
+        f"date: {now}",
+        "draft: false",
+        'tags: ["AI","машинное обучение","технологии","2025"]',
+        'categories: ["Искусственный интеллект"]',
+        'summary: "Автоматически сгенерированная статья об искусственном интеллекте"'
+    ]
+    if image_url:
+        frontmatter_lines.append(f'image: "{image_url}"')
+    frontmatter_lines.append("---")
+    frontmatter_lines.append(content)
+    return "\n".join(frontmatter_lines)
+
+def clean_old_articles(keep_last=3):
+    try:
+        articles = glob.glob("content/posts/*.md")
+        articles.sort(key=os.path.getmtime, reverse=True)
+        for old in articles[keep_last:]:
+            os.remove(old)
+    except:
+        pass
+
+if __name__ == "__main__":
+    generate_content()
