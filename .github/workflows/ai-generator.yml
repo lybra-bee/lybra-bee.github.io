@@ -1,28 +1,22 @@
 name: 🤖 AI Content Generator
 
 on:
+  workflow_dispatch:  # Ручной запуск
   schedule:
-    - cron: '0 11 * * *'  # Ежедневно в 11:00 UTC (14:00 МСК)
-  workflow_dispatch:       # Ручной запуск
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/ai-generator.yml'
+    - cron: '0 11 * * *'  # Ежедневно в 11:00 UTC
 
 permissions:
   contents: write
 
 jobs:
-  generate-ai-content:
+  generate-content:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
     
     steps:
     - name: ⬇️ Checkout repository
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
-        token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: 🐍 Setup Python
       uses: actions/setup-python@v4
@@ -30,77 +24,51 @@ jobs:
         python-version: '3.10'
 
     - name: 📦 Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install requests
+      run: pip install requests
 
-    - name: 📁 Create directory structure
+    - name: 📁 Create directories
       run: |
-        echo "Creating necessary directories..."
         mkdir -p content/posts
-        mkdir -p assets/images/posts
-        mkdir -p static/css
+        mkdir -p assets/images
         mkdir -p layouts/_default
-        mkdir -p layouts/partials
-        echo "✅ Directory structure ready"
-
-    - name: 🔍 Check for existing content generator
-      run: |
-        echo "Looking for content generation scripts..."
-        if [ -f ".github/scripts/generate_content.py" ]; then
-            echo "✅ Found: .github/scripts/generate_content.py"
-        elif [ -f "generate_content.py" ]; then
-            echo "✅ Found: generate_content.py"
-        else
-            echo "📝 No generator found, will create sample content"
-        fi
+        echo "✅ Directories created"
 
     - name: 🚀 Generate AI content
-      env:
-        OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-        GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-        STABILITYAI_KEY: ${{ secrets.STABILITYAI_KEY }}
       run: |
-        echo "Starting content generation..."
+        echo "🎯 Generating AI content..."
         
-        # Create sample content if no generator found
-        if [ ! -f ".github/scripts/generate_content.py" ] && [ ! -f "generate_content.py" ]; then
-            echo "📝 Creating sample AI content..."
-            
-            cat > generate_sample.py << 'EOF'
+        # Create Python script directly
+        cat > generate_content.py << 'EOF'
 import os
 import random
 from datetime import datetime, timedelta
 
-def main():
-    print("🎯 Generating sample AI content...")
+def generate_articles():
+    print("📝 Creating AI articles...")
     
     topics = [
-        "Искусственный интеллект 2025: новые горизонты и вызовы",
-        "Глубокое обучение: современные архитектуры нейросетей", 
-        "Generative AI: творчество и инновации",
-        "Компьютерное зрение: от распознавания к пониманию",
-        "Обработка естественного языка: новые подходы",
-        "Автономные системы и робототехника",
-        "Этика и безопасность искусственного интеллекта",
-        "AI в healthcare: диагностика и лечение будущего"
+        "Искусственный интеллект в 2025: тренды и перспективы",
+        "Нейросети и глубокое обучение: новые возможности",
+        "Генеративный AI: от текста к изображениям",
+        "Машинное обучение в медицине: диагностика будущего",
+        "Компьютерное зрение: современные применения",
+        "Обработка естественного языка: понимание контекста",
+        "Автономные системы и AI: новые горизонты",
+        "Этика искусственного интеллекта: вызовы и решения"
     ]
     
     os.makedirs("content/posts", exist_ok=True)
     
-    num_articles = random.randint(2, 4)
-    print(f"📊 Generating {num_articles} articles...")
-    
-    for i in range(num_articles):
+    # Create 3-4 articles with different dates
+    for i in range(random.randint(3, 4)):
         topic = random.choice(topics)
         date = (datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d")
-        slug = f"ai-article-{i+1}"
-        filename = f"content/posts/{date}-{slug}.md"
+        filename = f"content/posts/{date}-ai-article-{i+1}.md"
         
         content = f"""---
 title: "{topic}"
 date: {date}
-tags: ["AI", "машинное обучение", "2025"]
+tags: ["AI", "машинное обучение", "технологии"]
 draft: false
 ---
 
@@ -108,15 +76,15 @@ draft: false
 {topic} представляет собой rapidly развивающуюся область с огромным потенциалом.
 
 ## Основные направления
-- **Технологические инновации**: Новые алгоритмы и архитектуры
-- **Практическое применение**: Реальные бизнес-кейсы  
-- **Будущее развитие**: Перспективы и тренды
+- **Технологические инновации**: Новые алгоритмы и подходы
+- **Практическое применение**: Реальные кейсы использования
+- **Будущее развитие**: Перспективы на 2025 год
 
 ## Технические детали
-Современные подходы включают использование глубоких нейронных сетей, трансформеров и генеративных моделей.
+Современные системы используют передовые архитектуры нейросетей, включая трансформеры и генеративные модели.
 
 ## Заключение
-{topic} продолжает revolutionизировать различные отрасли и открывать новые возможности.
+{topic} продолжает revolutionизировать различные отрасли и открывать новые возможности для инноваций.
 """
         
         with open(filename, 'w', encoding='utf-8') as f:
@@ -127,30 +95,21 @@ draft: false
     print("🎉 Content generation completed!")
 
 if __name__ == "__main__":
-    main()
+    generate_articles()
 EOF
 
-            python generate_sample.py
-        else
-            echo "🔧 Running existing content generator..."
-            if [ -f ".github/scripts/generate_content.py" ]; then
-                cd .github/scripts/
-                python generate_content.py
-                cd ../../
-            else
-                python generate_content.py
-            fi
-        fi
+        # Run the generator
+        python generate_content.py
 
-    - name: 📊 List generated content
+    - name: 📊 Show generated files
       run: |
-        echo "📁 Generated files:"
+        echo "📁 Generated content:"
         find content/ -name "*.md" -exec echo "   📄 {}" \;
         echo "Total articles: $(find content/ -name "*.md" | wc -l)"
 
     - name: 💾 Commit and push changes
       run: |
-        git config --global user.name "GitHub Actions"
+        git config --global user.name "github-actions"
         git config --global user.email "github-actions@github.com"
         
         git add content/
@@ -159,16 +118,16 @@ EOF
           echo "ℹ️ No changes to commit"
         else
           git commit -m "🤖 Auto-generated AI content: $(date +'%Y-%m-%d %H:%M')"
-          git push origin main
+          git push
           echo "✅ Changes pushed successfully"
         fi
 
-    - name: 🎉 Completion message
+    - name: 🎉 Completion
       run: |
-        echo "=========================================="
+        echo "========================================"
         echo "🤖 AI CONTENT GENERATION COMPLETE"
-        echo "=========================================="
+        echo "========================================"
         echo "📅 Generated: $(date)"
         echo "📊 Articles: $(find content/ -name "*.md" | wc -l)"
-        echo "🌐 Site will update on next deployment"
-        echo "=========================================="
+        echo "🌐 Site: https://lybra-bee.github.io"
+        echo "========================================"
