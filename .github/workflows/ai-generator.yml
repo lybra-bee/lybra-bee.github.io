@@ -1,41 +1,91 @@
-name: Generate AI Content
+name: AI Content Generator
 
 on:
   push:
     branches:
       - main
-  schedule:
-    - cron: '0 10 * * *'
+  workflow_dispatch:  # Ручной запуск
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
 
 jobs:
-  build:
+  generate-content:
     runs-on: ubuntu-latest
-
+    timeout-minutes: 30
+    
     steps:
-      - uses: actions/checkout@v3
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+        submodules: recursive
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.12"
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install requests
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install requests
 
-      - name: Generate AI content
-        env:
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          STABILITYAI_KEY: ${{ secrets.STABILITYAI_KEY }}
-        run: |
-          python .github/scripts/generate_content.py
+    - name: Setup Hugo
+      uses: peaceiris/actions-hugo@v2
+      with:
+        hugo-version: '0.125.7'
+        extended: true
 
-      - name: Commit and push changes
-        run: |
-          git config --global user.name "github-actions"
-          git config --global user.email "actions@github.com"
-          git add .
-          git commit -m "🤖 Обновление статей и изображений AI" || echo "Нет изменений"
-          git push
+    - name: Generate AI content
+      env:
+        OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        STABILITYAI_KEY: ${{ secrets.STABILITYAI_KEY }}
+      run: |
+        echo "🔍 Проверка структуры папок..."
+        ls -la
+        ls -la content/ || mkdir -p content/
+        ls -la assets/ || mkdir -p assets/
+        ls -la layouts/ || mkdir -p layouts/
+        ls -la static/ || mkdir -p static/
+        
+        echo "🚀 Запуск генерации контента..."
+        python .github/scripts/generate_content.py
+
+        echo "📁 Проверка созданных файлов:"
+        find content/ -name "*.md" -exec ls -la {} \; || echo "Нет Markdown файлов"
+        find assets/ -name "*.jpg" -exec ls -la {} \; || echo "Нет изображений"
+
+    - name: Commit and push new content
+      run: |
+        git config user.name "github-actions"
+        git config user.email "github-actions@github.com"
+        git add content/ assets/
+        git commit -m "🤖 Автоматически сгенерированная статья и изображения [skip ci]" || echo "Нет изменений для коммита"
+        git push origin main
+
+    - name: Build site
+      run: |
+        echo "🏗️ Сборка сайта Hugo..."
+        hugo --minify --logLevel info
+        
+        echo "📁 Содержимое public/:"
+        ls -la public/ || echo "Папка public/ не создана"
+
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./public
+        force_orphan: true
+        keep_files: false
+
+    - name: Verify deployment
+      run: |
+        echo "✅ Workflow завершен"
+        echo "🌐 Сайт должен быть доступен по адресу: https://lybra-bee.github.io"
+        echo "🕒 Обновление может занять 1-2 минуты"
