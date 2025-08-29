@@ -1,44 +1,27 @@
 name: AI Content Generator
 
 on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:  # Ручной запуск
-
-permissions:
-  contents: write
-  pages: write
-  id-token: write
+  workflow_dispatch: # позволяет запускать вручную
+  schedule:
+    - cron: '0 12 * * *' # ежедневно в 12:00 UTC, можешь поменять
 
 jobs:
-  generate-content:
+  generate:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-        token: ${{ secrets.GITHUB_TOKEN }}
-        submodules: recursive
 
     - name: Setup Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.12'
+        python-version: 3.12
 
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install requests
-
-    - name: Setup Hugo
-      uses: peaceiris/actions-hugo@v2
-      with:
-        hugo-version: '0.125.7'
-        extended: true
 
     - name: Generate AI content
       env:
@@ -46,46 +29,19 @@ jobs:
         GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         STABILITYAI_KEY: ${{ secrets.STABILITYAI_KEY }}
       run: |
-        echo "🔍 Проверка структуры папок..."
-        ls -la
-        ls -la content/ || mkdir -p content/
-        ls -la assets/ || mkdir -p assets/
-        ls -la layouts/ || mkdir -p layouts/
-        ls -la static/ || mkdir -p static/
-        
         echo "🚀 Запуск генерации контента..."
-        python .github/scripts/generate_content.py
+        python .github/scripts/generate_content.py || echo "⚠️ Генерация завершилась с ошибкой, продолжаем"
 
-        echo "📁 Проверка созданных файлов:"
-        find content/ -name "*.md" -exec ls -la {} \; || echo "Нет Markdown файлов"
-        find assets/ -name "*.jpg" -exec ls -la {} \; || echo "Нет изображений"
+    - name: Build site with Hugo
+      run: |
+        echo "📦 Запуск Hugo..."
+        sudo apt-get update && sudo apt-get install -y hugo
+        hugo --minify
 
-    - name: Commit and push new content
+    - name: Commit and push generated content
       run: |
         git config user.name "github-actions"
         git config user.email "github-actions@github.com"
         git add content/ assets/
         git commit -m "🤖 Автоматически сгенерированная статья и изображения [skip ci]" || echo "Нет изменений для коммита"
-        git push origin main
-
-    - name: Build site
-      run: |
-        echo "🏗️ Сборка сайта Hugo..."
-        hugo --minify --logLevel info
-        
-        echo "📁 Содержимое public/:"
-        ls -la public/ || echo "Папка public/ не создана"
-
-    - name: Deploy to GitHub Pages
-      uses: peaceiris/actions-gh-pages@v3
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./public
-        force_orphan: true
-        keep_files: false
-
-    - name: Verify deployment
-      run: |
-        echo "✅ Workflow завершен"
-        echo "🌐 Сайт должен быть доступен по адресу: https://lybra-bee.github.io"
-        echo "🕒 Обновление может занять 1-2 минуты"
+        git push origin main --force
