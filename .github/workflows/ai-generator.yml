@@ -43,7 +43,7 @@ jobs:
           mkdir -p content assets layouts static
           
           echo "🚀 Запуск генерации контента..."
-          python generate_content.py
+          python .github/scripts/generate_content.py
           
           echo "📁 Проверка созданных файлов:"
           find content/ -name "*.md" -exec ls -la {} \; || echo "Нет Markdown файлов"
