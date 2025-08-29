@@ -1,133 +1,81 @@
-name: 🤖 AI Content Generator
+name: AI Content Generator
 
 on:
-  workflow_dispatch:  # Ручной запуск
   schedule:
-    - cron: '0 11 * * *'  # Ежедневно в 11:00 UTC
+    - cron: '0 12 * * *'  # Ежедневно в 12:00 UTC (15:00 МСК)
+  workflow_dispatch:  # Ручной запуск
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 jobs:
   generate-content:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     
     steps:
-    - name: ⬇️ Checkout repository
+    - name: Checkout repository
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+        submodules: recursive  # Добавьте эту строку для подмодулей
 
-    - name: 🐍 Setup Python
+    - name: Setup Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.10'
 
-    - name: 📦 Install dependencies
-      run: pip install requests
-
-    - name: 📁 Create directories
+    - name: Install dependencies
       run: |
-        mkdir -p content/posts
-        mkdir -p assets/images
-        mkdir -p layouts/_default
-        echo "✅ Directories created"
+        python -m pip install --upgrade pip
+        pip install requests
 
-    - name: 🚀 Generate AI content
+    - name: Generate AI content
+      env:
+        OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
       run: |
-        echo "🎯 Generating AI content..."
+        echo "🔍 Проверка структуры папок..."
+        ls -la
+        ls -la content/ || mkdir -p content/
+        ls -la assets/ || mkdir -p assets/
+        ls -la layouts/ || mkdir -p layouts/
+        ls -la static/ || mkdir -p static/
         
-        # Create Python script directly
-        cat > generate_content.py << 'EOF'
-import os
-import random
-from datetime import datetime, timedelta
-
-def generate_articles():
-    print("📝 Creating AI articles...")
-    
-    topics = [
-        "Искусственный интеллект в 2025: тренды и перспективы",
-        "Нейросети и глубокое обучение: новые возможности",
-        "Генеративный AI: от текста к изображениям",
-        "Машинное обучение в медицине: диагностика будущего",
-        "Компьютерное зрение: современные применения",
-        "Обработка естественного языка: понимание контекста",
-        "Автономные системы и AI: новые горизонты",
-        "Этика искусственного интеллекта: вызовы и решения"
-    ]
-    
-    os.makedirs("content/posts", exist_ok=True)
-    
-    # Create 3-4 articles with different dates
-    for i in range(random.randint(3, 4)):
-        topic = random.choice(topics)
-        date = (datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d")
-        filename = f"content/posts/{date}-ai-article-{i+1}.md"
-        
-        content = f"""---
-title: "{topic}"
-date: {date}
-tags: ["AI", "машинное обучение", "технологии"]
-draft: false
----
-
-## Введение
-{topic} представляет собой rapidly развивающуюся область с огромным потенциалом.
-
-## Основные направления
-- **Технологические инновации**: Новые алгоритмы и подходы
-- **Практическое применение**: Реальные кейсы использования
-- **Будущее развитие**: Перспективы на 2025 год
-
-## Технические детали
-Современные системы используют передовые архитектуры нейросетей, включая трансформеры и генеративные модели.
-
-## Заключение
-{topic} продолжает revolutionизировать различные отрасли и открывать новые возможности для инноваций.
-"""
-        
-        with open(filename, 'w', encoding='utf-8') as f:
-            f.write(content)
-        
-        print(f"✅ Created: {filename}")
-    
-    print("🎉 Content generation completed!")
-
-if __name__ == "__main__":
-    generate_articles()
-EOF
-
-        # Run the generator
+        echo "🚀 Запуск генерации контента..."
         python generate_content.py
-
-    - name: 📊 Show generated files
-      run: |
-        echo "📁 Generated content:"
-        find content/ -name "*.md" -exec echo "   📄 {}" \;
-        echo "Total articles: $(find content/ -name "*.md" | wc -l)"
-
-    - name: 💾 Commit and push changes
-      run: |
-        git config --global user.name "github-actions"
-        git config --global user.email "github-actions@github.com"
         
-        git add content/
-        
-        if git diff --cached --quiet; then
-          echo "ℹ️ No changes to commit"
-        else
-          git commit -m "🤖 Auto-generated AI content: $(date +'%Y-%m-%d %H:%M')"
-          git push
-          echo "✅ Changes pushed successfully"
-        fi
+        echo "📁 Проверка созданных файлов:"
+        find content/ -name "*.md" -exec ls -la {} \; || echo "Нет Markdown файлов"
+        find assets/ -name "*.jpg" -exec ls -la {} \; || echo "Нет изображений"
 
-    - name: 🎉 Completion
+    - name: Setup Hugo
+      uses: peaceiris/actions-hugo@v2
+      with:
+        hugo-version: '0.125.7'
+        extended: true
+
+    - name: Build site
       run: |
-        echo "========================================"
-        echo "🤖 AI CONTENT GENERATION COMPLETE"
-        echo "========================================"
-        echo "📅 Generated: $(date)"
-        echo "📊 Articles: $(find content/ -name "*.md" | wc -l)"
-        echo "🌐 Site: https://lybra-bee.github.io"
-        echo "========================================"
+        echo "🏗️ Сборка сайта Hugo..."
+        hugo --minify --logLevel info
+        
+        echo "📁 Содержимое public/:"
+        ls -la public/ || echo "Папка public/ не создана"
+
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./public
+        force_orphan: true
+        keep_files: false
+
+    - name: Verify deployment
+      run: |
+        echo "✅ Workflow завершен"
+        echo "🌐 Сайт должен быть доступен по адресу: https://lybra-bee.github.io"
+        echo "🕒 Обновление может занять 1-2 минуты"
