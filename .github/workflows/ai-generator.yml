@@ -1,107 +1,122 @@
-name: AI Content Generator
+name: 🤖 AI Content Generator
 
 on:
   schedule:
-    - cron: '0 11 * * *'  # Ежедневно в 11:00 UTC
+    - cron: '0 11 * * *'  # Ежедневно в 11:00 UTC (14:00 МСК)
   workflow_dispatch:       # Ручной запуск
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/ai-generator.yml'
 
 permissions:
   contents: write
 
 jobs:
-  generate-content:
+  generate-ai-content:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     
     steps:
-    - name: Checkout repository
+    - name: ⬇️ Checkout repository
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
         token: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Setup Python
+    - name: 🐍 Setup Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.10'
 
-    - name: Install dependencies
+    - name: 📦 Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install requests
 
-    - name: Create directory structure
+    - name: 📁 Create directory structure
       run: |
-        echo "📁 Creating directory structure..."
+        echo "Creating necessary directories..."
         mkdir -p content/posts
         mkdir -p assets/images/posts
         mkdir -p static/css
         mkdir -p layouts/_default
         mkdir -p layouts/partials
-        echo "✅ Directories created"
+        echo "✅ Directory structure ready"
 
-    - name: Generate sample content
+    - name: 🔍 Check for existing content generator
       run: |
-        echo "📝 Generating sample content..."
+        echo "Looking for content generation scripts..."
+        if [ -f ".github/scripts/generate_content.py" ]; then
+            echo "✅ Found: .github/scripts/generate_content.py"
+        elif [ -f "generate_content.py" ]; then
+            echo "✅ Found: generate_content.py"
+        else
+            echo "📝 No generator found, will create sample content"
+        fi
+
+    - name: 🚀 Generate AI content
+      env:
+        OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        STABILITYAI_KEY: ${{ secrets.STABILITYAI_KEY }}
+      run: |
+        echo "Starting content generation..."
         
-        # Create simple Python script to generate content
-        cat > generate_sample.py << 'EOF'
+        # Create sample content if no generator found
+        if [ ! -f ".github/scripts/generate_content.py" ] && [ ! -f "generate_content.py" ]; then
+            echo "📝 Creating sample AI content..."
+            
+            cat > generate_sample.py << 'EOF'
 import os
 import random
 from datetime import datetime, timedelta
 
-def generate_sample_content():
-    print("🔄 Generating sample AI content...")
+def main():
+    print("🎯 Generating sample AI content...")
     
     topics = [
-        "Искусственный интеллект в 2025 году: основные тренды и перспективы",
-        "Нейросети и глубокое обучение: современные достижения",
-        "Генеративные AI модели: от GPT до Stable Diffusion",
-        "Этика искусственного интеллекта: проблемы и решения",
-        "Машинное обучение в медицине: диагностика и лечение",
-        "Компьютерное зрение: новые возможности и применения",
-        "Natural Language Processing: понимание и генерация текста",
-        "Автономные системы и робототехника с использованием AI"
+        "Искусственный интеллект 2025: новые горизонты и вызовы",
+        "Глубокое обучение: современные архитектуры нейросетей", 
+        "Generative AI: творчество и инновации",
+        "Компьютерное зрение: от распознавания к пониманию",
+        "Обработка естественного языка: новые подходы",
+        "Автономные системы и робототехника",
+        "Этика и безопасность искусственного интеллекта",
+        "AI в healthcare: диагностика и лечение будущего"
     ]
     
     os.makedirs("content/posts", exist_ok=True)
-    os.makedirs("assets/images/posts", exist_ok=True)
     
-    # Generate 3-5 articles
-    num_articles = random.randint(3, 5)
+    num_articles = random.randint(2, 4)
+    print(f"📊 Generating {num_articles} articles...")
     
     for i in range(num_articles):
         topic = random.choice(topics)
-        # Use different dates for variety
-        date = (datetime.now() - timedelta(days=random.randint(0, 7))).strftime("%Y-%m-%d")
-        slug = f"ai-article-{i+1}-{datetime.now().strftime('%H%M')}"
+        date = (datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d")
+        slug = f"ai-article-{i+1}"
         filename = f"content/posts/{date}-{slug}.md"
         
         content = f"""---
 title: "{topic}"
 date: {date}
-tags: ["AI", "технологии", "2025", "нейросети"]
+tags: ["AI", "машинное обучение", "2025"]
 draft: false
-image: "/images/posts/ai-banner.jpg"
 ---
 
 ## Введение
-{topic} представляет собой одно из наиболее exciting направлений в современной компьютерной науке. 
+{topic} представляет собой rapidly развивающуюся область с огромным потенциалом.
 
-## Основные аспекты
-- **Технологические инновации**: Новые алгоритмы и архитектуры нейросетей
-- **Практическое применение**: Реальные кейсы использования в различных отраслях
-- **Будущее развитие**: Перспективы и потенциальные прорывы
+## Основные направления
+- **Технологические инновации**: Новые алгоритмы и архитектуры
+- **Практическое применение**: Реальные бизнес-кейсы  
+- **Будущее развитие**: Перспективы и тренды
 
 ## Технические детали
-Современные системы искусственного интеллекта основаны на передовых технологиях машинного обучения, включая глубокие нейронные сети, трансформеры и генеративные модели.
-
-## Примеры использования
-- Автоматическая обработка и анализ данных
-- Генерация контента и творческие задачи
-- Прогностическая аналитика и принятие решений
+Современные подходы включают использование глубоких нейронных сетей, трансформеров и генеративных моделей.
 
 ## Заключение
-{topic} продолжает rapidly развиваться, предлагая новые возможности для исследователей, разработчиков и бизнеса. Будущее искусственного интеллекта выглядит extremely promising.
+{topic} продолжает revolutionизировать различные отрасли и открывать новые возможности.
 """
         
         with open(filename, 'w', encoding='utf-8') as f:
@@ -109,40 +124,51 @@ image: "/images/posts/ai-banner.jpg"
         
         print(f"✅ Created: {filename}")
     
-    print(f"📊 Generated {num_articles} articles")
+    print("🎉 Content generation completed!")
 
 if __name__ == "__main__":
-    generate_sample_content()
+    main()
 EOF
-        
-        # Run the generator
-        python generate_sample.py
 
-    - name: List generated files
+            python generate_sample.py
+        else
+            echo "🔧 Running existing content generator..."
+            if [ -f ".github/scripts/generate_content.py" ]; then
+                cd .github/scripts/
+                python generate_content.py
+                cd ../../
+            else
+                python generate_content.py
+            fi
+        fi
+
+    - name: 📊 List generated content
       run: |
-        echo "📁 Generated content:"
+        echo "📁 Generated files:"
         find content/ -name "*.md" -exec echo "   📄 {}" \;
         echo "Total articles: $(find content/ -name "*.md" | wc -l)"
 
-    - name: Commit and push generated content
+    - name: 💾 Commit and push changes
       run: |
         git config --global user.name "GitHub Actions"
         git config --global user.email "github-actions@github.com"
         
-        # Add only content and assets
-        git add content/ assets/
+        git add content/
         
-        # Check if there are changes to commit
-        if git diff --staged --quiet; then
+        if git diff --cached --quiet; then
           echo "ℹ️ No changes to commit"
         else
           git commit -m "🤖 Auto-generated AI content: $(date +'%Y-%m-%d %H:%M')"
           git push origin main
-          echo "✅ Changes pushed to repository"
+          echo "✅ Changes pushed successfully"
         fi
 
-    - name: Show workflow status
+    - name: 🎉 Completion message
       run: |
-        echo "🎉 AI Content Generator completed successfully!"
-        echo "🌐 Website will update on next deployment"
-        echo "🕒 Next scheduled run: daily at 11:00 UTC"
+        echo "=========================================="
+        echo "🤖 AI CONTENT GENERATION COMPLETE"
+        echo "=========================================="
+        echo "📅 Generated: $(date)"
+        echo "📊 Articles: $(find content/ -name "*.md" | wc -l)"
+        echo "🌐 Site will update on next deployment"
+        echo "=========================================="
