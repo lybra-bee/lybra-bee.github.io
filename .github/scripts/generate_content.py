@@ -10,8 +10,8 @@ import time
 import urllib.parse
 import re
 
+# --------------------- Генерация темы --------------------- #
 def generate_ai_trend_topic():
-    """Генерирует актуальную тему на основе реальных трендов AI 2025"""
     current_trends_2025 = [
         "Multimodal AI интеграция текста изображений и аудио в единых моделях",
         "AI агенты автономные системы способные выполнять сложные задачи",
@@ -54,8 +54,8 @@ def generate_ai_trend_topic():
     ]
     return random.choice(topic_formats)
 
+# --------------------- Генерация статьи --------------------- #
 def generate_content():
-    """Генерирует контент статьи через AI API"""
     print("🚀 Запуск генерации контента...")
     KEEP_LAST_ARTICLES = 3
     clean_old_articles(KEEP_LAST_ARTICLES)
@@ -63,19 +63,14 @@ def generate_content():
     selected_topic = generate_ai_trend_topic()
     print(f"📝 Актуальная тема 2025: {selected_topic}")
     
-    # Генерируем изображение через все доступные генераторы
     image_filename = generate_article_image(selected_topic)
-    
-    # Генерируем текст статьи
     content, model_used = generate_article_content(selected_topic)
     
-    # Создаем файл статьи
     date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     slug = generate_slug(selected_topic)
     filename = f"content/posts/{date}-{slug}.md"
     
     frontmatter = generate_frontmatter(selected_topic, content, model_used, image_filename)
-    
     os.makedirs("content/posts", exist_ok=True)
     with open(filename, 'w', encoding='utf-8') as f:
         f.write(frontmatter)
@@ -83,10 +78,7 @@ def generate_content():
     print(f"✅ Статья создана: {filename}")
     return filename
 
-# --------------------- Генерация статьи --------------------- #
-
 def generate_article_content(topic):
-    """Генерация содержания статьи через доступные API"""
     openrouter_key = os.getenv('OPENROUTER_API_KEY')
     groq_key = os.getenv('GROQ_API_KEY')
     
@@ -146,10 +138,8 @@ def generate_article_content(topic):
 """
     return fallback_content, "fallback-generator"
 
-# --------------------- Генераторы изображений --------------------- #
-
+# --------------------- Генерация изображений --------------------- #
 def generate_article_image(topic):
-    """Генерирует изображение через несколько API, возвращает первый удачный результат"""
     print("🎨 Генерация изображения...")
     
     generators = [
@@ -157,24 +147,28 @@ def generate_article_image(topic):
         ("DeepAI", lambda: generate_image_deepai(topic, "98c841c4")),
         ("Craiyon", lambda: generate_image_craiyon(topic)),
         ("Lexica", lambda: generate_image_lexica(topic)),
-        ("Picsum", lambda: generate_image_picsum(topic))
+        ("Artbreeder", lambda: generate_image_artbreeder(topic)),
+        ("Picsum", lambda: generate_image_picsum(topic)),
+        ("Unsplash", lambda: generate_image_unsplash(topic))
     ]
     
     for name, func in generators:
+        print(f"🔄 Пробуем генератор: {name}")
         try:
             image_filename = func()
             if image_filename:
-                print(f"✅ Изображение создано через {name}")
+                print(f"✅ Успешно сгенерировано изображение через {name}")
                 return image_filename
+            else:
+                print(f"⚠️ {name} вернул None")
         except Exception as e:
-            print(f"⚠️ {name} не сработал: {str(e)[:150]}")
+            print(f"⚠️ Ошибка {name}: {str(e)[:150]}")
             continue
     
-    print("⚠️ Все генераторы не сработали, используем placeholder")
+    print("⚠️ Все генераторы не сработали, используем placeholder Picsum")
     return generate_image_picsum(topic)
 
-# --- Каждый генератор --- #
-
+# --- Реализации генераторов --- #
 def generate_image_stabilityai(topic, key):
     if not key:
         return None
@@ -182,12 +176,7 @@ def generate_image_stabilityai(topic, key):
     url = "https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image"
     payload = {
         "text_prompts": [{"text": prompt, "weight": 1.0}],
-        "cfg_scale": 7,
-        "height": 1024,
-        "width": 1024,
-        "samples": 1,
-        "steps": 30,
-        "style_preset": "digital-art"
+        "cfg_scale": 7, "height": 1024, "width": 1024, "samples": 1, "steps": 30, "style_preset": "digital-art"
     }
     headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
     r = requests.post(url, headers=headers, json=payload, timeout=60)
@@ -199,15 +188,14 @@ def generate_image_stabilityai(topic, key):
     return None
 
 def generate_image_deepai(topic, key):
-    prompt = f"{topic}, futuristic, digital art, professional style, no text"
+    prompt = f"{topic}, futuristic, digital art"
     url = "https://api.deepai.org/api/text2img"
     headers = {"Api-Key": key}
     r = requests.post(url, headers=headers, data={"text": prompt}, timeout=60)
     if r.status_code == 200:
         data = r.json()
         if "output_url" in data:
-            image_url = data["output_url"]
-            image_data = requests.get(image_url).content
+            image_data = requests.get(data["output_url"]).content
             return save_article_image(image_data, topic)
     return None
 
@@ -234,14 +222,24 @@ def generate_image_lexica(topic):
             return save_article_image(image_data, topic)
     return None
 
-def generate_image_picsum(topic):
-    """Placeholder генератор через Picsum"""
+def generate_image_artbreeder(topic):
+    # Artbreeder ограничен API, просто placeholder случайное изображение
     url = "https://picsum.photos/1024"
     image_data = requests.get(url).content
     return save_article_image(image_data, topic)
 
-# --------------------- Общие функции --------------------- #
+def generate_image_picsum(topic):
+    url = "https://picsum.photos/1024"
+    image_data = requests.get(url).content
+    return save_article_image(image_data, topic)
 
+def generate_image_unsplash(topic):
+    query = urllib.parse.quote(topic)
+    url = f"https://source.unsplash.com/1024x1024/?{query}"
+    image_data = requests.get(url).content
+    return save_article_image(image_data, topic)
+
+# --------------------- Вспомогательные функции --------------------- #
 def save_article_image(image_data, topic):
     try:
         os.makedirs("assets/images/posts", exist_ok=True)
@@ -303,8 +301,7 @@ def clean_old_articles(keep_last=3):
     except Exception:
         pass
 
-# --------------------- Генерация через API Groq/OpenRouter --------------------- #
-
+# --------------------- Groq / OpenRouter --------------------- #
 def generate_with_groq(api_key, model_name, topic):
     prompt = f"""Напиши техническую статью на тему: "{topic}". Markdown, 400-600 слов, русский язык, для разработчиков, 2025"""
     response = requests.post(
@@ -333,5 +330,6 @@ def generate_with_openrouter(api_key, model_name, topic):
             return data['choices'][0]['message']['content'].strip()
     raise Exception(f"HTTP {response.status_code}")
 
+# --------------------- Запуск --------------------- #
 if __name__ == "__main__":
     generate_content()
