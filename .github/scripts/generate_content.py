@@ -1,247 +1,136 @@
 #!/usr/bin/env python3
-import os
-import json
-import requests
-import random
+# -*- coding: utf-8 -*-
+
+import os, json, requests, base64, random
 from datetime import datetime, timezone
 import glob
-import base64
-import time
-import urllib.parse
 
-# -----------------------------
-# Генерация темы статьи
-# -----------------------------
-def generate_ai_trend_topic():
-    """Генерирует актуальную тему на основе реальных трендов AI 2025"""
-    
-    current_trends_2025 = [
-        "Multimodal AI - интеграция текста, изображений и аудио в единых моделях",
-        "AI агенты - автономные системы способные выполнять сложные задачи",
-        "Квантовые вычисления и машинное обучение - прорыв в производительности",
-        "Нейроморфные вычисления - энергоэффективные архитектуры нейросетей",
-        "Generative AI - создание контента, кода и дизайнов искусственным интеллектом",
-        "Edge AI - обработка данных на устройстве без облачной зависимости",
-        "AI для кибербезопасности - предиктивная защита от угроз",
-        "Этичный AI - ответственное развитие и использование искусственного интеллекта",
-        "AI в healthcare - диагностика, разработка лекарств и персонализированная медицина",
-        "Автономные системы - беспилотный транспорт и робототехника",
-        "AI оптимизация - сжатие моделей и ускорение inference",
-        "Доверенный AI - объяснимые и прозрачные алгоритмы",
-        "AI для климата - оптимизация энергопотребления и экологические решения",
-        "Персональные AI ассистенты - индивидуализированные цифровые помощники",
-        "AI в образовании - адаптивное обучение и персонализированные учебные планы"
-    ]
-    
-    application_domains = [
-        "в веб-разработке и cloud-native приложениях",
-        "в мобильных приложениях и IoT экосистемах",
-        "в облачных сервисах и распределенных системах",
-        "в анализе больших данных и бизнес-аналитике",
-        "в компьютерной безопасности и киберзащите",
-        "в медицинской диагностике и биотехнологиях",
-        "в финансовых технологиях и финтехе",
-        "в автономных транспортных системах",
-        "в smart city и умной инфраструктуре",
-        "в образовательных технологиях и EdTech"
-    ]
-    
-    trend = random.choice(current_trends_2025)
-    domain = random.choice(application_domains)
-    
-    topic_formats = [
-        f"{trend} {domain} в 2025 году",
-        f"Тенденции 2025: {trend} {domain}",
-        f"{trend} - революционные изменения {domain} в 2025",
-        f"Как {trend} трансформирует {domain} в 2025 году",
-        f"Инновации 2025: {trend} для {domain}",
-        f"{trend} - будущее {domain} в 2025 году",
-        f"Практическое применение {trend} в {domain} 2025"
-    ]
-    
-    return random.choice(topic_formats)
+# Конфиги
+NEWS_DIR = "content/news"
+IMG_DIR = "static/images/news"
 
-# -----------------------------
-# Генерация статьи
-# -----------------------------
-def generate_content():
-    """Генерирует контент статьи через AI API"""
-    print("🚀 Запуск генерации контента...")
-    
-    KEEP_LAST_ARTICLES = 3
-    clean_old_articles(KEEP_LAST_ARTICLES)
-    
-    selected_topic = generate_ai_trend_topic()
-    print(f"📝 Актуальная тема 2025: {selected_topic}")
-    
-    # Генерируем текст статьи
-    content, model_used = generate_article_content(selected_topic)
-    
-    # Генерируем изображение
-    image_path = generate_image_with_groq(selected_topic)
-    
-    # Создаем файл статьи
-    date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    slug = generate_slug(selected_topic)
-    filename = f"content/posts/{date}-{slug}.md"
-    
-    frontmatter = generate_frontmatter(selected_topic, content, model_used, image_path)
-    
-    os.makedirs("content/posts", exist_ok=True)
-    with open(filename, 'w', encoding='utf-8') as f:
-        f.write(frontmatter)
-    
-    print(f"✅ Статья создана: {filename}")
-    return filename
+OPENROUTER_KEY = os.getenv("OPENROUTER_API_KEY")
+GROQ_KEY = os.getenv("GROQ_API_KEY")
 
-# -----------------------------
-# Текст через Groq/OpenRouter
-# -----------------------------
-def generate_article_content(topic):
-    openrouter_key = os.getenv('OPENROUTER_API_KEY')
-    groq_key = os.getenv('GROQ_API_KEY')
-    
-    models_to_try = []
-    
-    if groq_key:
-        print("🔑 Groq API ключ найден")
-        groq_models = [
-            "llama-3.1-8b-instant",
-            "llama-3.2-1b-preview",
-            "llama-3.2-3b-preview",
-            "mixtral-8x7b-32768",
-            "gemma2-9b-it"
-        ]
-        for model_name in groq_models:
-            models_to_try.append((f"Groq-{model_name}", lambda m=model_name: generate_with_groq(groq_key, m, topic)))
-    
-    if openrouter_key:
-        print("🔑 OpenRouter API ключ найден")
-        openrouter_models = [
-            "anthropic/claude-3-haiku",
-            "google/gemini-pro", 
-            "mistralai/mistral-7b-instruct",
-            "meta-llama/llama-3-8b-instruct",
-        ]
-        for model_name in openrouter_models:
-            models_to_try.append((model_name, lambda m=model_name: generate_with_openrouter(openrouter_key, m, topic)))
-    
-    for model_name, generate_func in models_to_try:
-        try:
-            print(f"🔄 Пробуем: {model_name}")
-            result = generate_func()
-            if result and len(result.strip()) > 100:
-                print(f"✅ Успешно через {model_name}")
-                return result, model_name
-            time.sleep(1)
-        except Exception as e:
-            print(f"⚠️ Ошибка {model_name}: {str(e)[:100]}")
-            continue
-    
-    print("⚠️ Все API недоступны, fallback")
-    fallback_content = f"# {topic}\n\nИИ развивается очень быстро. Эта статья — заглушка."
-    return fallback_content, "fallback-generator"
+# Убедиться, что нужные директории есть
+os.makedirs(NEWS_DIR, exist_ok=True)
+os.makedirs(IMG_DIR, exist_ok=True)
 
-def generate_with_groq(api_key, model_name, topic):
-    prompt = f"""Напиши развернутую техническую статью на тему: "{topic}".
-Формат: Markdown, язык: русский, аудитория: разработчики, год: 2025."""
-    response = requests.post(
-        "https://api.groq.com/openai/v1/chat/completions",
-        headers={"Authorization": f"Bearer {api_key}"},
-        json={"model": model_name, "messages": [{"role": "user", "content": prompt}]},
-        timeout=30
+def get_topic():
+    prompt = (
+        "Сгенерируй короткий заголовок (до 8 слов) на русском про "
+        "самые свежие тренды в мире искусственного интеллекта и высоких технологий 2025."
     )
-    data = response.json()
-    return data["choices"][0]["message"]["content"]
+    for fn, key in [("Groq", GROQ_KEY), ("OpenRouter", OPENROUTER_KEY)]:
+        if key:
+            try:
+                url = "https://api.groq.com/openai/v1/chat/completions" if fn == "Groq" else "https://openrouter.ai/api/v1/chat/completions"
+                resp = requests.post(
+                    url,
+                    headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+                    json={"model": "llama-3.1-8b-instant" if fn=="Groq" else "anthropic/claude-3-haiku",
+                          "messages":[{"role":"user","content":prompt}],
+                          "max_tokens":50},
+                    timeout=30
+                )
+                resp.raise_for_status()
+                content = resp.json()["choices"][0]["message"]["content"].splitlines()[0].strip()
+                if content:
+                    print(f"Тема получена через {fn}: {content}")
+                    return content
+            except Exception as e:
+                print(f"Ошибка {fn} при генерации темы: {e}")
+    fallback = random.choice([
+        "ИИ-агенты для бизнеса 2025", "AI для медицины и биотеха", "Мультимодальные модели на грани революции"
+    ])
+    print(f"Fallback тема: {fallback}")
+    return fallback
 
-def generate_with_openrouter(api_key, model_name, topic):
-    prompt = f"""Напиши техническую статью на тему: "{topic}".
-Формат: Markdown, язык: русский, аудитория: разработчики, год: 2025."""
-    response = requests.post(
-        "https://openrouter.ai/api/v1/chat/completions",
-        headers={"Authorization": f"Bearer {api_key}"},
-        json={"model": model_name, "messages": [{"role": "user", "content": prompt}]},
-        timeout=30
+def get_article(topic):
+    prompt = (
+        f"Напиши техническую статью на русском (400–600 слов, Markdown) "
+        f"на тему: {topic}. Для разработчиков, с примерами, подзаголовками, акцент на 2025."
     )
-    data = response.json()
-    return data["choices"][0]["message"]["content"]
+    for fn, key in [("Groq", GROQ_KEY), ("OpenRouter", OPENROUTER_KEY)]:
+        if key:
+            try:
+                url = "https://api.groq.com/openai/v1/chat/completions" if fn == "Groq" else "https://openrouter.ai/api/v1/chat/completions"
+                resp = requests.post(
+                    url,
+                    headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+                    json={"model": "llama-3.1-70b-versatile" if fn=="Groq" else "mistralai/mistral-7b-instruct",
+                          "messages":[{"role":"user","content":prompt}],
+                          "max_tokens":1000},
+                    timeout=60
+                )
+                resp.raise_for_status()
+                content = resp.json()["choices"][0]["message"]["content"]
+                print(f"Статья получена через {fn}")
+                return content, fn
+            except Exception as e:
+                print(f"Ошибка {fn} при генерации статьи: {e}")
+    fallback = f"# {topic}\n\nСтатья о {topic}. Подробнее скоро…"
+    return fallback, "fallback"
 
-# -----------------------------
-# Изображения через Groq
-# -----------------------------
-def generate_image_with_groq(prompt):
-    """Генерация изображения через Groq"""
-    api_key = os.getenv("GROQ_API_KEY")
-    if not api_key:
-        print("⚠️ Нет GROQ_API_KEY, пропускаем генерацию изображений")
+def get_image(topic):
+    if not OPENROUTER_KEY:
+        return None
+    prompt = f"Иллюстрация для статьи: '{topic}', стиль: футуристичный, без текста."
+    try:
+        resp = requests.post(
+            "https://openrouter.ai/api/v1/images",
+            headers={"Authorization": f"Bearer {OPENROUTER_KEY}", "Content-Type": "application/json"},
+            json={"model":"stabilityai/stable-diffusion-xl-base-1.0","prompt":prompt,"response_format":"b64_json","size":"1024x1024"},
+            timeout=120
+        )
+        resp.raise_for_status()
+        b64 = resp.json()["data"][0]["b64_json"]
+        img_bytes = base64.b64decode(b64)
+        fname = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S") + ".png"
+        path = os.path.join(IMG_DIR, fname)
+        with open(path, "wb") as f: f.write(img_bytes)
+        print(f"Изображение сохранено: {path}")
+        return f"/images/news/{fname}"
+    except Exception as e:
+        print(f"Ошибка генерации изображения: {e}")
         return None
 
-    try:
-        response = requests.post(
-            "https://api.groq.com/openai/v1/images/generations",
-            headers={"Authorization": f"Bearer {api_key}"},
-            json={
-                "model": "flux-schnell",   # Groq поддерживает flux/sd3
-                "prompt": prompt,
-                "size": "1024x1024"
-            },
-            timeout=60
-        )
-        if response.status_code == 200:
-            data = response.json()
-            if "data" in data and len(data["data"]) > 0:
-                img_b64 = data["data"][0]["b64_json"]
-                img_bytes = base64.b64decode(img_b64)
-                os.makedirs("static/images/posts", exist_ok=True)
-                filename = f"static/images/posts/{datetime.now().strftime('%Y%m%d-%H%M%S')}.png"
-                with open(filename, "wb") as f:
-                    f.write(img_bytes)
-                print(f"🖼️ Изображение сохранено: {filename}")
-                return "/" + filename  # путь для Hugo
-        print(f"⚠️ Ошибка генерации изображения {response.status_code}: {response.text[:200]}")
-    except Exception as e:
-        print(f"⚠️ Ошибка Groq Image API: {e}")
-    return None
+def slugify(text):
+    slug = "".join(c if c.isalnum() or c==" " else "-" for c in text.lower())
+    return "-".join(slug.split())[:70]
 
-# -----------------------------
-# Вспомогательные функции
-# -----------------------------
-def generate_slug(text):
-    text = text.lower()
-    text = ''.join(c for c in text if c.isalnum() or c in ' -')
-    text = text.replace(' ', '-')
-    text = text.replace('--', '-')
-    return text[:100]
-
-def generate_frontmatter(title, content, model_used, image_path):
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    image_block = f'\nimage: "{image_path}"' if image_path else ""
-    frontmatter = f"""---
-title: "{title}"
-date: {now}
+def write_news(topic, article, model, image_url):
+    date = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    slug = slugify(topic)
+    md_path = os.path.join(NEWS_DIR, f"{slug}.md")
+    front = f"""---
+title: "{topic}"
+date: {date}
 draft: false
-tags: ["AI", "машинное обучение", "технологии", "2025"]
-categories: ["Искусственный интеллект"]
-summary: "Автоматически сгенерированная статья об искусственном интеллекте"
-model: "{model_used}"{image_block}
----
-{content}
+model: "{model}"
 """
-    return frontmatter
+    if image_url:
+        front += f'image: "{image_url}"\n'
+    front += "---\n\n"
+    body = article
+    with open(md_path, "w", encoding="utf-8") as f:
+        f.write(front + body)
+    print(f"Статья сохранена: {md_path}")
 
-def clean_old_articles(keep_last=3):
-    print(f"🧹 Очистка старых статей, оставляем {keep_last} последних...")
-    articles = glob.glob("content/posts/*.md")
-    if not articles:
-        return
-    articles.sort(key=os.path.getmtime, reverse=True)
-    for article_path in articles[keep_last:]:
-        try:
-            os.remove(article_path)
-            print(f"❌ Удалено: {article_path}")
-        except Exception as e:
-            print(f"⚠️ Ошибка удаления {article_path}: {e}")
+def clean_old():
+    files = sorted(glob.glob(f"{NEWS_DIR}/*.md"), key=os.path.getmtime, reverse=True)
+    for p in files[5:]:
+        os.remove(p)
+        print(f"Удалена старая статья: {p}")
 
-# -----------------------------
+def main():
+    print("=== START GENERATION ===")
+    topic = get_topic()
+    article, model = get_article(topic)
+    image_url = get_image(topic)
+    write_news(topic, article, model, image_url)
+    clean_old()
+    print("=== DONE ===")
+
 if __name__ == "__main__":
-    generate_content()
+    main()
