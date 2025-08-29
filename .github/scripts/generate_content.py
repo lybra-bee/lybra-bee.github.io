@@ -9,11 +9,7 @@ import base64
 import time
 import re
 
-# --- Настройки ключей ---
-HF_TOKEN = "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"
-DEEP_AI_KEY = "98c841c4"
-
-# --- Генерация темы статьи ---
+# ======== ТЕМЫ И ДОМЕНЫ ========
 def generate_ai_trend_topic():
     current_trends_2025 = [
         "Multimodal AI интеграция текста изображений и аудио в единых моделях",
@@ -32,6 +28,7 @@ def generate_ai_trend_topic():
         "Персональные AI ассистенты индивидуализированные цифровые помощники",
         "AI в образовании адаптивное обучение и персонализированные учебные планы"
     ]
+    
     application_domains = [
         "в веб разработке и cloud native приложениях",
         "в мобильных приложениях и IoT экосистемах",
@@ -44,8 +41,10 @@ def generate_ai_trend_topic():
         "в smart city и умной инфраструктуре",
         "в образовательных технологиях и EdTech"
     ]
+    
     trend = random.choice(current_trends_2025)
     domain = random.choice(application_domains)
+    
     topic_formats = [
         f"{trend} {domain} в 2025 году",
         f"Тенденции 2025 {trend} {domain}",
@@ -55,9 +54,10 @@ def generate_ai_trend_topic():
         f"{trend} будущее {domain} в 2025 году",
         f"Практическое применение {trend} в {domain} 2025"
     ]
+    
     return random.choice(topic_formats)
 
-# --- Генерация slug ---
+# ======== СЛУЧАЙНЫЙ SLUG ========
 def generate_slug(text):
     text = text.lower()
     text = text.replace(' ', '-')
@@ -67,10 +67,10 @@ def generate_slug(text):
     text = text.strip('-')
     return text[:60]
 
-# --- Генерация frontmatter ---
+# ======== FRONTMATTER ========
 def generate_frontmatter(title, content, model_used, image_url):
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    escaped_title = title.replace(':', ' -').replace('"', '').replace("'", "").replace('\\', '')
+    escaped_title = title.replace(':', ' -').replace('"', '').replace("'", "").replace('\\','')
     frontmatter_lines = [
         "---",
         f'title: "{escaped_title}"',
@@ -86,7 +86,7 @@ def generate_frontmatter(title, content, model_used, image_url):
     frontmatter_lines.append(content)
     return "\n".join(frontmatter_lines)
 
-# --- Очистка старых статей ---
+# ======== УДАЛЕНИЕ СТАРЫХ СТАТЕЙ ========
 def clean_old_articles(keep_last=3):
     print(f"🧹 Очистка старых статей, оставляем {keep_last} последних...")
     try:
@@ -97,122 +97,106 @@ def clean_old_articles(keep_last=3):
         articles.sort(key=os.path.getmtime, reverse=True)
         articles_to_keep = articles[:keep_last]
         articles_to_delete = articles[keep_last:]
+        print(f"📊 Всего статей: {len(articles)}")
+        print(f"💾 Сохраняем: {len(articles_to_keep)}")
+        print(f"🗑️ Удаляем: {len(articles_to_delete)}")
         for article_path in articles_to_delete:
             try:
                 os.remove(article_path)
+                print(f"❌ Удалено: {os.path.basename(article_path)}")
                 slug = os.path.basename(article_path).replace('.md', '')
                 image_path = f"assets/images/posts/{slug}.png"
                 if os.path.exists(image_path):
                     os.remove(image_path)
-            except:
-                pass
-    except:
-        pass
-
-# --- Генерация изображения через Hugging Face ---
-def generate_image_huggingface(topic, hf_token):
-    print("🔄 Пробуем генератор: HuggingFace")
-    url = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0"
-    headers = {"Authorization": f"Bearer {hf_token}", "Content-Type": "application/json"}
-    prompts = [
-        f"Futuristic digital illustration for article about {topic}. Clean, professional, neon colors, AI, data visualization, technology theme, no text",
-        f"Cyberpunk concept art for {topic}. Neural networks, glowing holographic interfaces, futuristic city, cinematic lighting",
-        f"Abstract high-tech illustration for {topic}. Geometric shapes, digital particles, circuits, futuristic style",
-        f"Modern AI concept for {topic}. Digital brain, quantum computing elements, sci-fi environment, vibrant colors",
-        f"Creative tech visualization for {topic}. Minimalist, professional, glowing effects, digital art style"
-    ]
-    payload = {"inputs": random.choice(prompts), "options":{"wait_for_model":True}}
-    try:
-        response = requests.post(url, headers=headers, json=payload, timeout=120)
-        if response.status_code == 200:
-            data = response.json()
-            if isinstance(data, dict) and "images" in data:
-                image_bytes = base64.b64decode(data["images"][0])
-                os.makedirs("assets/images/posts", exist_ok=True)
-                slug = generate_slug(topic)
-                filename = f"posts/{slug}.png"
-                full_path = f"assets/images/{filename}"
-                with open(full_path,"wb") as f: f.write(image_bytes)
-                print(f"✅ Hugging Face: изображение создано: {filename}")
-                return f"/images/{filename}"
-        print(f"⚠️ Hugging Face не сработал: {response.status_code}")
+                    print(f"❌ Удалено изображение: {slug}.png")
+            except Exception as e:
+                print(f"⚠️ Ошибка удаления {article_path}: {e}")
     except Exception as e:
-        print(f"❌ Hugging Face ошибка: {e}")
-    return None
+        print(f"⚠️ Ошибка при очистке статей: {e}")
 
-# --- Другие генераторы ---
+# ======== ГЕНЕРАЦИЯ ИЗОБРАЖЕНИЙ ========
+def generate_image_huggingface(topic):
+    HF_TOKEN = "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"
+    print("🔄 Пробуем генератор: HuggingFace")
+    try:
+        url = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0"
+        headers = {"Authorization": f"Bearer {HF_TOKEN}"}
+        payload = {"inputs": topic, "options": {"wait_for_model": True}}
+        r = requests.post(url, headers=headers, json=payload, timeout=60)
+        if r.status_code == 200:
+            data = r.content
+            filename = save_article_image(data, topic)
+            return filename
+        else:
+            print(f"⚠️ Hugging Face не сработал: {r.status_code}")
+            return None
+    except Exception as e:
+        print(f"⚠️ Hugging Face ошибка: {e}")
+        return None
+
 def generate_image_deepai(topic):
+    DEEPAI_KEY = "98c841c4"
     print("🔄 Пробуем генератор: DeepAI")
     try:
-        response = requests.post(
-            "https://api.deepai.org/api/text2img",
-            data={"text": topic},
-            headers={"Api-Key": DEEP_AI_KEY},
-            timeout=60
-        )
-        if response.status_code == 200:
-            data = response.json()
-            if "output_url" in data:
-                print("✅ DeepAI успешно")
-                return data["output_url"]
-    except:
-        pass
-    print("⚠️ DeepAI вернул None")
-    return None
+        r = requests.post("https://api.deepai.org/api/text2img",
+                          data={'text': topic},
+                          headers={'api-key': DEEPAI_KEY}, timeout=30)
+        if r.status_code == 200:
+            data = r.json()
+            if 'output_url' in data:
+                return data['output_url']
+        return None
+    except Exception as e:
+        print(f"⚠️ DeepAI вернул None: {e}")
+        return None
 
 def generate_image_craiyon(topic):
     print("🔄 Пробуем генератор: Craiyon")
-    try:
-        response = requests.post(
-            "https://backend.craiyon.com/generate",
-            json={"prompt": topic},
-            timeout=60
-        )
-        if response.status_code == 200:
-            data = response.json()
-            if "images" in data and data["images"]:
-                print("✅ Craiyon успешно")
-                return data["images"][0]
-    except:
-        pass
-    print("⚠️ Craiyon вернул None")
-    return None
+    return None  # Простейший заглушка
 
 def generate_image_lexica(topic):
     print("🔄 Пробуем генератор: Lexica")
-    try:
-        # Заглушка, так как Lexica публичного API нет
-        return None
-    except:
-        return None
+    return None
 
 def generate_image_artbreeder(topic):
     print("🔄 Пробуем генератор: Artbreeder")
+    return f"/images/posts/{generate_slug(topic)}.png"  # Заглушка
+
+def save_article_image(image_data, topic):
     try:
-        # Заглушка, можно подключить через web scraping или их API если есть
-        return f"https://placehold.co/1024x1024?text=AI+{topic}"
-    except:
+        os.makedirs("assets/images/posts", exist_ok=True)
+        slug = generate_slug(topic)
+        filename = f"posts/{slug}.png"
+        full_path = f"assets/images/{filename}"
+        if isinstance(image_data, bytes):
+            with open(full_path, 'wb') as f:
+                f.write(image_data)
+        print(f"✅ Изображение создано через генератор и сохранено: {filename}")
+        return f"/images/{filename}"
+    except Exception as e:
+        print(f"❌ Ошибка сохранения изображения: {e}")
         return None
 
-# --- Основная функция генерации изображения ---
 def generate_article_image(topic):
     generators = [
-        lambda: generate_image_huggingface(topic, HF_TOKEN),
-        lambda: generate_image_deepai(topic),
-        lambda: generate_image_craiyon(topic),
-        lambda: generate_image_lexica(topic),
-        lambda: generate_image_artbreeder(topic)
+        generate_image_huggingface,
+        generate_image_deepai,
+        generate_image_craiyon,
+        generate_image_lexica,
+        generate_image_artbreeder
     ]
     for gen in generators:
-        img = gen()
-        if img:
-            return img
-    print("⚠️ Не удалось сгенерировать изображение ни одним генератором")
+        try:
+            image_filename = gen(topic)
+            if image_filename:
+                return image_filename
+        except Exception as e:
+            print(f"⚠️ {gen.__name__} вернул None: {e}")
+    print("⚠️ Генерация изображения не удалась, продолжаем без изображения")
     return None
 
-# --- Генерация статьи через OpenRouter/Groq ---
+# ======== ГЕНЕРАЦИЯ СТАТЬИ ========
 def generate_article_content(topic):
-    # Здесь оставляем как было: OpenRouter в приоритете, Groq запасной
     openrouter_key = os.getenv('OPENROUTER_API_KEY')
     groq_key = os.getenv('GROQ_API_KEY')
     models_to_try = []
@@ -220,9 +204,9 @@ def generate_article_content(topic):
     if openrouter_key:
         openrouter_models = [
             "anthropic/claude-3-haiku",
-            "google/gemini-pro",
+            "google/gemini-pro", 
             "mistralai/mistral-7b-instruct",
-            "meta-llama/llama-3-8b-instruct"
+            "meta-llama/llama-3-8b-instruct",
         ]
         for model_name in openrouter_models:
             models_to_try.append((model_name, lambda m=model_name: generate_with_openrouter(openrouter_key, m, topic)))
@@ -242,14 +226,19 @@ def generate_article_content(topic):
         try:
             print(f"🔄 Пробуем: {model_name}")
             result = generate_func()
-            if result and len(result.strip()) > 100:
+            if isinstance(result, tuple):
+                content_str = result[0]
+            else:
+                content_str = result
+            if content_str and len(content_str.strip()) > 100:
                 print(f"✅ Успешно через {model_name}")
-                return result, model_name
+                return content_str, model_name
             time.sleep(1)
         except Exception as e:
             print(f"⚠️ Ошибка {model_name}: {str(e)[:100]}")
             continue
 
+    print("⚠️ Все API недоступны, создаем заглушку")
     fallback_content = f"""# {topic}
 
 ## Введение
@@ -268,35 +257,53 @@ def generate_article_content(topic):
 """
     return fallback_content, "fallback-generator"
 
-# Заглушки для генерации через OpenRouter/Groq
-def generate_with_openrouter(api_key, model_name, topic): return f"Статья по теме {topic}", model_name
-def generate_with_groq(api_key, model_name, topic): return f"Статья по теме {topic}", model_name
+def generate_with_openrouter(api_key, model_name, topic):
+    prompt = f"""Напиши развернутую техническую статью на тему: "{topic}"."""
+    response = requests.post(
+        "https://openrouter.ai/api/v1/chat/completions",
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type":"application/json"},
+        json={"model": model_name, "messages":[{"role":"user","content":prompt}], "max_tokens":1500, "temperature":0.7},
+        timeout=30
+    )
+    data = response.json()
+    if "choices" in data and len(data["choices"]) > 0:
+        return data["choices"][0]["message"]["content"]
+    return None
 
-# --- Основная функция ---
+def generate_with_groq(api_key, model_name, topic):
+    prompt = f"Напиши статью: {topic}"
+    response = requests.post(
+        f"https://api.groq.ai/v1/generate?model={model_name}",
+        headers={"Authorization": f"Bearer {api_key}"},
+        json={"prompt": prompt, "max_output_tokens":1500},
+        timeout=30
+    )
+    data = response.json()
+    if "output_text" in data:
+        return data["output_text"]
+    return None
+
+# ======== MAIN ========
 def generate_content():
     print("🚀 Запуск генерации контента...")
-    KEEP_LAST_ARTICLES = 3
-    clean_old_articles(KEEP_LAST_ARTICLES)
-    selected_topic = generate_ai_trend_topic()
-    print(f"📝 Актуальная тема 2025: {selected_topic}")
+    clean_old_articles(keep_last=3)
 
-    # Генерация изображения
-    image_filename = generate_article_image(selected_topic)
+    topic = generate_ai_trend_topic()
+    print(f"📝 Актуальная тема 2025: {topic}")
 
-    # Генерация статьи
-    content, model_used = generate_article_content(selected_topic)
+    image_filename = generate_article_image(topic)
 
-    # Создание файла
-    date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    slug = generate_slug(selected_topic)
-    filename = f"content/posts/{date}-{slug}.md"
-    frontmatter = generate_frontmatter(selected_topic, content, model_used, image_filename)
+    content, model_used = generate_article_content(topic)
+
+    slug = generate_slug(topic)
+    filename = f"content/posts/{slug}.md"
+    frontmatter = generate_frontmatter(topic, content, model_used, image_filename)
+
     os.makedirs("content/posts", exist_ok=True)
-    with open(filename, 'w', encoding='utf-8') as f:
+    with open(filename, "w", encoding="utf-8") as f:
         f.write(frontmatter)
 
     print(f"✅ Статья создана: {filename}")
-    return filename
 
 if __name__ == "__main__":
     generate_content()
