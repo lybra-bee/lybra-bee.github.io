@@ -1,8 +1,8 @@
 baseURL = 'https://lybra-bee.github.io/'
 languageCode = 'ru-ru'
-defaultContentLanguage = 'ru'  # Добавьте эту строку
+defaultContentLanguage = 'ru'
 title = 'AI Blog - Генерация контента ИИ'
-theme = ''
+# theme = ''  # Убрали тему, так как используем кастомные макеты
 
 # Параметры сайта
 [params]
@@ -22,7 +22,8 @@ theme = ''
     languageName = 'Русский'
     weight = 1
     title = 'AI Blog - Генерация контента ИИ'
-    description = 'Автоматически генерируемый блог об искусственном интеллекте и технологиях 2025 года'
+    [languages.ru.params]
+      description = 'Автоматически генерируемый блог об искусственном интеллекте и технологиях 2025 года'
 
 # Настройки меню
 [menu]
