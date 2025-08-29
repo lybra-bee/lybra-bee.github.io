@@ -8,10 +8,9 @@ import glob
 import base64
 import time
 import urllib.parse
+import subprocess
 
 def generate_ai_trend_topic():
-    """Генерирует актуальную тему на основе реальных трендов AI 2025"""
-    
     current_trends_2025 = [
         "Multimodal AI - интеграция текста, изображений и аудио в единых моделях",
         "AI агенты - автономные системы способные выполнять сложные задачи",
@@ -59,7 +58,6 @@ def generate_ai_trend_topic():
     return random.choice(topic_formats)
 
 def generate_content():
-    """Генерирует контент статьи через AI API"""
     print("🚀 Запуск генерации контента...")
     
     KEEP_LAST_ARTICLES = 3
@@ -68,13 +66,13 @@ def generate_content():
     selected_topic = generate_ai_trend_topic()
     print(f"📝 Актуальная тема 2025: {selected_topic}")
     
-    # Генерируем изображение
+    # Генерация изображения
     image_filename = generate_article_image(selected_topic)
     
-    # Генерируем текст статьи
+    # Генерация текста
     content, model_used = generate_article_content(selected_topic)
     
-    # Создаем файл статьи
+    # Создаём Markdown
     date = datetime.now().strftime("%Y-%m-%d")
     slug = generate_slug(selected_topic)
     filename = f"content/posts/{date}-{slug}.md"
@@ -89,21 +87,18 @@ def generate_content():
     return filename
 
 def generate_article_content(topic):
-    """Генерация содержания статьи через доступные API"""
     openrouter_key = os.getenv('OPENROUTER_API_KEY')
     groq_key = os.getenv('GROQ_API_KEY')
     
     models_to_try = []
     
     if groq_key:
-        print("🔑 Groq API ключ найден")
-        groq_models = ["llama-3.1-8b-instant", "llama-3.1-70b-versatile"]
+        groq_models = ["llama-3.1-8b-instant"]
         for model_name in groq_models:
             models_to_try.append((f"Groq-{model_name}", lambda m=model_name: generate_with_groq(groq_key, m, topic)))
     
     if openrouter_key:
-        print("🔑 OpenRouter API ключ найден")
-        openrouter_models = ["anthropic/claude-3-haiku", "google/gemini-pro"]
+        openrouter_models = ["anthropic/claude-3-haiku"]
         for model_name in openrouter_models:
             models_to_try.append((model_name, lambda m=model_name: generate_with_openrouter(openrouter_key, m, topic)))
     
@@ -119,30 +114,17 @@ def generate_article_content(topic):
             print(f"⚠️ Ошибка {model_name}: {str(e)[:100]}")
             continue
     
-    fallback_content = f"""# {topic}
-
-## Введение
-{topic} - это важное направление в развитии искусственного интеллекта на 2025 год.
-
-## Основные аспекты
-- **Технологические инновации**: {topic} включает передовые разработки в области AI
-- **Практическое применение**: Технология находит применение в различных отраслях
-- **Перспективы развития**: Ожидается значительный рост в ближайшие годы
-"""
+    fallback_content = f"# {topic}\n\nАвтоматическая статья о {topic}."
     return fallback_content, "fallback-generator"
 
 def generate_with_groq(api_key, model_name, topic):
-    prompt = f"""Напиши развернутую техническую статью на тему: "{topic}"."""
+    prompt = f"Напиши техническую статью на тему: {topic}"
     response = requests.post(
         "https://api.groq.com/openai/v1/chat/completions",
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {api_key}"
-        },
-        json={"model": model_name, "messages": [{"role": "user", "content": prompt}], "max_tokens": 1500},
+        headers={"Content-Type": "application/json","Authorization": f"Bearer {api_key}"},
+        json={"model": model_name,"messages":[{"role":"user","content":prompt}],"max_tokens":1500,"temperature":0.7},
         timeout=30
     )
-    
     if response.status_code == 200:
         data = response.json()
         if data.get('choices'):
@@ -150,14 +132,13 @@ def generate_with_groq(api_key, model_name, topic):
     raise Exception(f"HTTP {response.status_code}: {response.text[:200]}")
 
 def generate_with_openrouter(api_key, model_name, topic):
-    prompt = f"""Напиши развернутую техническую статью на тему: "{topic}"."""
+    prompt = f"Напиши техническую статью на тему: {topic}"
     response = requests.post(
         "https://openrouter.ai/api/v1/chat/completions",
-        headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
-        json={"model": model_name, "messages": [{"role": "user", "content": prompt}], "max_tokens": 1500},
+        headers={"Content-Type": "application/json","Authorization": f"Bearer {api_key}"},
+        json={"model": model_name,"messages":[{"role":"user","content":prompt}],"max_tokens":1500,"temperature":0.7},
         timeout=30
     )
-    
     if response.status_code == 200:
         data = response.json()
         if data.get('choices'):
@@ -165,118 +146,93 @@ def generate_with_openrouter(api_key, model_name, topic):
     raise Exception(f"HTTP {response.status_code}")
 
 def generate_article_image(topic):
-    """Генерируем изображение через Groq или Stability AI"""
     print("🎨 Генерация изображения...")
-    image_prompt = generate_image_prompt_with_groq(topic)
     groq_key = os.getenv('GROQ_API_KEY')
     stability_key = os.getenv('STABILITYAI_KEY')
     
+    # Сначала Groq
     if groq_key:
         try:
+            prompt = f"Create tech image prompt for article: {topic}"
             response = requests.post(
-                "https://api.groq.com/openai/v1/images/generations",
-                headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
-                json={"model": "llama-3.1-8b-instant", "prompt": image_prompt, "size": "1024x512"}
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Content-Type": "application/json","Authorization": f"Bearer {groq_key}"},
+                json={"model":"llama-3.1-8b-instant","messages":[{"role":"user","content":prompt}],"max_tokens":50},
+                timeout=15
             )
-            if response.status_code == 200:
-                data = response.json()
-                if data.get("data") and len(data["data"]) > 0:
-                    image_data = base64.b64decode(data["data"][0]["b64_json"])
-                    return save_article_image(image_data, topic)
+            if response.status_code==200:
+                data=response.json()
+                img_prompt=data['choices'][0]['message']['content'].strip()
+                filename=try_stability_ai(img_prompt, topic)
+                if filename:
+                    return filename
         except Exception as e:
-            print(f"⚠️ Ошибка Groq Image: {e}")
+            print(f"⚠️ Groq image prompt error: {e}")
     
+    # Stability AI fallback
     if stability_key:
-        try:
-            url = "https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image"
-            headers = {"Authorization": f"Bearer {stability_key}", "Content-Type": "application/json"}
-            payload = {"text_prompts": [{"text": image_prompt}], "width": 1024, "height": 512, "samples": 1}
-            response = requests.post(url, headers=headers, json=payload, timeout=30)
-            if response.status_code == 200:
-                data = response.json()
-                if 'artifacts' in data and data['artifacts']:
-                    image_data = base64.b64decode(data['artifacts'][0]['base64'])
-                    return save_article_image(image_data, topic)
-        except Exception as e:
-            print(f"⚠️ Ошибка Stability AI Image: {e}")
+        filename = try_stability_ai(f"Tech futuristic image: {topic}", topic)
+        if filename:
+            return filename
     
-    print("ℹ️ Не удалось сгенерировать изображение, пропускаем")
+    print("ℹ️ Не удалось создать изображение, пропускаем")
     return None
 
-def generate_image_prompt_with_groq(topic):
-    return f"Modern technology illustration for article about {topic}. Futuristic, professional, AI theme."
+def try_stability_ai(prompt, topic):
+    stability_key = os.getenv('STABILITYAI_KEY')
+    if not stability_key:
+        return None
+    url="https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image"
+    headers={"Authorization": f"Bearer {stability_key}","Content-Type":"application/json"}
+    payload={"text_prompts":[{"text":prompt}],"cfg_scale":7,"height":512,"width":512,"samples":1,"steps":20}
+    response = requests.post(url, headers=headers, json=payload, timeout=30)
+    if response.status_code==200:
+        data=response.json()
+        if 'artifacts' in data and data['artifacts']:
+            img_data=base64.b64decode(data['artifacts'][0]['base64'])
+            return save_article_image(img_data, topic)
+    return None
 
 def save_article_image(image_data, topic):
     try:
-        os.makedirs("assets/images/posts", exist_ok=True)
+        os.makedirs("static/images/posts", exist_ok=True)
         slug = generate_slug(topic)
-        filename = f"posts/{slug}.jpg"
-        full_path = f"assets/images/{filename}"
-        with open(full_path, 'wb') as f:
+        filename=f"posts/{slug}.jpg"
+        full_path=f"static/images/{filename}"
+        with open(full_path,'wb') as f:
             f.write(image_data)
-        print(f"💾 Изображение сохранено: {filename}")
         return f"/images/{filename}"
-    except Exception as e:
-        print(f"❌ Ошибка сохранения изображения: {e}")
+    except:
         return None
 
 def clean_old_articles(keep_last=3):
-    articles = glob.glob("content/posts/*.md")
+    articles=glob.glob("content/posts/*.md")
     articles.sort(key=os.path.getmtime, reverse=True)
-    for article_path in articles[keep_last:]:
-        try:
-            os.remove(article_path)
-            slug = os.path.basename(article_path).replace('.md','')
-            img_path = f"assets/images/posts/{slug}.jpg"
-            if os.path.exists(img_path):
-                os.remove(img_path)
-        except: pass
+    for article in articles[keep_last:]:
+        os.remove(article)
+        slug=os.path.basename(article).replace(".md","")
+        img_path=f"static/images/posts/{slug}.jpg"
+        if os.path.exists(img_path):
+            os.remove(img_path)
 
 def generate_slug(topic):
-    slug = topic.lower().replace(" ", "-")
-    return "".join(c for c in slug if c.isalnum() or c=="-")[:50]
+    slug = topic.lower()
+    for ch in [' ',':','(',')','/','\\','.',',','--']:
+        slug=slug.replace(ch,'-')
+    slug=''.join(c for c in slug if c.isalnum() or c=='-')
+    while '--' in slug:
+        slug=slug.replace('--','-')
+    return slug[:50]
 
 def generate_frontmatter(topic, content, model_used, image_filename=None):
-    current_time = datetime.now()
-    tags = ["искусственный-интеллект","технологии","инновации","2025","ai"]
-    image_section = f"image: {image_filename}\n" if image_filename else ""
-    return f"""---
-title: "{topic}"
-date: {current_time.strftime("%Y-%m-%dT%H:%M:%SZ")}
-draft: false
-description: "Автоматически сгенерированная статья о {topic}"
-{image_section}tags: {json.dumps(tags, ensure_ascii=False)}
-categories: ["Технологии"]
----
+    frontmatter=f"---\ntitle: \"{topic}\"\ndate: {datetime.now().strftime('%Y-%m-%d')}\nmodel: {model_used}\n"
+    if image_filename:
+        frontmatter+=f"image: \"{image_filename}\"\n"
+    frontmatter+="---\n\n"
+    frontmatter+=content
+    return frontmatter
 
-# {topic}
-
-{f'![]({image_filename})' if image_filename else ''}
-
-{content}
-
----
-
-### 🔧 Технические детали
-
-- **Модель AI:** {model_used}
-- **Дата генерации:** {current_time.strftime("%d.%m.%Y %H:%M UTC")}
-- **Тема:** {topic}
-- **Год актуальности:** 2025
-- **Статус:** Автоматическая генерация
-
-> *Сгенерировано через GitHub Actions*
-"""
-
-if __name__ == "__main__":
-    try:
-        print("="*50)
-        print("🤖 AI CONTENT GENERATOR")
-        print("="*50)
-        generate_content()
-        print("="*50)
-        print("✅ Генерация завершена успешно!")
-        print("="*50)
-    except Exception as e:
-        print(f"❌ Критическая ошибка: {e}")
-        exit(1)
+if __name__=="__main__":
+    filename = generate_content()
+    print("📦 Генерация завершена, запускаем Hugo...")
+    subprocess.run(["hugo", "--minify"])
