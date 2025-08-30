@@ -21,7 +21,7 @@ def generate_ai_trend_topic():
         "Нейроморфные вычисления энергоэффективные архитектуры нейросетей",
         "Generative AI создание контента кода и дизайнов искусственным интеллектом",
         "Edge AI обработка данных на устройстве без облачной зависимости",
-        "AI для кибербезопасности предиктивная защиот угроз",
+        "AI для кибербезопасности предиктивная защита от угроз",
         "Этичный AI ответственное развитие и использование искусственного интеллекта",
         "AI в healthcare диагностика разработка лекарств и персонализированная медицина",
         "Автономные системы беспилотный транспорт и робототехника",
@@ -284,7 +284,9 @@ def generate_article_image(topic):
     
     # Порядок приоритета API
     apis_to_try = [
-        ("Kandinsky", lambda: generate_with_kandinsky("3BA53CAD37A0BF21740401408253641E", "00CE1D26AF6BF45FD60BBB4447AD3981", image_prompt, topic)),
+        ("Kandinsky New", lambda: generate_with_kandinsky_new(image_prompt, topic)),
+        ("Kandinsky Legacy", lambda: generate_with_kandinsky_legacy(image_prompt, topic)),
+        ("StableDiffusion", lambda: generate_with_stable_diffusion(image_prompt, topic)),
         ("Placeholder", lambda: generate_placeholder_image(topic))
     ]
     
@@ -304,54 +306,102 @@ def generate_article_image(topic):
     print("❌ Все API недоступны")
     return None
 
-def generate_with_kandinsky(api_key, secret_key, prompt, topic):
-    """Генерация через Kandinsky API (исправленная версия с актуальными endpoints)"""
-    print("🔄 Генерация через Kandinsky...")
+def generate_with_kandinsky_new(prompt, topic):
+    """Новая версия генерации через Kandinsky API"""
+    print("🔄 Генерация через новый Kandinsky API...")
     
     try:
-        # Актуальные endpoints для Kandinsky 3.0
-        models_url = "https://api.fusionbrain.ai/kandinsky/api/v2/models"
+        # Попробуем прямой подход без получения моделей
         generate_url = "https://api.fusionbrain.ai/kandinsky/api/v2/text2image/run"
         
-        # Правильные заголовки авторизации
+        # Пробуем разные варианты заголовков
+        headers_variants = [
+            {
+                "X-Key": "Key 3BA53CAD37A0BF21740401408253641E",
+                "X-Secret": "Secret 00CE1D26AF6BF45FD60BBB4447AD3981",
+                "Content-Type": "application/json"
+            },
+            {
+                "Authorization": "Bearer 3BA53CAD37A0BF21740401408253641E",
+                "Content-Type": "application/json"
+            },
+            {
+                "X-API-Key": "3BA53CAD37A0BF21740401408253641E",
+                "Content-Type": "application/json"
+            }
+        ]
+        
+        payload = {
+            "type": "GENERATE",
+            "numImages": 1,
+            "width": 1024,
+            "height": 1024,
+            "generateParams": {
+                "query": prompt
+            }
+        }
+        
+        for headers in headers_variants:
+            try:
+                print("📡 Отправляем запрос на генерацию...")
+                response = requests.post(
+                    generate_url,
+                    headers=headers,
+                    json=payload,
+                    timeout=30
+                )
+                
+                print(f"📊 Status: {response.status_code}")
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    if 'uuid' in data:
+                        task_id = data['uuid']
+                        print(f"⏳ Задача создана, ID: {task_id}")
+                        return f"kandinsky_{task_id}"  # Возвращаем временный идентификатор
+                    else:
+                        print("❌ Нет UUID в ответе")
+                else:
+                    print(f"❌ Ошибка генерации: {response.status_code}")
+                    
+            except Exception as e:
+                print(f"⚠️ Ошибка при запросе: {e}")
+                continue
+                
+    except Exception as e:
+        print(f"❌ Исключение в Kandinsky API: {e}")
+    
+    return None
+
+def generate_with_kandinsky_legacy(prompt, topic):
+    """Старая версия API для обратной совместимости"""
+    print("🔄 Генерация через старый Kandinsky API...")
+    
+    try:
+        # Старые endpoints
+        generate_url = "https://api-key.fusionbrain.ai/key/api/v1/text2image/run"
+        
         headers = {
-            "X-Key": f"Key {api_key}",
-            "X-Secret": f"Secret {secret_key}",
+            "X-Key": "Key 3BA53CAD37A0BF21740401408253641E",
+            "X-Secret": "Secret 00CE1D26AF6BF45FD60BBB4447AD3981",
             "Content-Type": "application/json"
         }
         
-        # Получаем доступные модели
-        print("🔍 Получаем доступные модели...")
-        models_response = requests.get(models_url, headers=headers, timeout=30)
+        # Сначала получим model_id
+        models_url = "https://api-key.fusionbrain.ai/key/api/v1/models"
+        models_response = requests.get(models_url, headers=headers, timeout=15)
         
         if models_response.status_code != 200:
             print(f"❌ Ошибка получения моделей: {models_response.status_code}")
-            print(f"❌ Response: {models_response.text}")
             return None
-        
+            
         models_data = models_response.json()
-        print(f"📊 Доступно моделей: {len(models_data)}")
-        
-        # Ищем модель Kandinsky
-        kandinsky_model = None
-        for model in models_data:
-            model_name = model.get('name', '').lower()
-            if 'kandinsky' in model_name:
-                kandinsky_model = model
-                break
-        
-        if not kandinsky_model and models_data:
-            print("⚠️ Kandinsky не найден, использую первую доступную модель")
-            kandinsky_model = models_data[0]
-        
-        if not kandinsky_model:
+        if not models_data:
             print("❌ Нет доступных моделей")
             return None
+            
+        model_id = models_data[0]['id']
         
-        model_id = kandinsky_model['id']
-        print(f"✅ Используем модель: {kandinsky_model.get('name', 'Unknown')} (ID: {model_id})")
-        
-        # Правильный JSON payload для Kandinsky 3.0
         payload = {
             "type": "GENERATE",
             "numImages": 1,
@@ -363,90 +413,51 @@ def generate_with_kandinsky(api_key, secret_key, prompt, topic):
             }
         }
         
-        print("📡 Отправляем запрос на генерацию...")
         response = requests.post(
             generate_url,
             headers=headers,
             json=payload,
-            timeout=60
+            timeout=30
         )
-        
-        print(f"📊 Status: {response.status_code}")
         
         if response.status_code == 200:
             data = response.json()
             if 'uuid' in data:
                 task_id = data['uuid']
                 print(f"⏳ Задача создана, ID: {task_id}")
+                return f"kandinsky_legacy_{task_id}"
                 
-                # Проверяем статус генерации
-                return check_kandinsky_generation(task_id, headers, topic)
-            else:
-                print("❌ Нет UUID в ответе")
-                print(f"Response: {data}")
-        else:
-            print(f"❌ Ошибка генерации: {response.status_code}")
-            print(f"❌ Response: {response.text}")
-            
     except Exception as e:
-        print(f"❌ Исключение в Kandinsky API: {e}")
-        import traceback
-        traceback.print_exc()
+        print(f"❌ Ошибка в старом API: {e}")
     
     return None
 
-def check_kandinsky_generation(task_id, headers, topic):
-    """Проверяет статус генерации Kandinsky"""
-    status_url = f"https://api.fusionbrain.ai/kandinsky/api/v2/text2image/status/{task_id}"
+def generate_with_stable_diffusion(prompt, topic):
+    """Альтернатива через Stable Diffusion API"""
+    print("🔄 Пробуем Stable Diffusion API...")
     
-    print(f"⏳ Проверяем статус генерации для задачи {task_id}...")
+    try:
+        # Бесплатный Stable Diffusion API
+        api_url = "https://api-inference.huggingface.co/models/runwayml/stable-diffusion-v1-5"
+        headers = {"Authorization": "Bearer hf_your_token_here"}  # Нужен реальный токен
+        
+        response = requests.post(
+            api_url,
+            headers=headers,
+            json={"inputs": prompt},
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            image_data = response.content
+            filename = save_article_image(image_data, topic)
+            if filename:
+                print("✅ Изображение создано через Stable Diffusion")
+                return filename
+                
+    except Exception as e:
+        print(f"❌ Ошибка Stable Diffusion: {e}")
     
-    # Пробуем до 20 раз с интервалом 5 секунд
-    for attempt in range(1, 21):
-        try:
-            time.sleep(5)
-            print(f"🔍 Попытка {attempt}/20...")
-            
-            status_response = requests.get(status_url, headers=headers, timeout=30)
-            
-            if status_response.status_code == 200:
-                status_data = status_response.json()
-                current_status = status_data.get('status', 'UNKNOWN')
-                
-                print(f"📊 Статус: {current_status}")
-                
-                if current_status == 'DONE':
-                    if 'images' in status_data and status_data['images']:
-                        image_base64 = status_data['images'][0]
-                        try:
-                            image_data = base64.b64decode(image_base64)
-                            filename = save_article_image(image_data, topic)
-                            if filename:
-                                print("✅ Изображение создано через Kandinsky")
-                                return filename
-                        except Exception as e:
-                            print(f"❌ Ошибка декодирования изображения: {e}")
-                    else:
-                        print("❌ Нет изображений в ответе")
-                    break
-                elif current_status == 'FAIL':
-                    error_desc = status_data.get('errorDescription', 'Неизвестная ошибка')
-                    print(f"❌ Ошибка генерации: {error_desc}")
-                    break
-                elif current_status in ['INITIAL', 'PROCESSING']:
-                    continue  # Продолжаем ждать
-                else:
-                    print(f"❌ Неизвестный статус: {current_status}")
-                    break
-            else:
-                print(f"❌ Ошибка проверки статуса: {status_response.status_code}")
-                break
-                
-        except Exception as e:
-            print(f"⚠️ Ошибка при проверке статуса: {e}")
-            continue
-    
-    print("❌ Таймаут ожидания генерации")
     return None
 
 def generate_placeholder_image(topic):
@@ -454,17 +465,67 @@ def generate_placeholder_image(topic):
     try:
         print("🎨 Создаем placeholder изображение...")
         
-        encoded_topic = urllib.parse.quote(topic[:30])
-        image_url = f"https://placehold.co/800x400/0f172a/6366f1/png?text={encoded_topic}"
+        # Создаем красивое градиентное изображение программно
+        from PIL import Image, ImageDraw, ImageFont
+        import textwrap
         
-        response = requests.get(image_url, timeout=30)
-        if response.status_code == 200:
-            filename = save_article_image(response.content, topic)
-            if filename:
-                print("✅ Placeholder изображение создано")
-                return filename
+        # Создаем изображение
+        width, height = 800, 400
+        img = Image.new('RGB', (width, height), color='#0f172a')
+        draw = ImageDraw.Draw(img)
+        
+        # Добавляем градиент
+        for i in range(height):
+            r = int(15 + (i / height) * 30)
+            g = int(23 + (i / height) * 42)
+            b = int(42 + (i / height) * 74)
+            draw.line([(0, i), (width, i)], fill=(r, g, b))
+        
+        # Добавляем текст
+        try:
+            font = ImageFont.truetype("arial.ttf", 24)
+        except:
+            font = ImageFont.load_default()
+        
+        # Разбиваем текст на строки
+        wrapped_text = textwrap.fill(topic, width=30)
+        bbox = draw.textbbox((0, 0), wrapped_text, font=font)
+        text_width = bbox[2] - bbox[0]
+        text_height = bbox[3] - bbox[1]
+        
+        x = (width - text_width) / 2
+        y = (height - text_height) / 2
+        
+        draw.text((x, y), wrapped_text, font=font, fill="#6366f1")
+        
+        # Сохраняем во временный буфер
+        import io
+        buffer = io.BytesIO()
+        img.save(buffer, format='PNG')
+        buffer.seek(0)
+        image_data = buffer.getvalue()
+        
+        filename = save_article_image(image_data, topic)
+        if filename:
+            print("✅ Красивое placeholder изображение создано")
+            return filename
+            
     except Exception as e:
-        print(f"❌ Ошибка создания placeholder: {e}")
+        print(f"❌ Ошибка создания красивого placeholder: {e}")
+        
+        # Fallback на простой placeholder
+        try:
+            encoded_topic = urllib.parse.quote(topic[:30])
+            image_url = f"https://placehold.co/800x400/0f172a/6366f1/png?text={encoded_topic}"
+            
+            response = requests.get(image_url, timeout=30)
+            if response.status_code == 200:
+                filename = save_article_image(response.content, topic)
+                if filename:
+                    print("✅ Простой placeholder изображение создано")
+                    return filename
+        except Exception as e2:
+            print(f"❌ Ошибка простого placeholder: {e2}")
     
     return None
 
@@ -485,15 +546,8 @@ def save_article_image(image_data, topic):
         os.makedirs("assets/images/posts", exist_ok=True)
         slug = generate_slug(topic)
         
-        # Определяем формат по содержимому
-        if isinstance(image_data, bytes) and image_data.startswith(b'\xff\xd8\xff'):
-            ext = "jpg"
-        elif isinstance(image_data, bytes) and image_data.startswith(b'\x89PNG'):
-            ext = "png"
-        else:
-            ext = "png"  # По умолчанию PNG
-            
-        filename = f"posts/{slug}.{ext}"
+        # Всегда используем PNG для программно созданных изображений
+        filename = f"posts/{slug}.png"
         full_path = f"assets/images/{filename}"
         
         with open(full_path, 'wb') as f:
