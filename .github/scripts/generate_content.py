@@ -234,7 +234,7 @@ def generate_with_openrouter(api_key, model_name, topic):
 
 Требования:
 - Объем: 400-600 слов
-- Формат: Markdown с подзаgоловками
+- Формат: Markdown с подзаголовками
 - Язык: русский
 - Стиль: технический, для разработчиков
 - Фокус на 2025 год
@@ -282,9 +282,8 @@ def generate_article_image(topic):
     image_prompt = generate_image_prompt(topic)
     print(f"📝 Промпт: {image_prompt}")
     
-    # Порядок приоритета API (Kandinsky первый)
+    # Порядок приоритета API 
     apis_to_try = [
-        ("Kandinsky", lambda: generate_with_kandinsky("4988E97E868A02613C39B785DFECC314", "F9CD6826D53BDEA67AF87DC4A61EB98B", image_prompt, topic)),
         ("DeepAI", lambda: generate_with_deepai("98c841c4-f3dc-42b0-b02e-de2fcdebd001", image_prompt, topic)),
         ("Hugging Face SDXL", lambda: generate_with_huggingface_sdxl(image_prompt, topic)),
         ("Hugging Face", lambda: generate_with_huggingface("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", image_prompt, topic)),
@@ -306,109 +305,6 @@ def generate_article_image(topic):
             continue
     
     print("❌ Все API недоступны")
-    return None
-
-def generate_with_kandinsky(api_key, secret_key, prompt, topic):
-    """Генерация через Kandinsky API с новыми ключами"""
-    print("🔄 Генерация через Kandinsky...")
-    
-    try:
-        # Kandinsky API endpoints
-        auth_url = "https://api-key.fusionbrain.ai/key/api/v1/key/auth"
-        generate_url = "https://api-key.fusionbrain.ai/key/api/v1/text2image/run"
-        
-        # Аутентификация
-        auth_headers = {
-            "X-Key": f"Key {api_key}",
-            "X-Secret": f"Secret {secret_key}",
-        }
-        
-        print("🔐 Аутентификация в Kandinsky...")
-        auth_response = requests.get(auth_url, headers=auth_headers, timeout=30)
-        
-        if auth_response.status_code != 200:
-            print(f"❌ Ошибка аутентификации: {auth_response.status_code}")
-            return None
-        
-        # Получаем токен
-        auth_data = auth_response.json()
-        if 'token' not in auth_data:
-            print("❌ Токен не получен")
-            return None
-        
-        token = auth_data['token']
-        print("✅ Аутентификация успешна")
-        
-        # Генерация изображения
-        generate_headers = {
-            "X-Key": f"Key {api_key}",
-            "X-Secret": f"Secret {secret_key}",
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json"
-        }
-        
-        # Параметры для Kandinsky 3.0
-        payload = {
-            "type": "GENERATE",
-            "style": "DEFAULT",
-            "width": 1024,
-            "height": 1024,
-            "num_images": 1,
-            "generateParams": {
-                "query": prompt
-            }
-        }
-        
-        print("📡 Отправляем запрос на генерацию...")
-        response = requests.post(generate_url, headers=generate_headers, json=payload, timeout=60)
-        
-        print(f"📊 Kandinsky status: {response.status_code}")
-        
-        if response.status_code == 200:
-            data = response.json()
-            if 'uuid' in data:
-                # Ждем завершения генерации
-                task_id = data['uuid']
-                print(f"⏳ Ожидаем завершения генерации (ID: {task_id})...")
-                
-                # Проверяем статус задачи
-                status_url = f"https://api-key.fusionbrain.ai/key/api/v1/text2image/status/{task_id}"
-                
-                for i in range(20):  # Максимум 20 попыток (40 секунд)
-                    time.sleep(2)
-                    status_response = requests.get(status_url, headers=generate_headers, timeout=30)
-                    
-                    if status_response.status_code == 200:
-                        status_data = status_response.json()
-                        
-                        if status_data['status'] == 'DONE':
-                            # Получаем готовое изображение
-                            if 'images' in status_data and status_data['images']:
-                                image_base64 = status_data['images'][0]
-                                image_data = base64.b64decode(image_base64)
-                                filename = save_article_image(image_data, topic)
-                                if filename:
-                                    print("✅ Изображение создано через Kandinsky")
-                                    return filename
-                                break
-                        elif status_data['status'] == 'FAIL':
-                            print("❌ Ошибка генерации Kandinsky")
-                            break
-                        else:
-                            print(f"⏳ Статус: {status_data['status']} ({i+1}/20)")
-                    else:
-                        print(f"❌ Ошибка проверки статуса: {status_response.status_code}")
-                        break
-                else:
-                    print("❌ Таймаут ожидания генерации Kandinsky")
-            else:
-                print("❌ Нет UUID в ответе Kandinsky")
-        else:
-            print(f"❌ Ошибка Kandinsky API: {response.text}")
-            
-    except Exception as e:
-        print(f"❌ Исключение в Kandinsky API: {e}")
-    
     return None
 
 def generate_with_deepai(api_key, prompt, topic):
