@@ -284,7 +284,7 @@ def generate_article_image(topic):
     
     # Порядок приоритета API (Kandinsky первый)
     apis_to_try = [
-        ("Kandinsky", lambda: generate_with_kandinsky("3BA53CAD37A0BF21740401408253641E", "00CE1D26AF6BF45FD60BBB4447AD3981", image_prompt, topic)),
+        ("Kandinsky", lambda: generate_with_kandinsky("4988E97E868A02613C39B785DFECC314", "F9CD6826D53BDEA67AF87DC4A61EB98B", image_prompt, topic)),
         ("DeepAI", lambda: generate_with_deepai("98c841c4-f3dc-42b0-b02e-de2fcdebd001", image_prompt, topic)),
         ("Hugging Face SDXL", lambda: generate_with_huggingface_sdxl(image_prompt, topic)),
         ("Hugging Face", lambda: generate_with_huggingface("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", image_prompt, topic)),
