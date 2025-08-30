@@ -21,12 +21,12 @@ def generate_ai_trend_topic():
         "Нейроморфные вычисления энергоэффективные архитектуры нейросетей",
         "Generative AI создание контента кода и дизайнов искусственным интеллектом",
         "Edge AI обработка данных на устройстве без облачной зависимости",
-        "AI для кибербезопасности предиктивная защита от угроз",
+        "AI для кибербезопасности предиктивная защиот угроз",
         "Этичный AI ответственное развитие и использование искусственного интеллекта",
         "AI в healthcare диагностика разработка лекарств и персонализированная медицина",
         "Автономные системы беспилотный транспорт и робототехника",
         "AI оптимизация сжатие моделей и ускорение inference",
-        "Доверенный AI объяснимые и прозрачные алгоритми",
+        "Доверенный AI объяснимые и прозрачные алгоритмы",
         "AI для климата оптимизация энергопотребления и экологические решения",
         "Персональные AI ассистенты индивидуализированные цифровые помощники",
         "AI в образовании адаптивное обучение и персонализированные учебные планы"
@@ -305,18 +305,18 @@ def generate_article_image(topic):
     return None
 
 def generate_with_kandinsky(api_key, secret_key, prompt, topic):
-    """Генерация через Kandinsky API (исправленная версия)"""
+    """Генерация через Kandinsky API (исправленная версия с актуальными endpoints)"""
     print("🔄 Генерация через Kandinsky...")
     
     try:
-        # Правильные endpoints для Kandinsky
-        models_url = "https://api-key.fusionbrain.ai/key/api/v1/models"
-        generate_url = "https://api-key.fusionbrain.ai/key/api/v1/text2image/run"
+        # Актуальные endpoints для Kandinsky 3.0
+        models_url = "https://api.fusionbrain.ai/kandinsky/api/v2/models"
+        generate_url = "https://api.fusionbrain.ai/kandinsky/api/v2/text2image/run"
         
-        # ИСПРАВЛЕННЫЕ заголовки авторизации
+        # Правильные заголовки авторизации
         headers = {
-            "X-Key": api_key,        # Без префикса "Key "
-            "X-Secret": secret_key,  # Без префикса "Secret "
+            "X-Key": f"Key {api_key}",
+            "X-Secret": f"Secret {secret_key}",
             "Content-Type": "application/json"
         }
         
@@ -351,24 +351,23 @@ def generate_with_kandinsky(api_key, secret_key, prompt, topic):
         model_id = kandinsky_model['id']
         print(f"✅ Используем модель: {kandinsky_model.get('name', 'Unknown')} (ID: {model_id})")
         
-        # ИСПРАВЛЕННЫЙ JSON payload согласно документации
+        # Правильный JSON payload для Kandinsky 3.0
         payload = {
             "type": "GENERATE",
             "numImages": 1,
             "width": 1024,
             "height": 1024,
-            "model_id": model_id,  # model_id теперь в теле запроса
+            "model_id": model_id,
             "generateParams": {
                 "query": prompt
             }
         }
         
         print("📡 Отправляем запрос на генерацию...")
-        # УБРАН параметр params из запроса, model_id теперь в JSON
         response = requests.post(
             generate_url,
             headers=headers,
-            json=payload,  # Только JSON payload
+            json=payload,
             timeout=60
         )
         
@@ -385,9 +384,6 @@ def generate_with_kandinsky(api_key, secret_key, prompt, topic):
             else:
                 print("❌ Нет UUID в ответе")
                 print(f"Response: {data}")
-        elif response.status_code == 404:
-            print("❌ 404 Error: Endpoint not found. Check API documentation.")
-            print(f"Response: {response.text}")
         else:
             print(f"❌ Ошибка генерации: {response.status_code}")
             print(f"❌ Response: {response.text}")
@@ -401,15 +397,15 @@ def generate_with_kandinsky(api_key, secret_key, prompt, topic):
 
 def check_kandinsky_generation(task_id, headers, topic):
     """Проверяет статус генерации Kandinsky"""
-    status_url = f"https://api-key.fusionbrain.ai/key/api/v1/text2image/status/{task_id}"
+    status_url = f"https://api.fusionbrain.ai/kandinsky/api/v2/text2image/status/{task_id}"
     
-    print(f"⏳ Проверяем статус генерации...")
+    print(f"⏳ Проверяем статус генерации для задачи {task_id}...")
     
-    # Пробуем до 15 раз с интервалом 5 секунд
-    for attempt in range(1, 16):
+    # Пробуем до 20 раз с интервалом 5 секунд
+    for attempt in range(1, 21):
         try:
             time.sleep(5)
-            print(f"🔍 Попытка {attempt}/15...")
+            print(f"🔍 Попытка {attempt}/20...")
             
             status_response = requests.get(status_url, headers=headers, timeout=30)
             
@@ -422,11 +418,14 @@ def check_kandinsky_generation(task_id, headers, topic):
                 if current_status == 'DONE':
                     if 'images' in status_data and status_data['images']:
                         image_base64 = status_data['images'][0]
-                        image_data = base64.b64decode(image_base64)
-                        filename = save_article_image(image_data, topic)
-                        if filename:
-                            print("✅ Изображение создано через Kandinsky")
-                            return filename
+                        try:
+                            image_data = base64.b64decode(image_base64)
+                            filename = save_article_image(image_data, topic)
+                            if filename:
+                                print("✅ Изображение создано через Kandinsky")
+                                return filename
+                        except Exception as e:
+                            print(f"❌ Ошибка декодирования изображения: {e}")
                     else:
                         print("❌ Нет изображений в ответе")
                     break
