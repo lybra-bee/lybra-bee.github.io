@@ -7,16 +7,19 @@ from datetime import datetime, timezone
 import glob
 import base64
 import re
-import time
 from openai import OpenAI
 
 # -------------------- Настройки ключей --------------------
-OPENROUTER_API_KEY = "your_openrouter_api_key"
-GROQ_API_KEY = "your_groq_api_key"
+OPENAI_API_KEY = "your-openai-api-key"  # Этот ключ всё ещё может быть у вас на месте
 DEEP_AI_KEY = "98c841c4-f3dc-42b0-b02e-de2fcdebd001"
-CRAION_API_URL = "https://api.craiyon.com/v3/draw"  # URL Craiyon
 
-client = OpenAI(api_key=OPENROUTER_API_KEY)
+# Подтягиваем ключи из секретов GitHub
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")  # Получаем OpenRouter API ключ из GitHub Secrets
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")  # Получаем Groq API ключ из GitHub Secrets
+
+CRAION_API_URL = "https://api.craiyon.com/generate"  # Craiyon endpoint
+
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 # -------------------- Генерация темы --------------------
 def generate_ai_trend_topic():
@@ -33,19 +36,19 @@ def generate_ai_trend_topic():
 def generate_article_content(topic):
     models_to_try = []
 
-    # OpenRouter API
+    # OpenRouter модели (приоритет)
     if OPENROUTER_API_KEY:
         print("🔑 OpenRouter API ключ найден")
         openrouter_models = [
             "anthropic/claude-3-haiku",
-            "google/gemini-pro",
+            "google/gemini-pro", 
             "mistralai/mistral-7b-instruct",
             "meta-llama/llama-3-8b-instruct",
         ]
         for model_name in openrouter_models:
-            models_to_try.append((model_name, lambda m=model_name: generate_with_openrouter(m, topic)))
+            models_to_try.append((model_name, lambda m=model_name: generate_with_openrouter(OPENROUTER_API_KEY, m, topic)))
 
-    # Groq API
+    # Groq модели (запасной вариант)
     if GROQ_API_KEY:
         print("🔑 Groq API ключ найден")
         groq_models = [
@@ -56,7 +59,7 @@ def generate_article_content(topic):
             "gemma2-9b-it"
         ]
         for model_name in groq_models:
-            models_to_try.append((f"Groq-{model_name}", lambda m=model_name: generate_with_groq(m, topic)))
+            models_to_try.append((f"Groq-{model_name}", lambda m=model_name: generate_with_groq(GROQ_API_KEY, m, topic)))
 
     # Перебор моделей
     for model_name, generate_func in models_to_try:
@@ -79,33 +82,31 @@ def generate_article_content(topic):
 # -------------------- Генерация изображения --------------------
 def generate_article_image(topic):
     print("🎨 Генерация изображения...")
-    slug = generate_slug(topic)
-    os.makedirs("assets/images/posts", exist_ok=True)
-    filename = f"assets/images/posts/{slug}.png"
 
-    # --- Попытка через Craiyon ---
+    # Попытка генерации изображения через Craiyon
     try:
-        print("🔄 Пробуем генератор: Craiyon")
-        payload = {
-            "prompt": f"{topic}, цифровое искусство, футуристический стиль, киберпанк",
-            "model": "none"
-        }
-        response = requests.post(CRAION_API_URL, json=payload)
-        if response.status_code == 200:
-            data = response.json()
-            if "images" in data and data["images"]:
-                image_b64 = data["images"][0]  # берём первое изображение
-                image_bytes = base64.b64decode(image_b64)
-                with open(filename, "wb") as f:
-                    f.write(image_bytes)
-                print(f"✅ Craiyon сгенерировал изображение: {filename}")
-                return f"/images/posts/{slug}.png"
-        else:
-            print(f"⚠️ Craiyon ответил ошибкой: {response.text}")
+        print("🔄 Пробуем генератор: Craiyon (DALL·E Mini)")
+        response = requests.post(
+            CRAION_API_URL,
+            json={"prompt": f"{topic}, цифровое искусство, футуристический стиль, нейросети, киберпанк"},
+        )
+        response.raise_for_status()
+        result = response.json()
+        if result and 'images' in result:
+            image_url = result['images'][0]  # Первое сгенерированное изображение
+            image_response = requests.get(image_url)
+            image_bytes = image_response.content
+            os.makedirs("assets/images/posts", exist_ok=True)
+            slug = generate_slug(topic)
+            filename = f"assets/images/posts/{slug}.png"
+            with open(filename, "wb") as f:
+                f.write(image_bytes)
+            print(f"✅ Изображение создано через Craiyon: {filename}")
+            return f"/images/posts/{slug}.png"
     except Exception as e:
         print(f"⚠️ Craiyon не сработал: {e}")
 
-    # --- Попытка через DeepAI ---
+    # Попытка генерации изображения через DeepAI
     try:
         print("🔄 Пробуем генератор: DeepAI")
         response = requests.post(
@@ -113,19 +114,24 @@ def generate_article_image(topic):
             data={'text': f"{topic}, цифровое искусство, футуристический стиль"},
             headers={'api-key': DEEP_AI_KEY}
         )
+        response.raise_for_status()
         result = response.json()
         if 'output_url' in result:
-            img_url = result['output_url']
-            img_data = requests.get(img_url).content
+            print(f"✅ DeepAI сгенерировал изображение: {result['output_url']}")
+            image_response = requests.get(result['output_url'])
+            image_bytes = image_response.content
+            os.makedirs("assets/images/posts", exist_ok=True)
+            slug = generate_slug(topic)
+            filename = f"assets/images/posts/{slug}.png"
             with open(filename, "wb") as f:
-                f.write(img_data)
-            print(f"✅ DeepAI сгенерировал изображение: {filename}")
+                f.write(image_bytes)
             return f"/images/posts/{slug}.png"
     except Exception as e:
         print(f"⚠️ DeepAI не сработал: {e}")
 
+    # Если оба генератора не сработали, возвращаем заглушку
     print("⚠️ Не удалось сгенерировать изображение, используем заглушку")
-    return None
+    return "/images/posts/default.png"
 
 # -------------------- Вспомогательные функции --------------------
 def generate_slug(text):
