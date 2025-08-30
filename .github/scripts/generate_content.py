@@ -282,12 +282,12 @@ def generate_article_image(topic):
     image_prompt = generate_image_prompt(topic)
     print(f"📝 Промпт: {image_prompt}")
     
-    # Порядок приоритета API (Crayon первый как бесплатный и надежный)
+    # Порядок приоритета API
     apis_to_try = [
-        ("Crayon", lambda: generate_with_crayon(image_prompt, topic)),
         ("DeepAI", lambda: generate_with_deepai("98c841c4-f3dc-42b0-b02e-de2fcdebd001", image_prompt, topic)),
-        ("Stability AI", lambda: generate_with_stability_ai(os.getenv('STABILITYAI_KEY'), image_prompt, topic)),
+        ("Hugging Face SDXL", lambda: generate_with_huggingface_sdxl(image_prompt, topic)),
         ("Hugging Face", lambda: generate_with_huggingface("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", image_prompt, topic)),
+        ("Stability AI", lambda: generate_with_stability_ai(os.getenv('STABILITYAI_KEY'), image_prompt, topic)),
         ("Placeholder", lambda: generate_placeholder_image(topic))
     ]
     
@@ -305,54 +305,6 @@ def generate_article_image(topic):
             continue
     
     print("❌ Все API недоступны")
-    return None
-
-def generate_with_crayon(prompt, topic):
-    """Генерация через Crayon (DALL-E mini) - бесплатный и открытый"""
-    print("🔄 Генерация через Crayon...")
-    
-    try:
-        # Crayon API endpoint
-        url = "https://api.craiyon.com/v3"
-        
-        payload = {
-            "prompt": prompt,
-            "negative_prompt": "blurry, low quality, text, watermark",
-            "model": "art",
-            "width": 512,
-            "height": 512
-        }
-        
-        headers = {
-            "Content-Type": "application/json",
-            "User-Agent": "AI-Blog-Generator/1.0"
-        }
-        
-        print("📡 Отправляем запрос к Crayon API...")
-        response = requests.post(url, headers=headers, json=payload, timeout=60)
-        
-        print(f"📊 Crayon status: {response.status_code}")
-        
-        if response.status_code == 200:
-            data = response.json()
-            
-            if 'images' in data and data['images']:
-                # Crayon возвращает base64 изображения
-                image_base64 = data['images'][0]
-                image_data = base64.b64decode(image_base64)
-                
-                filename = save_article_image(image_data, topic)
-                if filename:
-                    print("✅ Изображение создано через Crayon")
-                    return filename
-            else:
-                print("❌ Нет images в ответе Crayon")
-        else:
-            print(f"❌ Ошибка Crayon API: {response.text}")
-            
-    except Exception as e:
-        print(f"❌ Исключение в Crayon API: {e}")
-    
     return None
 
 def generate_with_deepai(api_key, prompt, topic):
@@ -403,6 +355,91 @@ def generate_with_deepai(api_key, prompt, topic):
     
     return None
 
+def generate_with_huggingface_sdxl(prompt, topic):
+    """Генерация через Hugging Face SDXL Turbo (быстрая и бесплатная)"""
+    print("🔄 Генерация через Hugging Face SDXL Turbo...")
+    
+    try:
+        # SDXL Turbo - быстрая модель
+        url = "https://api-inference.huggingface.co/models/stabilityai/sdxl-turbo"
+        
+        payload = {
+            "inputs": prompt,
+            "parameters": {
+                "num_inference_steps": 4,
+                "guidance_scale": 0.0,
+                "width": 512,
+                "height": 512
+            }
+        }
+        
+        response = requests.post(url, json=payload, timeout=45)
+        
+        if response.status_code == 200:
+            filename = save_article_image(response.content, topic)
+            if filename:
+                print("✅ Изображение создано через SDXL Turbo")
+                return filename
+        elif response.status_code == 503:
+            print("⏳ Модель SDXL Turbo загружается...")
+        else:
+            print(f"❌ Ошибка SDXL Turbo: {response.status_code}")
+            
+    except Exception as e:
+        print(f"⚠️ Ошибка SDXL Turbo: {e}")
+    
+    return None
+
+def generate_with_huggingface(token, prompt, topic):
+    """Генерация через Hugging Face API с токеном"""
+    print(f"🔄 Генерация через Hugging Face...")
+    
+    models = [
+        "runwayml/stable-diffusion-v1-5",
+        "stabilityai/stable-diffusion-2-1", 
+        "prompthero/openjourney",
+        "digiplay/AbsoluteReality_v1.8.1"
+    ]
+    
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
+    
+    for model in models:
+        try:
+            url = f"https://api-inference.huggingface.co/models/{model}"
+            
+            payload = {
+                "inputs": prompt,
+                "parameters": {
+                    "num_inference_steps": 20,
+                    "guidance_scale": 7.5,
+                    "width": 512,
+                    "height": 512
+                }
+            }
+            
+            print(f"🎨 Пробуем модель: {model}")
+            response = requests.post(url, headers=headers, json=payload, timeout=60)
+            
+            if response.status_code == 200:
+                filename = save_article_image(response.content, topic)
+                if filename:
+                    print(f"✅ Успешно через {model}")
+                    return filename
+            elif response.status_code == 503:
+                print(f"⏳ Модель {model} загружается...")
+                continue
+            else:
+                print(f"❌ Ошибка {model}: {response.status_code}")
+                
+        except Exception as e:
+            print(f"⚠️ Ошибка {model}: {e}")
+            continue
+    
+    return None
+
 def generate_with_stability_ai(api_key, prompt, topic):
     """Генерация через Stability AI"""
     if not api_key:
@@ -442,55 +479,6 @@ def generate_with_stability_ai(api_key, prompt, topic):
             
     except Exception as e:
         print(f"❌ Ошибка Stability AI: {e}")
-    
-    return None
-
-def generate_with_huggingface(token, prompt, topic):
-    """Генерация через Hugging Face API"""
-    print(f"🔄 Генерация через Hugging Face...")
-    
-    models = [
-        "runwayml/stable-diffusion-v1-5",
-        "stabilityai/stable-diffusion-2-1", 
-        "prompthero/openjourney"
-    ]
-    
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json"
-    }
-    
-    for model in models:
-        try:
-            url = f"https://api-inference.huggingface.co/models/{model}"
-            
-            payload = {
-                "inputs": prompt,
-                "parameters": {
-                    "num_inference_steps": 20,
-                    "guidance_scale": 7.5,
-                    "width": 512,
-                    "height": 512
-                }
-            }
-            
-            print(f"🎨 Пробуем модель: {model}")
-            response = requests.post(url, headers=headers, json=payload, timeout=60)
-            
-            if response.status_code == 200:
-                filename = save_article_image(response.content, topic)
-                if filename:
-                    print(f"✅ Успешно через {model}")
-                    return filename
-            elif response.status_code == 503:
-                print(f"⏳ Модель {model} загружается...")
-                continue
-            else:
-                print(f"❌ Ошибка {model}: {response.status_code}")
-                
-        except Exception as e:
-            print(f"⚠️ Ошибка {model}: {e}")
-            continue
     
     return None
 
