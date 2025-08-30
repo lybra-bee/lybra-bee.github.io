@@ -282,7 +282,7 @@ def generate_article_image(topic):
     image_prompt = generate_image_prompt(topic)
     print(f"📝 Промпт: {image_prompt}")
     
-    # Порядок приоритета API (только Kandinsky)
+    # Порядок приоритета API
     apis_to_try = [
         ("Kandinsky", lambda: generate_with_kandinsky("3BA53CAD37A0BF21740401408253641E", "00CE1D26AF6BF45FD60BBB4447AD3981", image_prompt, topic)),
         ("Placeholder", lambda: generate_placeholder_image(topic))
@@ -309,55 +309,69 @@ def generate_with_kandinsky(api_key, secret_key, prompt, topic):
     print("🔄 Генерация через Kandinsky...")
     
     try:
-        # API endpoints Kandinsky
+        # Правильные endpoints для Kandinsky
         models_url = "https://api-key.fusionbrain.ai/key/api/v1/models"
         generate_url = "https://api-key.fusionbrain.ai/key/api/v1/text2image/run"
         
         headers = {
             "X-Key": f"Key {api_key}",
             "X-Secret": f"Secret {secret_key}",
+            "Content-Type": "application/json"
         }
         
         # Получаем доступные модели
-        print("🔍 Получаем доступные модели Kandinsky...")
+        print("🔍 Получаем доступные модели...")
         models_response = requests.get(models_url, headers=headers, timeout=30)
         
         if models_response.status_code != 200:
             print(f"❌ Ошибка получения моделей: {models_response.status_code}")
+            print(f"❌ Response: {models_response.text}")
             return None
         
         models_data = models_response.json()
-        kandinsky_model = None
+        print(f"📊 Доступно моделей: {len(models_data)}")
         
         # Ищем модель Kandinsky
+        kandinsky_model = None
         for model in models_data:
-            if 'kandinsky' in model['name'].lower():
+            model_name = model.get('name', '').lower()
+            if 'kandinsky' in model_name:
                 kandinsky_model = model
                 break
         
+        if not kandinsky_model and models_data:
+            print("⚠️ Kandinsky не найден, использую первую доступную модель")
+            kandinsky_model = models_data[0]
+        
         if not kandinsky_model:
-            print("❌ Модель Kandinsky не найдена")
+            print("❌ Нет доступных моделей")
             return None
         
         model_id = kandinsky_model['id']
-        print(f"✅ Найдена модель: {kandinsky_model['name']} (ID: {model_id})")
+        print(f"✅ Используем модель: {kandinsky_model.get('name', 'Unknown')} (ID: {model_id})")
         
         # Параметры для генерации
         payload = {
             "type": "GENERATE",
-            "numImages": 1,
+            "style": "DEFAULT",
             "width": 1024,
             "height": 1024,
+            "num_images": 1,
             "generateParams": {
                 "query": prompt
             }
         }
         
-        # Отправляем запрос на генерацию
-        print("📡 Отправляем запрос на генерацию изображения...")
+        # Добавляем model_id в параметры
+        params = {
+            "model_id": model_id
+        }
+        
+        print("📡 Отправляем запрос на генерацию...")
         response = requests.post(
             generate_url,
             headers=headers,
+            params=params,
             json=payload,
             timeout=60
         )
@@ -374,6 +388,7 @@ def generate_with_kandinsky(api_key, secret_key, prompt, topic):
                 return check_kandinsky_generation(task_id, headers, topic)
             else:
                 print("❌ Нет UUID в ответе")
+                print(f"Response: {data}")
         else:
             print(f"❌ Ошибка генерации: {response.status_code}")
             print(f"❌ Response: {response.text}")
@@ -411,10 +426,9 @@ def check_kandinsky_generation(task_id, headers, topic):
                         if filename:
                             print("✅ Изображение создано через Kandinsky")
                             return filename
-                        break
                     else:
                         print("❌ Нет изображений в ответе")
-                        break
+                    break
                 elif current_status == 'FAIL':
                     error_desc = status_data.get('errorDescription', 'Неизвестная ошибка')
                     print(f"❌ Ошибка генерации: {error_desc}")
