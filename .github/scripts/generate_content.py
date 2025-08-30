@@ -26,7 +26,7 @@ def generate_ai_trend_topic():
         "AI в healthcare диагностика разработка лекарств и персонализированная медицина",
         "Автономные системы беспилотный транспорт и робототехника",
         "AI оптимизация сжатие моделей и ускорение inference",
-        "Доверенный AI объяснимые и прозрачные алгоритмы",
+        "Доверенный AI объяснимые и прозрачные алгоритми",
         "AI для климата оптимизация энергопотребления и экологические решения",
         "Персональные AI ассистенты индивидуализированные цифровые помощники",
         "AI в образовании адаптивное обучение и персонализированные учебные планы"
@@ -305,7 +305,7 @@ def generate_article_image(topic):
     return None
 
 def generate_with_kandinsky(api_key, secret_key, prompt, topic):
-    """Генерация через Kandinsky API"""
+    """Генерация через Kandinsky API (исправленная версия)"""
     print("🔄 Генерация через Kandinsky...")
     
     try:
@@ -313,9 +313,10 @@ def generate_with_kandinsky(api_key, secret_key, prompt, topic):
         models_url = "https://api-key.fusionbrain.ai/key/api/v1/models"
         generate_url = "https://api-key.fusionbrain.ai/key/api/v1/text2image/run"
         
+        # ИСПРАВЛЕННЫЕ заголовки авторизации
         headers = {
-            "X-Key": f"Key {api_key}",
-            "X-Secret": f"Secret {secret_key}",
+            "X-Key": api_key,        # Без префикса "Key "
+            "X-Secret": secret_key,  # Без префикса "Secret "
             "Content-Type": "application/json"
         }
         
@@ -350,29 +351,24 @@ def generate_with_kandinsky(api_key, secret_key, prompt, topic):
         model_id = kandinsky_model['id']
         print(f"✅ Используем модель: {kandinsky_model.get('name', 'Unknown')} (ID: {model_id})")
         
-        # Параметры для генерации
+        # ИСПРАВЛЕННЫЙ JSON payload согласно документации
         payload = {
             "type": "GENERATE",
-            "style": "DEFAULT",
+            "numImages": 1,
             "width": 1024,
             "height": 1024,
-            "num_images": 1,
+            "model_id": model_id,  # model_id теперь в теле запроса
             "generateParams": {
                 "query": prompt
             }
         }
         
-        # Добавляем model_id в параметры
-        params = {
-            "model_id": model_id
-        }
-        
         print("📡 Отправляем запрос на генерацию...")
+        # УБРАН параметр params из запроса, model_id теперь в JSON
         response = requests.post(
             generate_url,
             headers=headers,
-            params=params,
-            json=payload,
+            json=payload,  # Только JSON payload
             timeout=60
         )
         
@@ -389,12 +385,17 @@ def generate_with_kandinsky(api_key, secret_key, prompt, topic):
             else:
                 print("❌ Нет UUID в ответе")
                 print(f"Response: {data}")
+        elif response.status_code == 404:
+            print("❌ 404 Error: Endpoint not found. Check API documentation.")
+            print(f"Response: {response.text}")
         else:
             print(f"❌ Ошибка генерации: {response.status_code}")
             print(f"❌ Response: {response.text}")
             
     except Exception as e:
         print(f"❌ Исключение в Kandinsky API: {e}")
+        import traceback
+        traceback.print_exc()
     
     return None
 
@@ -486,9 +487,9 @@ def save_article_image(image_data, topic):
         slug = generate_slug(topic)
         
         # Определяем формат по содержимому
-        if image_data.startswith(b'\xff\xd8\xff'):
+        if isinstance(image_data, bytes) and image_data.startswith(b'\xff\xd8\xff'):
             ext = "jpg"
-        elif image_data.startswith(b'\x89PNG'):
+        elif isinstance(image_data, bytes) and image_data.startswith(b'\x89PNG'):
             ext = "png"
         else:
             ext = "png"  # По умолчанию PNG
