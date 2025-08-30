@@ -282,8 +282,9 @@ def generate_article_image(topic):
     image_prompt = generate_image_prompt(topic)
     print(f"📝 Промпт: {image_prompt}")
     
-    # Порядок приоритета API
+    # Порядок приоритета API (Crayon первый как бесплатный и надежный)
     apis_to_try = [
+        ("Crayon", lambda: generate_with_crayon(image_prompt, topic)),
         ("DeepAI", lambda: generate_with_deepai("98c841c4-f3dc-42b0-b02e-de2fcdebd001", image_prompt, topic)),
         ("Stability AI", lambda: generate_with_stability_ai(os.getenv('STABILITYAI_KEY'), image_prompt, topic)),
         ("Hugging Face", lambda: generate_with_huggingface("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", image_prompt, topic)),
@@ -304,6 +305,54 @@ def generate_article_image(topic):
             continue
     
     print("❌ Все API недоступны")
+    return None
+
+def generate_with_crayon(prompt, topic):
+    """Генерация через Crayon (DALL-E mini) - бесплатный и открытый"""
+    print("🔄 Генерация через Crayon...")
+    
+    try:
+        # Crayon API endpoint
+        url = "https://api.craiyon.com/v3"
+        
+        payload = {
+            "prompt": prompt,
+            "negative_prompt": "blurry, low quality, text, watermark",
+            "model": "art",
+            "width": 512,
+            "height": 512
+        }
+        
+        headers = {
+            "Content-Type": "application/json",
+            "User-Agent": "AI-Blog-Generator/1.0"
+        }
+        
+        print("📡 Отправляем запрос к Crayon API...")
+        response = requests.post(url, headers=headers, json=payload, timeout=60)
+        
+        print(f"📊 Crayon status: {response.status_code}")
+        
+        if response.status_code == 200:
+            data = response.json()
+            
+            if 'images' in data and data['images']:
+                # Crayon возвращает base64 изображения
+                image_base64 = data['images'][0]
+                image_data = base64.b64decode(image_base64)
+                
+                filename = save_article_image(image_data, topic)
+                if filename:
+                    print("✅ Изображение создано через Crayon")
+                    return filename
+            else:
+                print("❌ Нет images в ответе Crayon")
+        else:
+            print(f"❌ Ошибка Crayon API: {response.text}")
+            
+    except Exception as e:
+        print(f"❌ Исключение в Crayon API: {e}")
+    
     return None
 
 def generate_with_deepai(api_key, prompt, topic):
@@ -332,7 +381,6 @@ def generate_with_deepai(api_key, prompt, topic):
         
         if response.status_code == 200:
             data = response.json()
-            print(f"✅ DeepAI response: {data}")
             
             if 'output_url' in data and data['output_url']:
                 print("📥 Загружаем изображение...")
