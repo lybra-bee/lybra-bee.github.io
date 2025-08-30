@@ -83,7 +83,6 @@ def generate_article_content(topic):
 
     models_to_try = []
 
-    # OpenRouter модели (приоритет)
     if openrouter_key:
         openrouter_models = [
             "anthropic/claude-3-haiku",
@@ -94,7 +93,6 @@ def generate_article_content(topic):
         for model_name in openrouter_models:
             models_to_try.append((model_name, lambda m=model_name: generate_with_openrouter(openrouter_key, m, topic)))
 
-    # Groq модели (fallback)
     if groq_key:
         groq_models = [
             "llama-3.1-8b-instant",
@@ -106,7 +104,6 @@ def generate_article_content(topic):
         for model_name in groq_models:
             models_to_try.append((f"Groq-{model_name}", lambda m=model_name: generate_with_groq(groq_key, m, topic)))
 
-    # Перебор моделей
     for model_name, generate_func in models_to_try:
         try:
             result = generate_func()
@@ -118,15 +115,12 @@ def generate_article_content(topic):
             print(f"⚠️ Ошибка {model_name}: {str(e)[:100]}")
             continue
 
-    # fallback
     print("⚠️ Все API недоступны, создаем заглушку")
     return f"# {topic}\n\nСтатья временно сгенерирована как заглушка.", "fallback-generator"
 
 # -------------------- Генерация изображения --------------------
 def generate_article_image(topic):
     print("🎨 Генерация изображения...")
-
-    # GPT Image 1
     try:
         print("🔄 Пробуем генератор: GPT Image 1")
         client = OpenAI(api_key=GPT_IMAGE_API_KEY)
@@ -148,7 +142,6 @@ def generate_article_image(topic):
     except Exception as e:
         print(f"⚠️ GPT Image 1 не сработал: {e}")
 
-    # DeepAI fallback
     try:
         print("🔄 Пробуем генератор: DeepAI")
         response = requests.post(
@@ -180,3 +173,60 @@ def generate_frontmatter(title, content, model_used, image_url):
     escaped_title = title.replace(':', ' -').replace('"','').replace("'",'').replace('\\','')
     frontmatter_lines = [
         "---",
+        f'title: "{escaped_title}"',
+        f"date: {now}",
+        "draft: false",
+        'tags: ["AI", "машинное обучение", "технологии", "2025"]',
+        'categories: ["Искусственный интеллект"]',
+        'summary: "Автоматически сгенерированная статья об искусственном интеллекте"'
+    ]
+    if image_url:
+        frontmatter_lines.append(f'image: "{image_url}"')
+    frontmatter_lines.append("---")
+    frontmatter_lines.append(content)
+    return "\n".join(frontmatter_lines)
+
+def clean_old_articles(keep_last=3):
+    print(f"🧹 Очистка старых статей, оставляем {keep_last} последних...")
+    try:
+        articles = glob.glob("content/posts/*.md")
+        if not articles:
+            print("📁 Нет статей для очистки")
+            return
+        articles.sort(key=os.path.getmtime, reverse=True)
+        articles_to_keep = articles[:keep_last]
+        articles_to_delete = articles[keep_last:]
+        for article_path in articles_to_delete:
+            os.remove(article_path)
+            slug = os.path.basename(article_path).replace('.md','')
+            image_path = f"assets/images/posts/{slug}.png"
+            if os.path.exists(image_path):
+                os.remove(image_path)
+    except Exception as e:
+        print(f"⚠️ Ошибка при очистке: {e}")
+
+# -------------------- Основной запуск --------------------
+def generate_content():
+    print("🚀 Запуск генерации контента...")
+    KEEP_LAST_ARTICLES = 3
+    clean_old_articles(KEEP_LAST_ARTICLES)
+
+    topic = generate_ai_trend_topic()
+    print(f"📝 Актуальная тема 2025: {topic}")
+
+    image_filename = generate_article_image(topic)
+    content, model_used = generate_article_content(topic)
+
+    date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    slug = generate_slug(topic)
+    filename = f"content/posts/{date}-{slug}.md"
+    frontmatter = generate_frontmatter(topic, content, model_used, image_filename)
+
+    os.makedirs("content/posts", exist_ok=True)
+    with open(filename, 'w', encoding='utf-8') as f:
+        f.write(frontmatter)
+    print(f"✅ Статья создана: {filename}")
+    return filename
+
+if __name__ == "__main__":
+    generate_content()
