@@ -6,77 +6,47 @@ import random
 from datetime import datetime, timezone
 import glob
 import base64
-import time
 import re
+import time
+from openai import OpenAI
 
 # -------------------- Настройки ключей --------------------
+OPENROUTER_API_KEY = "your_openrouter_api_key"
+GROQ_API_KEY = "your_groq_api_key"
 DEEP_AI_KEY = "98c841c4-f3dc-42b0-b02e-de2fcdebd001"
+CRAION_API_URL = "https://api.craiyon.com/v3/draw"  # URL Craiyon
+
+client = OpenAI(api_key=OPENROUTER_API_KEY)
 
 # -------------------- Генерация темы --------------------
 def generate_ai_trend_topic():
-    current_trends_2025 = [
-        "Multimodal AI интеграция текста изображений и аудио в единых моделях",
-        "AI агенты автономные системы способные выполнять сложные задачи",
-        "Квантовые вычисления и машинное обучение прорыв в производительности",
-        "Нейроморфные вычисления энергоэффективные архитектуры нейросетей",
-        "Generative AI создание контента кода и дизайнов искусственным интеллектом",
-        "Edge AI обработка данных на устройстве без облачной зависимости",
-        "AI для кибербезопасности предиктивная защита от угроз",
-        "Этичный AI ответственное развитие и использование искусственного интеллекта",
-        "AI в healthcare диагностика разработка лекарств и персонализированная медицина",
-        "Автономные системы беспилотный транспорт и робототехника",
-        "AI оптимизация сжатие моделей и ускорение inference",
-        "Доверенный AI объяснимые и прозрачные алгоритмы",
-        "AI для климата оптимизация энергопотребления и экологические решения",
-        "Персональные AI ассистенты индивидуализированные цифровые помощники",
-        "AI в образовании адаптивное обучение и персонализированные учебные планы"
-    ]
-    application_domains = [
-        "в веб разработке и cloud native приложениях",
-        "в мобильных приложениях и IoT экосистемах",
-        "в облачных сервисах и распределенных системах",
-        "в анализе больших данных и бизнес аналитике",
-        "в компьютерной безопасности и киберзащите",
-        "в медицинской диагностике и биотехнологиях",
-        "в финансовых технологиях и финтехе",
-        "в автономных транспортных системах",
-        "в smart city и умной инфраструктуре",
-        "в образовательных технологиях и EdTech"
-    ]
-    trend = random.choice(current_trends_2025)
-    domain = random.choice(application_domains)
-    topic_formats = [
-        f"{trend} {domain} в 2025 году",
-        f"Тенденции 2025 {trend} {domain}",
-        f"{trend} революционные изменения {domain} в 2025",
-        f"Как {trend} трансформирует {domain} в 2025 году",
-        f"Инновации 2025 {trend} для {domain}",
-        f"{trend} будущее {domain} в 2025 году",
-        f"Практическое применение {trend} в {domain} 2025"
-    ]
-    return random.choice(topic_formats)
+    prompt = "Предложи одну актуальную тему для статьи 2025 года о трендах в искусственном интеллекте, кратко и ёмко"
+    resp = client.chat.completions.create(
+        model="gpt-4",
+        messages=[{"role":"user","content":prompt}],
+        temperature=0.8
+    )
+    topic = resp.choices[0].message.content.strip()
+    return topic
 
-# -------------------- Генерация контента статьи --------------------
+# -------------------- Генерация текста статьи --------------------
 def generate_article_content(topic):
-    openrouter_key = os.getenv('OPENROUTER_API_KEY')
-    groq_key = os.getenv('GROQ_API_KEY')
-
     models_to_try = []
 
-    # OpenRouter модели (приоритет)
-    if openrouter_key:
+    # OpenRouter API
+    if OPENROUTER_API_KEY:
         print("🔑 OpenRouter API ключ найден")
         openrouter_models = [
             "anthropic/claude-3-haiku",
-            "google/gemini-pro", 
+            "google/gemini-pro",
             "mistralai/mistral-7b-instruct",
             "meta-llama/llama-3-8b-instruct",
         ]
         for model_name in openrouter_models:
-            models_to_try.append((model_name, lambda m=model_name: generate_with_openrouter(openrouter_key, m, topic)))
+            models_to_try.append((model_name, lambda m=model_name: generate_with_openrouter(m, topic)))
 
-    # Groq модели (запасной вариант)
-    if groq_key:
+    # Groq API
+    if GROQ_API_KEY:
         print("🔑 Groq API ключ найден")
         groq_models = [
             "llama-3.1-8b-instant",
@@ -86,7 +56,7 @@ def generate_article_content(topic):
             "gemma2-9b-it"
         ]
         for model_name in groq_models:
-            models_to_try.append((f"Groq-{model_name}", lambda m=model_name: generate_with_groq(groq_key, m, topic)))
+            models_to_try.append((f"Groq-{model_name}", lambda m=model_name: generate_with_groq(m, topic)))
 
     # Перебор моделей
     for model_name, generate_func in models_to_try:
@@ -106,26 +76,56 @@ def generate_article_content(topic):
     fallback_content = f"# {topic}\n\nСтатья временно сгенерирована как заглушка."
     return fallback_content, "fallback-generator"
 
-# -------------------- Генерация изображения через DeepAI --------------------
+# -------------------- Генерация изображения --------------------
 def generate_article_image(topic):
-    print("🎨 Генерация изображения через DeepAI...")
+    print("🎨 Генерация изображения...")
+    slug = generate_slug(topic)
+    os.makedirs("assets/images/posts", exist_ok=True)
+    filename = f"assets/images/posts/{slug}.png"
+
+    # --- Попытка через Craiyon ---
     try:
+        print("🔄 Пробуем генератор: Craiyon")
+        payload = {
+            "prompt": f"{topic}, цифровое искусство, футуристический стиль, киберпанк",
+            "model": "none"
+        }
+        response = requests.post(CRAION_API_URL, json=payload)
+        if response.status_code == 200:
+            data = response.json()
+            if "images" in data and data["images"]:
+                image_b64 = data["images"][0]  # берём первое изображение
+                image_bytes = base64.b64decode(image_b64)
+                with open(filename, "wb") as f:
+                    f.write(image_bytes)
+                print(f"✅ Craiyon сгенерировал изображение: {filename}")
+                return f"/images/posts/{slug}.png"
+        else:
+            print(f"⚠️ Craiyon ответил ошибкой: {response.text}")
+    except Exception as e:
+        print(f"⚠️ Craiyon не сработал: {e}")
+
+    # --- Попытка через DeepAI ---
+    try:
+        print("🔄 Пробуем генератор: DeepAI")
         response = requests.post(
             "https://api.deepai.org/api/text2img",
-            data={'text': f"{topic}, цифровое искусство, футуристический стиль, нейросети, киберпанк"},
+            data={'text': f"{topic}, цифровое искусство, футуристический стиль"},
             headers={'api-key': DEEP_AI_KEY}
         )
         result = response.json()
-        if 'output_url' in result and result['output_url']:
-            image_url = result['output_url']
-            print(f"✅ Изображение создано через DeepAI: {image_url}")
-            return image_url
-        else:
-            print(f"⚠️ DeepAI вернул некорректный результат: {result}")
-            return None
+        if 'output_url' in result:
+            img_url = result['output_url']
+            img_data = requests.get(img_url).content
+            with open(filename, "wb") as f:
+                f.write(img_data)
+            print(f"✅ DeepAI сгенерировал изображение: {filename}")
+            return f"/images/posts/{slug}.png"
     except Exception as e:
-        print(f"⚠️ Ошибка при генерации изображения DeepAI: {e}")
-        return None
+        print(f"⚠️ DeepAI не сработал: {e}")
+
+    print("⚠️ Не удалось сгенерировать изображение, используем заглушку")
+    return None
 
 # -------------------- Вспомогательные функции --------------------
 def generate_slug(text):
@@ -134,7 +134,6 @@ def generate_slug(text):
     text = text.replace('--', '-')
     text = re.sub(r'[^a-z0-9\-]', '', text)
     text = re.sub(r'-+', '-', text)
-    text = text.strip('-')
     return text[:60]
 
 def generate_frontmatter(title, content, model_used, image_url):
@@ -183,19 +182,20 @@ def generate_content():
     topic = generate_ai_trend_topic()
     print(f"📝 Актуальная тема 2025: {topic}")
 
-    image_url = generate_article_image(topic)
+    image_filename = generate_article_image(topic)
     content, model_used = generate_article_content(topic)
 
     date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     slug = generate_slug(topic)
     filename = f"content/posts/{date}-{slug}.md"
-    frontmatter = generate_frontmatter(topic, content, model_used, image_url)
+    frontmatter = generate_frontmatter(topic, content, model_used, image_filename)
 
     os.makedirs("content/posts", exist_ok=True)
     with open(filename, 'w', encoding='utf-8') as f:
         f.write(frontmatter)
     print(f"✅ Статья создана: {filename}")
     return filename
+
 
 if __name__ == "__main__":
     generate_content()
