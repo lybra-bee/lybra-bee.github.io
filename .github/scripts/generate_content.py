@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import os
 import json
 import requests
@@ -12,6 +11,39 @@ import re
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 CRAYON_API_URL = "https://api.craiyon.com/generate"  # Craiyon API URL
+
+# -------------------- Генерация текста --------------------
+def generate_with_openrouter(api_key, model_name, topic):
+    url = f"https://openrouter.ai/api/v1/completion"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "model": model_name,
+        "prompt": f"Напиши статью на русском языке по теме: {topic}. Длина статьи не менее 300 слов.",
+        "max_tokens": 1000
+    }
+    response = requests.post(url, json=data, headers=headers)
+    if response.status_code == 200:
+        return response.json().get('choices', [{}])[0].get('text', '')
+    return f"Ошибка: {response.status_code}"
+
+def generate_with_groq(api_key, model_name, topic):
+    url = f"https://api.groq.ai/v1/complete"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "model": model_name,
+        "prompt": f"Write an article in Russian on the topic: {topic}. The article should be at least 300 words long.",
+        "max_tokens": 1000
+    }
+    response = requests.post(url, json=data, headers=headers)
+    if response.status_code == 200:
+        return response.json().get('choices', [{}])[0].get('text', '')
+    return f"Ошибка: {response.status_code}"
 
 # -------------------- Генерация темы --------------------
 def generate_ai_trend_topic():
