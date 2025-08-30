@@ -282,12 +282,9 @@ def generate_article_image(topic):
     image_prompt = generate_image_prompt(topic)
     print(f"📝 Промпт: {image_prompt}")
     
-    # Порядок приоритета API 
+    # Порядок приоритета API (только Kandinsky)
     apis_to_try = [
-        ("DeepAI", lambda: generate_with_deepai("98c841c4-f3dc-42b0-b02e-de2fcdebd001", image_prompt, topic)),
-        ("Hugging Face SDXL", lambda: generate_with_huggingface_sdxl(image_prompt, topic)),
-        ("Hugging Face", lambda: generate_with_huggingface("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", image_prompt, topic)),
-        ("Stability AI", lambda: generate_with_stability_ai(os.getenv('STABILITYAI_KEY'), image_prompt, topic)),
+        ("Kandinsky", lambda: generate_with_kandinsky("3BA53CAD37A0BF21740401408253641E", "00CE1D26AF6BF45FD60BBB4447AD3981", image_prompt, topic)),
         ("Placeholder", lambda: generate_placeholder_image(topic))
     ]
     
@@ -307,179 +304,135 @@ def generate_article_image(topic):
     print("❌ Все API недоступны")
     return None
 
-def generate_with_deepai(api_key, prompt, topic):
-    """Генерация через DeepAI"""
-    print("🔄 Генерация через DeepAI...")
+def generate_with_kandinsky(api_key, secret_key, prompt, topic):
+    """Генерация через Kandinsky API"""
+    print("🔄 Генерация через Kandinsky...")
     
     try:
-        url = "https://api.deepai.org/api/text2img"
+        # API endpoints Kandinsky
+        models_url = "https://api-key.fusionbrain.ai/key/api/v1/models"
+        generate_url = "https://api-key.fusionbrain.ai/key/api/v1/text2image/run"
         
         headers = {
-            "Api-Key": api_key
+            "X-Key": f"Key {api_key}",
+            "X-Secret": f"Secret {secret_key}",
         }
         
-        data = {
-            "text": prompt,
-            "grid_size": "1",
-            "width": "800",
-            "height": "400",
-            "image_generator_version": "standard"
+        # Получаем доступные модели
+        print("🔍 Получаем доступные модели Kandinsky...")
+        models_response = requests.get(models_url, headers=headers, timeout=30)
+        
+        if models_response.status_code != 200:
+            print(f"❌ Ошибка получения моделей: {models_response.status_code}")
+            return None
+        
+        models_data = models_response.json()
+        kandinsky_model = None
+        
+        # Ищем модель Kandinsky
+        for model in models_data:
+            if 'kandinsky' in model['name'].lower():
+                kandinsky_model = model
+                break
+        
+        if not kandinsky_model:
+            print("❌ Модель Kandinsky не найдена")
+            return None
+        
+        model_id = kandinsky_model['id']
+        print(f"✅ Найдена модель: {kandinsky_model['name']} (ID: {model_id})")
+        
+        # Параметры для генерации
+        payload = {
+            "type": "GENERATE",
+            "numImages": 1,
+            "width": 1024,
+            "height": 1024,
+            "generateParams": {
+                "query": prompt
+            }
         }
         
-        print("📡 Отправляем запрос к DeepAI...")
-        response = requests.post(url, headers=headers, data=data, timeout=60)
+        # Отправляем запрос на генерацию
+        print("📡 Отправляем запрос на генерацию изображения...")
+        response = requests.post(
+            generate_url,
+            headers=headers,
+            json=payload,
+            timeout=60
+        )
         
-        print(f"📊 DeepAI status: {response.status_code}")
+        print(f"📊 Status: {response.status_code}")
         
         if response.status_code == 200:
             data = response.json()
-            
-            if 'output_url' in data and data['output_url']:
-                print("📥 Загружаем изображение...")
-                image_response = requests.get(data['output_url'], timeout=60)
+            if 'uuid' in data:
+                task_id = data['uuid']
+                print(f"⏳ Задача создана, ID: {task_id}")
                 
-                if image_response.status_code == 200:
-                    filename = save_article_image(image_response.content, topic)
-                    if filename:
-                        print("✅ Изображение создано через DeepAI")
-                        return filename
-                else:
-                    print(f"❌ Ошибка загрузки изображения: {image_response.status_code}")
+                # Проверяем статус генерации
+                return check_kandinsky_generation(task_id, headers, topic)
             else:
-                print("❌ Нет output_url в ответе DeepAI")
+                print("❌ Нет UUID в ответе")
         else:
-            print(f"❌ Ошибка DeepAI API: {response.text}")
+            print(f"❌ Ошибка генерации: {response.status_code}")
+            print(f"❌ Response: {response.text}")
             
     except Exception as e:
-        print(f"❌ Исключение в DeepAI API: {e}")
+        print(f"❌ Исключение в Kandinsky API: {e}")
     
     return None
 
-def generate_with_huggingface_sdxl(prompt, topic):
-    """Генерация через Hugging Face SDXL Turbo (быстрая и бесплатная)"""
-    print("🔄 Генерация через Hugging Face SDXL Turbo...")
+def check_kandinsky_generation(task_id, headers, topic):
+    """Проверяет статус генерации Kandinsky"""
+    status_url = f"https://api-key.fusionbrain.ai/key/api/v1/text2image/status/{task_id}"
     
-    try:
-        # SDXL Turbo - быстрая модель
-        url = "https://api-inference.huggingface.co/models/stabilityai/sdxl-turbo"
-        
-        payload = {
-            "inputs": prompt,
-            "parameters": {
-                "num_inference_steps": 4,
-                "guidance_scale": 0.0,
-                "width": 512,
-                "height": 512
-            }
-        }
-        
-        response = requests.post(url, json=payload, timeout=45)
-        
-        if response.status_code == 200:
-            filename = save_article_image(response.content, topic)
-            if filename:
-                print("✅ Изображение создано через SDXL Turbo")
-                return filename
-        elif response.status_code == 503:
-            print("⏳ Модель SDXL Turbo загружается...")
-        else:
-            print(f"❌ Ошибка SDXL Turbo: {response.status_code}")
-            
-    except Exception as e:
-        print(f"⚠️ Ошибка SDXL Turbo: {e}")
+    print(f"⏳ Проверяем статус генерации...")
     
-    return None
-
-def generate_with_huggingface(token, prompt, topic):
-    """Генерация через Hugging Face API с токеном"""
-    print(f"🔄 Генерация через Hugging Face...")
-    
-    models = [
-        "runwayml/stable-diffusion-v1-5",
-        "stabilityai/stable-diffusion-2-1", 
-        "prompthero/openjourney",
-        "digiplay/AbsoluteReality_v1.8.1"
-    ]
-    
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json"
-    }
-    
-    for model in models:
+    # Пробуем до 15 раз с интервалом 5 секунд
+    for attempt in range(1, 16):
         try:
-            url = f"https://api-inference.huggingface.co/models/{model}"
+            time.sleep(5)
+            print(f"🔍 Попытка {attempt}/15...")
             
-            payload = {
-                "inputs": prompt,
-                "parameters": {
-                    "num_inference_steps": 20,
-                    "guidance_scale": 7.5,
-                    "width": 512,
-                    "height": 512
-                }
-            }
+            status_response = requests.get(status_url, headers=headers, timeout=30)
             
-            print(f"🎨 Пробуем модель: {model}")
-            response = requests.post(url, headers=headers, json=payload, timeout=60)
-            
-            if response.status_code == 200:
-                filename = save_article_image(response.content, topic)
-                if filename:
-                    print(f"✅ Успешно через {model}")
-                    return filename
-            elif response.status_code == 503:
-                print(f"⏳ Модель {model} загружается...")
-                continue
+            if status_response.status_code == 200:
+                status_data = status_response.json()
+                current_status = status_data.get('status', 'UNKNOWN')
+                
+                print(f"📊 Статус: {current_status}")
+                
+                if current_status == 'DONE':
+                    if 'images' in status_data and status_data['images']:
+                        image_base64 = status_data['images'][0]
+                        image_data = base64.b64decode(image_base64)
+                        filename = save_article_image(image_data, topic)
+                        if filename:
+                            print("✅ Изображение создано через Kandinsky")
+                            return filename
+                        break
+                    else:
+                        print("❌ Нет изображений в ответе")
+                        break
+                elif current_status == 'FAIL':
+                    error_desc = status_data.get('errorDescription', 'Неизвестная ошибка')
+                    print(f"❌ Ошибка генерации: {error_desc}")
+                    break
+                elif current_status in ['INITIAL', 'PROCESSING']:
+                    continue  # Продолжаем ждать
+                else:
+                    print(f"❌ Неизвестный статус: {current_status}")
+                    break
             else:
-                print(f"❌ Ошибка {model}: {response.status_code}")
+                print(f"❌ Ошибка проверки статуса: {status_response.status_code}")
+                break
                 
         except Exception as e:
-            print(f"⚠️ Ошибка {model}: {e}")
+            print(f"⚠️ Ошибка при проверке статуса: {e}")
             continue
     
-    return None
-
-def generate_with_stability_ai(api_key, prompt, topic):
-    """Генерация через Stability AI"""
-    if not api_key:
-        return None
-        
-    try:
-        url = "https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image"
-        
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-        }
-        
-        payload = {
-            "text_prompts": [{"text": prompt, "weight": 1.0}],
-            "cfg_scale": 7,
-            "height": 1024,
-            "width": 1024,
-            "samples": 1,
-            "steps": 30,
-            "style_preset": "digital-art"
-        }
-        
-        response = requests.post(url, headers=headers, json=payload, timeout=60)
-        
-        if response.status_code == 200:
-            data = response.json()
-            if 'artifacts' in data and data['artifacts']:
-                image_data = base64.b64decode(data['artifacts'][0]['base64'])
-                filename = save_article_image(image_data, topic)
-                if filename:
-                    print("✅ Изображение создано через Stability AI")
-                    return filename
-        else:
-            print(f"❌ Stability AI error: {response.status_code}")
-            
-    except Exception as e:
-        print(f"❌ Ошибка Stability AI: {e}")
-    
+    print("❌ Таймаут ожидания генерации")
     return None
 
 def generate_placeholder_image(topic):
