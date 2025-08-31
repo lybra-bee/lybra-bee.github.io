@@ -8,7 +8,11 @@ import shutil
 import re
 import textwrap
 from PIL import Image, ImageDraw, ImageFont
-import time
+
+# ======== Eden AI ========
+EDENAI_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiOWE4ZDEyNjktNTAwZi00ZWI5LWE3NDUtMTI3ZmNhODQ4N2Q1IiwidHlwZSI6ImFwaV90b2tlbiIsIm5hbWUiOiJOZXciLCJpc19jdXN0b20iOnRydWV9.h-ZDZ7PNN25lF6fCvvoDoBsAun3nBTav9sjnUKEIOPo"
+
+FREE_PROVIDERS = ["stability_ai", "deepai", "dalle-mini"]
 
 # ======== Генерация темы ========
 def generate_ai_trend_topic():
@@ -91,101 +95,49 @@ def generate_content():
     print(f"✅ Статья создана: {filename}")
     return filename
 
-# ======== Генерация текста через OpenRouter/Groq ========
+# ======== Генерация текста (фейковый пример) ========
 def generate_article_content(topic):
-    openrouter_key = os.getenv('OPENROUTER_API_KEY')
-    groq_key = os.getenv('GROQ_API_KEY')
-    models_to_try = []
+    content = f"# {topic}\n\nСтатья по теме {topic} создана автоматически."
+    return content, "auto-generator"
 
-    if groq_key:
-        groq_models = ["llama-3.1-8b-instant"]
-        for model_name in groq_models:
-            models_to_try.append((f"Groq-{model_name}", lambda m=model_name: generate_with_groq(groq_key, m, topic)))
-    if openrouter_key:
-        openrouter_models = ["anthropic/claude-3-haiku"]
-        for model_name in openrouter_models:
-            models_to_try.append((model_name, lambda m=model_name: generate_with_openrouter(openrouter_key, m, topic)))
-
-    for model_name, generate_func in models_to_try:
-        try:
-            print(f"🔄 Пробуем: {model_name}")
-            result = generate_func()
-            if result and len(result.strip()) > 100:
-                print(f"✅ Успешно через {model_name}")
-                return result, model_name
-        except Exception as e:
-            print(f"⚠️ Ошибка {model_name}: {e}")
-            continue
-
-    fallback = f"# {topic}\n\nСтатья по теме {topic} создана автоматически."
-    return fallback, "fallback-generator"
-
-def generate_with_groq(api_key, model_name, topic):
-    prompt = f"Напиши развернутую статью на тему: '{topic}' на русском, Markdown, 400-600 слов"
-    resp = requests.post(
-        "https://api.groq.com/openai/v1/chat/completions",
-        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-        json={"model": model_name, "messages":[{"role":"user","content":prompt}], "max_tokens":1500}
-    )
-    if resp.status_code == 200:
-        data = resp.json()
-        return data['choices'][0]['message']['content'].strip()
-    raise Exception(f"Groq API error {resp.status_code}")
-
-def generate_with_openrouter(api_key, model_name, topic):
-    prompt = f"Напиши развернутую статью на тему: '{topic}' на русском, Markdown, 400-600 слов"
-    resp = requests.post(
-        "https://openrouter.ai/api/v1/chat/completions",
-        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-        json={"model": model_name, "messages":[{"role":"user","content":prompt}], "max_tokens":1500}
-    )
-    if resp.status_code == 200:
-        data = resp.json()
-        return data['choices'][0]['message']['content'].strip()
-    raise Exception(f"OpenRouter API error {resp.status_code}")
-
-# ======== Eden AI генерация изображения с перебором провайдеров ========
-EDEN_API_KEY = os.getenv("EDENAI_API_KEY") or "YOUR_EDEN_KEY"
-
-FREE_IMAGE_PROVIDERS = [
-    "stability_ai",
-    "deepai",
-    "dalle-mini"
-]
-
+# ======== Генерация изображения через Eden AI с перебором провайдеров ========
 def generate_article_image(topic):
     print(f"🎨 Eden AI генерация изображения по промпту: {topic}")
-    for provider in FREE_IMAGE_PROVIDERS:
+    for provider in FREE_PROVIDERS:
         try:
-            result = generate_with_edenai(topic, provider)
-            if result:
-                print(f"✅ Изображение создано через {provider}")
-                return result
+            payload = {
+                "providers": [provider],
+                "text": topic,
+                "resolution": "1024x1024"
+            }
+            headers = {"Authorization": f"Bearer {EDENAI_KEY}"}
+            resp = requests.post("https://api.edenai.run/v2/image/generation", headers=headers, json=payload, timeout=30)
+            data = resp.json()
+            if resp.status_code == 200 and "image_url" in data:
+                image_url = data["image_url"]
+                filename = save_article_image_from_url(image_url, topic)
+                print(f"✅ Eden AI изображение создано через {provider}: {filename}")
+                return filename
+            else:
+                print(f"⚠️ Eden AI не сработал через {provider}: {data}")
         except Exception as e:
-            print(f"⚠️ Eden AI не сработал через {provider}: {e}")
-            continue
-    print("✅ Placeholder изображение создано")
+            print(f"⚠️ Eden AI ошибка {provider}: {e}")
+    # fallback
     return generate_placeholder_image(topic)
 
-def generate_with_edenai(prompt, provider):
-    url = "https://api.edenai.run/v2/image/generation"
-    headers = {"Authorization": f"Bearer {EDEN_API_KEY}", "Content-Type": "application/json"}
-    payload = {
-        "providers": [provider],
-        "text": prompt,
-        "resolution": "1024x1024"
-    }
-    resp = requests.post(url, headers=headers, json=payload, timeout=30)
-    data = resp.json()
-    if "result" in data and len(data["result"]) > 0:
-        # Сохраняем изображение
-        image_url = data["result"][0]["url"]
-        image_data = requests.get(image_url).content
-        return save_article_image(image_data, prompt)
-    raise Exception(f"Eden AI не вернул результат: {data}")
+def save_article_image_from_url(url, topic):
+    os.makedirs("assets/images/posts", exist_ok=True)
+    filename = f"assets/images/posts/{generate_slug(topic)}.png"
+    resp = requests.get(url, stream=True)
+    if resp.status_code == 200:
+        with open(filename, "wb") as f:
+            for chunk in resp.iter_content(1024):
+                f.write(chunk)
+    return filename
 
-# ======== Placeholder ========
+# ======== Placeholder изображение ========
 def generate_placeholder_image(topic):
+    print("✅ Placeholder изображение создано")
     os.makedirs("assets/images/posts", exist_ok=True)
     filename = f"assets/images/posts/{generate_slug(topic)}.png"
     width, height = 800, 400
@@ -204,14 +156,6 @@ def generate_placeholder_image(topic):
     bbox = draw.textbbox((0,0), wrapped_text, font=font)
     draw.text(((width-(bbox[2]-bbox[0])/2),(height-(bbox[3]-bbox[1])/2)), wrapped_text, font=font, fill="#6366f1")
     img.save(filename)
-    return filename
-
-def save_article_image(image_data, topic):
-    os.makedirs("assets/images/posts", exist_ok=True)
-    filename = f"assets/images/posts/{generate_slug(topic)}.png"
-    if image_data:
-        with open(filename,'wb') as f:
-            f.write(image_data)
     return filename
 
 # ======== Вспомогательные функции ========
@@ -239,4 +183,3 @@ ai_model: "{model_used}"
 # ======== Запуск ========
 if __name__ == "__main__":
     generate_content()
-    
