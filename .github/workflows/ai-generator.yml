@@ -30,7 +30,7 @@ jobs:
     - name: Install Python deps
       run: |
         python -m pip install --upgrade pip
-        pip install requests openai pillow torch torchvision torchaudio transformers diffusers huggingface-hub
+        pip install requests openai pillow python-dotenv
 
     - name: Generate AI content (Groq/OpenRouter + CometAPI images)
       env:
