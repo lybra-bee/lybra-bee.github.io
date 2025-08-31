@@ -4,19 +4,19 @@ import json
 import requests
 import random
 from datetime import datetime, timezone
-import glob
-import base64
+import shutil
+import re
 import time
 import urllib.parse
-import re
-import shutil
-from PIL import Image, ImageDraw, ImageFont
-import io
-import textwrap
 
-# --- ТЕМЫ ---
+# Проверяем PIL
+try:
+    from PIL import Image, ImageDraw, ImageFont
+except ImportError:
+    Image = ImageDraw = ImageFont = None
+    print("⚠️ PIL не установлен. Placeholder изображения будут ограничены.")
+
 def generate_ai_trend_topic():
-    """Генерирует актуальную тему на основе трендов AI 2025"""
     current_trends_2025 = [
         "Multimodal AI интеграция текста изображений и аудио в единых моделях",
         "AI агенты автономные системы способные выполнять сложные задачи",
@@ -34,7 +34,6 @@ def generate_ai_trend_topic():
         "Персональные AI ассистенты индивидуализированные цифровые помощники",
         "AI в образовании адаптивное обучение и персонализированные учебные планы"
     ]
-    
     application_domains = [
         "в веб разработке и cloud native приложениях",
         "в мобильных приложениях и IoT экосистемах",
@@ -47,10 +46,8 @@ def generate_ai_trend_topic():
         "в smart city и умной инфраструктуре",
         "в образовательных технологиях и EdTech"
     ]
-    
     trend = random.choice(current_trends_2025)
     domain = random.choice(application_domains)
-    
     topic_formats = [
         f"{trend} {domain} в 2025 году",
         f"Тенденции 2025 {trend} {domain}",
@@ -60,12 +57,9 @@ def generate_ai_trend_topic():
         f"{trend} будущее {domain} в 2025 году",
         f"Практическое применение {trend} в {domain} 2025"
     ]
-    
     return random.choice(topic_formats)
 
-# --- ОЧИСТКА ---
 def clean_old_articles(keep_last=3):
-    """Оставляет только последние N статей и очищает content"""
     print(f"🧹 Очистка старых статей, оставляем {keep_last} последних...")
     try:
         content_dir = "content"
@@ -80,148 +74,141 @@ def clean_old_articles(keep_last=3):
     except Exception as e:
         print(f"⚠️ Ошибка при очистке: {e}")
 
-# --- КОНТЕНТ ---
 def generate_content():
-    """Генерирует статью с изображением"""
     print("🚀 Запуск генерации контента...")
     clean_old_articles()
-    topic = generate_ai_trend_topic()
-    print(f"📝 Тема: {topic}")
-    image_url = generate_article_image(topic)
-    content, model_used = generate_article_content(topic)
+    selected_topic = generate_ai_trend_topic()
+    print(f"📝 Тема статьи: {selected_topic}")
+    image_filename = generate_article_image(selected_topic)
+    content, model_used = generate_article_content(selected_topic)
     date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    slug = generate_slug(topic)
+    slug = generate_slug(selected_topic)
     filename = f"content/posts/{date}-{slug}.md"
-    frontmatter = generate_frontmatter(topic, content, model_used, image_url)
+    frontmatter = generate_frontmatter(selected_topic, content, model_used, image_filename)
     os.makedirs("content/posts", exist_ok=True)
     with open(filename, 'w', encoding='utf-8') as f:
         f.write(frontmatter)
     print(f"✅ Статья создана: {filename}")
     return filename
 
-# --- ТЕКСТ СТАТЬИ ---
 def generate_article_content(topic):
-    """Генерация текста статьи (fallback)"""
+    openrouter_key = os.getenv('OPENROUTER_API_KEY')
+    groq_key = os.getenv('GROQ_API_KEY')
+    models_to_try = []
+    if groq_key:
+        groq_models = ["llama-3.1-8b-instant","llama-3.2-1b-preview"]
+        for model_name in groq_models:
+            models_to_try.append((f"Groq-{model_name}", lambda m=model_name: generate_with_groq(groq_key, m, topic)))
+    if openrouter_key:
+        openrouter_models = ["anthropic/claude-3-haiku","meta-llama/llama-3-8b-instruct"]
+        for model_name in openrouter_models:
+            models_to_try.append((model_name, lambda m=model_name: generate_with_openrouter(openrouter_key, m, topic)))
+    for model_name, generate_func in models_to_try:
+        try:
+            print(f"🔄 Пробуем: {model_name}")
+            result = generate_func()
+            if result and len(result.strip()) > 100:
+                print(f"✅ Успешно через {model_name}")
+                return result, model_name
+            time.sleep(1)
+        except Exception as e:
+            print(f"⚠️ Ошибка {model_name}: {str(e)[:100]}")
+            continue
+    print("⚠️ Все API недоступны, создаем заглушку")
     fallback_content = f"""# {topic}
 
 ## Введение
-{topic} - это важное направление в развитии искусственного интеллекта на 2025 год.
+{topic} - ключевое направление в AI 2025.
 
 ## Основные аспекты
-- **Технологические инновации**: {topic} включает передовые разработки в области AI
-- **Практическое применение**: Технология находит применение в различных отраслях
-- **Перспективы развития**: Ожидается значительный рост в ближайшие годы
+- Технологические инновации
+- Практическое применение
+- Перспективы развития
 
 ## Заключение
 {topic} представляет собой ключевое направление развития искусственного интеллекта.
 """
     return fallback_content, "fallback-generator"
 
-# --- ИЗОБРАЖЕНИЕ ---
-def generate_article_image(topic):
-    """Генерация изображения через Kandinsky v2 API"""
-    prompt = generate_image_prompt(topic)
-    print(f"🎨 Генерация изображения по промпту: {prompt}")
-    
-    try:
-        api_url = "https://api.fusionbrain.ai/kandinsky/api/v2/text2image/run"
-        headers = {
-            "X-Key": "Key 3BA53CAD37A0BF21740401408253641E",
-            "X-Secret": "Secret 00CE1D26AF6BF45FD60BBB4447AD3981",
-            "Content-Type": "application/json"
-        }
-        payload = {
-            "type": "GENERATE",
-            "numImages": 1,
-            "width": 1024,
-            "height": 1024,
-            "generateParams": {"query": prompt}
-        }
-        response = requests.post(api_url, headers=headers, json=payload, timeout=30)
+def generate_with_groq(api_key, model_name, topic):
+    prompt = f"Напиши развернутую статью на тему: {topic} (технический стиль, русский язык)"
+    response = requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers={"Content-Type": "application/json","Authorization": f"Bearer {api_key}"},
+        json={"model": model_name,"messages":[{"role":"user","content":prompt}],"max_tokens":1500},
+        timeout=30
+    )
+    if response.status_code == 200:
         data = response.json()
-        if 'images' in data and len(data['images']) > 0:
-            img_b64 = data['images'][0]
-            image_data = base64.b64decode(img_b64)
-            filename = save_article_image(image_data, topic)
-            return filename
-    except Exception as e:
-        print(f"⚠️ Kandinsky API ошибка: {e}")
-    
-    # fallback placeholder
-    return generate_placeholder_image(topic)
+        if data.get('choices'):
+            return data['choices'][0]['message']['content'].strip()
+    raise Exception(f"Groq API ошибка {response.status_code}")
 
-def generate_image_prompt(topic):
-    prompts = [
-        f"Futuristic technology illustration for {topic}. Modern style, abstract AI, neural networks, data visualization, blue-purple scheme, no text",
-        f"AI concept art for {topic}. Cyberpunk style, glowing networks, holographic interface, vibrant colors, cinematic lighting",
-        f"Abstract digital background for {topic}. Geometric shapes, circuit patterns, data streams, professional style",
-        f"Futuristic AI digital brain for {topic}. Sci-fi elements, quantum computing, vibrant colors, depth of field"
-    ]
-    return random.choice(prompts)
+def generate_with_openrouter(api_key, model_name, topic):
+    prompt = f"Напиши статью на тему: {topic} (технический стиль, русский язык)"
+    response = requests.post(
+        "https://openrouter.ai/api/v1/chat/completions",
+        headers={"Content-Type": "application/json","Authorization": f"Bearer {api_key}"},
+        json={"model": model_name,"messages":[{"role":"user","content":prompt}],"max_tokens":1500},
+        timeout=30
+    )
+    if response.status_code == 200:
+        data = response.json()
+        if data.get('choices'):
+            return data['choices'][0]['message']['content'].strip()
+    raise Exception(f"OpenRouter API ошибка {response.status_code}")
 
-def generate_placeholder_image(topic):
-    print("🎨 Создаем placeholder изображение...")
-    width, height = 800, 400
-    img = Image.new('RGB', (width, height), color='#0f172a')
-    draw = ImageDraw.Draw(img)
-    for i in range(height):
-        r = int(15 + (i / height) * 30)
-        g = int(23 + (i / height) * 42)
-        b = int(42 + (i / height) * 74)
-        draw.line([(0, i), (width, i)], fill=(r, g, b))
-    try:
-        font = ImageFont.truetype("arial.ttf", 24)
-    except:
-        font = ImageFont.load_default()
-    wrapped_text = textwrap.fill(topic, width=30)
-    bbox = draw.textbbox((0, 0), wrapped_text, font=font)
-    text_width = bbox[2] - bbox[0]
-    text_height = bbox[3] - bbox[1]
-    x = (width - text_width) / 2
-    y = (height - text_height) / 2
-    draw.text((x, y), wrapped_text, font=font, fill="#6366f1")
-    buffer = io.BytesIO()
-    img.save(buffer, format='PNG')
-    buffer.seek(0)
-    image_data = buffer.getvalue()
-    return save_article_image(image_data, topic)
+def generate_article_image(topic):
+    print(f"🎨 Генерация изображения по промпту: {topic}")
+    # Если есть PIL
+    if Image:
+        try:
+            width, height = 800, 400
+            img = Image.new('RGB', (width, height), color='#0f172a')
+            draw = ImageDraw.Draw(img)
+            for i in range(height):
+                r = int(15 + (i / height) * 30)
+                g = int(23 + (i / height) * 42)
+                b = int(42 + (i / height) * 74)
+                draw.line([(0, i), (width, i)], fill=(r, g, b))
+            try:
+                font = ImageFont.truetype("arial.ttf", 24)
+            except:
+                font = ImageFont.load_default()
+            wrapped_text = topic[:50]
+            draw.text((20, height//2 - 12), wrapped_text, font=font, fill="#6366f1")
+            os.makedirs("assets/images/posts", exist_ok=True)
+            slug = generate_slug(topic)
+            filename = f"assets/images/posts/{slug}.png"
+            img.save(filename)
+            print(f"✅ Placeholder изображение создано: {filename}")
+            return f"/images/posts/{slug}.png"
+        except Exception as e:
+            print(f"⚠️ Ошибка генерации placeholder: {e}")
+    return None
 
-def save_article_image(image_data, topic):
-    os.makedirs("assets/images/posts", exist_ok=True)
-    slug = generate_slug(topic)
-    filename = f"posts/{slug}.png"
-    full_path = f"assets/images/{filename}"
-    with open(full_path, 'wb') as f:
-        f.write(image_data)
-    print(f"💾 Изображение сохранено: {filename}")
-    return f"/images/{filename}"
-
-# --- UTILS ---
 def generate_slug(text):
     text = text.lower()
     text = text.replace(' ', '-')
     text = re.sub(r'[^a-z0-9\-]', '', text)
-    text = re.sub(r'-+', '-', text)
     return text[:60]
 
 def generate_frontmatter(title, content, model_used, image_url):
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    escaped_title = title.replace(':', ' -').replace('"', '').replace("'", "")
-    frontmatter_lines = [
+    frontmatter = [
         "---",
-        f'title: "{escaped_title}"',
+        f'title: "{title}"',
         f"date: {now}",
         "draft: false",
         'tags: ["AI", "машинное обучение", "технологии", "2025"]',
         'categories: ["Искусственный интеллект"]',
-        'summary: "Автоматически сгенерированная статья об искусственном интеллекте"'
+        'summary: "Автоматически сгенерированная статья об AI"'
     ]
     if image_url:
-        frontmatter_lines.append(f'image: "{image_url}"')
-    frontmatter_lines.append("---")
-    frontmatter_lines.append(content)
-    return "\n".join(frontmatter_lines)
+        frontmatter.append(f'image: "{image_url}"')
+    frontmatter.append("---")
+    frontmatter.append(content)
+    return "\n".join(frontmatter)
 
 if __name__ == "__main__":
     generate_content()
-    
