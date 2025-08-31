@@ -8,10 +8,8 @@ import shutil
 import re
 import textwrap
 from PIL import Image, ImageDraw, ImageFont
+import time
 import base64
-
-# ======== Настройки Eden AI ========
-EDEN_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiOWE4ZDEyNjktNTAwZi00ZWI5LWE3NDUtMTI3ZmNhODQ4N2Q1IiwidHlwZSI6ImFwaV90b2tlbiIsIm5hbWUiOiJFZGVuQVBJIiwiaXNfY3VzdG9tIjp0cnVlfQ.8YU-6NpefBXLqtUTJmDkSlAzdnvAWmywfa6WLFwbZBg"
 
 # ======== Генерация темы ========
 def generate_ai_trend_topic():
@@ -96,13 +94,73 @@ def generate_content():
 
 # ======== Генерация текста через OpenRouter/Groq ========
 def generate_article_content(topic):
+    openrouter_key = os.getenv('OPENROUTER_API_KEY')
+    groq_key = os.getenv('GROQ_API_KEY')
+    models_to_try = []
+
+    if groq_key:
+        groq_models = ["llama-3.1-8b-instant"]
+        for model_name in groq_models:
+            models_to_try.append((f"Groq-{model_name}", lambda m=model_name: generate_with_groq(groq_key, m, topic)))
+    if openrouter_key:
+        openrouter_models = ["anthropic/claude-3-haiku"]
+        for model_name in openrouter_models:
+            models_to_try.append((model_name, lambda m=model_name: generate_with_openrouter(openrouter_key, m, topic)))
+
+    for model_name, generate_func in models_to_try:
+        try:
+            print(f"🔄 Пробуем: {model_name}")
+            result = generate_func()
+            if result and len(result.strip()) > 100:
+                print(f"✅ Успешно через {model_name}")
+                return result, model_name
+        except Exception as e:
+            print(f"⚠️ Ошибка {model_name}: {e}")
+            continue
+
+    # fallback content
     fallback = f"# {topic}\n\nСтатья по теме {topic} создана автоматически."
     return fallback, "fallback-generator"
 
-# ======== Генерация изображения через Eden AI (DeepAI) ========
+def generate_with_groq(api_key, model_name, topic):
+    prompt = f"Напиши развернутую статью на тему: '{topic}' на русском, Markdown, 400-600 слов"
+    resp = requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        json={"model": model_name, "messages":[{"role":"user","content":prompt}], "max_tokens":1500}
+    )
+    if resp.status_code == 200:
+        data = resp.json()
+        return data['choices'][0]['message']['content'].strip()
+    raise Exception(f"Groq API error {resp.status_code}")
+
+def generate_with_openrouter(api_key, model_name, topic):
+    prompt = f"Напиши развернутую статью на тему: '{topic}' на русском, Markdown, 400-600 слов"
+    resp = requests.post(
+        "https://openrouter.ai/api/v1/chat/completions",
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        json={"model": model_name, "messages":[{"role":"user","content":prompt}], "max_tokens":1500}
+    )
+    if resp.status_code == 200:
+        data = resp.json()
+        return data['choices'][0]['message']['content'].strip()
+    raise Exception(f"OpenRouter API error {resp.status_code}")
+
+# ======== Генерация изображения через Eden AI ========
+EDEN_API_KEY = os.getenv("EDEN_API_KEY")  # поставь сюда свой ключ
+
+def generate_article_image(topic):
+    print(f"🎨 Eden AI генерация изображения по промпту: {topic}")
+    if EDEN_API_KEY:
+        try:
+            filename = generate_with_edenai(topic)
+            return filename
+        except Exception as e:
+            print(f"⚠️ Eden AI не вернул результат: {e}")
+    return generate_placeholder_image(topic)
+
 def generate_with_edenai(prompt, width=512, height=512):
     prompt = prompt[:200]  # ограничение длины
-    print(f"🎨 Eden AI генерация изображения по промпту: {prompt}")
     url = "https://api.edenai.run/v2/image/generation"
     headers = {
         "Authorization": f"Bearer {EDEN_API_KEY}",
@@ -111,27 +169,24 @@ def generate_with_edenai(prompt, width=512, height=512):
     payload = {
         "providers": ["deepai"],
         "language": "RU",
-        "input": prompt,
+        "text": prompt,
         "width": width,
         "height": height,
         "num_images": 1
     }
-    try:
-        resp = requests.post(url, headers=headers, json=payload, timeout=60)
-        if resp.status_code == 200:
-            data = resp.json()
-            try:
-                b64_data = data['deepai']['images'][0]
-                image_bytes = base64.b64decode(b64_data)
-                filename = save_article_image(image_bytes, prompt)
-                print(f"✅ Eden AI изображение создано: {filename}")
-                return filename
-            except Exception as e:
-                print(f"⚠️ Eden AI parsing error: {e}")
-        else:
-            print(f"⚠️ Eden AI error: {resp.status_code} - {resp.text}")
-    except Exception as e:
-        print(f"⚠️ Eden AI request exception: {e}")
+    resp = requests.post(url, headers=headers, json=payload, timeout=60)
+    if resp.status_code == 200:
+        data = resp.json()
+        try:
+            b64_data = data['deepai']['images'][0]
+            image_bytes = base64.b64decode(b64_data)
+            filename = save_article_image(image_bytes, prompt)
+            print(f"✅ Eden AI изображение создано: {filename}")
+            return filename
+        except Exception as e:
+            print(f"⚠️ Eden AI parsing error: {e}")
+    else:
+        print(f"⚠️ Eden AI error: {resp.status_code} - {resp.text}")
     return generate_placeholder_image(prompt)
 
 # ======== Placeholder изображение ========
@@ -186,10 +241,6 @@ ai_model: "{model_used}"
 {content}
 """
     return frontmatter
-
-# ======== Генерация изображения ========
-def generate_article_image(topic):
-    return generate_with_edenai(topic)
 
 # ======== Запуск ========
 if __name__ == "__main__":
