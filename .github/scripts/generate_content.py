@@ -9,7 +9,6 @@ import re
 import textwrap
 from PIL import Image, ImageDraw, ImageFont
 import time
-import base64
 
 # ======== Генерация темы ========
 def generate_ai_trend_topic():
@@ -118,7 +117,6 @@ def generate_article_content(topic):
             print(f"⚠️ Ошибка {model_name}: {e}")
             continue
 
-    # fallback content
     fallback = f"# {topic}\n\nСтатья по теме {topic} создана автоматически."
     return fallback, "fallback-generator"
 
@@ -146,52 +144,48 @@ def generate_with_openrouter(api_key, model_name, topic):
         return data['choices'][0]['message']['content'].strip()
     raise Exception(f"OpenRouter API error {resp.status_code}")
 
-# ======== Генерация изображения через Eden AI ========
-EDEN_API_KEY = os.getenv("EDEN_API_KEY")  # поставь сюда свой ключ
+# ======== Eden AI генерация изображения с перебором провайдеров ========
+EDEN_API_KEY = os.getenv("EDENAI_API_KEY") or "YOUR_EDEN_KEY"
+
+FREE_IMAGE_PROVIDERS = [
+    "stability_ai",
+    "deepai",
+    "dalle-mini"
+]
 
 def generate_article_image(topic):
     print(f"🎨 Eden AI генерация изображения по промпту: {topic}")
-    if EDEN_API_KEY:
+    for provider in FREE_IMAGE_PROVIDERS:
         try:
-            filename = generate_with_edenai(topic)
-            return filename
+            result = generate_with_edenai(topic, provider)
+            if result:
+                print(f"✅ Изображение создано через {provider}")
+                return result
         except Exception as e:
-            print(f"⚠️ Eden AI не вернул результат: {e}")
+            print(f"⚠️ Eden AI не сработал через {provider}: {e}")
+            continue
+    print("✅ Placeholder изображение создано")
     return generate_placeholder_image(topic)
 
-def generate_with_edenai(prompt, width=512, height=512):
-    prompt = prompt[:200]  # ограничение длины
+def generate_with_edenai(prompt, provider):
     url = "https://api.edenai.run/v2/image/generation"
-    headers = {
-        "Authorization": f"Bearer {EDEN_API_KEY}",
-        "Content-Type": "application/json"
-    }
+    headers = {"Authorization": f"Bearer {EDEN_API_KEY}", "Content-Type": "application/json"}
     payload = {
-        "providers": ["deepai"],
-        "language": "RU",
+        "providers": [provider],
         "text": prompt,
-        "width": width,
-        "height": height,
-        "num_images": 1
+        "resolution": "1024x1024"
     }
-    resp = requests.post(url, headers=headers, json=payload, timeout=60)
-    if resp.status_code == 200:
-        data = resp.json()
-        try:
-            b64_data = data['deepai']['images'][0]
-            image_bytes = base64.b64decode(b64_data)
-            filename = save_article_image(image_bytes, prompt)
-            print(f"✅ Eden AI изображение создано: {filename}")
-            return filename
-        except Exception as e:
-            print(f"⚠️ Eden AI parsing error: {e}")
-    else:
-        print(f"⚠️ Eden AI error: {resp.status_code} - {resp.text}")
-    return generate_placeholder_image(prompt)
+    resp = requests.post(url, headers=headers, json=payload, timeout=30)
+    data = resp.json()
+    if "result" in data and len(data["result"]) > 0:
+        # Сохраняем изображение
+        image_url = data["result"][0]["url"]
+        image_data = requests.get(image_url).content
+        return save_article_image(image_data, prompt)
+    raise Exception(f"Eden AI не вернул результат: {data}")
 
-# ======== Placeholder изображение ========
+# ======== Placeholder ========
 def generate_placeholder_image(topic):
-    print("✅ Placeholder изображение создано")
     os.makedirs("assets/images/posts", exist_ok=True)
     filename = f"assets/images/posts/{generate_slug(topic)}.png"
     width, height = 800, 400
@@ -245,3 +239,4 @@ ai_model: "{model_used}"
 # ======== Запуск ========
 if __name__ == "__main__":
     generate_content()
+    
