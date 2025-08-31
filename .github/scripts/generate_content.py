@@ -8,10 +8,8 @@ import shutil
 import re
 import textwrap
 from PIL import Image, ImageDraw, ImageFont
+import time
 import base64
-
-# ======== Настройки Eden AI ========
-EDEN_API_KEY = os.getenv("EDEN_API_KEY") or "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiOWE4ZDEyNjktNTAwZi00ZWI5LWE3NDUtMTI3ZmNhODQ4N2Q1IiwidHlwZSI6ImFwaV90b2tlbiIsIm5hbWUiOiJFZGVuQVBJIiwiaXNfY3VzdG9tIjp0cnVlfQ.8YU-6NpefBXLqtUTJmDkSlAzdnvAWmywfa6WLFwbZBg"
 
 # ======== Генерация темы ========
 def generate_ai_trend_topic():
@@ -148,15 +146,10 @@ def generate_with_openrouter(api_key, model_name, topic):
         return data['choices'][0]['message']['content'].strip()
     raise Exception(f"OpenRouter API error {resp.status_code}")
 
-# ======== Генерация изображения через Eden AI ========
-def generate_article_image(topic):
-    try:
-        return generate_with_edenai(topic)
-    except Exception as e:
-        print(f"⚠️ Eden AI не вернул результат: {e}")
-        return generate_placeholder_image(topic)
+# ======== Eden AI генерация изображения ========
+EDEN_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiOWE4ZDEyNjktNTAwZi00ZWI5LWE3NDUtMTI3ZmNhODQ4N2Q1IiwidHlwZSI6ImFwaV90b2tlbiIsIm5hbWUiOiJFZGVuQVBJIiwiaXNfY3VzdG9tIjp0cnVlfQ.8YU-6NpefBXLqtUTJmDkSlAzdnvAWmywfa6WLFwbZBg"
 
-def generate_with_edenai(topic, resolution="512x512", num_images=1):
+def generate_with_edenai(topic, width=512, height=512, num_images=1):
     print(f"🎨 Eden AI генерация изображения по промпту: {topic}")
     url = "https://api.edenai.run/v2/image/generation"
     headers = {
@@ -166,7 +159,7 @@ def generate_with_edenai(topic, resolution="512x512", num_images=1):
     payload = {
         "providers": "stable_diffusion",
         "text": topic,
-        "resolution": resolution,
+        "resolution": {"width": width, "height": height},
         "num_images": num_images
     }
     resp = requests.post(url, headers=headers, json=payload, timeout=60)
@@ -176,6 +169,19 @@ def generate_with_edenai(topic, resolution="512x512", num_images=1):
         image_bytes = base64.b64decode(image_data_base64)
         return save_article_image(image_bytes, topic)
     raise Exception(f"Eden AI не вернул результат: {data}")
+
+# ======== Генерация изображения статьи ========
+def generate_article_image(topic):
+    # Попытка Eden AI
+    try:
+        filename = generate_with_edenai(topic)
+        print(f"✅ Eden AI изображение создано: {filename}")
+        return filename
+    except Exception as e:
+        print(f"⚠️ Eden AI не вернул результат: {e}")
+    
+    # Fallback placeholder
+    return generate_placeholder_image(topic)
 
 def generate_placeholder_image(topic):
     print("✅ Placeholder изображение создано")
