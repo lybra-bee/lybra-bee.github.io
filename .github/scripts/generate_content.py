@@ -6,14 +6,15 @@ import random
 from datetime import datetime, timezone
 import shutil
 import re
-import urllib.parse
+import textwrap
+from PIL import Image, ImageDraw, ImageFont
 import time
 
-# Для placeholder
-from PIL import Image, ImageDraw, ImageFont
-import textwrap
-import io
+# === Настройки Kandinsky 3.0 (бесплатно) ===
+KANDINSKY_KEY = "3BA53CAD37A0BF21740401408253641E"
+KANDINSKY_SECRET = "00CE1D26AF6BF45FD60BBB4447AD3981"
 
+# === Генерация темы статьи ===
 def generate_ai_trend_topic():
     current_trends_2025 = [
         "Multimodal AI интеграция текста изображений и аудио в единых моделях",
@@ -57,6 +58,7 @@ def generate_ai_trend_topic():
     ]
     return random.choice(topic_formats)
 
+# === Очистка старых статей ===
 def clean_old_articles(keep_last=3):
     print(f"🧹 Очистка старых статей, оставляем {keep_last} последних...")
     try:
@@ -72,6 +74,7 @@ def clean_old_articles(keep_last=3):
     except Exception as e:
         print(f"⚠️ Ошибка при очистке: {e}")
 
+# === Генерация контента ===
 def generate_content():
     print("🚀 Запуск генерации контента...")
     KEEP_LAST_ARTICLES = 3
@@ -96,28 +99,18 @@ def generate_content():
     print(f"✅ Статья создана: {filename}")
     return filename
 
+# === Генерация статьи через Groq/OpenRouter ===
 def generate_article_content(topic):
     openrouter_key = os.getenv('OPENROUTER_API_KEY')
     groq_key = os.getenv('GROQ_API_KEY')
     models_to_try = []
     
     if groq_key:
-        groq_models = [
-            "llama-3.1-8b-instant",
-            "llama-3.2-1b-preview",
-            "llama-3.2-3b-preview",
-            "mixtral-8x7b-32768",
-            "gemma2-9b-it"
-        ]
+        groq_models = ["llama-3.1-8b-instant"]
         for model_name in groq_models:
             models_to_try.append((f"Groq-{model_name}", lambda m=model_name: generate_with_groq(groq_key, m, topic)))
     if openrouter_key:
-        openrouter_models = [
-            "anthropic/claude-3-haiku",
-            "google/gemini-pro", 
-            "mistralai/mistral-7b-instruct",
-            "meta-llama/llama-3-8b-instruct",
-        ]
+        openrouter_models = ["anthropic/claude-3-haiku"]
         for model_name in openrouter_models:
             models_to_try.append((model_name, lambda m=model_name: generate_with_openrouter(openrouter_key, m, topic)))
     for model_name, generate_func in models_to_try:
@@ -132,26 +125,11 @@ def generate_article_content(topic):
             print(f"⚠️ Ошибка {model_name}: {str(e)[:100]}")
             continue
     
-    fallback_content = f"""# {topic}
-
-## Введение
-{topic} - это важное направление в развитии искусственного интеллекта на 2025 год.
-
-## Основные аспекты
-- **Технологические инновации**: {topic} включает передовые разработки в области AI
-- **Практическое применение**: Технология находит применение в различных отраслях
-- **Перспективы развития**: Ожидается значительный рост в ближайшие годы
-
-## Технические детали
-Модели искусственного интеллекта для {topic} используют современные архитектуры нейросетей.
-
-## Заключение
-{topic} представляет собой ключевое направление развития искусственного интеллекта.
-"""
+    fallback_content = f"# {topic}\n\n{topic} - важное направление в AI на 2025 год."
     return fallback_content, "fallback-generator"
 
 def generate_with_groq(api_key, model_name, topic):
-    prompt = f"Напиши развернутую техническую статью на тему: '{topic}' на русском языке, Markdown, 400-600 слов"
+    prompt = f"Напиши развернутую статью на тему: '{topic}' на русском языке, Markdown, 400-600 слов"
     response = requests.post(
         "https://api.groq.com/openai/v1/chat/completions",
         headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
@@ -165,11 +143,11 @@ def generate_with_groq(api_key, model_name, topic):
     raise Exception(f"Groq API error {response.status_code}")
 
 def generate_with_openrouter(api_key, model_name, topic):
-    prompt = f"Напиши развернутую техническую статью на тему: '{topic}' на русском языке, Markdown, 400-600 слов"
+    prompt = f"Напиши развернутую статью на тему: '{topic}' на русском языке, Markdown, 400-600 слов"
     response = requests.post(
         "https://openrouter.ai/api/v1/chat/completions",
         headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-        json={"model": model_name, "messages":[{"role":"user","content":prompt}], "max_tokens":1500, "temperature":0.7},
+        json={"model": model_name, "messages":[{"role":"user","content":prompt}], "max_tokens":1500,"temperature":0.7},
         timeout=30
     )
     if response.status_code == 200:
@@ -178,36 +156,34 @@ def generate_with_openrouter(api_key, model_name, topic):
             return data['choices'][0]['message']['content'].strip()
     raise Exception(f"OpenRouter API error {response.status_code}")
 
-# === Генерация изображений через Kandinsky ===
-KANDINSKY_KEY = "3BA53CAD37A0BF21740401408253641E"
-KANDINSKY_SECRET = "00CE1D26AF6BF45FD60BBB4447AD3981"
-
+# === Генерация изображений через Kandinsky 3.0 ===
 def generate_article_image(topic):
     print(f"🎨 Генерация изображения по промпту: {topic}")
     prompt = generate_image_prompt(topic)
     try:
-        filename = generate_with_kandinsky_new(prompt, topic)
+        filename = generate_with_kandinsky_v3(prompt, topic)
         if filename:
-            print(f"✅ Kandinsky изображение создано: {filename}")
+            print(f"✅ Kandinsky 3.0 изображение создано: {filename}")
             return filename
     except Exception as e:
-        print(f"⚠️ Kandinsky API ошибка: {e}")
+        print(f"⚠️ Kandinsky 3.0 API ошибка: {e}")
     return generate_placeholder_image(topic)
 
-def generate_with_kandinsky_new(prompt, topic):
+def generate_with_kandinsky_v3(prompt, topic):
     url = "https://api.fusionbrain.ai/kandinsky/api/v2/text2image/run"
-    headers = {"X-Key": KANDINSKY_KEY, "X-Secret": KANDINSKY_SECRET, "Content-Type":"application/json"}
+    headers = {
+        "X-Key": KANDINSKY_KEY,
+        "X-Secret": KANDINSKY_SECRET,
+        "Content-Type": "application/json"
+    }
     payload = {"type":"GENERATE","numImages":1,"width":1024,"height":1024,"generateParams":{"query":prompt}}
     response = requests.post(url, headers=headers, json=payload, timeout=30)
     if response.status_code == 200:
         data = response.json()
         if 'uuid' in data:
-            task_id = data['uuid']
-            # возвращаем имя файла сразу
-            image_data = b''  # временно пустое, заменяется позже
-            filename = save_article_image(image_data, topic)
-            return filename
-    raise Exception("Kandinsky new API failed")
+            # Пока placeholder для демонстрации
+            return generate_placeholder_image(topic)
+    raise Exception("Kandinsky 3.0 API не вернул результат")
 
 def generate_image_prompt(topic):
     prompts = [
@@ -238,14 +214,6 @@ def generate_placeholder_image(topic):
     bbox = draw.textbbox((0,0), wrapped_text, font=font)
     draw.text(((width-(bbox[2]-bbox[0])/2),(height-(bbox[3]-bbox[1])/2)), wrapped_text, font=font, fill="#6366f1")
     img.save(filename)
-    return filename
-
-def save_article_image(image_data, topic):
-    os.makedirs("assets/images/posts", exist_ok=True)
-    filename = f"assets/images/posts/{generate_slug(topic)}.png"
-    if image_data:
-        with open(filename,'wb') as f:
-            f.write(image_data)
     return filename
 
 def generate_slug(text):
