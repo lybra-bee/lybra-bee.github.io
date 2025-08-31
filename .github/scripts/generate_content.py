@@ -1,18 +1,14 @@
 #!/usr/bin/env python3
 import os
-import random
+import json
 import requests
-import shutil
-import re
-import textwrap
-import time
-import logging
-import argparse
-import base64
+import random
 from datetime import datetime, timezone
+import logging
+import textwrap
 from PIL import Image, ImageDraw, ImageFont
 
-# — Настройка логирования —
+# ======== Настройка логирования ========
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -20,7 +16,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# — Генерация случайной темы —
+# ======== Генерация темы ========
 def generate_ai_trend_topic():
     current_trends_2025 = [
         "Multimodal AI интеграция текста изображений и аудио в единых моделях",
@@ -53,7 +49,7 @@ def generate_ai_trend_topic():
     ]
     trend = random.choice(current_trends_2025)
     domain = random.choice(application_domains)
-    choice = random.choice([
+    topic_formats = [
         f"{trend} {domain} в 2025 году",
         f"Тенденции 2025 {trend} {domain}",
         f"{trend} революционные изменения {domain} в 2025",
@@ -61,191 +57,215 @@ def generate_ai_trend_topic():
         f"Инновации 2025 {trend} для {domain}",
         f"{trend} будущее {domain} в 2025 году",
         f"Практическое применение {trend} в {domain} 2025"
-    ])
-    return choice
+    ]
+    return random.choice(topic_formats)
 
-# — Очистка прошлых статей —
-def clean_old_articles(keep_last=3):
-    logger.info(f"🧹 Очистка старых статей, оставляем {keep_last}")
-    content_dir = "content"
-    posts_dir = os.path.join(content_dir, "posts")
-    if os.path.isdir(posts_dir):
-        posts = sorted([f for f in os.listdir(posts_dir) if f.endswith('.md')], reverse=True)
-        for post in posts[keep_last:]:
-            os.remove(os.path.join(posts_dir, post))
-            logger.info(f"🗑 Удалён пост: {post}")
-    else:
-        os.makedirs("content/posts", exist_ok=True)
-        with open("content/_index.md", "w", encoding="utf-8") as f:
-            f.write("---\ntitle: \"Главная\"\n---")
-        with open("content/posts/_index.md", "w", encoding="utf-8") as f:
-            f.write("---\ntitle: \"Статьи\"\n---")
-        logger.info("✅ Создана структура content")
+# ======== Проверка переменных окружения ========
+def check_environment_variables():
+    env_vars = {
+        'OPENROUTER_API_KEY': os.getenv('OPENROUTER_API_KEY'),
+        'GROQ_API_KEY': os.getenv('GROQ_API_KEY'),
+        'EDENAI_API_KEY': os.getenv('EDENAI_API_KEY')
+    }
+    logger.info("🔍 Проверка переменных окружения:")
+    for var_name, var_value in env_vars.items():
+        status = "✅ установлен" if var_value else "❌ отсутствует"
+        logger.info(f"   {var_name}: {status}")
 
-# — Генерация текста через OpenRouter/Groq —
+# ======== Генерация статьи ========
+def generate_content():
+    logger.info("🚀 Запуск генерации контента...")
+    check_environment_variables()
+
+    topic = generate_ai_trend_topic()
+    logger.info(f"📝 Тема: {topic}")
+
+    # Генерация изображения через Eden AI
+    image_filename = generate_article_image(topic)
+
+    # Генерация текста через OpenRouter/Groq
+    content, model_used = generate_article_content(topic)
+
+    date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    slug = generate_slug(topic)
+    os.makedirs("content/posts", exist_ok=True)
+    filename = f"content/posts/{date}-{slug}.md"
+
+    frontmatter = generate_frontmatter(topic, content, model_used, image_filename)
+    with open(filename, 'w', encoding='utf-8') as f:
+        f.write(frontmatter)
+
+    logger.info(f"✅ Статья создана: {filename}")
+    return filename
+
+def generate_frontmatter(topic, content, model_used, image_filename):
+    return f"""---
+title: "{topic}"
+date: "{datetime.now(timezone.utc).isoformat()}"
+model: "{model_used}"
+image: "{image_filename}"
+---
+{content}
+"""
+
+def generate_slug(text):
+    import re
+    text = text.lower().replace(' ', '-')
+    text = re.sub(r'[^a-z0-9\-]', '', text)
+    return text[:60]
+
+# ======== Генерация текста через OpenRouter/Groq ========
 def generate_article_content(topic):
     openrouter_key = os.getenv('OPENROUTER_API_KEY')
     groq_key = os.getenv('GROQ_API_KEY')
     models_to_try = []
 
     if groq_key:
-        for m in ["llama-3.1-8b-instant", "llama-3.2-1b-preview"]:
-            models_to_try.append((f"Groq-{m}", lambda m=m: gen_with_groq(groq_key, m, topic)))
+        groq_models = ["llama-3.1-8b-instant", "llama-3.2-1b-preview", "llama-3.1-70b-versatile"]
+        for model_name in groq_models:
+            models_to_try.append((f"Groq-{model_name}", lambda m=model_name: generate_with_groq(groq_key, m, topic)))
     if openrouter_key:
-        for m in ["anthropic/claude-3-haiku", "google/gemini-pro"]:
-            models_to_try.append((f"OpenRouter-{m}", lambda m=m: gen_with_openrouter(openrouter_key, m, topic)))
+        openrouter_models = ["anthropic/claude-3-haiku", "anthropic/claude-3-sonnet", "google/gemini-pro-1.5"]
+        for model_name in openrouter_models:
+            models_to_try.append((model_name, lambda m=model_name: generate_with_openrouter(openrouter_key, m, topic)))
 
     if not models_to_try:
-        logger.warning("⚠ Нет ключей для генерации текста — fallback")
-        return generate_fallback_content(topic), "fallback"
+        logger.warning("⚠️ Нет доступных API ключей для генерации текста")
+        fallback = generate_fallback_content(topic)
+        return fallback, "fallback-generator"
 
-    for name, func in models_to_try:
+    for model_name, generate_func in models_to_try:
         try:
-            logger.info(f"⏳ Пробуем {name}")
-            result = func()
-            if result and len(result.strip()) > 150:
-                logger.info(f"✅ Успешно через {name}")
-                return result, name
+            logger.info(f"🔄 Пробуем генерацию текста: {model_name}")
+            result = generate_func()
+            if result and len(result.strip()) > 100:
+                logger.info(f"✅ Успешно через {model_name}")
+                return result, model_name
         except Exception as e:
-            logger.error(f"❌ Ошибка {name}: {e}")
+            logger.error(f"❌ Ошибка {model_name}: {e}")
+            continue
 
-    logger.warning("⚠ Все модели не сработали — fallback")
-    return generate_fallback_content(topic), "fallback"
-
-def gen_with_groq(key, model, topic):
-    prompt = f"Напиши статью **на русском**, Markdown, 400-600 слов: {topic}"
-    resp = requests.post(
-        "https://api.groq.com/openai/v1/chat/completions",
-        headers={"Authorization": f"Bearer {key}"}, json={
-            "model": model,
-            "messages":[{"role":"user","content":prompt}],
-            "max_tokens":1500
-        }, timeout=30
-    )
-    resp.raise_for_status()
-    return resp.json()['choices'][0]['message']['content']
-
-def gen_with_openrouter(key, model, topic):
-    prompt = f"Напиши статью **на русском**, Markdown, ~500 слов: {topic}"
-    resp = requests.post(
-        "https://openrouter.ai/api/v1/chat/completions",
-        headers={"Authorization": f"Bearer {key}"}, json={
-            "model": model,
-            "messages":[{"role":"user","content":prompt}],
-            "max_tokens":1500
-        }, timeout=30
-    )
-    resp.raise_for_status()
-    return resp.json()['choices'][0]['message']['content']
+    logger.warning("⚠️ Все модели не сработали, используем fallback")
+    fallback = generate_fallback_content(topic)
+    return fallback, "fallback-generator"
 
 def generate_fallback_content(topic):
-    return f"# {topic}\n\nАвтоматически сгенерированная статья."
+    sections = [
+        f"# {topic}",
+        "",
+        "## Введение",
+        f"Тема '{topic}' становится increasingly important в 2025 году.",
+        "",
+        "## Основные тенденции",
+        "- Автоматизация процессов разработки",
+        "- Интеграция AI в существующие workflow",
+        "- Улучшение качества и скорости разработки",
+        "",
+        "## Практическое применение",
+        "Компании внедряют AI решения для оптимизации своих процессов.",
+        "",
+        "## Заключение",
+        "Будущее выглядит promising с развитием AI технологий.",
+        "",
+        "*Статья сгенерирована автоматически*"
+    ]
+    return "\n".join(sections)
 
-# — Генерация изображений через Eden AI —
+def generate_with_groq(api_key, model_name, topic):
+    prompt = f"Напиши развернутую статью на тему: '{topic}' на русском языке.\nФормат Markdown, 400-600 слов, структурированный контент"
+    resp = requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        json={"model": model_name, "messages":[{"role":"user","content":prompt}], "max_tokens":2000},
+        timeout=30
+    )
+    if resp.status_code == 200:
+        data = resp.json()
+        return data['choices'][0]['message']['content'].strip()
+    else:
+        raise Exception(f"Groq API error {resp.status_code}: {resp.text}")
+
+def generate_with_openrouter(api_key, model_name, topic):
+    prompt = f"Напиши развернутую статью на тему: '{topic}' на русском языке.\nФормат Markdown, 400-600 слов, структурированный контент"
+    resp = requests.post(
+        "https://openrouter.ai/api/v1/chat/completions",
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        json={"model": model_name, "messages":[{"role":"user","content":prompt}], "max_tokens":2000},
+        timeout=30
+    )
+    if resp.status_code == 200:
+        data = resp.json()
+        return data['choices'][0]['message']['content'].strip()
+    else:
+        raise Exception(f"OpenRouter API error {resp.status_code}: {resp.text}")
+
+# ======== Генерация изображения через Eden AI ========
 EDENAI_KEY = os.getenv("EDENAI_API_KEY")
-EDENAI_PROVIDERS = ["craiyon", "deepai", "dalle-mini"]
+EDENAI_PROVIDERS = ["deepai", "openai", "stabilityai", "replicate"]
 
 def generate_article_image(topic):
     logger.info(f"🎨 Генерация изображения: {topic}")
     if not EDENAI_KEY:
-        logger.warning("❌ EDENAI_API_KEY отсутствует — placeholder")
-        return generate_placeholder(topic)
+        logger.warning("⚠️ Eden AI ключ не установлен — используем placeholder")
+        return generate_placeholder_image(topic)
 
     headers = {"Authorization": f"Bearer {EDENAI_KEY}", "Content-Type": "application/json"}
-    prompt = topic[:150]
+    prompt = f"{topic}, digital art, futuristic, AI technology, 4k, high quality, trending"
 
-    for prov in EDENAI_PROVIDERS:
-        payload = {"providers": prov, "text": prompt, "resolution": "512x512"}
+    for provider in EDENAI_PROVIDERS:
+        payload = {"providers": [provider], "text": prompt, "resolution": "1024x1024"}
         try:
-            start = time.time()
             resp = requests.post("https://api.edenai.run/v2/image/generation", headers=headers, json=payload, timeout=60)
-            dt = time.time() - start
-            logger.info(f"⏱ {prov} → {resp.status_code} ({dt:.1f}s)")
             data = resp.json()
-
-            if resp.status_code == 200:
-                pd = data.get(prov)
-                if pd and "items" in pd and isinstance(pd["items"], list):
-                    url = pd["items"][0].get("image_resource_url") or pd["items"][0].get("url")
-                    if url:
-                        fn = save_image_from_url(url, topic)
-                        logger.info(f"✅ Сгенерировано через {prov}")
-                        return fn
+            if resp.status_code == 200 and "result" in data and data["result"]:
+                image_url = data["result"][0].get("url")
+                if image_url:
+                    return save_image_from_url(image_url, topic)
             else:
-                logger.warning(f"⚠ {prov} failed: {data}")
+                logger.warning(f"⚠ Eden AI ({provider}) не сработал: {data}")
         except Exception as e:
-            logger.error(f"❌ {prov} error: {e}")
+            logger.error(f"❌ Eden AI ошибка через {provider}: {e}")
 
-    logger.warning("⚠ Все провайдеры Eden AI не сработали — placeholder")
-    return generate_placeholder(topic)
+    logger.warning("⚠ Все провайдеры Eden AI не сработали — используем placeholder")
+    return generate_placeholder_image(topic)
 
 def save_image_from_url(url, topic):
+    import requests
     try:
-        resp = requests.get(url, timeout=30)
-        resp.raise_for_status()
-        fn = f"assets/images/posts/{generate_slug(topic)}.png"
-        os.makedirs(os.path.dirname(fn), exist_ok=True)
-        with open(fn, "wb") as f:
-            f.write(resp.content)
-        return fn
+        os.makedirs("assets/images/posts", exist_ok=True)
+        filename = f"assets/images/posts/{generate_slug(topic)}.png"
+        response = requests.get(url, timeout=30)
+        if response.status_code == 200:
+            with open(filename, "wb") as f:
+                f.write(response.content)
+            logger.info(f"💾 Изображение сохранено: {filename}")
+            return filename
     except Exception as e:
-        logger.error(f"❌ Ошибка загрузки картинки: {e}")
-        return generate_placeholder(topic)
+        logger.error(f"❌ Ошибка загрузки URL: {e}")
+    return generate_placeholder_image(topic)
 
-def generate_placeholder(topic):
-    fn = f"assets/images/posts/{generate_slug(topic)}.png"
-    os.makedirs(os.path.dirname(fn), exist_ok=True)
-    img = Image.new("RGB", (800,400), "#0f172a")
-    d = ImageDraw.Draw(img)
-    txt = textwrap.fill(topic, width=30)
-    font = ImageFont.load_default()
-    bbox = d.textbbox((0,0), txt, font=font)
-    d.text(((800-bbox[2])/2,(400-bbox[3])/2), txt, font=font, fill="#6366f1")
-    img.save(fn)
-    logger.info("🖼 Placeholder создан")
-    return fn
+def generate_placeholder_image(topic):
+    os.makedirs("assets/images/posts", exist_ok=True)
+    filename = f"assets/images/posts/{generate_slug(topic)}.png"
+    width, height = 800, 400
+    img = Image.new('RGB', (width, height), color='#0f172a')
+    draw = ImageDraw.Draw(img)
+    for i in range(height):
+        r = int(15 + (i/height)*40)
+        g = int(23 + (i/height)*60)
+        b = int(42 + (i/height)*100)
+        draw.line([(0,i),(width,i)], fill=(r,g,b))
+    wrapped_text = textwrap.fill(topic, width=35)
+    try:
+        font = ImageFont.truetype("Arial.ttf", 22)
+    except:
+        font = ImageFont.load_default()
+    bbox = draw.textbbox((0,0), wrapped_text, font=font)
+    draw.text(((width-(bbox[2]-bbox[0])/2),(height-(bbox[3]-bbox[1])/2)), wrapped_text, font=font, fill="#ffffff")
+    img.save(filename)
+    logger.info(f"✅ Placeholder изображение создано: {filename}")
+    return filename
 
-# — Утилиты —
-def generate_slug(t):
-    return re.sub(r'[^a-z0-9\-]', '', re.sub(r'\s+','-', t.lower()))[:60]
-
-def generate_frontmatter(title, content, model, image):
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    return f"""---
-title: "{title.replace('"','“')}"
-date: {now}
-draft: false
-image: "{image}"
-ai_model: "{model}"
----
-
-{content}
-"""
-
-# — Главная функция —
-def generate_content():
-    logger.info("🚀 Генерация...")
-
-    clean_old_articles()
-    topic = generate_ai_trend_topic()
-    logger.info(f"Тема: {topic}")
-
-    image = generate_article_image(topic)
-    text, model = generate_article_content(topic)
-
-    date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    slug = generate_slug(topic)
-    fn = f"content/posts/{date}-{slug}.md"
-    os.makedirs(os.path.dirname(fn), exist_ok=True)
-    with open(fn, "w", encoding="utf-8") as f:
-        f.write(generate_frontmatter(topic, text, model, image))
-    logger.info(f"✅ Статья: {fn}")
-
+# ======== Запуск генерации ========
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--count", type=int, default=1, help="Сколько статей сгенерировать")
-    args = parser.parse_args()
-
-    for i in range(args.count):
-        generate_content()
-        time.sleep(2)
+    generate_content()
