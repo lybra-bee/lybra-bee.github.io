@@ -257,16 +257,12 @@ def generate_article_image(topic):
     
     prompt = f"{topic}, digital art, futuristic, AI technology, 4k, high quality, trending"
     
-    # Самые надежные бесплатные API (проверенные)
+    # Самые надежные бесплатные API
     reliable_apis = [
-        try_craiyon,            # Craiyon (DALL-E mini) - самый надежный
+        try_craiyon,            # Craiyon (DALL-E mini)
         try_deepai_public,      # DeepAI с публичным ключом
         try_huggingface_public, # Hugging Face публичные модели
-        try_quickai,           # QuickAI
-        try_proxyfusion,       # ProxyFusion
-        try_openart,           # OpenArt
-        try_local_sd,          # Локальная генерация через API
-        try_stability_public   # Stability AI публичный
+        try_stability_public    # Stability AI публичный
     ]
     
     # Пробуем самые надежные варианты
@@ -287,7 +283,7 @@ def generate_article_image(topic):
     return generate_enhanced_placeholder(topic)
 
 def try_craiyon(prompt, topic):
-    """Craiyon (бывший DALL-E mini) - самый надежный бесплатный"""
+    """Craiyon (бывший DALL-E mini)"""
     try:
         logger.info("🎨 Craiyon генерация...")
         response = requests.post(
@@ -299,7 +295,6 @@ def try_craiyon(prompt, topic):
         if response.status_code == 200:
             data = response.json()
             if data.get("images"):
-                # Декодируем первую картинку из base64
                 image_data = base64.b64decode(data["images"][0])
                 return save_image_bytes(image_data, topic)
     except Exception as e:
@@ -332,8 +327,7 @@ def try_huggingface_public(prompt, topic):
         # Пробуем разные модели
         models = [
             "runwayml/stable-diffusion-v1-5",
-            "stabilityai/stable-diffusion-2-1",
-            "prompthero/openjourney-v4"
+            "stabilityai/stable-diffusion-2-1"
         ]
         
         for model in models:
@@ -349,88 +343,6 @@ def try_huggingface_public(prompt, topic):
                 continue
     except Exception as e:
         logger.error(f"❌ HF error: {e}")
-    return None
-
-def try_quickai(prompt, topic):
-    """QuickAI API"""
-    try:
-        logger.info("🎨 QuickAI генерация...")
-        response = requests.post(
-            "https://api.quickai.io/api/v1/generate",
-            json={"prompt": prompt, "size": "512x512"},
-            timeout=20
-        )
-        if response.status_code == 200:
-            data = response.json()
-            if data.get("image"):
-                image_data = base64.b64decode(data["image"])
-                return save_image_bytes(image_data, topic)
-    except Exception as e:
-        logger.error(f"❌ QuickAI error: {e}")
-    return None
-
-def try_proxyfusion(prompt, topic):
-    """ProxyFusion API"""
-    try:
-        logger.info("🎨 ProxyFusion генерация...")
-        response = requests.post(
-            "https://api.proxyfusion.ai/generate",
-            json={"prompt": prompt, "width": 512, "height": 512},
-            timeout=20
-        )
-        if response.status_code == 200:
-            data = response.json()
-            if data.get("image_url"):
-                return save_image_from_url(data["image_url"], topic)
-    except Exception as e:
-        logger.error(f"❌ ProxyFusion error: {e}")
-    return None
-
-def try_openart(prompt, topic):
-    """OpenArt API"""
-    try:
-        logger.info("🎨 OpenArt генерация...")
-        response = requests.post(
-            "https://api.openart.ai/v1/generate",
-            json={"prompt": prompt, "width": 512, "height": 512},
-            timeout=20
-        )
-        if response.status_code == 200:
-            data = response.json()
-            if data.get("image_url"):
-                return save_image_from_url(data["image_url"], topic)
-    except Exception as e:
-        logger.error(f"❌ OpenArt error: {e}")
-    return None
-
-def try_local_sd(prompt, topic):
-    """Локальная Stable Diffusion через публичные API"""
-    try:
-        logger.info("🎨 Локальная SD генерация...")
-        # Публичные Stable Diffusion API
-        endpoints = [
-            "https://stablediffusionapi.com/api/v3/text2img",
-            "https://api.stability.ai/v1/generation/stable-diffusion-512-v2-1/text-to-image"
-        ]
-        
-        for endpoint in endpoints:
-            try:
-                response = requests.post(
-                    endpoint,
-                    json={"prompt": prompt, "width": 512, "height": 512},
-                    timeout=25
-                )
-                if response.status_code == 200:
-                    data = response.json()
-                    if data.get("output"):
-                        return save_image_from_url(data["output"][0], topic)
-                    elif data.get("artifacts"):
-                        image_data = base64.b64decode(data["artifacts"][0]["base64"])
-                        return save_image_bytes(image_data, topic)
-            except:
-                continue
-    except Exception as e:
-        logger.error(f"❌ Local SD error: {e}")
     return None
 
 def try_stability_public(prompt, topic):
