@@ -33,13 +33,13 @@ jobs:
         pip install requests openai pillow
 
     - name: Generate AI content (Groq/OpenRouter + Eden AI images)
-  env:
-    EDENAI_API_KEY: ${{ secrets.EDENAI_API_KEY }}
-    OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-    GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-  run: |
-    echo "🚀 Генерация..."
-    python .github/scripts/generate_content.py || echo "⚠️ Генерация завершилась с ошибкой — продолжаем"
+      env:
+        EDENAI_API_KEY: ${{ secrets.EDENAI_API_KEY }}
+        OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      run: |
+        echo "🚀 Генерация..."
+        python .github/scripts/generate_content.py || echo "⚠️ Генерация завершилась с ошибкой — продолжаем"
     
     - name: Commit & push content
       run: |
