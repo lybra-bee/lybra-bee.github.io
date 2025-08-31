@@ -439,7 +439,7 @@ def try_stability_public(prompt, topic):
         logger.info("🎨 Stability AI генерация...")
         response = requests.post(
             "https://api.stability.ai/v1/generation/stable-diffusion-v1-5/text-to-image",
-            headers={"Authorization": "Bearer sk-public-demo"},  # Публичный демо-ключ
+            headers={"Authorization": "Bearer sk-public-demo"},
             json={
                 "text_prompts": [{"text": prompt}],
                 "cfg_scale": 7,
@@ -537,4 +537,74 @@ def generate_enhanced_placeholder(topic):
         
         # Добавляем AI badge
         draw.rectangle([(10, height-35), (120, height-10)], fill="#6366f1")
-        draw.text((15, height-30), "AI 
+        draw.text((15, height-30), "AI GENERATED", font=ImageFont.load_default(), fill="#ffffff")
+        
+        img.save(filename)
+        logger.info(f"🎨 Улучшенный placeholder создан: {filename}")
+        return filename
+        
+    except Exception as e:
+        logger.error(f"❌ Ошибка создания placeholder: {e}")
+        return "assets/images/default.png"
+
+# ======== Вспомогательные функции ========
+def generate_slug(text):
+    text = text.lower()
+    text = text.replace(' ', '-')
+    text = re.sub(r'[^a-z0-9\-]', '', text)
+    text = re.sub(r'-+', '-', text)
+    return text[:60]
+
+def generate_frontmatter(title, content, model_used, image_url):
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    escaped_title = title.replace(':', ' -').replace('"', "'")
+    
+    frontmatter = f"""---
+title: "{escaped_title}"
+date: {now}
+draft: false
+image: "{image_url}"
+ai_model: "{model_used}"
+tags: ["ai", "технологии", "2025"]
+categories: ["Искусственный интеллект"]
+summary: "Автоматически сгенерированная статья о тенденциях AI в 2025 году"
+---
+
+{content}
+"""
+    return frontmatter
+
+# ======== Запуск ========
+def main():
+    parser = argparse.ArgumentParser(description='Генератор AI контента')
+    parser.add_argument('--debug', action='store_true', help='Включить debug режим')
+    parser.add_argument('--count', type=int, default=1, help='Количество статей для генерации')
+    args = parser.parse_args()
+    
+    if args.debug:
+        logging.getLogger().setLevel(logging.DEBUG)
+    
+    print("🚀 Запуск генератора контента...")
+    print("=" * 50)
+    
+    check_environment_variables()
+    print("=" * 50)
+    
+    try:
+        for i in range(args.count):
+            print(f"\n📄 Генерация статьи {i+1}/{args.count}...")
+            filename = generate_content()
+            print(f"✅ Статья создана: {filename}")
+            
+            if i < args.count - 1:
+                time.sleep(2)
+                
+        print("\n🎉 Все статьи успешно сгенерированы!")
+        
+    except Exception as e:
+        print(f"💥 Критическая ошибка: {e}")
+        import traceback
+        traceback.print_exc()
+
+if __name__ == "__main__":
+    main()
