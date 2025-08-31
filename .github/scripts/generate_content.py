@@ -125,9 +125,6 @@ def check_environment_variables():
     for var_name, var_value in env_vars.items():
         status = "✅ установлен" if var_value else "❌ отсутствует"
         logger.info(f"   {var_name}: {status}")
-        
-        if not var_value and var_name == 'EDENAI_API_KEY':
-            logger.warning("⚠️  EDENAI_API_KEY не установлен! Генерация изображений будет через placeholder")
 
 # ======== Генерация текста через OpenRouter/Groq ========
 def generate_article_content(topic):
@@ -256,7 +253,7 @@ def generate_with_openrouter(api_key, model_name, topic):
 # ======== Eden AI генерация изображения ========
 EDENAI_KEY = os.getenv('EDENAI_API_KEY')
 
-# Актуальные провайдеры Eden AI (проверенные)
+# Актуальные провайдеры Eden AI
 EDENAI_PROVIDERS = [
     "openai",  # OpenAI DALL-E
     "stability",  # Stability AI
@@ -275,11 +272,7 @@ def generate_article_image(topic):
     
     logger.info(f"🔑 Токен Eden AI: {EDENAI_KEY[:8]}...{EDENAI_KEY[-4:]}")
     
-    # Сначала проверяем статус аккаунта
-    if not check_edenai_account_status():
-        logger.warning("⚠️ Проблема с аккаунтом Eden AI, используем placeholder")
-        return generate_placeholder_image(topic)
-    
+    # Пробуем прямой запрос к Eden AI без проверки аккаунта
     for provider in EDENAI_PROVIDERS:
         try:
             logger.info(f"🔄 Пробуем провайдер: {provider}")
@@ -289,6 +282,7 @@ def generate_article_image(topic):
             if provider in ["openai", "leonardo", "stability"]:
                 resolution = "1024x1024"
             
+            # Правильный формат запроса для Eden AI v2
             payload = {
                 "providers": provider, 
                 "text": prompt, 
@@ -299,14 +293,14 @@ def generate_article_image(topic):
             # Специфичные настройки для провайдеров
             provider_settings = {}
             if provider == "openai":
-                provider_settings = {"model": "dall-e-2"}  # dall-e-3 может требовать больше кредитов
+                provider_settings = {"model": "dall-e-2"}
             elif provider == "stability":
                 provider_settings = {"style_preset": "digital-art"}
             elif provider == "leonardo":
                 provider_settings = {"model": "leonardo-creative"}
             
             if provider_settings:
-                payload["settings"] = {provider: provider_settings}
+                payload["settings"] = provider_settings
             
             start_time = time.time()
             
@@ -315,7 +309,6 @@ def generate_article_image(topic):
                 headers={
                     "Authorization": f"Bearer {EDENAI_KEY}", 
                     "Content-Type": "application/json",
-                    "Accept": "application/json"
                 },
                 json=payload,
                 timeout=60
@@ -329,14 +322,11 @@ def generate_article_image(topic):
                 data = resp.json()
                 logger.debug(f"📋 Ответ от {provider}: {json.dumps(data, ensure_ascii=False)[:500]}...")
                 
-                if data and isinstance(data, dict):
-                    if "error" in data:
-                        logger.error(f"❌ {provider} error: {data['error']}")
-                        continue
-                    
-                    if provider in data and isinstance(data[provider], dict):
-                        provider_data = data[provider]
-                        if "status" in provider_data and provider_data["status"] == "success":
+                # Анализируем ответ Eden AI
+                if provider in data:
+                    provider_data = data[provider]
+                    if isinstance(provider_data, dict):
+                        if provider_data.get("status") == "success":
                             image_url = provider_data.get("url")
                             if image_url:
                                 logger.info(f"✅ Получен URL изображения от {provider}")
@@ -348,18 +338,24 @@ def generate_article_image(topic):
                             logger.error(f"❌ {provider} failed: {error_msg}")
                     else:
                         logger.warning(f"⚠️ Неожиданный формат ответа от {provider}")
+                else:
+                    logger.warning(f"⚠️ Провайдер {provider} не найден в ответе")
             
             elif resp.status_code == 400:
                 logger.error(f"❌ {provider}: Bad Request - проверьте параметры запроса")
                 logger.debug(f"📋 Ответ 400: {resp.text[:200]}...")
             elif resp.status_code == 402:
                 logger.error(f"❌ {provider}: Недостаточно средств на счете")
+                break  # Прерываем цикл если нет средств
             elif resp.status_code == 401:
                 logger.error(f"❌ {provider}: Неверный API ключ")
+                break  # Прерываем цикл если ключ неверный
             elif resp.status_code == 403:
                 logger.error(f"❌ {provider}: Доступ запрещен")
+                break  # Прерываем цикл если доступ запрещен
             elif resp.status_code == 429:
                 logger.error(f"❌ {provider}: Слишком много запросов")
+                time.sleep(10)  # Большая пауза при rate limit
             else:
                 logger.error(f"❌ {provider}: Неожиданный статус код {resp.status_code}")
                 logger.debug(f"📋 Ответ: {resp.text[:200]}...")
@@ -372,32 +368,10 @@ def generate_article_image(topic):
             logger.error(f"❌ Исключение с {provider}: {str(e)}")
         
         # Пауза между запросами
-        time.sleep(3)
+        time.sleep(2)
     
     logger.warning("✅ Все провайдеры Eden AI не сработали, используем placeholder")
     return generate_placeholder_image(topic)
-
-def check_edenai_account_status():
-    """Проверка статуса аккаунта Eden AI"""
-    try:
-        resp = requests.get(
-            "https://api.edenai.run/v1/account",
-            headers={"Authorization": f"Bearer {EDENAI_KEY}"},
-            timeout=30
-        )
-        
-        if resp.status_code == 200:
-            data = resp.json()
-            logger.info(f"📊 Баланс Eden AI: {data.get('credit_balance', 'N/A')}")
-            logger.info(f"📊 Статус аккаунта: {data.get('status', 'N/A')}")
-            return True
-        else:
-            logger.error(f"❌ Ошибка проверки аккаунта: {resp.status_code}")
-            return False
-            
-    except Exception as e:
-        logger.error(f"❌ Ошибка проверки статуса аккаунта: {e}")
-        return False
 
 def save_image_from_url(url, topic):
     try:
