@@ -256,22 +256,18 @@ def generate_with_openrouter(api_key, model_name, topic):
 # ======== Eden AI генерация изображения ========
 EDENAI_KEY = os.getenv('EDENAI_API_KEY')
 
-# Список провайдеров Eden AI
+# Актуальные провайдеры Eden AI (проверенные)
 EDENAI_PROVIDERS = [
-    "openjourney", 
-    "stable_diffusion", 
-    "dalle-mini",
-    "deepai",
-    "nightcafe",
-    "huggingface",
-    "openai",
-    "stability",
-    "leonardo"
+    "openai",  # OpenAI DALL-E
+    "stability",  # Stability AI
+    "leonardo",  # Leonardo AI
+    "deepai",  # DeepAI
+    "replicate"  # Replicate
 ]
 
 def generate_article_image(topic):
     logger.info(f"🎨 Генерация изображения через Eden AI по промпту: {topic}")
-    prompt = topic[:200]  # укоротим слишком длинные промпты
+    prompt = topic[:150]  # укоротим промпт
     
     if not EDENAI_KEY:
         logger.error("❌ EDENAI_API_KEY не установлен в переменных окружения")
@@ -279,30 +275,35 @@ def generate_article_image(topic):
     
     logger.info(f"🔑 Токен Eden AI: {EDENAI_KEY[:8]}...{EDENAI_KEY[-4:]}")
     
+    # Сначала проверяем статус аккаунта
+    if not check_edenai_account_status():
+        logger.warning("⚠️ Проблема с аккаунтом Eden AI, используем placeholder")
+        return generate_placeholder_image(topic)
+    
     for provider in EDENAI_PROVIDERS:
         try:
             logger.info(f"🔄 Пробуем провайдер: {provider}")
             
-            # Настройки для разных провайдеров
+            # Базовые настройки
             resolution = "512x512"
             if provider in ["openai", "leonardo", "stability"]:
                 resolution = "1024x1024"
             
             payload = {
-                "providers": [provider], 
+                "providers": provider, 
                 "text": prompt, 
                 "resolution": resolution,
                 "num_images": 1
             }
             
-            # Специфичные настройки для некоторых провайдеров
+            # Специфичные настройки для провайдеров
             provider_settings = {}
-            if provider == "leonardo":
-                provider_settings = {"model": "leonardo-creative"}
+            if provider == "openai":
+                provider_settings = {"model": "dall-e-2"}  # dall-e-3 может требовать больше кредитов
             elif provider == "stability":
                 provider_settings = {"style_preset": "digital-art"}
-            elif provider == "openai":
-                provider_settings = {"model": "dall-e-2"}  # dall-e-3 может быть дороже
+            elif provider == "leonardo":
+                provider_settings = {"model": "leonardo-creative"}
             
             if provider_settings:
                 payload["settings"] = {provider: provider_settings}
@@ -317,7 +318,7 @@ def generate_article_image(topic):
                     "Accept": "application/json"
                 },
                 json=payload,
-                timeout=45
+                timeout=60
             )
             
             response_time = time.time() - start_time
@@ -326,27 +327,31 @@ def generate_article_image(topic):
             
             if resp.status_code == 200:
                 data = resp.json()
-                logger.debug(f"📋 Ответ от {provider}: {json.dumps(data, ensure_ascii=False)[:300]}...")
+                logger.debug(f"📋 Ответ от {provider}: {json.dumps(data, ensure_ascii=False)[:500]}...")
                 
-                if "result" in data and data["result"]:
-                    provider_result = data["result"][0]
-                    
-                    if "status" in provider_result and provider_result["status"] == "fail":
-                        error_msg = provider_result.get("error", {}).get("message", "Unknown error")
-                        logger.error(f"❌ {provider} failed: {error_msg}")
+                if data and isinstance(data, dict):
+                    if "error" in data:
+                        logger.error(f"❌ {provider} error: {data['error']}")
                         continue
                     
-                    image_url = provider_result.get("url")
-                    if image_url:
-                        logger.info(f"✅ Получен URL изображения от {provider}")
-                        filename = save_image_from_url(image_url, topic)
-                        logger.info(f"✅ Изображение сохранено: {filename}")
-                        return filename
+                    if provider in data and isinstance(data[provider], dict):
+                        provider_data = data[provider]
+                        if "status" in provider_data and provider_data["status"] == "success":
+                            image_url = provider_data.get("url")
+                            if image_url:
+                                logger.info(f"✅ Получен URL изображения от {provider}")
+                                filename = save_image_from_url(image_url, topic)
+                                if filename:
+                                    return filename
+                        else:
+                            error_msg = provider_data.get("error", {}).get("message", "Unknown error")
+                            logger.error(f"❌ {provider} failed: {error_msg}")
                     else:
-                        logger.warning(f"⚠️ Нет URL в ответе от {provider}")
-                else:
-                    logger.warning(f"⚠️ Нет результата от {provider}")
+                        logger.warning(f"⚠️ Неожиданный формат ответа от {provider}")
             
+            elif resp.status_code == 400:
+                logger.error(f"❌ {provider}: Bad Request - проверьте параметры запроса")
+                logger.debug(f"📋 Ответ 400: {resp.text[:200]}...")
             elif resp.status_code == 402:
                 logger.error(f"❌ {provider}: Недостаточно средств на счете")
             elif resp.status_code == 401:
@@ -367,10 +372,32 @@ def generate_article_image(topic):
             logger.error(f"❌ Исключение с {provider}: {str(e)}")
         
         # Пауза между запросами
-        time.sleep(2)
+        time.sleep(3)
     
     logger.warning("✅ Все провайдеры Eden AI не сработали, используем placeholder")
     return generate_placeholder_image(topic)
+
+def check_edenai_account_status():
+    """Проверка статуса аккаунта Eden AI"""
+    try:
+        resp = requests.get(
+            "https://api.edenai.run/v1/account",
+            headers={"Authorization": f"Bearer {EDENAI_KEY}"},
+            timeout=30
+        )
+        
+        if resp.status_code == 200:
+            data = resp.json()
+            logger.info(f"📊 Баланс Eden AI: {data.get('credit_balance', 'N/A')}")
+            logger.info(f"📊 Статус аккаунта: {data.get('status', 'N/A')}")
+            return True
+        else:
+            logger.error(f"❌ Ошибка проверки аккаунта: {resp.status_code}")
+            return False
+            
+    except Exception as e:
+        logger.error(f"❌ Ошибка проверки статуса аккаунта: {e}")
+        return False
 
 def save_image_from_url(url, topic):
     try:
@@ -388,11 +415,11 @@ def save_image_from_url(url, topic):
             return filename
         else:
             logger.error(f"❌ Ошибка загрузки изображения: статус {resp.status_code}")
-            return generate_placeholder_image(topic)
+            return None
             
     except Exception as e:
         logger.error(f"❌ Ошибка при сохранении изображения: {e}")
-        return generate_placeholder_image(topic)
+        return None
 
 def generate_placeholder_image(topic):
     """Создание placeholder изображения с градиентом и текстом"""
