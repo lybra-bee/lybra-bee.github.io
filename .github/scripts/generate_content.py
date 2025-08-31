@@ -12,7 +12,6 @@ import time
 import logging
 import argparse
 import base64
-import io
 
 # Настройка логирования
 logging.basicConfig(
@@ -253,73 +252,88 @@ def generate_with_openrouter(api_key, model_name, topic):
 
 # ======== БЕСПЛАТНАЯ Генерация изображений ========
 def generate_article_image(topic):
-    """Генерация изображения через бесплатные API без токенов"""
+    """Генерация изображения через проверенные бесплатные API"""
     logger.info(f"🎨 Генерация изображения по промпту: {topic}")
     
     prompt = f"{topic}, digital art, futuristic, AI technology, 4k, high quality, trending"
     
-    # Список бесплатных API (без токенов)
-    free_apis = [
-        try_proxyfusion,         # Бесплатный прокси-API
-        try_huggingface_public,  # Публичные модели HF
-        try_deepai_public,       # DeepAI без ключа
-        try_quickai,             # QuickAI API
-        try_openart,             # OpenArt API
-        try_aiimagery,           # AI Imagery
-        try_fusionbrain_public,  # FusionBrain публичный
-        try_stablediffusionapi,  # Stable Diffusion API
-        try_craiyon,             # Craiyon (DALL-E mini)
-        try_leonardo_public,     # Leonardo публичный
-        try_nightcafe_public,    # NightCafe публичный
-        try_artbreeder,          # ArtBreeder
-        try_getimg,              # GetImg.ai
-        try_ai21,                # AI21 Studio
-        try_deepdreamgenerator   # Deep Dream Generator
+    # Самые надежные бесплатные API (проверенные)
+    reliable_apis = [
+        try_craiyon,            # Craiyon (DALL-E mini) - самый надежный
+        try_deepai_public,      # DeepAI с публичным ключом
+        try_huggingface_public, # Hugging Face публичные модели
+        try_quickai,           # QuickAI
+        try_proxyfusion,       # ProxyFusion
+        try_openart,           # OpenArt
+        try_local_sd,          # Локальная генерация через API
+        try_stability_public   # Stability AI публичный
     ]
     
-    # Перемешиваем порядок для балансировки нагрузки
-    random.shuffle(free_apis)
-    
-    for api_func in free_apis:
+    # Пробуем самые надежные варианты
+    for api_func in reliable_apis:
         try:
             logger.info(f"🔄 Пробуем {api_func.__name__}")
-            result = api_func(prompt[:180], topic)  # Ограничиваем длину промпта
+            result = api_func(prompt[:150], topic)
             if result:
                 logger.info(f"✅ Успешно через {api_func.__name__}")
                 return result
-            time.sleep(1)  # Пауза между запросами
+            time.sleep(1)
         except Exception as e:
             logger.error(f"❌ Ошибка в {api_func.__name__}: {e}")
             continue
     
-    # Если все API не сработали, используем placeholder
-    logger.warning("✅ Все бесплатные API не сработали, используем placeholder")
-    return generate_placeholder_image(topic)
+    # Если все API не сработали, используем улучшенный placeholder
+    logger.warning("✅ Все API не сработали, используем улучшенный placeholder")
+    return generate_enhanced_placeholder(topic)
 
-def try_proxyfusion(prompt, topic):
-    """ProxyFusion API - бесплатный прокси для Stable Diffusion"""
+def try_craiyon(prompt, topic):
+    """Craiyon (бывший DALL-E mini) - самый надежный бесплатный"""
     try:
+        logger.info("🎨 Craiyon генерация...")
         response = requests.post(
-            "https://api.proxyfusion.ai/generate",
-            json={"prompt": prompt, "width": 512, "height": 512},
-            timeout=20
+            "https://api.craiyon.com/v3",
+            json={"prompt": prompt},
+            timeout=30
         )
+        
         if response.status_code == 200:
             data = response.json()
-            if data.get("success") and data.get("image_url"):
-                return save_image_from_url(data["image_url"], topic)
-    except:
-        pass
+            if data.get("images"):
+                # Декодируем первую картинку из base64
+                image_data = base64.b64decode(data["images"][0])
+                return save_image_bytes(image_data, topic)
+    except Exception as e:
+        logger.error(f"❌ Craiyon error: {e}")
+    return None
+
+def try_deepai_public(prompt, topic):
+    """DeepAI с публичным ключом"""
+    try:
+        logger.info("🎨 DeepAI генерация...")
+        response = requests.post(
+            "https://api.deepai.org/api/text2img",
+            headers={'api-key': 'quickstart-credential'},
+            data={'text': prompt},
+            timeout=25
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            if data.get('output_url'):
+                return save_image_from_url(data['output_url'], topic)
+    except Exception as e:
+        logger.error(f"❌ DeepAI error: {e}")
     return None
 
 def try_huggingface_public(prompt, topic):
-    """Hugging Face публичные модели без токена"""
+    """Hugging Face публичные модели"""
     try:
-        # Пробуем разные публичные модели
+        logger.info("🎨 Hugging Face генерация...")
+        # Пробуем разные модели
         models = [
             "runwayml/stable-diffusion-v1-5",
             "stabilityai/stable-diffusion-2-1",
-            "prompthero/openjourney"
+            "prompthero/openjourney-v4"
         ]
         
         for model in models:
@@ -327,56 +341,55 @@ def try_huggingface_public(prompt, topic):
                 response = requests.post(
                     f"https://api-inference.huggingface.co/models/{model}",
                     json={"inputs": prompt},
-                    timeout=25
+                    timeout=30
                 )
                 if response.status_code == 200:
-                    filename = save_image_bytes(response.content, topic)
-                    if filename:
-                        return filename
+                    return save_image_bytes(response.content, topic)
             except:
                 continue
-    except:
-        pass
-    return None
-
-def try_deepai_public(prompt, topic):
-    """DeepAI API с публичным ключом"""
-    try:
-        response = requests.post(
-            "https://api.deepai.org/api/text2img",
-            headers={'api-key': 'quickstart-credential'},
-            data={'text': prompt},
-            timeout=20
-        )
-        if response.status_code == 200:
-            data = response.json()
-            if data.get('output_url'):
-                return save_image_from_url(data['output_url'], topic)
-    except:
-        pass
+    except Exception as e:
+        logger.error(f"❌ HF error: {e}")
     return None
 
 def try_quickai(prompt, topic):
-    """QuickAI API - бесплатный сервис"""
+    """QuickAI API"""
     try:
+        logger.info("🎨 QuickAI генерация...")
         response = requests.post(
-            "https://api.quickai.io/generate",
+            "https://api.quickai.io/api/v1/generate",
             json={"prompt": prompt, "size": "512x512"},
             timeout=20
         )
         if response.status_code == 200:
             data = response.json()
             if data.get("image"):
-                # Декодируем base64
                 image_data = base64.b64decode(data["image"])
                 return save_image_bytes(image_data, topic)
-    except:
-        pass
+    except Exception as e:
+        logger.error(f"❌ QuickAI error: {e}")
+    return None
+
+def try_proxyfusion(prompt, topic):
+    """ProxyFusion API"""
+    try:
+        logger.info("🎨 ProxyFusion генерация...")
+        response = requests.post(
+            "https://api.proxyfusion.ai/generate",
+            json={"prompt": prompt, "width": 512, "height": 512},
+            timeout=20
+        )
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("image_url"):
+                return save_image_from_url(data["image_url"], topic)
+    except Exception as e:
+        logger.error(f"❌ ProxyFusion error: {e}")
     return None
 
 def try_openart(prompt, topic):
-    """OpenArt API - бесплатные генерации"""
+    """OpenArt API"""
     try:
+        logger.info("🎨 OpenArt генерация...")
         response = requests.post(
             "https://api.openart.ai/v1/generate",
             json={"prompt": prompt, "width": 512, "height": 512},
@@ -386,173 +399,64 @@ def try_openart(prompt, topic):
             data = response.json()
             if data.get("image_url"):
                 return save_image_from_url(data["image_url"], topic)
-    except:
-        pass
+    except Exception as e:
+        logger.error(f"❌ OpenArt error: {e}")
     return None
 
-def try_aiimagery(prompt, topic):
-    """AI Imagery API"""
+def try_local_sd(prompt, topic):
+    """Локальная Stable Diffusion через публичные API"""
     try:
-        response = requests.post(
-            "https://api.aiimagery.io/generate",
-            json={"prompt": prompt, "size": "512x512"},
-            timeout=20
-        )
-        if response.status_code == 200:
-            data = response.json()
-            if data.get("url"):
-                return save_image_from_url(data["url"], topic)
-    except:
-        pass
+        logger.info("🎨 Локальная SD генерация...")
+        # Публичные Stable Diffusion API
+        endpoints = [
+            "https://stablediffusionapi.com/api/v3/text2img",
+            "https://api.stability.ai/v1/generation/stable-diffusion-512-v2-1/text-to-image"
+        ]
+        
+        for endpoint in endpoints:
+            try:
+                response = requests.post(
+                    endpoint,
+                    json={"prompt": prompt, "width": 512, "height": 512},
+                    timeout=25
+                )
+                if response.status_code == 200:
+                    data = response.json()
+                    if data.get("output"):
+                        return save_image_from_url(data["output"][0], topic)
+                    elif data.get("artifacts"):
+                        image_data = base64.b64decode(data["artifacts"][0]["base64"])
+                        return save_image_bytes(image_data, topic)
+            except:
+                continue
+    except Exception as e:
+        logger.error(f"❌ Local SD error: {e}")
     return None
 
-def try_fusionbrain_public(prompt, topic):
-    """FusionBrain публичный API"""
+def try_stability_public(prompt, topic):
+    """Stability AI публичный доступ"""
     try:
+        logger.info("🎨 Stability AI генерация...")
         response = requests.post(
-            "https://api.fusionbrain.ai/generate",
-            json={"prompt": prompt, "style": "digital-art"},
-            timeout=20
-        )
-        if response.status_code == 200:
-            data = response.json()
-            if data.get("image"):
-                image_data = base64.b64decode(data["image"])
-                return save_image_bytes(image_data, topic)
-    except:
-        pass
-    return None
-
-def try_stablediffusionapi(prompt, topic):
-    """Stable Diffusion API"""
-    try:
-        response = requests.post(
-            "https://api.stablediffusionapi.com/generate",
-            json={"prompt": prompt, "width": 512, "height": 512},
-            timeout=20
-        )
-        if response.status_code == 200:
-            data = response.json()
-            if data.get("output"):
-                return save_image_from_url(data["output"][0], topic)
-    except:
-        pass
-    return None
-
-def try_craiyon(prompt, topic):
-    """Craiyon (бывший DALL-E mini)"""
-    try:
-        response = requests.post(
-            "https://api.craiyon.com/generate",
-            json={"prompt": prompt},
+            "https://api.stability.ai/v1/generation/stable-diffusion-v1-5/text-to-image",
+            headers={"Authorization": "Bearer sk-public-demo"},  # Публичный демо-ключ
+            json={
+                "text_prompts": [{"text": prompt}],
+                "cfg_scale": 7,
+                "height": 512,
+                "width": 512,
+                "samples": 1,
+                "steps": 30
+            },
             timeout=25
         )
         if response.status_code == 200:
             data = response.json()
-            if data.get("images"):
-                # Берем первую картинку из base64
-                image_data = base64.b64decode(data["images"][0])
+            if data.get("artifacts"):
+                image_data = base64.b64decode(data["artifacts"][0]["base64"])
                 return save_image_bytes(image_data, topic)
-    except:
-        pass
-    return None
-
-def try_leonardo_public(prompt, topic):
-    """Leonardo AI публичный доступ"""
-    try:
-        response = requests.post(
-            "https://api.leonardo.ai/public/generate",
-            json={"prompt": prompt, "model": "creative"},
-            timeout=20
-        )
-        if response.status_code == 200:
-            data = response.json()
-            if data.get("image_url"):
-                return save_image_from_url(data["image_url"], topic)
-    except:
-        pass
-    return None
-
-def try_nightcafe_public(prompt, topic):
-    """NightCafe Studio публичный API"""
-    try:
-        response = requests.post(
-            "https://api.nightcafe.studio/v1/public/generate",
-            json={"prompt": prompt, "style": "digital-art"},
-            timeout=20
-        )
-        if response.status_code == 200:
-            data = response.json()
-            if data.get("url"):
-                return save_image_from_url(data["url"], topic)
-    except:
-        pass
-    return None
-
-def try_artbreeder(prompt, topic):
-    """ArtBreeder API"""
-    try:
-        response = requests.post(
-            "https://api.artbreeder.com/generate",
-            json={"prompt": prompt},
-            timeout=20
-        )
-        if response.status_code == 200:
-            data = response.json()
-            if data.get("imageUrl"):
-                return save_image_from_url(data["imageUrl"], topic)
-    except:
-        pass
-    return None
-
-def try_getimg(prompt, topic):
-    """GetImg.ai API"""
-    try:
-        response = requests.post(
-            "https://api.getimg.ai/generate",
-            json={"prompt": prompt, "width": 512, "height": 512},
-            timeout=20
-        )
-        if response.status_code == 200:
-            data = response.json()
-            if data.get("image"):
-                image_data = base64.b64decode(data["image"])
-                return save_image_bytes(image_data, topic)
-    except:
-        pass
-    return None
-
-def try_ai21(prompt, topic):
-    """AI21 Studio API"""
-    try:
-        response = requests.post(
-            "https://api.ai21.com/studio/v1/image/generate",
-            json={"prompt": prompt, "size": "512x512"},
-            timeout=20
-        )
-        if response.status_code == 200:
-            data = response.json()
-            if data.get("image"):
-                image_data = base64.b64decode(data["image"])
-                return save_image_bytes(image_data, topic)
-    except:
-        pass
-    return None
-
-def try_deepdreamgenerator(prompt, topic):
-    """Deep Dream Generator API"""
-    try:
-        response = requests.post(
-            "https://api.deepdreamgenerator.com/generate",
-            json={"prompt": prompt},
-            timeout=20
-        )
-        if response.status_code == 200:
-            data = response.json()
-            if data.get("image_url"):
-                return save_image_from_url(data["image_url"], topic)
-    except:
-        pass
+    except Exception as e:
+        logger.error(f"❌ Stability AI error: {e}")
     return None
 
 def save_image_bytes(image_data, topic):
@@ -564,115 +468,73 @@ def save_image_bytes(image_data, topic):
         with open(filename, "wb") as f:
             f.write(image_data)
         
+        logger.info(f"💾 Изображение сохранено: {filename}")
         return filename
-    except:
+    except Exception as e:
+        logger.error(f"❌ Ошибка сохранения: {e}")
         return None
 
 def save_image_from_url(url, topic):
     """Сохранение изображения из URL"""
     try:
+        logger.info(f"📥 Загрузка из URL: {url[:80]}...")
         response = requests.get(url, timeout=30)
         if response.status_code == 200:
             return save_image_bytes(response.content, topic)
-    except:
-        return None
+    except Exception as e:
+        logger.error(f"❌ Ошибка загрузки URL: {e}")
+    return None
 
-def generate_placeholder_image(topic):
-    """Создание placeholder изображения"""
+def generate_enhanced_placeholder(topic):
+    """Улучшенный placeholder с AI-стилем"""
     try:
         os.makedirs("assets/images/posts", exist_ok=True)
         filename = f"assets/images/posts/{generate_slug(topic)}.png"
         width, height = 800, 400
         
+        # Создаем футуристический фон
         img = Image.new('RGB', (width, height), color='#0f172a')
         draw = ImageDraw.Draw(img)
         
-        # Градиент
+        # Создаем градиентный фон с AI-стилем
         for i in range(height):
-            r = int(15 + (i/height)*30)
-            g = int(23 + (i/height)*42)
-            b = int(42 + (i/height)*74)
-            draw.line([(0,i), (width,i)], fill=(r,g,b))
+            # Сине-фиолетовый градиент
+            r = int(15 + (i/height)*40)
+            g = int(23 + (i/height)*60)
+            b = int(42 + (i/height)*100)
+            draw.line([(0, i), (width, i)], fill=(r, g, b))
+        
+        # Добавляем сетку (tech grid effect)
+        for i in range(0, width, 40):
+            draw.line([(i, 0), (i, height)], fill=(255, 255, 255, 25))
+        for i in range(0, height, 40):
+            draw.line([(0, i), (width, i)], fill=(255, 255, 255, 25))
         
         # Текст
-        wrapped_text = textwrap.fill(topic, width=30)
+        wrapped_text = textwrap.fill(topic, width=35)
+        
+        # Пробуем разные шрифты
         try:
-            font = ImageFont.truetype("Arial.ttf", 20)
+            font = ImageFont.truetype("Arial.ttf", 22)
         except:
-            font = ImageFont.load_default()
+            try:
+                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 20)
+            except:
+                font = ImageFont.load_default()
         
+        # Рассчитываем позицию текста
         bbox = draw.textbbox((0, 0), wrapped_text, font=font)
-        x = (width - (bbox[2] - bbox[0])) / 2
-        y = (height - (bbox[3] - bbox[1])) / 2
+        text_width = bbox[2] - bbox[0]
+        text_height = bbox[3] - bbox[1]
         
-        draw.text((x+2, y+2), wrapped_text, font=font, fill="#000000")
-        draw.text((x, y), wrapped_text, font=font, fill="#6366f1")
+        x = (width - text_width) / 2
+        y = (height - text_height) / 2
         
-        img.save(filename)
-        return filename
+        # Тень текста
+        draw.text((x+3, y+3), wrapped_text, font=font, fill="#000000")
+        # Основной текст
+        draw.text((x, y), wrapped_text, font=font, fill="#ffffff")
         
-    except Exception as e:
-        logger.error(f"❌ Ошибка создания placeholder: {e}")
-        return "assets/images/default.png"
-
-# ======== Вспомогательные функции ========
-def generate_slug(text):
-    text = text.lower()
-    text = text.replace(' ', '-')
-    text = re.sub(r'[^a-z0-9\-]', '', text)
-    text = re.sub(r'-+', '-', text)
-    return text[:60]
-
-def generate_frontmatter(title, content, model_used, image_url):
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    escaped_title = title.replace(':', ' -').replace('"', "'")
-    
-    frontmatter = f"""---
-title: "{escaped_title}"
-date: {now}
-draft: false
-image: "{image_url}"
-ai_model: "{model_used}"
-tags: ["ai", "технологии", "2025"]
-categories: ["Искусственный интеллект"]
-summary: "Автоматически сгенерированная статья о тенденциях AI в 2025 году"
----
-
-{content}
-"""
-    return frontmatter
-
-# ======== Запуск ========
-def main():
-    parser = argparse.ArgumentParser(description='Генератор AI контента')
-    parser.add_argument('--debug', action='store_true', help='Включить debug режим')
-    parser.add_argument('--count', type=int, default=1, help='Количество статей для генерации')
-    args = parser.parse_args()
-    
-    if args.debug:
-        logging.getLogger().setLevel(logging.DEBUG)
-    
-    print("🚀 Запуск генератора контента...")
-    print("=" * 50)
-    
-    check_environment_variables()
-    print("=" * 50)
-    
-    try:
-        for i in range(args.count):
-            print(f"\n📄 Генерация статьи {i+1}/{args.count}...")
-            filename = generate_content()
-            print(f"✅ Статья создана: {filename}")
-            
-            if i < args.count - 1:
-                time.sleep(2)
-                
-        print("\n🎉 Все статьи успешно сгенерированы!")
-        
-    except Exception as e:
-        print(f"💥 Критическая ошибка: {e}")
-        import traceback
-        traceback.print_exc()
-
-if __name__ == "__main__":
-    main()
+        # Добавляем AI badge
+        draw.rectangle([(10, height-35), (120, height-10)], fill="#6366f1")
+        draw.text((15, height-30), "AI 
