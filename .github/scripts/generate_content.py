@@ -250,57 +250,49 @@ def generate_with_openrouter(api_key, model_name, topic):
     else:
         raise Exception(f"OpenRouter API error {resp.status_code}: {resp.text}")
 
-# ======== Eden AI генерация изображения ========
+# ======== Генерация изображения ========
 EDENAI_KEY = os.getenv('EDENAI_API_KEY')
 
-# Актуальные провайдеры Eden AI
-EDENAI_PROVIDERS = [
-    "openai",  # OpenAI DALL-E
+# Рабочие провайдеры (после тестирования)
+WORKING_PROVIDERS = [
     "stability",  # Stability AI
-    "leonardo",  # Leonardo AI
-    "deepai",  # DeepAI
-    "replicate"  # Replicate
+    "replicate",  # Replicate
+    "deepai"      # DeepAI
 ]
 
 def generate_article_image(topic):
-    logger.info(f"🎨 Генерация изображения через Eden AI по промпту: {topic}")
-    prompt = topic[:150]  # укоротим промпт
+    logger.info(f"🎨 Генерация изображения по промпту: {topic}")
     
-    if not EDENAI_KEY:
-        logger.error("❌ EDENAI_API_KEY не установлен в переменных окружения")
-        return generate_placeholder_image(topic)
+    # Сначала пробуем Eden AI если есть ключ
+    if EDENAI_KEY:
+        logger.info(f"🔑 Токен Eden AI: {EDENAI_KEY[:8]}...{EDENAI_KEY[-4:]}")
+        edenai_result = try_edenai_providers(topic)
+        if edenai_result:
+            return edenai_result
     
-    logger.info(f"🔑 Токен Eden AI: {EDENAI_KEY[:8]}...{EDENAI_KEY[-4:]}")
+    # Если Eden AI не сработал, используем бесплатные альтернативы
+    free_result = try_free_alternatives(topic)
+    if free_result:
+        return free_result
     
-    # Пробуем прямой запрос к Eden AI без проверки аккаунта
-    for provider in EDENAI_PROVIDERS:
+    # Если все провайдеры не сработали, используем placeholder
+    logger.warning("✅ Все провайдеры не сработали, используем placeholder")
+    return generate_placeholder_image(topic)
+
+def try_edenai_providers(topic):
+    """Попытка генерации через Eden AI провайдеры"""
+    prompt = topic[:150]
+    
+    for provider in WORKING_PROVIDERS:
         try:
-            logger.info(f"🔄 Пробуем провайдер: {provider}")
+            logger.info(f"🔄 Пробуем Eden AI провайдер: {provider}")
             
-            # Базовые настройки
-            resolution = "512x512"
-            if provider in ["openai", "leonardo", "stability"]:
-                resolution = "1024x1024"
-            
-            # Правильный формат запроса для Eden AI v2
             payload = {
                 "providers": provider, 
                 "text": prompt, 
-                "resolution": resolution,
+                "resolution": "512x512",
                 "num_images": 1
             }
-            
-            # Специфичные настройки для провайдеров
-            provider_settings = {}
-            if provider == "openai":
-                provider_settings = {"model": "dall-e-2"}
-            elif provider == "stability":
-                provider_settings = {"style_preset": "digital-art"}
-            elif provider == "leonardo":
-                provider_settings = {"model": "leonardo-creative"}
-            
-            if provider_settings:
-                payload["settings"] = provider_settings
             
             start_time = time.time()
             
@@ -311,7 +303,7 @@ def generate_article_image(topic):
                     "Content-Type": "application/json",
                 },
                 json=payload,
-                timeout=60
+                timeout=30
             )
             
             response_time = time.time() - start_time
@@ -320,58 +312,61 @@ def generate_article_image(topic):
             
             if resp.status_code == 200:
                 data = resp.json()
-                logger.debug(f"📋 Ответ от {provider}: {json.dumps(data, ensure_ascii=False)[:500]}...")
-                
-                # Анализируем ответ Eden AI
-                if provider in data:
-                    provider_data = data[provider]
-                    if isinstance(provider_data, dict):
-                        if provider_data.get("status") == "success":
-                            image_url = provider_data.get("url")
-                            if image_url:
-                                logger.info(f"✅ Получен URL изображения от {provider}")
-                                filename = save_image_from_url(image_url, topic)
-                                if filename:
-                                    return filename
-                        else:
-                            error_msg = provider_data.get("error", {}).get("message", "Unknown error")
-                            logger.error(f"❌ {provider} failed: {error_msg}")
-                    else:
-                        logger.warning(f"⚠️ Неожиданный формат ответа от {provider}")
-                else:
-                    logger.warning(f"⚠️ Провайдер {provider} не найден в ответе")
+                if provider in data and data[provider].get("status") == "success":
+                    image_url = data[provider].get("url")
+                    if image_url:
+                        logger.info(f"✅ Получен URL изображения от {provider}")
+                        filename = save_image_from_url(image_url, topic)
+                        if filename:
+                            return filename
             
-            elif resp.status_code == 400:
-                logger.error(f"❌ {provider}: Bad Request - проверьте параметры запроса")
-                logger.debug(f"📋 Ответ 400: {resp.text[:200]}...")
             elif resp.status_code == 402:
                 logger.error(f"❌ {provider}: Недостаточно средств на счете")
-                break  # Прерываем цикл если нет средств
-            elif resp.status_code == 401:
-                logger.error(f"❌ {provider}: Неверный API ключ")
-                break  # Прерываем цикл если ключ неверный
-            elif resp.status_code == 403:
-                logger.error(f"❌ {provider}: Доступ запрещен")
-                break  # Прерываем цикл если доступ запрещен
-            elif resp.status_code == 429:
-                logger.error(f"❌ {provider}: Слишком много запросов")
-                time.sleep(10)  # Большая пауза при rate limit
-            else:
-                logger.error(f"❌ {provider}: Неожиданный статус код {resp.status_code}")
-                logger.debug(f"📋 Ответ: {resp.text[:200]}...")
+                break
                 
-        except requests.exceptions.Timeout:
-            logger.error(f"❌ {provider}: Таймаут запроса")
-        except requests.exceptions.ConnectionError:
-            logger.error(f"❌ {provider}: Ошибка соединения")
         except Exception as e:
-            logger.error(f"❌ Исключение с {provider}: {str(e)}")
+            logger.error(f"❌ Ошибка с {provider}: {e}")
         
-        # Пауза между запросами
         time.sleep(2)
     
-    logger.warning("✅ Все провайдеры Eden AI не сработали, используем placeholder")
-    return generate_placeholder_image(topic)
+    return None
+
+def try_free_alternatives(topic):
+    """Бесплатные альтернативы Eden AI"""
+    prompt = topic[:150]
+    
+    # Hugging Face API (бесплатный)
+    try:
+        logger.info("🔄 Пробуем Hugging Face API")
+        hf_result = try_huggingface(prompt, topic)
+        if hf_result:
+            return hf_result
+    except Exception as e:
+        logger.error(f"❌ Ошибка Hugging Face: {e}")
+    
+    return None
+
+def try_huggingface(prompt, topic):
+    """Попытка через Hugging Face Inference API"""
+    try:
+        # Пример с Stable Diffusion
+        API_URL = "https://api-inference.huggingface.co/models/runwayml/stable-diffusion-v1-5"
+        headers = {"Authorization": f"Bearer {os.getenv('HF_TOKEN', '')}"}
+        
+        payload = {"inputs": prompt}
+        response = requests.post(API_URL, headers=headers, json=payload, timeout=30)
+        
+        if response.status_code == 200:
+            filename = f"assets/images/posts/{generate_slug(topic)}.png"
+            with open(filename, "wb") as f:
+                f.write(response.content)
+            logger.info(f"✅ Изображение создано через Hugging Face")
+            return filename
+            
+    except Exception as e:
+        logger.error(f"❌ Hugging Face API error: {e}")
+    
+    return None
 
 def save_image_from_url(url, topic):
     try:
@@ -396,60 +391,35 @@ def save_image_from_url(url, topic):
         return None
 
 def generate_placeholder_image(topic):
-    """Создание placeholder изображения с градиентом и текстом"""
+    """Создание placeholder изображения"""
     try:
         os.makedirs("assets/images/posts", exist_ok=True)
         filename = f"assets/images/posts/{generate_slug(topic)}.png"
         width, height = 800, 400
         
-        # Создаем градиентный фон
         img = Image.new('RGB', (width, height), color='#0f172a')
         draw = ImageDraw.Draw(img)
         
-        # Создаем градиент
+        # Градиент
         for i in range(height):
             r = int(15 + (i/height)*30)
             g = int(23 + (i/height)*42)
             b = int(42 + (i/height)*74)
             draw.line([(0,i), (width,i)], fill=(r,g,b))
         
-        # Добавляем текст
+        # Текст
         wrapped_text = textwrap.fill(topic, width=30)
-        
-        # Пробуем разные шрифты
-        font = None
-        font_sizes = [24, 22, 20, 18]
-        
-        for font_size in font_sizes:
-            try:
-                font = ImageFont.truetype("Arial.ttf", font_size)
-                break
-            except:
-                try:
-                    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", font_size)
-                    break
-                except:
-                    continue
-        
-        if font is None:
+        try:
+            font = ImageFont.truetype("Arial.ttf", 20)
+        except:
             font = ImageFont.load_default()
         
-        # Рассчитываем позицию текста
         bbox = draw.textbbox((0, 0), wrapped_text, font=font)
-        text_width = bbox[2] - bbox[0]
-        text_height = bbox[3] - bbox[1]
+        x = (width - (bbox[2] - bbox[0])) / 2
+        y = (height - (bbox[3] - bbox[1])) / 2
         
-        x = (width - text_width) / 2
-        y = (height - text_height) / 2
-        
-        # Тень текста
-        draw.text((x+2, y+2), wrapped_text, font=font, fill="#000000", align="center")
-        # Основной текст
-        draw.text((x, y), wrapped_text, font=font, fill="#6366f1", align="center")
-        
-        # Добавляем watermark
-        watermark = "AI Generated"
-        draw.text((10, height - 25), watermark, font=ImageFont.load_default(), fill="#ffffff")
+        draw.text((x+2, y+2), wrapped_text, font=font, fill="#000000")
+        draw.text((x, y), wrapped_text, font=font, fill="#6366f1")
         
         img.save(filename)
         logger.info(f"✅ Placeholder изображение создано: {filename}")
@@ -457,21 +427,14 @@ def generate_placeholder_image(topic):
         
     except Exception as e:
         logger.error(f"❌ Ошибка создания placeholder: {e}")
-        # Fallback - простейшее изображение
-        try:
-            filename = f"assets/images/posts/{generate_slug(topic)}.png"
-            img = Image.new('RGB', (100, 100), color='blue')
-            img.save(filename)
-            return filename
-        except:
-            return "assets/images/default.png"
+        return "assets/images/default.png"
 
 # ======== Вспомогательные функции ========
 def generate_slug(text):
     text = text.lower()
     text = text.replace(' ', '-')
     text = re.sub(r'[^a-z0-9\-]', '', text)
-    text = re.sub(r'-+', '-', text)  # Удаляем повторяющиеся дефисы
+    text = re.sub(r'-+', '-', text)
     return text[:60]
 
 def generate_frontmatter(title, content, model_used, image_url):
@@ -502,7 +465,6 @@ def main():
     
     if args.debug:
         logging.getLogger().setLevel(logging.DEBUG)
-        logger.debug("🔧 Debug режим включен")
     
     print("🚀 Запуск генератора контента...")
     print("=" * 50)
@@ -517,8 +479,7 @@ def main():
             print(f"✅ Статья создана: {filename}")
             
             if i < args.count - 1:
-                print("⏳ Пауза между статьями...")
-                time.sleep(5)
+                time.sleep(3)
                 
         print("\n🎉 Все статьи успешно сгенерированы!")
         
