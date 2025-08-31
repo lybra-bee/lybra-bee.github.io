@@ -9,6 +9,11 @@ import re
 import textwrap
 from PIL import Image, ImageDraw, ImageFont
 import time
+import logging
+
+# Настройка логирования
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 # ======== Генерация темы ========
 def generate_ai_trend_topic():
@@ -56,7 +61,7 @@ def generate_ai_trend_topic():
 
 # ======== Очистка старых статей ========
 def clean_old_articles(keep_last=3):
-    print(f"🧹 Очистка старых статей, оставляем {keep_last} последних...")
+    logger.info(f"🧹 Очистка старых статей, оставляем {keep_last} последних...")
     content_dir = "content"
     if os.path.exists(content_dir):
         shutil.rmtree(content_dir)
@@ -65,15 +70,15 @@ def clean_old_articles(keep_last=3):
         f.write("---\ntitle: \"Главная\"\n---")
     with open("content/posts/_index.md", "w", encoding="utf-8") as f:
         f.write("---\ntitle: \"Статьи\"\n---")
-    print("✅ Создана чистая структура content")
+    logger.info("✅ Создана чистая структура content")
 
 # ======== Генерация статьи ========
 def generate_content():
-    print("🚀 Запуск генерации контента...")
+    logger.info("🚀 Запуск генерации контента...")
     clean_old_articles()
     
     topic = generate_ai_trend_topic()
-    print(f"📝 Тема статьи: {topic}")
+    logger.info(f"📝 Тема статьи: {topic}")
     
     image_filename = generate_article_image(topic)
     content, model_used = generate_article_content(topic)
@@ -88,7 +93,7 @@ def generate_content():
     with open(filename, 'w', encoding='utf-8') as f:
         f.write(frontmatter)
     
-    print(f"✅ Статья создана: {filename}")
+    logger.info(f"✅ Статья создана: {filename}")
     return filename
 
 # ======== Генерация текста через OpenRouter/Groq ========
@@ -98,23 +103,25 @@ def generate_article_content(topic):
     models_to_try = []
 
     if groq_key:
-        groq_models = ["llama-3.1-8b-instant"]
+        groq_models = ["llama-3.1-8b-instant", "llama-3.2-1b-preview", "llama-3.1-70b-versatile"]
         for model_name in groq_models:
             models_to_try.append((f"Groq-{model_name}", lambda m=model_name: generate_with_groq(groq_key, m, topic)))
     if openrouter_key:
-        openrouter_models = ["anthropic/claude-3-haiku"]
+        openrouter_models = ["anthropic/claude-3-haiku", "anthropic/claude-3-sonnet", "google/gemini-pro-1.5"]
         for model_name in openrouter_models:
             models_to_try.append((model_name, lambda m=model_name: generate_with_openrouter(openrouter_key, m, topic)))
 
     for model_name, generate_func in models_to_try:
         try:
-            print(f"🔄 Пробуем: {model_name}")
+            logger.info(f"🔄 Пробуем генерацию текста: {model_name}")
             result = generate_func()
             if result and len(result.strip()) > 100:
-                print(f"✅ Успешно через {model_name}")
+                logger.info(f"✅ Успешно через {model_name}")
                 return result, model_name
+            else:
+                logger.warning(f"⚠️ Пустой ответ от {model_name}")
         except Exception as e:
-            print(f"⚠️ Ошибка {model_name}: {e}")
+            logger.error(f"❌ Ошибка {model_name}: {e}")
             continue
 
     fallback = f"# {topic}\n\nСтатья по теме {topic} создана автоматически."
@@ -125,96 +132,230 @@ def generate_with_groq(api_key, model_name, topic):
     resp = requests.post(
         "https://api.groq.com/openai/v1/chat/completions",
         headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-        json={"model": model_name, "messages":[{"role":"user","content":prompt}], "max_tokens":1500}
+        json={"model": model_name, "messages":[{"role":"user","content":prompt}], "max_tokens":1500, "temperature":0.7}
     )
+    logger.debug(f"Groq API статус: {resp.status_code}")
     if resp.status_code == 200:
         data = resp.json()
         return data['choices'][0]['message']['content'].strip()
-    raise Exception(f"Groq API error {resp.status_code}")
+    raise Exception(f"Groq API error {resp.status_code}: {resp.text}")
 
 def generate_with_openrouter(api_key, model_name, topic):
     prompt = f"Напиши развернутую статью на тему: '{topic}' на русском, Markdown, 400-600 слов"
     resp = requests.post(
         "https://openrouter.ai/api/v1/chat/completions",
-        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-        json={"model": model_name, "messages":[{"role":"user","content":prompt}], "max_tokens":1500}
+        headers={
+            "Authorization": f"Bearer {api_key}", 
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://your-site.com",
+            "X-Title": "AI Content Generator"
+        },
+        json={
+            "model": model_name, 
+            "messages":[{"role":"user","content":prompt}], 
+            "max_tokens":1500,
+            "temperature":0.7
+        }
     )
+    logger.debug(f"OpenRouter API статус: {resp.status_code}")
     if resp.status_code == 200:
         data = resp.json()
         return data['choices'][0]['message']['content'].strip()
-    raise Exception(f"OpenRouter API error {resp.status_code}")
+    raise Exception(f"OpenRouter API error {resp.status_code}: {resp.text}")
 
-# ======== Генерация изображения через Eden AI и fallback ========
-EDEN_KEY = os.getenv('EDEN_AI_KEY')  # Ваш production ключ Eden AI
+# ======== Eden AI генерация изображения ========
+EDENAI_KEY = os.getenv('EDENAI_API_KEY')
 
-FREE_PROVIDERS = ["craiyon", "deepai"]  # бесплатные и рабочие
+# Расширенный список провайдеров
+FREE_PROVIDERS = [
+    "openjourney", 
+    "stable_diffusion", 
+    "dalle-mini",
+    "deepai",
+    "nightcafe",
+    "huggingface"
+]
+
+PAID_PROVIDERS = [
+    "openai",
+    "stability",
+    "leonardo",
+    "midjourney"
+]
 
 def generate_article_image(topic):
-    print(f"🎨 Генерация изображения по промпту: {topic}")
+    logger.info(f"🎨 Генерация изображения по промпту: {topic}")
+    prompt = topic[:200]  # укоротим слишком длинные промпты
     
-    # Перебор бесплатных провайдеров
-    for provider in FREE_PROVIDERS:
+    if not EDENAI_KEY:
+        logger.error("❌ EDENAI_API_KEY не установлен в переменных окружения")
+        return generate_placeholder_image(topic)
+    
+    logger.info(f"🔑 Токен Eden AI: {EDENAI_KEY[:8]}...{EDENAI_KEY[-4:]}")
+    
+    # Сначала пробуем бесплатные провайдеры
+    all_providers = FREE_PROVIDERS + PAID_PROVIDERS
+    
+    for provider in all_providers:
         try:
-            print(f"🎨 Eden AI через {provider}")
-            image_url = generate_with_eden(topic, provider)
-            if image_url:
-                print(f"✅ Изображение создано через {provider}")
-                return image_url
+            logger.info(f"🔄 Пробуем провайдер: {provider}")
+            
+            # Настройки для разных провайдеров
+            resolution = "512x512"  # Уменьшаем для тестирования
+            if provider in ["openai", "leonardo", "midjourney"]:
+                resolution = "1024x1024"
+            
+            payload = {
+                "providers": [provider], 
+                "text": prompt, 
+                "resolution": resolution,
+                "num_images": 1
+            }
+            
+            # Специфичные настройки для некоторых провайдеров
+            if provider == "leonardo":
+                payload["settings"] = {provider: {"model": "leonardo-creative"}}
+            elif provider == "stability":
+                payload["settings"] = {provider: {"style_preset": "digital-art"}}
+            
+            start_time = time.time()
+            
+            resp = requests.post(
+                "https://api.edenai.run/v2/image/generation",
+                headers={
+                    "Authorization": f"Bearer {EDENAI_KEY}", 
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+                json=payload,
+                timeout=30
+            )
+            
+            response_time = time.time() - start_time
+            logger.info(f"⏱️ Время ответа {provider}: {response_time:.2f} сек")
+            logger.info(f"📊 Статус код: {resp.status_code}")
+            
+            if resp.status_code == 200:
+                data = resp.json()
+                logger.debug(f"📋 Полный ответ от {provider}: {json.dumps(data, ensure_ascii=False)[:500]}...")
+                
+                if "result" in data and data["result"]:
+                    provider_result = data["result"][0]
+                    
+                    if "status" in provider_result and provider_result["status"] == "fail":
+                        error_msg = provider_result.get("error", {}).get("message", "Unknown error")
+                        logger.error(f"❌ {provider} failed: {error_msg}")
+                        continue
+                    
+                    image_url = provider_result.get("url")
+                    if image_url:
+                        logger.info(f"✅ Получен URL изображения от {provider}")
+                        filename = save_image_from_url(image_url, topic)
+                        logger.info(f"✅ Изображение сохранено: {filename}")
+                        return filename
+                    else:
+                        logger.warning(f"⚠️ Нет URL в ответе от {provider}")
+                        if "error" in provider_result:
+                            logger.error(f"❌ Ошибка {provider}: {provider_result['error']}")
+                else:
+                    logger.warning(f"⚠️ Нет результата от {provider}")
+                    if "error" in data:
+                        logger.error(f"❌ Общая ошибка: {data['error']}")
+            
+            elif resp.status_code == 402:
+                logger.error(f"❌ {provider}: Недостаточно средств на счете")
+            elif resp.status_code == 401:
+                logger.error(f"❌ {provider}: Неверный API ключ")
+            elif resp.status_code == 403:
+                logger.error(f"❌ {provider}: Доступ запрещен")
+            elif resp.status_code == 429:
+                logger.error(f"❌ {provider}: Слишком много запросов")
+            else:
+                logger.error(f"❌ {provider}: Неожиданный статус код {resp.status_code}")
+                logger.debug(f"📋 Ответ: {resp.text[:500]}...")
+                
+        except requests.exceptions.Timeout:
+            logger.error(f"❌ {provider}: Таймаут запроса")
+        except requests.exceptions.ConnectionError:
+            logger.error(f"❌ {provider}: Ошибка соединения")
         except Exception as e:
-            print(f"⚠️ Eden AI не сработал через {provider}: {e}")
-            continue
-
-    # fallback
-    print("✅ Placeholder изображение создано")
+            logger.error(f"❌ Исключение с {provider}: {str(e)}")
+            import traceback
+            logger.debug(f"📋 Трейсбэк: {traceback.format_exc()}")
+        
+        # Пауза между запросами
+        time.sleep(1)
+    
+    logger.warning("✅ Все провайдеры не сработали, используем placeholder")
     return generate_placeholder_image(topic)
 
-def generate_with_eden(topic, provider):
-    url = "https://api.edenai.run/v2/image/generation"
-    headers = {
-        "Authorization": f"Bearer {EDEN_KEY}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "providers": [provider],
-        "text": topic,
-        "resolution": "1024x1024"
-    }
-    resp = requests.post(url, headers=headers, json=payload, timeout=30)
-    data = resp.json()
-    if 'result' in data and data['result']:
-        image_base64 = data['result'][0]['image_base64']
-        return save_article_image(base64.b64decode(image_base64), topic)
-    else:
-        raise Exception(f"Eden AI не вернул результат: {data}")
+def save_image_from_url(url, topic):
+    try:
+        logger.info(f"📥 Загрузка изображения из: {url[:100]}...")
+        resp = requests.get(url, timeout=20)
+        
+        if resp.status_code == 200:
+            os.makedirs("assets/images/posts", exist_ok=True)
+            filename = f"assets/images/posts/{generate_slug(topic)}.png"
+            
+            with open(filename, "wb") as f:
+                f.write(resp.content)
+            
+            logger.info(f"✅ Изображение сохранено: {filename}")
+            return filename
+        else:
+            logger.error(f"❌ Ошибка загрузки изображения: статус {resp.status_code}")
+            return generate_placeholder_image(topic)
+            
+    except Exception as e:
+        logger.error(f"❌ Ошибка при сохранении изображения: {e}")
+        return generate_placeholder_image(topic)
 
 def generate_placeholder_image(topic):
-    os.makedirs("assets/images/posts", exist_ok=True)
-    filename = f"assets/images/posts/{generate_slug(topic)}.png"
-    width, height = 800, 400
-    img = Image.new('RGB', (width, height), color='#0f172a')
-    draw = ImageDraw.Draw(img)
-    for i in range(height):
-        r = int(15 + (i/height)*30)
-        g = int(23 + (i/height)*42)
-        b = int(42 + (i/height)*74)
-        draw.line([(0,i),(width,i)], fill=(r,g,b))
-    wrapped_text = textwrap.fill(topic, width=30)
     try:
-        font = ImageFont.truetype("arial.ttf", 24)
-    except:
-        font = ImageFont.load_default()
-    bbox = draw.textbbox((0,0), wrapped_text, font=font)
-    draw.text(((width-(bbox[2]-bbox[0])/2),(height-(bbox[3]-bbox[1])/2)), wrapped_text, font=font, fill="#6366f1")
-    img.save(filename)
-    return filename
-
-def save_article_image(image_data, topic):
-    os.makedirs("assets/images/posts", exist_ok=True)
-    filename = f"assets/images/posts/{generate_slug(topic)}.png"
-    if image_data:
-        with open(filename,'wb') as f:
-            f.write(image_data)
-    return filename
+        os.makedirs("assets/images/posts", exist_ok=True)
+        filename = f"assets/images/posts/{generate_slug(topic)}.png"
+        width, height = 800, 400
+        
+        # Создаем градиентный фон
+        img = Image.new('RGB', (width, height), color='#0f172a')
+        draw = ImageDraw.Draw(img)
+        
+        for i in range(height):
+            r = int(15 + (i/height)*30)
+            g = int(23 + (i/height)*42)
+            b = int(42 + (i/height)*74)
+            draw.line([(0,i),(width,i)], fill=(r,g,b))
+        
+        # Добавляем текст
+        wrapped_text = textwrap.fill(topic, width=30)
+        try:
+            font = ImageFont.truetype("arial.ttf", 24)
+        except:
+            try:
+                font = ImageFont.truetype("DejaVuSans.ttf", 20)
+            except:
+                font = ImageFont.load_default()
+        
+        bbox = draw.textbbox((0,0), wrapped_text, font=font)
+        text_width = bbox[2] - bbox[0]
+        text_height = bbox[3] - bbox[1]
+        
+        x = (width - text_width) / 2
+        y = (height - text_height) / 2
+        
+        # Тень текста
+        draw.text((x+2, y+2), wrapped_text, font=font, fill="#000000")
+        # Основной текст
+        draw.text((x, y), wrapped_text, font=font, fill="#6366f1")
+        
+        img.save(filename)
+        logger.info(f"✅ Placeholder изображение создано: {filename}")
+        return filename
+        
+    except Exception as e:
+        logger.error(f"❌ Ошибка создания placeholder: {e}")
+        return "assets/images/default.png"
 
 # ======== Вспомогательные функции ========
 def generate_slug(text):
@@ -225,7 +366,7 @@ def generate_slug(text):
 
 def generate_frontmatter(title, content, model_used, image_url):
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    escaped_title = title.replace(':', ' -')
+    escaped_title = title.replace(':', ' -').replace('"', "'")
     frontmatter = f"""---
 title: "{escaped_title}"
 date: {now}
@@ -240,4 +381,19 @@ ai_model: "{model_used}"
 
 # ======== Запуск ========
 if __name__ == "__main__":
-    generate_content()
+    # Установите уровень логирования DEBUG для подробной информации
+    # logging.basicConfig(level=logging.DEBUG)
+    
+    print("🚀 Запуск генератора контента...")
+    print("📝 Проверка переменных окружения:")
+    print(f"   EDENAI_API_KEY: {'✅ установлен' if os.getenv('EDENAI_API_KEY') else '❌ отсутствует'}")
+    print(f"   OPENROUTER_API_KEY: {'✅ установлен' if os.getenv('OPENROUTER_API_KEY') else '❌ отсутствует'}")
+    print(f"   GROQ_API_KEY: {'✅ установлен' if os.getenv('GROQ_API_KEY') else '❌ отсутствует'}")
+    
+    try:
+        filename = generate_content()
+        print(f"🎉 Генерация завершена! Файл: {filename}")
+    except Exception as e:
+        print(f"💥 Критическая ошибка: {e}")
+        import traceback
+        traceback.print_exc()
