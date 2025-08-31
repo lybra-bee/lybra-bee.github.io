@@ -8,11 +8,8 @@ import shutil
 import re
 import textwrap
 from PIL import Image, ImageDraw, ImageFont
-from base64 import b64decode
 import time
-
-# ======== Eden AI ========
-EDEN_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiOWE4ZDEyNjktNTAwZi00ZWI5LWE3NDUtMTI3ZmNhODQ4N2Q1IiwidHlwZSI6ImFwaV90b2tlbiIsIm5hbWUiOiJFZGVuQVBJIiwiaXNfY3VzdG9tIjp0cnVlfQ.8YU-6NpefBXLqtUTJmDkSlAzdnvAWmywfa6WLFwbZBg"
+import base64
 
 # ======== Генерация темы ========
 def generate_ai_trend_topic():
@@ -149,33 +146,9 @@ def generate_with_openrouter(api_key, model_name, topic):
         return data['choices'][0]['message']['content'].strip()
     raise Exception(f"OpenRouter API error {resp.status_code}")
 
-# ======== Kandinsky 3.0 ========
-KANDINSKY_KEY = "3BA53CAD37A0BF21740401408253641E"
-KANDINSKY_SECRET = "00CE1D26AF6BF45FD60BBB4447AD3981"
-
-def check_kandinsky_keys():
-    url = "https://api.fusionbrain.ai/kandinsky/api/v2/text2image/run"
-    payload = {"type": "GENERATE", "numImages": 1, "width": 64, "height": 64, "generateParams":{"query":"test"}}
-    headers = {"X-Key": KANDINSKY_KEY, "X-Secret": KANDINSKY_SECRET, "Content-Type":"application/json"}
-    try:
-        resp = requests.post(url, headers=headers, json=payload, timeout=10)
-        if resp.status_code == 200 and resp.json().get("uuid"):
-            return True
-    except:
-        pass
-    return False
-
-def generate_with_kandinsky(topic):
-    url = "https://api.fusionbrain.ai/kandinsky/api/v2/text2image/run"
-    headers = {"X-Key": KANDINSKY_KEY, "X-Secret": KANDINSKY_SECRET, "Content-Type":"application/json"}
-    payload = {"type":"GENERATE","numImages":1,"width":1024,"height":1024,"generateParams":{"query":topic}}
-    resp = requests.post(url, headers=headers, json=payload, timeout=30)
-    data = resp.json()
-    if 'uuid' in data:
-        return save_article_image(b'', topic)
-    raise Exception("Kandinsky 3.0 API не вернул результат")
-
 # ======== Eden AI генерация изображения ========
+EDEN_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiOWE4ZDEyNjktNTAwZi00ZWI5LWE3NDUtMTI3ZmNhODQ4N2Q1IiwidHlwZSI6ImFwaV90b2tlbiIsIm5hbWUiOiJFZGVuQVBJIiwiaXNfY3VzdG9tIjp0cnVlfQ.8YU-6NpefBXLqtUTJmDkSlAzdnvAWmywfa6WLFwbZBg"
+
 def generate_with_edenai(topic, width=512, height=512, num_images=1):
     print(f"🎨 Eden AI генерация изображения по промпту: {topic}")
     url = "https://api.edenai.run/v2/image/generation"
@@ -186,43 +159,28 @@ def generate_with_edenai(topic, width=512, height=512, num_images=1):
     payload = {
         "providers": "stable_diffusion",
         "text": topic,
-        "width": width,
-        "height": height,
+        "resolution": {"width": width, "height": height},
         "num_images": num_images
     }
-    try:
-        resp = requests.post(url, headers=headers, json=payload, timeout=60)
-        data = resp.json()
-        if "result" in data and len(data["result"]) > 0:
-            image_data = b64decode(data["result"][0]["content"])
-            filename = save_article_image(image_data, topic)
-            print(f"✅ Eden AI изображение создано: {filename}")
-            return filename
-        else:
-            print("⚠️ Eden AI не вернул результат:", data)
-    except Exception as e:
-        print("⚠️ Eden AI ошибка:", e)
-    return None
+    resp = requests.post(url, headers=headers, json=payload, timeout=60)
+    data = resp.json()
+    if "result" in data and len(data["result"]) > 0:
+        image_data_base64 = data["result"][0]["image_base64"]
+        image_bytes = base64.b64decode(image_data_base64)
+        return save_article_image(image_bytes, topic)
+    raise Exception(f"Eden AI не вернул результат: {data}")
 
-# ======== Генерация изображения ========
+# ======== Генерация изображения статьи ========
 def generate_article_image(topic):
-    print(f"🎨 Генерация изображения по промпту: {topic}")
-
-    # Попробуем Eden AI
-    filename = generate_with_edenai(topic)
-    if filename:
+    # Попытка Eden AI
+    try:
+        filename = generate_with_edenai(topic)
+        print(f"✅ Eden AI изображение создано: {filename}")
         return filename
-
-    # Попробуем Kandinsky
-    if check_kandinsky_keys():
-        try:
-            filename = generate_with_kandinsky(topic)
-            print(f"✅ Kandinsky 3.0 изображение создано: {filename}")
-            return filename
-        except Exception as e:
-            print(f"⚠️ Kandinsky 3.0 API ошибка: {e}")
-
-    # Placeholder
+    except Exception as e:
+        print(f"⚠️ Eden AI не вернул результат: {e}")
+    
+    # Fallback placeholder
     return generate_placeholder_image(topic)
 
 def generate_placeholder_image(topic):
