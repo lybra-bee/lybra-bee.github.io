@@ -10,11 +10,7 @@ import textwrap
 from PIL import Image, ImageDraw, ImageFont
 import time
 
-# === Настройки ключей Kandinsky 3.0 ===
-KANDINSKY_KEY = "3BA53CAD37A0BF21740401408253641E"
-KANDINSKY_SECRET = "00CE1D26AF6BF45FD60BBB4447AD3981"
-
-# === Генерация темы статьи ===
+# ======== Генерация темы ========
 def generate_ai_trend_topic():
     current_trends_2025 = [
         "Multimodal AI интеграция текста изображений и аудио в единых моделях",
@@ -58,93 +54,134 @@ def generate_ai_trend_topic():
     ]
     return random.choice(topic_formats)
 
-# === Очистка старых статей ===
+# ======== Очистка старых статей ========
 def clean_old_articles(keep_last=3):
     print(f"🧹 Очистка старых статей, оставляем {keep_last} последних...")
-    try:
-        content_dir = "content"
-        if os.path.exists(content_dir):
-            shutil.rmtree(content_dir)
-        os.makedirs("content/posts", exist_ok=True)
-        with open("content/_index.md", "w", encoding="utf-8") as f:
-            f.write("---\ntitle: \"Главная\"\n---")
-        with open("content/posts/_index.md", "w", encoding="utf-8") as f:
-            f.write("---\ntitle: \"Статьи\"\n---")
-        print("✅ Создана чистая структура content")
-    except Exception as e:
-        print(f"⚠️ Ошибка при очистке: {e}")
+    content_dir = "content"
+    if os.path.exists(content_dir):
+        shutil.rmtree(content_dir)
+    os.makedirs("content/posts", exist_ok=True)
+    with open("content/_index.md", "w", encoding="utf-8") as f:
+        f.write("---\ntitle: \"Главная\"\n---")
+    with open("content/posts/_index.md", "w", encoding="utf-8") as f:
+        f.write("---\ntitle: \"Статьи\"\n---")
+    print("✅ Создана чистая структура content")
 
-# === Проверка ключей Kandinsky 3.0 ===
-def check_kandinsky_key():
+# ======== Генерация статьи ========
+def generate_content():
+    print("🚀 Запуск генерации контента...")
+    clean_old_articles()
+    
+    topic = generate_ai_trend_topic()
+    print(f"📝 Тема статьи: {topic}")
+    
+    image_filename = generate_article_image(topic)
+    content, model_used = generate_article_content(topic)
+    
+    date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    slug = generate_slug(topic)
+    filename = f"content/posts/{date}-{slug}.md"
+    
+    frontmatter = generate_frontmatter(topic, content, model_used, image_filename)
+    
+    os.makedirs("content/posts", exist_ok=True)
+    with open(filename, 'w', encoding='utf-8') as f:
+        f.write(frontmatter)
+    
+    print(f"✅ Статья создана: {filename}")
+    return filename
+
+# ======== Генерация текста через OpenRouter/Groq ========
+def generate_article_content(topic):
+    openrouter_key = os.getenv('OPENROUTER_API_KEY')
+    groq_key = os.getenv('GROQ_API_KEY')
+    models_to_try = []
+
+    if groq_key:
+        groq_models = ["llama-3.1-8b-instant"]
+        for model_name in groq_models:
+            models_to_try.append((f"Groq-{model_name}", lambda m=model_name: generate_with_groq(groq_key, m, topic)))
+    if openrouter_key:
+        openrouter_models = ["anthropic/claude-3-haiku"]
+        for model_name in openrouter_models:
+            models_to_try.append((model_name, lambda m=model_name: generate_with_openrouter(openrouter_key, m, topic)))
+
+    for model_name, generate_func in models_to_try:
+        try:
+            print(f"🔄 Пробуем: {model_name}")
+            result = generate_func()
+            if result and len(result.strip()) > 100:
+                print(f"✅ Успешно через {model_name}")
+                return result, model_name
+        except Exception as e:
+            print(f"⚠️ Ошибка {model_name}: {e}")
+            continue
+
+    # fallback content
+    fallback = f"# {topic}\n\nСтатья по теме {topic} создана автоматически."
+    return fallback, "fallback-generator"
+
+def generate_with_groq(api_key, model_name, topic):
+    prompt = f"Напиши развернутую статью на тему: '{topic}' на русском, Markdown, 400-600 слов"
+    resp = requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        json={"model": model_name, "messages":[{"role":"user","content":prompt}], "max_tokens":1500}
+    )
+    if resp.status_code == 200:
+        data = resp.json()
+        return data['choices'][0]['message']['content'].strip()
+    raise Exception(f"Groq API error {resp.status_code}")
+
+def generate_with_openrouter(api_key, model_name, topic):
+    prompt = f"Напиши развернутую статью на тему: '{topic}' на русском, Markdown, 400-600 слов"
+    resp = requests.post(
+        "https://openrouter.ai/api/v1/chat/completions",
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        json={"model": model_name, "messages":[{"role":"user","content":prompt}], "max_tokens":1500}
+    )
+    if resp.status_code == 200:
+        data = resp.json()
+        return data['choices'][0]['message']['content'].strip()
+    raise Exception(f"OpenRouter API error {resp.status_code}")
+
+# ======== Kandinsky 3.0 проверка ключей и генерация изображения ========
+KANDINSKY_KEY = "3BA53CAD37A0BF21740401408253641E"
+KANDINSKY_SECRET = "00CE1D26AF6BF45FD60BBB4447AD3981"
+
+def check_kandinsky_keys():
     url = "https://api.fusionbrain.ai/kandinsky/api/v2/text2image/run"
-    headers = {
-        "X-Key": KANDINSKY_KEY,
-        "X-Secret": KANDINSKY_SECRET,
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "type": "GENERATE",
-        "numImages": 1,
-        "width": 64,
-        "height": 64,
-        "generateParams": {"query": "test"}
-    }
+    payload = {"type": "GENERATE", "numImages": 1, "width": 64, "height": 64, "generateParams":{"query":"test"}}
+    headers = {"X-Key": KANDINSKY_KEY, "X-Secret": KANDINSKY_SECRET, "Content-Type":"application/json"}
     try:
-        response = requests.post(url, headers=headers, json=payload, timeout=10)
-        if response.status_code == 200:
-            data = response.json()
-            if 'uuid' in data:
-                return True
-    except Exception as e:
-        print(f"⚠️ Проверка Kandinsky ключей не удалась: {e}")
+        resp = requests.post(url, headers=headers, json=payload, timeout=10)
+        if resp.status_code == 200 and resp.json().get("uuid"):
+            return True
+    except:
+        pass
     return False
 
-# === Генерация изображения статьи ===
 def generate_article_image(topic):
     print(f"🎨 Генерация изображения по промпту: {topic}")
-    prompt = generate_image_prompt(topic)
-    if not check_kandinsky_key():
-        print("⚠️ Kandinsky ключи не рабочие, используем placeholder")
-        return generate_placeholder_image(topic)
-    try:
-        filename = generate_with_kandinsky_v3(prompt, topic)
-        if filename:
+    if check_kandinsky_keys():
+        try:
+            filename = generate_with_kandinsky(topic)
             print(f"✅ Kandinsky 3.0 изображение создано: {filename}")
             return filename
-    except Exception as e:
-        print(f"⚠️ Kandinsky 3.0 API ошибка: {e}")
+        except Exception as e:
+            print(f"⚠️ Kandinsky 3.0 API ошибка: {e}")
+    print("⚠️ Kandinsky ключи не рабочие, используем placeholder")
     return generate_placeholder_image(topic)
 
-def generate_with_kandinsky_v3(prompt, topic):
+def generate_with_kandinsky(topic):
     url = "https://api.fusionbrain.ai/kandinsky/api/v2/text2image/run"
-    headers = {
-        "X-Key": KANDINSKY_KEY,
-        "X-Secret": KANDINSKY_SECRET,
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "type": "GENERATE",
-        "numImages": 1,
-        "width": 1024,
-        "height": 1024,
-        "generateParams": {"query": prompt}
-    }
-    response = requests.post(url, headers=headers, json=payload, timeout=30)
-    if response.status_code == 200:
-        data = response.json()
-        if 'uuid' in data:
-            # просто сохраняем placeholder пока реальное изображение придёт асинхронно
-            return generate_placeholder_image(topic)
+    headers = {"X-Key": KANDINSKY_KEY, "X-Secret": KANDINSKY_SECRET, "Content-Type":"application/json"}
+    payload = {"type":"GENERATE","numImages":1,"width":1024,"height":1024,"generateParams":{"query":topic}}
+    resp = requests.post(url, headers=headers, json=payload, timeout=30)
+    data = resp.json()
+    if 'uuid' in data:
+        return save_article_image(b'', topic)  # временно без реального изображения
     raise Exception("Kandinsky 3.0 API не вернул результат")
-
-def generate_image_prompt(topic):
-    prompts = [
-        f"Futuristic technology illustration for {topic}. Modern style, abstract AI, neural networks, data visualization, blue-purple scheme, no text",
-        f"AI concept art for {topic}. Futuristic cyberpunk, holographic interfaces, glowing particles",
-        f"Abstract technology background for {topic}. Geometric, circuits, data streams, glowing connections",
-        f"Digital AI concept for {topic}. Neural connections, quantum computing, sci-fi style"
-    ]
-    return random.choice(prompts)
 
 def generate_placeholder_image(topic):
     print("✅ Placeholder изображение создано")
@@ -168,13 +205,21 @@ def generate_placeholder_image(topic):
     img.save(filename)
     return filename
 
+def save_article_image(image_data, topic):
+    os.makedirs("assets/images/posts", exist_ok=True)
+    filename = f"assets/images/posts/{generate_slug(topic)}.png"
+    if image_data:
+        with open(filename,'wb') as f:
+            f.write(image_data)
+    return filename
+
+# ======== Вспомогательные функции ========
 def generate_slug(text):
     text = text.lower()
     text = text.replace(' ', '-')
     text = re.sub(r'[^a-z0-9\-]', '', text)
     return text[:60]
 
-# === Фронтматтер статьи ===
 def generate_frontmatter(title, content, model_used, image_url):
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     escaped_title = title.replace(':', ' -')
@@ -190,32 +235,6 @@ ai_model: "{model_used}"
 """
     return frontmatter
 
-# === Генерация контента статьи ===
-def generate_content():
-    print("🚀 Запуск генерации контента...")
-    KEEP_LAST_ARTICLES = 3
-    clean_old_articles(KEEP_LAST_ARTICLES)
-    
-    selected_topic = generate_ai_trend_topic()
-    print(f"📝 Тема статьи: {selected_topic}")
-    
-    image_filename = generate_article_image(selected_topic)
-    
-    # --- Здесь вставь генерацию текста через OpenRouter / Groq как раньше ---
-    content, model_used = "Текст статьи...", "fallback-generator"
-    
-    date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    slug = generate_slug(selected_topic)
-    filename = f"content/posts/{date}-{slug}.md"
-    
-    frontmatter = generate_frontmatter(selected_topic, content, model_used, image_filename)
-    
-    os.makedirs("content/posts", exist_ok=True)
-    with open(filename, 'w', encoding='utf-8') as f:
-        f.write(frontmatter)
-    
-    print(f"✅ Статья создана: {filename}")
-    return filename
-
+# ======== Запуск ========
 if __name__ == "__main__":
     generate_content()
