@@ -8,6 +8,7 @@ import shutil
 import re
 import textwrap
 from PIL import Image, ImageDraw, ImageFont
+import time
 
 # ======== Генерация темы ========
 def generate_ai_trend_topic():
@@ -143,46 +144,48 @@ def generate_with_openrouter(api_key, model_name, topic):
         return data['choices'][0]['message']['content'].strip()
     raise Exception(f"OpenRouter API error {resp.status_code}")
 
-# ======== Eden AI генерация изображения ========
-EDENAI_KEY = os.getenv('EDENAI_API_KEY')
+# ======== Генерация изображения через Eden AI и fallback ========
+EDEN_KEY = os.getenv('EDEN_AI_KEY')  # Ваш production ключ Eden AI
 
-FREE_PROVIDERS = ["openjourney", "stable_diffusion", "dalle-mini"]
+FREE_PROVIDERS = ["craiyon", "deepai"]  # бесплатные и рабочие
 
 def generate_article_image(topic):
-    print(f"🎨 Eden AI генерация изображения по промпту: {topic}")
-    prompt = topic[:200]  # укоротим слишком длинные промпты
-    if EDENAI_KEY:
-        for provider in FREE_PROVIDERS:
-            try:
-                resp = requests.post(
-                    "https://api.edenai.run/v2/image/generation",
-                    headers={"Authorization": f"Bearer {EDENAI_KEY}", "Content-Type":"application/json"},
-                    json={"providers":[provider], "text": prompt, "resolution":"1024x1024"}
-                )
-                data = resp.json()
-                if resp.status_code == 200 and "result" in data and len(data["result"]) > 0:
-                    image_url = data["result"][0].get("url")
-                    if image_url:
-                        filename = save_image_from_url(image_url, topic)
-                        print(f"✅ Eden AI изображение создано через {provider}: {filename}")
-                        return filename
-                else:
-                    print(f"⚠️ Eden AI не сработал через {provider}: {data}")
-            except Exception as e:
-                print(f"⚠️ Eden AI не сработал через {provider}: {e}")
+    print(f"🎨 Генерация изображения по промпту: {topic}")
+    
+    # Перебор бесплатных провайдеров
+    for provider in FREE_PROVIDERS:
+        try:
+            print(f"🎨 Eden AI через {provider}")
+            image_url = generate_with_eden(topic, provider)
+            if image_url:
+                print(f"✅ Изображение создано через {provider}")
+                return image_url
+        except Exception as e:
+            print(f"⚠️ Eden AI не сработал через {provider}: {e}")
+            continue
+
+    # fallback
     print("✅ Placeholder изображение создано")
     return generate_placeholder_image(topic)
 
-def save_image_from_url(url, topic):
-    import io
-    resp = requests.get(url)
-    if resp.status_code == 200:
-        os.makedirs("assets/images/posts", exist_ok=True)
-        filename = f"assets/images/posts/{generate_slug(topic)}.png"
-        with open(filename, "wb") as f:
-            f.write(resp.content)
-        return filename
-    return generate_placeholder_image(topic)
+def generate_with_eden(topic, provider):
+    url = "https://api.edenai.run/v2/image/generation"
+    headers = {
+        "Authorization": f"Bearer {EDEN_KEY}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "providers": [provider],
+        "text": topic,
+        "resolution": "1024x1024"
+    }
+    resp = requests.post(url, headers=headers, json=payload, timeout=30)
+    data = resp.json()
+    if 'result' in data and data['result']:
+        image_base64 = data['result'][0]['image_base64']
+        return save_article_image(base64.b64decode(image_base64), topic)
+    else:
+        raise Exception(f"Eden AI не вернул результат: {data}")
 
 def generate_placeholder_image(topic):
     os.makedirs("assets/images/posts", exist_ok=True)
@@ -203,6 +206,14 @@ def generate_placeholder_image(topic):
     bbox = draw.textbbox((0,0), wrapped_text, font=font)
     draw.text(((width-(bbox[2]-bbox[0])/2),(height-(bbox[3]-bbox[1])/2)), wrapped_text, font=font, fill="#6366f1")
     img.save(filename)
+    return filename
+
+def save_article_image(image_data, topic):
+    os.makedirs("assets/images/posts", exist_ok=True)
+    filename = f"assets/images/posts/{generate_slug(topic)}.png"
+    if image_data:
+        with open(filename,'wb') as f:
+            f.write(image_data)
     return filename
 
 # ======== Вспомогательные функции ========
