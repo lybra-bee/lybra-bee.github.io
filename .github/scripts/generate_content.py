@@ -8,11 +8,9 @@ import re
 import textwrap
 from PIL import Image, ImageDraw, ImageFont
 import logging
-import base64
 import requests
-import openai
 
-# Настройка логирования
+# ===== Настройка логирования =====
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -20,40 +18,58 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Ключи из секретов GitHub
-OPENAI_KEY = os.getenv("OPENAI_API_KEY")
-FAL_API_KEY = os.getenv("FAL_API_KEY")
-
-if OPENAI_KEY:
-    openai.api_key = OPENAI_KEY
+# ===== Ключи из секретов GitHub =====
+OPENROUTER_KEY = os.getenv("OPENROUTER_API_KEY")
+GROQ_KEY = os.getenv("GROQ_API_KEY")
+FAL_KEY = os.getenv("FAL_API_KEY")
 
 # ======== Генерация темы ========
 def generate_ai_trend_topic():
-    trends = [
-        "Multimodal AI интеграция текста изображений и аудио",
-        "AI агенты автономные системы",
-        "Квантовые вычисления и машинное обучение",
-        "Нейроморфные вычисления энергоэффективные архитектуры",
-        "Generative AI создание контента и дизайнов",
-        "Edge AI обработка данных на устройстве",
-        "AI для кибербезопасности",
-        "Этичный AI ответственное развитие",
-        "AI в healthcare и персонализированная медицина",
-        "Автономные системы и робототехника"
+    current_trends_2025 = [
+        "Multimodal AI интеграция текста изображений и аудио в единых моделях",
+        "AI агенты автономные системы способные выполнять сложные задачи",
+        "Квантовые вычисления и машинное обучение прорыв в производительности",
+        "Нейроморфные вычисления энергоэффективные архитектуры нейросетей",
+        "Generative AI создание контента кода и дизайнов искусственным интеллектом",
+        "Edge AI обработка данных на устройстве без облачной зависимости",
+        "AI для кибербезопасности предиктивная защита от угроз",
+        "Этичный AI ответственное развитие и использование искусственного интеллекта",
+        "AI в healthcare диагностика разработка лекарств и персонализированная медицина",
+        "Автономные системы беспилотный транспорт и робототехника",
+        "AI оптимизация сжатие моделей и ускорение inference",
+        "Доверенный AI объяснимые и прозрачные алгоритмы",
+        "AI для климата оптимизация энергопотребления и экологические решения",
+        "Персональные AI ассистенты индивидуализированные цифровые помощники",
+        "AI в образовании адаптивное обучение и персонализированные учебные планы"
     ]
-    domains = [
+    application_domains = [
         "в веб разработке и cloud native приложениях",
         "в мобильных приложениях и IoT экосистемах",
+        "в облачных сервисах и распределенных системах",
         "в анализе больших данных и бизнес аналитике",
         "в компьютерной безопасности и киберзащите",
+        "в медицинской диагностике и биотехнологиях",
+        "в финансовых технологиях и финтехе",
+        "в автономных транспортных системах",
+        "в smart city и умной инфраструктуре",
         "в образовательных технологиях и EdTech"
     ]
-    trend = random.choice(trends)
-    domain = random.choice(domains)
-    return f"{trend} {domain} в 2025 году"
+    trend = random.choice(current_trends_2025)
+    domain = random.choice(application_domains)
+    topic_formats = [
+        f"{trend} {domain} в 2025 году",
+        f"Тенденции 2025 {trend} {domain}",
+        f"{trend} революционные изменения {domain} в 2025",
+        f"Как {trend} трансформирует {domain} в 2025 году",
+        f"Инновации 2025 {trend} для {domain}",
+        f"{trend} будущее {domain} в 2025 году",
+        f"Практическое применение {trend} в {domain} 2025"
+    ]
+    return random.choice(topic_formats)
 
 # ======== Очистка старых статей ========
 def clean_old_articles(keep_last=3):
+    logger.info(f"🧹 Очистка старых статей, оставляем {keep_last} последних...")
     posts_dir = "content/posts"
     if os.path.exists(posts_dir):
         posts = sorted([f for f in os.listdir(posts_dir) if f.endswith('.md')], reverse=True)
@@ -69,105 +85,128 @@ def clean_old_articles(keep_last=3):
             f.write("---\ntitle: \"Статьи\"\n---")
         logger.info("✅ Создана структура content")
 
-# ======== Генерация текста ========
+# ======== Генерация текста через OpenRouter/Groq ========
 def generate_article_content(topic):
-    if not OPENAI_KEY:
-        return generate_fallback_content(topic), "fallback-generator"
-    prompt = f"Напиши развернутую статью на тему: '{topic}' на русском языке. Формат Markdown, 400-600 слов."
-    try:
-        resp = openai.chat.completions.create(
-            model="gpt-4",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.7,
-            max_tokens=2000
-        )
-        content = resp.choices[0].message.content.strip()
-        return content, "OpenAI GPT-4"
-    except Exception as e:
-        logger.warning(f"❌ OpenAI GPT ошибка: {e}")
-        return generate_fallback_content(topic), "fallback-generator"
+    prompt = f"""
+Напиши развернутую статью на тему: '{topic}' на русском языке.
+Требования:
+- Формат Markdown
+- 400-600 слов
+- Структура: введение, основные разделы, заключение
+- Профессиональный стиль
+- Конкретные примеры и кейсы
+"""
+    logger.info(f"📝 Генерация текста через OpenRouter/Groq")
+    # OpenRouter
+    if OPENROUTER_KEY:
+        try:
+            url = "https://openrouter.ai/api/v1/chat/completions"
+            headers = {"Authorization": f"Bearer {OPENROUTER_KEY}"}
+            data = {
+                "model": "gpt-4",
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.7
+            }
+            resp = requests.post(url, headers=headers, json=data, timeout=60)
+            content = resp.json()["choices"][0]["message"]["content"].strip()
+            return content, "OpenRouter GPT-4"
+        except Exception as e:
+            logger.warning(f"⚠️ OpenRouter не сработал: {e}")
+    # Groq
+    if GROQ_KEY:
+        try:
+            url = "https://api.groq.ai/v1/complete"
+            headers = {"Authorization": f"Bearer {GROQ_KEY}"}
+            data = {"prompt": prompt, "max_tokens": 1000}
+            resp = requests.post(url, headers=headers, json=data, timeout=60)
+            content = resp.json()["completion"].strip()
+            return content, "Groq AI"
+        except Exception as e:
+            logger.warning(f"⚠️ Groq не сработал: {e}")
+
+    # fallback
+    return generate_fallback_content(topic), "fallback-generator"
 
 def generate_fallback_content(topic):
-    return f"# {topic}\n\n## Введение\nАвтоматически сгенерированная статья.\n\n## Основное\nКонтент отсутствует.\n\n## Заключение\nСгенерировано fallback."
+    sections = [
+        f"# {topic}",
+        "",
+        "## Введение",
+        f"Тема '{topic}' становится increasingly important в 2025 году.",
+        "",
+        "## Основные тенденции",
+        "- Автоматизация процессов разработки",
+        "- Интеграция AI в существующие workflow",
+        "- Улучшение качества и скорости разработки",
+        "",
+        "## Практическое применение",
+        "Компании внедряют AI решения для оптимизации своих процессов.",
+        "",
+        "## Заключение",
+        "Будущее выглядит promising с развитием AI технологий.",
+        "",
+        "*Статья сгенерирована автоматически*"
+    ]
+    return "\n".join(sections)
 
-# ======== Генерация изображения ========
+# ======== Генерация изображения через FAL API ========
 def generate_article_image(topic):
     os.makedirs("assets/images/posts", exist_ok=True)
     filename = f"assets/images/posts/{generate_slug(topic)}.png"
 
-    # 1. FAL API
-    if FAL_API_KEY:
+    if FAL_KEY:
         try:
-            logger.info("🎨 Пробуем FAL API...")
-            url = "https://api.openfml.com/v1/generate-image"
-            headers = {"Authorization": f"Bearer {FAL_API_KEY}"}
-            resp = requests.post(url, json={"prompt": topic, "size": "1024x1024"}, headers=headers, timeout=60)
-            data = resp.json()
-            if resp.status_code == 200 and "image" in data:
-                img_bytes = base64.b64decode(data["image"])
+            url = "https://api.fal.ai/generate-image"
+            headers = {"Authorization": f"Bearer {FAL_KEY}"}
+            data = {"prompt": f"{topic}, digital art, futuristic, high quality, 4k"}
+            resp = requests.post(url, headers=headers, json=data, timeout=60)
+            if resp.status_code == 200:
+                image_url = resp.json()["image_url"]
+                image_bytes = requests.get(image_url, timeout=30).content
                 with open(filename, "wb") as f:
-                    f.write(img_bytes)
-                logger.info(f"✅ Изображение получено через FAL API: {filename}")
+                    f.write(image_bytes)
+                logger.info(f"✅ Изображение получено через FAL AI: {filename}")
                 return filename
         except Exception as e:
-            logger.warning(f"⚠️ FAL API не сработал: {e}")
+            logger.warning(f"⚠️ FAL AI не сработал: {e}")
 
-    # 2. Craiyon (без ключа)
-    try:
-        logger.info("🎨 Пробуем Craiyon...")
-        resp = requests.post("https://api.craiyon.com/v3", json={"prompt": topic}, timeout=60)
-        if resp.status_code == 200 and "images" in resp.json():
-            img_url = resp.json()["images"][0]
-            img_data = requests.get(img_url, timeout=30).content
-            with open(filename, "wb") as f:
-                f.write(img_data)
-            logger.info(f"✅ Изображение получено через Craiyon: {filename}")
-            return filename
-    except Exception as e:
-        logger.warning(f"⚠️ Craiyon не сработал: {e}")
+    return generate_enhanced_placeholder(topic)
 
-    # 3. OpenAI DALL·E
-    if OPENAI_KEY:
-        try:
-            logger.info("🎨 Пробуем DALL·E...")
-            resp = openai.images.generate(model="gpt-image-1", prompt=topic, size="1024x1024")
-            img_bytes = base64.b64decode(resp.data[0].b64_json)
-            with open(filename, "wb") as f:
-                f.write(img_bytes)
-            logger.info(f"✅ Изображение получено через DALL·E: {filename}")
-            return filename
-        except Exception as e:
-            logger.warning(f"⚠️ DALL·E не сработал: {e}")
-
-    # 4. Плейсхолдер
-    return generate_placeholder(topic, filename)
-
-def generate_placeholder(topic, filename):
+# ======== Плейсхолдер ========
+def generate_enhanced_placeholder(topic):
+    filename = f"assets/images/posts/{generate_slug(topic)}.png"
     width, height = 800, 400
-    img = Image.new("RGB", (width, height), "#0f172a")
+    img = Image.new('RGB', (width, height), color='#0f172a')
     draw = ImageDraw.Draw(img)
-    wrapped = textwrap.fill(topic, width=35)
+    for i in range(height):
+        r = int(15 + (i/height)*40)
+        g = int(23 + (i/height)*60)
+        b = int(42 + (i/height)*100)
+        draw.line([(0, i), (width, i)], fill=(r, g, b))
+    wrapped_text = textwrap.fill(topic, width=35)
     try:
         font = ImageFont.truetype("Arial.ttf", 22)
     except:
         font = ImageFont.load_default()
-    bbox = draw.textbbox((0, 0), wrapped, font=font)
-    x = (width - (bbox[2]-bbox[0]))/2
-    y = (height - (bbox[3]-bbox[1]))/2
-    draw.text((x+3, y+3), wrapped, font=font, fill="#000000")
-    draw.text((x, y), wrapped, font=font, fill="#ffffff")
+    bbox = draw.textbbox((0, 0), wrapped_text, font=font)
+    text_width = bbox[2] - bbox[0]
+    text_height = bbox[3] - bbox[1]
+    x = (width - text_width) / 2
+    y = (height - text_height) / 2
+    draw.text((x+3, y+3), wrapped_text, font=font, fill="#000000")
+    draw.text((x, y), wrapped_text, font=font, fill="#ffffff")
     img.save(filename)
     logger.info(f"💾 Placeholder изображение сохранено: {filename}")
     return filename
 
 # ======== Вспомогательные ========
 def generate_slug(text):
-    slug = re.sub(r"[^\w\s-]", "", text).strip().lower()
-    slug = re.sub(r"[\s_-]+", "-", slug)
+    slug = re.sub(r'[^\w\s-]', '', text).strip().lower()
+    slug = re.sub(r'[\s_-]+', '-', slug)
     return slug
 
 def generate_frontmatter(title, content, model_used, image_filename):
-    return f"""---
+    frontmatter = f"""---
 title: "{title}"
 date: {datetime.now(timezone.utc).strftime('%Y-%m-%d')}
 image: "{image_filename}"
@@ -175,6 +214,7 @@ model: "{model_used}"
 ---
 {content}
 """
+    return frontmatter
 
 # ======== Генерация статьи ========
 def generate_content():
@@ -185,13 +225,14 @@ def generate_content():
     image_filename = generate_article_image(topic)
     content, model_used = generate_article_content(topic)
     slug = generate_slug(topic)
-    os.makedirs("content/posts", exist_ok=True)
     filename = f"content/posts/{datetime.now(timezone.utc).strftime('%Y-%m-%d')}-{slug}.md"
     frontmatter = generate_frontmatter(topic, content, model_used, image_filename)
-    with open(filename, "w", encoding="utf-8") as f:
+    os.makedirs("content/posts", exist_ok=True)
+    with open(filename, 'w', encoding='utf-8') as f:
         f.write(frontmatter)
     logger.info(f"✅ Статья создана: {filename}")
     return filename
 
+# ======== Главная точка ========
 if __name__ == "__main__":
     generate_content()
