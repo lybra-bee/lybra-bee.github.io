@@ -7,9 +7,9 @@ import shutil
 import re
 import textwrap
 from PIL import Image, ImageDraw, ImageFont
-import time
 import logging
 import base64
+import requests
 import openai
 
 # Настройка логирования
@@ -20,12 +20,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Проверка ключа OpenAI
+# Ключи (некоторые могут быть пустыми)
 OPENAI_KEY = os.getenv("OPENAI_API_KEY")
-if not OPENAI_KEY:
-    logger.error("❌ OPENAI_API_KEY не установлен")
-    exit(1)
-openai.api_key = OPENAI_KEY
+UNSPLASH_KEY = os.getenv("UNSPLASH_ACCESS_KEY")
+PIXABAY_KEY = os.getenv("PIXABAY_API_KEY")
+DEEPAI_KEY = os.getenv("DEEPAI_API_KEY")
+
+if OPENAI_KEY:
+    openai.api_key = OPENAI_KEY
 
 # ======== Генерация темы ========
 def generate_ai_trend_topic():
@@ -89,7 +91,7 @@ def clean_old_articles(keep_last=3):
             f.write("---\ntitle: \"Статьи\"\n---")
         logger.info("✅ Создана структура content")
 
-# ======== Генерация текста через OpenAI GPT ========
+# ======== Генерация текста ========
 def generate_article_content(topic):
     prompt = f"""
 Напиши развернутую статью на тему: '{topic}' на русском языке.
@@ -101,6 +103,8 @@ def generate_article_content(topic):
 - Конкретные примеры и кейсы
 """
     logger.info(f"📝 Генерация текста через OpenAI GPT")
+    if not OPENAI_KEY:
+        return generate_fallback_content(topic), "fallback-generator"
     try:
         response = openai.chat.completions.create(
             model="gpt-4",
@@ -136,37 +140,105 @@ def generate_fallback_content(topic):
     ]
     return "\n".join(sections)
 
-# ======== Генерация изображения через DALL·E ========
+# ======== Перебор сервисов для генерации изображений ========
 def generate_article_image(topic):
     prompt = f"{topic}, digital art, futuristic, AI technology, 4k, high quality, trending"
-    logger.info(f"🎨 Генерация изображения через OpenAI DALL·E: {topic}")
-    try:
-        response = openai.images.generate(
-            model="gpt-image-1",
-            prompt=prompt,
-            size="1024x1024"
-        )
-        image_base64 = response.data[0].b64_json
-        image_bytes = base64.b64decode(image_base64)
-        return save_image_bytes(image_bytes, topic)
-    except Exception as e:
-        logger.error(f"❌ Ошибка генерации изображения: {e}")
-        return generate_enhanced_placeholder(topic)
 
-def save_image_bytes(image_data, topic):
-    try:
-        os.makedirs("assets/images/posts", exist_ok=True)
-        filename = f"assets/images/posts/{generate_slug(topic)}.png"
-        with open(filename, "wb") as f:
-            f.write(image_data)
-        logger.info(f"💾 Изображение сохранено: {filename}")
-        return filename
-    except Exception as e:
-        logger.error(f"❌ Ошибка сохранения: {e}")
-        return None
-
-def generate_enhanced_placeholder(topic):
+    # Путь сохранения
     os.makedirs("assets/images/posts", exist_ok=True)
+    filename = f"assets/images/posts/{generate_slug(topic)}.png"
+
+    # 1. Craiyon (без ключа)
+    try:
+        logger.info("🎨 Пробуем Craiyon...")
+        resp = requests.post("https://api.craiyon.com/v3", json={"prompt": prompt}, timeout=60)
+        if resp.status_code == 200 and "images" in resp.json():
+            img_url = resp.json()["images"][0]
+            img_data = requests.get(img_url, timeout=30).content
+            with open(filename, "wb") as f:
+                f.write(img_data)
+            logger.info(f"✅ Изображение получено из Craiyon: {filename}")
+            return filename
+    except Exception as e:
+        logger.warning(f"⚠️ Craiyon не сработал: {e}")
+
+    # 2. Unsplash (ключ обязателен)
+    if UNSPLASH_KEY:
+        try:
+            logger.info("🎨 Пробуем Unsplash...")
+            url = f"https://api.unsplash.com/photos/random?query={topic}&client_id={UNSPLASH_KEY}"
+            resp = requests.get(url, timeout=30)
+            if resp.status_code == 200 and "urls" in resp.json():
+                img_url = resp.json()["urls"]["regular"]
+                img_data = requests.get(img_url, timeout=30).content
+                with open(filename, "wb") as f:
+                    f.write(img_data)
+                logger.info(f"✅ Изображение получено из Unsplash: {filename}")
+                return filename
+        except Exception as e:
+            logger.warning(f"⚠️ Unsplash не сработал: {e}")
+
+    # 3. Pixabay (ключ обязателен)
+    if PIXABAY_KEY:
+        try:
+            logger.info("🎨 Пробуем Pixabay...")
+            url = f"https://pixabay.com/api/?key={PIXABAY_KEY}&q={topic}&image_type=photo"
+            resp = requests.get(url, timeout=30)
+            data = resp.json()
+            if "hits" in data and len(data["hits"]) > 0:
+                img_url = data["hits"][0]["largeImageURL"]
+                img_data = requests.get(img_url, timeout=30).content
+                with open(filename, "wb") as f:
+                    f.write(img_data)
+                logger.info(f"✅ Изображение получено из Pixabay: {filename}")
+                return filename
+        except Exception as e:
+            logger.warning(f"⚠️ Pixabay не сработал: {e}")
+
+    # 4. DeepAI (ключ обязателен)
+    if DEEPAI_KEY:
+        try:
+            logger.info("🎨 Пробуем DeepAI...")
+            url = "https://api.deepai.org/api/text2img"
+            resp = requests.post(
+                url,
+                data={"text": prompt},
+                headers={"api-key": DEEPAI_KEY},
+                timeout=60
+            )
+            if resp.status_code == 200 and "output_url" in resp.json():
+                img_url = resp.json()["output_url"]
+                img_data = requests.get(img_url, timeout=30).content
+                with open(filename, "wb") as f:
+                    f.write(img_data)
+                logger.info(f"✅ Изображение получено из DeepAI: {filename}")
+                return filename
+        except Exception as e:
+            logger.warning(f"⚠️ DeepAI не сработал: {e}")
+
+    # 5. OpenAI DALL·E (если есть ключ)
+    if OPENAI_KEY:
+        try:
+            logger.info("🎨 Пробуем OpenAI DALL·E...")
+            response = openai.images.generate(
+                model="gpt-image-1",
+                prompt=prompt,
+                size="1024x1024"
+            )
+            image_base64 = response.data[0].b64_json
+            image_bytes = base64.b64decode(image_base64)
+            with open(filename, "wb") as f:
+                f.write(image_bytes)
+            logger.info(f"✅ Изображение получено через DALL·E: {filename}")
+            return filename
+        except Exception as e:
+            logger.warning(f"⚠️ DALL·E не сработал: {e}")
+
+    # 6. Если всё сломалось → делаем плейсхолдер
+    return generate_enhanced_placeholder(topic)
+
+# ======== Плейсхолдер ========
+def generate_enhanced_placeholder(topic):
     filename = f"assets/images/posts/{generate_slug(topic)}.png"
     width, height = 800, 400
     img = Image.new('RGB', (width, height), color='#0f172a')
@@ -192,7 +264,7 @@ def generate_enhanced_placeholder(topic):
     logger.info(f"💾 Placeholder изображение сохранено: {filename}")
     return filename
 
-# ======== Помощь: slug и frontmatter ========
+# ======== Вспомогательные ========
 def generate_slug(text):
     slug = re.sub(r'[^\w\s-]', '', text).strip().lower()
     slug = re.sub(r'[\s_-]+', '-', slug)
