@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Вспомогательные функции для генератора контента
+Вспомогательные функции для генератора контента Hugo
 """
 
 import re
@@ -8,6 +8,9 @@ import os
 from datetime import datetime, timezone
 from PIL import Image, ImageDraw, ImageFont
 import textwrap
+import logging
+
+logger = logging.getLogger(__name__)
 
 def generate_slug(text):
     """Генерация SEO-friendly slug из текста"""
@@ -37,11 +40,12 @@ summary: "Автоматически сгенерированная статья
 """
     return frontmatter
 
-def generate_enhanced_placeholder(topic, width=800, height=400):
-    """Создание улучшенного placeholder изображения"""
+def generate_enhanced_placeholder(topic):
+    """Создание улучшенного placeholder изображения для Hugo"""
     try:
-        os.makedirs("assets/images/posts", exist_ok=True)
-        filename = f"assets/images/posts/{generate_slug(topic)}.png"
+        os.makedirs("static/images/posts", exist_ok=True)
+        filename = f"static/images/posts/{generate_slug(topic)}.jpg"
+        width, height = 800, 400
         
         # Создаем футуристический фон
         img = Image.new('RGB', (width, height), color='#0f172a')
@@ -89,9 +93,10 @@ def generate_enhanced_placeholder(topic, width=800, height=400):
         draw.rectangle([(10, height-35), (120, height-10)], fill="#6366f1")
         draw.text((15, height-30), "AI GENERATED", font=ImageFont.load_default(), fill="#ffffff")
         
-        img.save(filename)
-        return filename
+        img.save(filename, "JPEG", quality=90)
+        logger.info(f"🎨 Улучшенный placeholder создан: {filename}")
+        return f"/images/posts/{os.path.basename(filename)}"
         
     except Exception as e:
-        print(f"Ошибка создания placeholder: {e}")
-        return "assets/images/default.png"
+        logger.error(f"❌ Ошибка создания placeholder: {e}")
+        return "/images/default.jpg"
