@@ -1,11 +1,6 @@
 {
-  "name": "lybra-bee-github-io",
+  "name": "telegram-bot-api",
   "version": "1.0.0",
-  "description": "Hugo blog with AI content generator",
-  "dependencies": {
-    "telegraf": "^4.16.3"
-  },
-  "engines": {
-    "node": ">=18"
-  }
+  "description": "Telegram bot webhook handler",
+  "type": "module"
 }
