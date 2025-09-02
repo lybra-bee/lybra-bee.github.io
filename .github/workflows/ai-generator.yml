@@ -22,6 +22,8 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Важно: получаем всю историю
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -30,7 +32,14 @@ jobs:
 
     - name: Install dependencies
       run: |
+        cd ${{ github.workspace }}
         pip install -r requirements.txt
+
+    - name: Create content directories
+      run: |
+        cd ${{ github.workspace }}
+        mkdir -p content/posts
+        mkdir -p static/images/posts
 
     - name: Generate AI content
       env:
@@ -39,10 +48,14 @@ jobs:
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       run: |
+        cd ${{ github.workspace }}
+        echo "Текущая директория: $(pwd)"
+        echo "Содержимое scripts/: $(ls -la scripts/ || echo 'Нет папки scripts')"
         python scripts/generate_content.py --count ${{ github.event.inputs.article_count }}
 
     - name: Commit and push generated content
       run: |
+        cd ${{ github.workspace }}
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         git add content/ static/
