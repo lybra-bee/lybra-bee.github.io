@@ -1,4 +1,4 @@
-// api/telegram.js - работает без telegraf!
+// api/telegram.js
 export default async function handler(req, res) {
   if (req.method === 'POST') {
     try {
@@ -7,30 +7,32 @@ export default async function handler(req, res) {
       
       // Простая обработка сообщений
       if (update.message && update.message.text) {
-        const token = process.env.TELEGRAM_BOT_TOKEN;
+        const token = process.env.TELEGRAM_BOT_TOKEN || '8006769060:AAEGAKhjUeuAXfnsQWtdLcKpAjkJrrGQ1Fk';
         const chatId = update.message.chat.id;
         const userText = update.message.text;
         
         console.log(`💬 Message from ${chatId}: ${userText}`);
+        console.log(`🔑 Using token: ${token.substring(0, 10)}...`);
         
         // Отправляем ответ через Telegram API
         const telegramResponse = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
           method: 'POST',
           headers: { 
-            'Content-Type': 'application/json',
-            'User-Agent': 'Telegram-Bot/1.0'
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify({
             chat_id: chatId,
-            text: `🤖 Бот работает! Вы написали: "${userText}"\n\nГотов к генерации изображений для статей!`,
-            parse_mode: 'HTML'
+            text: `🤖 Бот работает! Вы написали: "${userText}"\n\nГотов к генерации изображений для статей!`
           })
         });
+        
+        const result = await telegramResponse.json();
+        console.log('📤 Telegram API response:', result);
         
         if (telegramResponse.ok) {
           console.log('✅ Ответ отправлен в Telegram');
         } else {
-          console.error('❌ Ошибка отправки ответа:', await telegramResponse.text());
+          console.error('❌ Ошибка отправки ответа:', result);
         }
       }
       
