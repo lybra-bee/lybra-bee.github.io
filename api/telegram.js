@@ -7,12 +7,11 @@ export default async function handler(req, res) {
       
       // Простая обработка сообщений
       if (update.message && update.message.text) {
-        const token = process.env.TELEGRAM_BOT_TOKEN || '8006769060:AAEGAKhjUeuAXfnsQWtdLcKpAjkJrrGQ1Fk';
+        const token = '8006769060:AAEGAKhjUeuAXfnsQWtdLcKpAjkJrrGQ1Fk'; // Хардкод токена
         const chatId = update.message.chat.id;
         const userText = update.message.text;
         
         console.log(`💬 Message from ${chatId}: ${userText}`);
-        console.log(`🔑 Using token: ${token.substring(0, 10)}...`);
         
         // Отправляем ответ через Telegram API
         const telegramResponse = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
@@ -36,7 +35,6 @@ export default async function handler(req, res) {
         }
       }
       
-      // Всегда возвращаем 200 OK для Telegram
       res.status(200).json({ status: 'ok' });
       
     } catch (error) {
