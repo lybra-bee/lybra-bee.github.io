@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
-Генератор контента для блога с AI-статьями и изображениями
-Автоматически создает статьи с картинками через различные AI-API
+Генератор контента для Hugo блога с AI-статьями и изображениями
 """
 
 import os
@@ -17,6 +16,12 @@ import time
 import logging
 import argparse
 import base64
+import sys
+
+# Добавляем путь к скриптам
+sys.path.append(os.path.dirname(__file__))
+
+from helpers import generate_slug, generate_frontmatter, generate_enhanced_placeholder
 
 # Настройка логирования
 logging.basicConfig(
@@ -82,31 +87,41 @@ def generate_ai_trend_topic():
     return random.choice(topic_formats)
 
 # ======== Очистка старых статей ========
-def clean_old_articles(keep_last=3):
+def clean_old_articles(keep_last=5):
     """Очистка старых статей, оставляем только последние"""
     logger.info(f"🧹 Очистка старых статей, оставляем {keep_last} последних...")
     
-    content_dir = "content"
+    content_dir = "content/posts"
+    images_dir = "static/images/posts"
+    
+    # Очистка старых статей
     if os.path.exists(content_dir):
-        posts_dir = os.path.join(content_dir, "posts")
-        if os.path.exists(posts_dir):
-            posts = sorted([f for f in os.listdir(posts_dir) if f.endswith('.md')], 
-                          reverse=True)
-            for post in posts[keep_last:]:
-                os.remove(os.path.join(posts_dir, post))
-                logger.info(f"🗑️ Удален старый пост: {post}")
-    else:
-        os.makedirs("content/posts", exist_ok=True)
-        with open("content/_index.md", "w", encoding="utf-8") as f:
-            f.write("---\ntitle: \"Главная\"\n---")
+        posts = sorted([f for f in os.listdir(content_dir) if f.endswith('.md') and f != '_index.md'], 
+                      reverse=True)
+        for post in posts[keep_last:]:
+            os.remove(os.path.join(content_dir, post))
+            logger.info(f"🗑️ Удален старый пост: {post}")
+            
+            # Пробуем удалить соответствующее изображение
+            image_name = os.path.splitext(post)[0] + '.jpg'
+            image_path = os.path.join(images_dir, image_name)
+            if os.path.exists(image_path):
+                os.remove(image_path)
+                logger.info(f"🗑️ Удалено старое изображение: {image_name}")
+    
+    # Создаем структуру если не существует
+    os.makedirs(content_dir, exist_ok=True)
+    os.makedirs(images_dir, exist_ok=True)
+    
+    # Создаем индексные файлы если не существуют
+    if not os.path.exists("content/posts/_index.md"):
         with open("content/posts/_index.md", "w", encoding="utf-8") as f:
-            f.write("---\ntitle: \"Статьи\"\n---")
-        logger.info("✅ Создана структура content")
+            f.write("---\ntitle: \"Статьи\"\n---\n\nВсе AI-статьи, сгенерированные автоматически.")
 
 # ======== Генерация статьи ========
 def generate_content():
     """Основная функция генерации контента"""
-    logger.info("🚀 Запуск генерации контента...")
+    logger.info("🚀 Запуск генерации контента для Hugo...")
     
     # Проверка переменных окружения
     check_environment_variables()
@@ -125,19 +140,17 @@ def generate_content():
     content, model_used = generate_article_content(topic)
     
     # Создание файла статьи
-    date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     slug = generate_slug(topic)
-    filename = f"content/posts/{date}-{slug}.md"
+    filename = f"content/posts/{slug}.md"
     
-    # Генерация frontmatter
+    # Генерация frontmatter для Hugo
     frontmatter = generate_frontmatter(topic, content, model_used, image_filename)
     
     # Сохранение статьи
-    os.makedirs("content/posts", exist_ok=True)
     with open(filename, 'w', encoding='utf-8') as f:
         f.write(frontmatter)
     
-    logger.info(f"✅ Статья создана: {filename}")
+    logger.info(f"✅ Статья для Hugo создана: {filename}")
     return filename
 
 def check_environment_variables():
@@ -222,7 +235,7 @@ def generate_fallback_content(topic):
         "",
         "*Статья сгенерирована автоматически*",
         f"*Тема: {topic}*",
-        f"*Дата генерации: {datetime.now().strftime("%Y-%m-%d %H:%M")}*"
+        f"*Дата генерации: {datetime.now().strftime('%Y-%m-%d %H:%M')}*"
     ]
     return "\n".join(sections)
 
@@ -305,17 +318,12 @@ def generate_article_image(topic):
     """Умная генерация изображения с приоритетами"""
     logger.info(f"🎨 Генерация изображения: {topic}")
     
-    # 1. Пробуем Telegram Colab бота (самый надежный способ)
+    # 1. Пробуем Telegram бота
     telegram_result = generate_via_telegram(topic)
     if telegram_result:
         return telegram_result
     
-    # 2. Пробуем локальную генерацию (если есть GPU)
-    local_result = generate_image_locally(topic)
-    if local_result:
-        return local_result
-    
-    # 3. Пробуем бесплатные API
+    # 2. Пробуем бесплатные API
     for api_func in [try_craiyon, try_deepai_public, try_huggingface_public]:
         try:
             result = api_func(topic[:150], topic)
@@ -326,12 +334,12 @@ def generate_article_image(topic):
             logger.error(f"❌ Ошибка в {api_func.__name__}: {e}")
             continue
     
-    # 4. Fallback на качественный placeholder
+    # 3. Fallback на качественный placeholder
     logger.warning("✅ Все API не сработали, используем улучшенный placeholder")
     return generate_enhanced_placeholder(topic)
 
 def generate_via_telegram(topic):
-    """Генерация изображения через Telegram-бота в Colab"""
+    """Генерация изображения через Telegram-бота"""
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         return None
         
@@ -349,49 +357,15 @@ def generate_via_telegram(topic):
         )
         
         if response.status_code == 200:
-            logger.info("✅ Запрос отправлен боту в Colab")
-            # Ждем генерации (30 секунд)
+            logger.info("✅ Запрос отправлен боту")
+            # Ждем генерации
             time.sleep(35)
-            
-            # В реальной реализации здесь нужно получить изображение от бота
-            # Для демо возвращаем путь к временному файлу
-            return "assets/images/telegram_generated.png"
+            return f"/images/posts/{generate_slug(topic)}.jpg"
             
     except Exception as e:
         logger.error(f"❌ Ошибка Telegram API: {e}")
     
     return None
-
-def generate_image_locally(topic):
-    """Локальная генерация если есть GPU"""
-    try:
-        # Проверяем доступность CUDA
-        import torch
-        if not torch.cuda.is_available():
-            return None
-            
-        from diffusers import StableDiffusionPipeline
-        
-        prompt = f"{topic}, digital art, futuristic, professional, 4k, high quality"
-        
-        pipe = StableDiffusionPipeline.from_pretrained(
-            "runwayml/stable-diffusion-v1-5",
-            torch_dtype=torch.float16,
-            safety_checker=None
-        ).to("cuda")
-        
-        image = pipe(prompt, num_inference_steps=30).images[0]
-        
-        os.makedirs("assets/images/posts", exist_ok=True)
-        filename = f"assets/images/posts/{generate_slug(topic)}.png"
-        image.save(filename)
-        
-        logger.info(f"✅ Локальная генерация успешна: {filename}")
-        return filename
-        
-    except Exception as e:
-        logger.error(f"❌ Локальная генерация не удалась: {e}")
-        return None
 
 # ======== Бесплатные API для изображений ========
 def try_craiyon(prompt, topic):
@@ -459,14 +433,14 @@ def try_huggingface_public(prompt, topic):
 def save_image_bytes(image_data, topic):
     """Сохранение изображения из bytes"""
     try:
-        os.makedirs("assets/images/posts", exist_ok=True)
-        filename = f"assets/images/posts/{generate_slug(topic)}.png"
+        os.makedirs("static/images/posts", exist_ok=True)
+        filename = f"static/images/posts/{generate_slug(topic)}.jpg"
         
         with open(filename, "wb") as f:
             f.write(image_data)
         
         logger.info(f"💾 Изображение сохранено: {filename}")
-        return filename
+        return f"/images/posts/{os.path.basename(filename)}"
     except Exception as e:
         logger.error(f"❌ Ошибка сохранения: {e}")
         return None
@@ -482,110 +456,20 @@ def save_image_from_url(url, topic):
         logger.error(f"❌ Ошибка загрузки URL: {e}")
     return None
 
-def generate_enhanced_placeholder(topic):
-    """Улучшенный placeholder с AI-стилем"""
-    try:
-        os.makedirs("assets/images/posts", exist_ok=True)
-        filename = f"assets/images/posts/{generate_slug(topic)}.png"
-        width, height = 800, 400
-        
-        # Создаем футуристический фон
-        img = Image.new('RGB', (width, height), color='#0f172a')
-        draw = ImageDraw.Draw(img)
-        
-        # Градиентный фон
-        for i in range(height):
-            r = int(15 + (i/height)*40)
-            g = int(23 + (i/height)*60)
-            b = int(42 + (i/height)*100)
-            draw.line([(0, i), (width, i)], fill=(r, g, b))
-        
-        # Сетка (tech grid effect)
-        for i in range(0, width, 40):
-            draw.line([(i, 0), (i, height)], fill=(255, 255, 255, 25))
-        for i in range(0, height, 40):
-            draw.line([(0, i), (width, i)], fill=(255, 255, 255, 25))
-        
-        # Текст
-        wrapped_text = textwrap.fill(topic, width=35)
-        
-        # Шрифт
-        try:
-            font = ImageFont.truetype("Arial.ttf", 22)
-        except:
-            try:
-                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 20)
-            except:
-                font = ImageFont.load_default()
-        
-        # Позиция текста
-        bbox = draw.textbbox((0, 0), wrapped_text, font=font)
-        text_width = bbox[2] - bbox[0]
-        text_height = bbox[3] - bbox[1]
-        
-        x = (width - text_width) / 2
-        y = (height - text_height) / 2
-        
-        # Тень текста
-        draw.text((x+3, y+3), wrapped_text, font=font, fill="#000000")
-        # Основной текст
-        draw.text((x, y), wrapped_text, font=font, fill="#ffffff")
-        
-        # AI badge
-        draw.rectangle([(10, height-35), (120, height-10)], fill="#6366f1")
-        draw.text((15, height-30), "AI GENERATED", font=ImageFont.load_default(), fill="#ffffff")
-        
-        img.save(filename)
-        logger.info(f"🎨 Улучшенный placeholder создан: {filename}")
-        return filename
-        
-    except Exception as e:
-        logger.error(f"❌ Ошибка создания placeholder: {e}")
-        return "assets/images/default.png"
-
-# ======== Вспомогательные функции ========
-def generate_slug(text):
-    """Генерация SEO-friendly slug из текста"""
-    text = text.lower()
-    text = text.replace(' ', '-')
-    text = re.sub(r'[^a-z0-9\-]', '', text)
-    text = re.sub(r'-+', '-', text)
-    return text[:60]
-
-def generate_frontmatter(title, content, model_used, image_url):
-    """Генерация frontmatter для Hugo"""
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    escaped_title = title.replace(':', ' -').replace('"', "'")
-    
-    frontmatter = f"""---
-title: "{escaped_title}"
-date: {now}
-draft: false
-image: "{image_url}"
-ai_model: "{model_used}"
-tags: ["ai", "технологии", "2025", "нейросети"]
-categories: ["Искусственный интеллект"]
-summary: "Автоматически сгенерированная статья о тенденциях AI в 2025 году"
----
-
-{content}
-"""
-    return frontmatter
-
 # ======== ЗАПУСК ========
 def main():
     """Основная функция запуска"""
-    parser = argparse.ArgumentParser(description='Генератор AI контента для блога')
+    parser = argparse.ArgumentParser(description='Генератор AI контента для Hugo блога')
     parser.add_argument('--debug', action='store_true', help='Включить debug режим')
     parser.add_argument('--count', type=int, default=1, help='Количество статей для генерации')
-    parser.add_argument('--keep', type=int, default=3, help='Сколько статей оставлять при очистке')
+    parser.add_argument('--keep', type=int, default=5, help='Сколько статей оставлять при очистке')
     args = parser.parse_args()
     
     if args.debug:
         logging.getLogger().setLevel(logging.DEBUG)
         logger.debug("🔧 Debug режим включен")
     
-    print("🚀 AI Генератор контента для блога")
+    print("🚀 AI Генератор контента для Hugo блога")
     print("=" * 50)
     
     # Проверка переменных окружения
@@ -604,7 +488,7 @@ def main():
                 
         print("\n🎉 Все статьи успешно сгенерированы!")
         print(f"📁 Статьи сохранены в: content/posts/")
-        print(f"🖼️ Изображения в: assets/images/posts/")
+        print(f"🖼️ Изображения в: static/images/posts/")
         
     except KeyboardInterrupt:
         print("\n⏹️ Генерация прервана пользователем")
