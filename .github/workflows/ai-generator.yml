@@ -1,76 +1,74 @@
-name: AI Content Generator
+name: Hugo AI Content Generator
 
 on:
-  workflow_dispatch:         # ручной запуск
+  workflow_dispatch:
+    inputs:
+      article_count:
+        description: 'Number of articles to generate'
+        required: true
+        default: '1'
+        type: choice
+        options:
+        - '1'
+        - '2'
+        - '3'
   schedule:
-    - cron: '0 12 * * *'     # каждый день 12:00 UTC (15:00 МСК)
-
-permissions:
-  contents: write
-  pages: write
-  id-token: write
+    - cron: '0 8 * * *'  # Every day at 8 AM
 
 jobs:
-  generate:
+  generate-content:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-
+    
     steps:
-    - name: Checkout repo
+    - name: Checkout repository
       uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-        token: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Setup Python
+    - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.12'
+        python-version: '3.10'
 
-    - name: Install Python deps
+    - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install requests openai pillow
+        pip install -r requirements.txt
 
-    - name: Generate AI content (Groq/OpenRouter + Eden AI images)
+    - name: Generate AI content
       env:
-        EDENAI_API_KEY: ${{ secrets.EDENAI_API_KEY }}
         OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-        OPENAI_API_KEY: ${{ secrets.OPENAI_KEY }}       # Используем твой OPENAI_KEY
-        STABILITYAI_KEY: ${{ secrets.STABILITYAI_KEY }}
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       run: |
-        echo "🚀 Генерация..."
-        python .github/scripts/generate_content.py || echo "⚠️ Генерация завершилась с ошибкой — продолжаем"
+        python scripts/generate_content.py --count ${{ github.event.inputs.article_count }}
 
-    - name: Commit & push content
+    - name: Commit and push generated content
       run: |
-        git config user.name "github-actions"
-        git config user.email "github-actions@github.com"
-        git add content/ assets/images/posts/ || true
-        git commit -m "🤖 Автогенерация статьи и изображений [skip ci]" || echo "Нет изменений"
-        git push origin main --force
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add content/ static/
+        git commit -m "Auto-generated AI content $(date +'%Y-%m-%d %H:%M')" || echo "No changes to commit"
+        git push
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: generate-content
+    if: success()
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
 
     - name: Setup Hugo
       uses: peaceiris/actions-hugo@v2
       with:
-        hugo-version: '0.125.7'
+        hugo-version: 'latest'
         extended: true
 
-    - name: Build site
-      run: |
-        echo "🏗️ Сборка Hugo..."
-        hugo --minify
-        ls -la public || true
+    - name: Build
+      run: hugo --minify
 
-    - name: Deploy to GitHub Pages
+    - name: Deploy
       uses: peaceiris/actions-gh-pages@v3
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_dir: ./public
-        force_orphan: false
-        keep_files: true
-
-    - name: Done
-      run: |
-        echo "✅ Готово. Сайт: https://lybra-bee.github.io"
