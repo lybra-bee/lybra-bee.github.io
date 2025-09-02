@@ -3,22 +3,34 @@ const { Telegraf } = require('telegraf')
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN)
 
-// Обработчики команд
+// Добавьте логирование
+bot.use((ctx, next) => {
+  console.log('📨 Received:', ctx.message?.text)
+  return next()
+})
+
 bot.command('start', (ctx) => {
-  ctx.reply('🤖 Бот работает через Vercel! Готов к генерации изображений.')
+  console.log('🚀 Start command received')
+  ctx.reply('🤖 Бот работает! Готов к генерации изображений для статей.')
 })
 
 bot.on('text', (ctx) => {
-  ctx.reply('✅ Сообщение получено! Бот работает корректно.')
+  console.log('💬 Text message:', ctx.message.text)
+  ctx.reply('✅ Сообщение получено! Бот подключен к вебхуку.')
 })
 
-// Обработка вебхука
+// Обработка ошибок
+bot.catch((err) => {
+  console.error('❌ Bot error:', err)
+})
+
 module.exports = async (req, res) => {
   try {
+    console.log('🌐 Webhook called at:', new Date().toISOString())
     await bot.handleUpdate(req.body)
     res.status(200).send('OK')
   } catch (error) {
-    console.error('Error:', error)
+    console.error('💥 Webhook error:', error)
     res.status(500).send('Error')
   }
 }
