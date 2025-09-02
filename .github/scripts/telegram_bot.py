@@ -185,4 +185,29 @@ class ImageGeneratorBot:
     def run(self):
         """Запуск бота"""
         self.start_time = time.time()
-        logger.info("🤖 Запуск Telegram
+        logger.info("🤖 Запуск Telegram бота...")
+        
+        try:
+            self.bot.infinity_polling(timeout=60, long_polling_timeout=60)
+        except Exception as e:
+            logger.error(f"❌ Ошибка бота: {e}")
+            raise
+
+def main():
+    """Основная функция"""
+    token = os.getenv('TELEGRAM_BOT_TOKEN')
+    if not token:
+        logger.error("❌ TELEGRAM_BOT_TOKEN не найден в переменных окружения")
+        return
+    
+    try:
+        bot = ImageGeneratorBot(token)
+        bot.run()
+        
+    except KeyboardInterrupt:
+        logger.info("⏹️ Бот остановлен пользователем")
+    except Exception as e:
+        logger.error(f"💥 Критическая ошибка: {e}")
+
+if __name__ == "__main__":
+    main()
