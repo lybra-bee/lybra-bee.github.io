@@ -23,7 +23,7 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0  # Важно: получаем всю историю
+        fetch-depth: 0
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -32,12 +32,10 @@ jobs:
 
     - name: Install dependencies
       run: |
-        cd ${{ github.workspace }}
-        pip install -r requirements.txt
+        pip install requests pillow python-dotenv
 
     - name: Create content directories
       run: |
-        cd ${{ github.workspace }}
         mkdir -p content/posts
         mkdir -p static/images/posts
 
@@ -48,14 +46,21 @@ jobs:
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       run: |
-        cd ${{ github.workspace }}
         echo "Текущая директория: $(pwd)"
-        echo "Содержимое scripts/: $(ls -la scripts/ || echo 'Нет папки scripts')"
-        python scripts/generate_content.py --count ${{ github.event.inputs.article_count }}
+        echo "Содержимое .github/scripts/: $(ls -la .github/scripts/ 2>/dev/null || echo 'Папка не найдена')"
+        
+        # Запускаем скрипт из правильного пути
+        if [ -f ".github/scripts/generate_content.py" ]; then
+            echo "✅ Найден .github/scripts/generate_content.py"
+            python .github/scripts/generate_content.py --count ${{ github.event.inputs.article_count }}
+        else
+            echo "❌ Файл не найден! Ищем все .py файлы:"
+            find . -name "*.py" -type f
+            exit 1
+        fi
 
     - name: Commit and push generated content
       run: |
-        cd ${{ github.workspace }}
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         git add content/ static/
