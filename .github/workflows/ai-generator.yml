@@ -34,7 +34,8 @@ jobs:
       env:
         ACTIVATION_SECRET: ${{ secrets.ACTIVATION_SECRET }}
         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}  # Используем WEBHOOK_URL
+        WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       run: |
         # Определяем тип запуска и промпт
         if [ "${{ github.event_name }}" = "schedule" ]; then
@@ -121,13 +122,21 @@ jobs:
         GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        ACTIVATION_SECRET: ${{ secrets.ACTIVATION_SECRET }}
+        WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
       run: |
         echo "🔄 Запуск генератора контента..."
         echo "📁 Текущая директория: $(pwd)"
         
         if [ -f ".github/scripts/generate_content.py" ]; then
             echo "✅ Найден .github/scripts/generate_content.py"
-            python .github/scripts/generate_content.py --count ${{ github.event.inputs.article_count }} --debug
+            python .github/scripts/generate_content.py \
+              --token "$TELEGRAM_BOT_TOKEN" \
+              --chat-id "$TELEGRAM_CHAT_ID" \
+              --secret "$ACTIVATION_SECRET" \
+              --webhook "$WEBHOOK_URL" \
+              --count ${{ github.event.inputs.article_count }} \
+              --debug
         else
             echo "❌ Файл не найден!"
             find . -name "*.py" -type f
@@ -168,7 +177,7 @@ jobs:
     - name: 🤖 Setup Telegram Webhook
       env:
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-        WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}  # Используем WEBHOOK_URL
+        WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
       run: |
         echo "🔄 Setting up webhook..."
         response=$(curl -s -X POST \
