@@ -34,14 +34,23 @@ jobs:
         WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
       run: |
         echo "🔍 Проверяю доступность webhook..."
-        response=$(curl -s -X GET "$WEBHOOK_URL/api/test" || echo "failed")
+        echo "🌐 URL: $WEBHOOK_URL/api/test"
         
-        if echo "$response" | grep -q "success"; then
+        # Проверяем доступность endpoint
+        response=$(curl -s -w "\n%{http_code}" -X GET "$WEBHOOK_URL/api/test" || echo "failed")
+        
+        # Разделяем response и status code
+        http_code=$(echo "$response" | tail -n1)
+        response_body=$(echo "$response" | sed '$d')
+        
+        echo "📋 HTTP Code: $http_code"
+        echo "📋 Response: $response_body"
+        
+        if [ "$http_code" = "200" ] && echo "$response_body" | grep -q "success"; then
           echo "✅ Webhook endpoint доступен"
           echo "status=success" >> $GITHUB_OUTPUT
         else
-          echo "❌ Webhook endpoint недоступен"
-          echo "Response: $response"
+          echo "❌ Webhook endpoint недоступен или возвращает ошибку"
           echo "status=failed" >> $GITHUB_OUTPUT
         fi
 
@@ -274,12 +283,51 @@ jobs:
           PROMPT="${{ github.event.inputs.custom_prompt }}"
         fi
         
-        curl -s -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
+        echo "📨 Отправляю сообщение напрямую боту..."
+        response=$(curl -s -w "\n%{http_code}" -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
           -H "Content-Type: application/json" \
           -d '{
             "chat_id": "'"$TELEGRAM_CHAT_ID"'",
             "text": "/generate '"$PROMPT"'",
             "parse_mode": "Markdown"
-          }'
+          }')
         
-        echo "✅ Сообщение отправлено напрямую"
+        http_code=$(echo "$response" | tail -n1)
+        response_body=$(echo "$response" | sed '$d')
+        
+        echo "📋 HTTP Code: $http_code"
+        echo "📋 Response: $response_body"
+        
+        if [ "$http_code" = "200" ]; then
+          echo "✅ Сообщение отправлено напрямую успешно"
+        else
+          echo "❌ Ошибка при отправке сообщения"
+        fi
+
+  error-handler:
+    runs-on: ubuntu-latest
+    needs: [health-check, activate-colab, generate-content]
+    if: failure()
+    
+    steps:
+    - name: 📨 Error Notification
+      env:
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      run: |
+        ERROR_MESSAGE="❌ Workflow завершился с ошибкой: ${{ github.workflow }} #${{ github.run_number }}"
+        
+        # Добавляем информацию о конкретной ошибке
+        if [ "${{ needs.health-check.result }}" = "failed" ]; then
+          ERROR_MESSAGE="$ERROR_MESSAGE\n🔧 Причина: Webhook недоступен"
+        elif [ "${{ needs.activate-colab.result }}" = "failed" ]; then
+          ERROR_MESSAGE="$ERROR_MESSAGE\n🔧 Причина: Ошибка активации Colab"
+        elif [ "${{ needs.generate-content.result }}" = "failed" ]; then
+          ERROR_MESSAGE="$ERROR_MESSAGE\n🔧 Причина: Ошибка генерации контента"
+        fi
+        
+        ERROR_MESSAGE="$ERROR_MESSAGE\n📊 Посмотреть логи: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        
+        curl -s -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
+          -H "Content-Type: application/json" \
+          -d "{\"chat_id\": \"$TELEGRAM_CHAT_ID\", \"text\": \"$ERROR_MESSAGE\"}"
