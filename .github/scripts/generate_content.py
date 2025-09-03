@@ -1,305 +1,522 @@
-import requests
+#!/usr/bin/env python3
 import os
-import time
-import argparse
+import json
+import requests
+import random
+from datetime import datetime, timezone
+import shutil
 import re
-import html
-from datetime import datetime
-import feedparser
-from bs4 import BeautifulSoup
+import textwrap
+from PIL import Image, ImageDraw, ImageFont
+import time
+import logging
+import argparse
+import base64
 
-def clean_text(text):
-    """Очистка текста от HTML тегов и мусора"""
-    if not text:
-        return ""
-    
-    # Декодируем HTML entities
-    text = html.unescape(text)
-    
-    # Удаляем HTML теги
-    text = re.sub(r'<[^>]*>', '', text)
-    
-    # Удаляем URL и специальные символы
-    text = re.sub(r'http\S+', '', text)
-    text = re.sub(r'[^\w\sа-яА-ЯёЁ.,!?;-]', ' ', text)
-    
-    # Убираем лишние пробелы
-    text = re.sub(r'\s+', ' ', text).strip()
-    
-    return text
+# Настройка логирования
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger(__name__)
 
-def get_trending_topics():
-    """Получение актуальных тем"""
+# ======== Генерация темы ========
+def generate_ai_trend_topic():
+    current_trends_2025 = [
+        "Multimodal AI интеграция текста изображений и аудио в единых моделях",
+        "AI агенты автономные системы способные выполнять сложные задачи",
+        "Квантовые вычисления и машинное обучение прорыв в производительности",
+        "Нейроморфные вычисления энергоэффективные архитектуры нейросетей",
+        "Generative AI создание контента кода и дизайнов искусственным интеллектом",
+        "Edge AI обработка данных на устройстве без облачной зависимости",
+        "AI для кибербезопасности предиктивная защита от угроз",
+        "Этичный AI ответственное развитие и использование искусственного интеллекта",
+        "AI в healthcare диагностика разработка лекарств и персонализированная медицина",
+        "Автономные системы беспилотный транспорт и робототехника",
+        "AI оптимизация сжатие моделей и ускорение inference",
+        "Доверенный AI объяснимые и прозрачные алгоритмы",
+        "AI для климата оптимизация энергопотребления и экологические решения",
+        "Персональные AI ассистенты индивидуализированные цифровые помощники",
+        "AI в образовании адаптивное обучение и персонализированные учебные планы"
+    ]
+    application_domains = [
+        "в веб разработке и cloud native приложениях",
+        "в мобильных приложениях и IoT экосистемах",
+        "в облачных сервисах и распределенных системах",
+        "в анализе больших данных и бизнес аналитике",
+        "в компьютерной безопасности и киберзащите",
+        "в медицинской диагностике и биотехнологиях",
+        "в финансовых технологиях и финтехе",
+        "в автономных транспортных системах",
+        "в smart city и умной инфраструктуре",
+        "в образовательных технологиях и EdTech"
+    ]
+    trend = random.choice(current_trends_2025)
+    domain = random.choice(application_domains)
+    topic_formats = [
+        f"{trend} {domain} в 2025 году",
+        f"Тенденции 2025 {trend} {domain}",
+        f"{trend} революционные изменения {domain} в 2025",
+        f"Как {trend} трансформирует {domain} в 2025 году",
+        f"Инновации 2025 {trend} для {domain}",
+        f"{trend} будущее {domain} в 2025 году",
+        f"Практическое применение {trend} в {domain} 2025"
+    ]
+    return random.choice(topic_formats)
+
+# ======== Очистка старых статей ========
+def clean_old_articles(keep_last=3):
+    logger.info(f"🧹 Очистка старых статей, оставляем {keep_last} последних...")
+    content_dir = "content"
+    if os.path.exists(content_dir):
+        # Удаляем только старые файлы, оставляя последние keep_last
+        posts_dir = os.path.join(content_dir, "posts")
+        if os.path.exists(posts_dir):
+            posts = sorted([f for f in os.listdir(posts_dir) if f.endswith('.md')], 
+                          reverse=True)
+            for post in posts[keep_last:]:
+                os.remove(os.path.join(posts_dir, post))
+                logger.info(f"🗑️ Удален старый пост: {post}")
+    else:
+        os.makedirs("content/posts", exist_ok=True)
+        with open("content/_index.md", "w", encoding="utf-8") as f:
+            f.write("---\ntitle: \"Главная\"\n---")
+        with open("content/posts/_index.md", "w", encoding="utf-8") as f:
+            f.write("---\ntitle: \"Статьи\"\n---")
+        logger.info("✅ Создана структура content")
+
+# ======== Генерация статьи ========
+def generate_content():
+    logger.info("🚀 Запуск генерации контента...")
+    
+    # Проверка переменных окружения
+    check_environment_variables()
+    
+    clean_old_articles()
+    
+    topic = generate_ai_trend_topic()
+    logger.info(f"📝 Тема статьи: {topic}")
+    
+    image_filename = generate_article_image(topic)
+    content, model_used = generate_article_content(topic)
+    
+    date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    slug = generate_slug(topic)
+    filename = f"content/posts/{date}-{slug}.md"
+    
+    frontmatter = generate_frontmatter(topic, content, model_used, image_filename)
+    
+    os.makedirs("content/posts", exist_ok=True)
+    with open(filename, 'w', encoding='utf-8') as f:
+        f.write(frontmatter)
+    
+    logger.info(f"✅ Статья создана: {filename}")
+    return filename
+
+def check_environment_variables():
+    """Проверка всех необходимых переменных окружения"""
+    env_vars = {
+        'OPENROUTER_API_KEY': os.getenv('OPENROUTER_API_KEY'),
+        'GROQ_API_KEY': os.getenv('GROQ_API_KEY')
+    }
+    
+    logger.info("🔍 Проверка переменных окружения:")
+    for var_name, var_value in env_vars.items():
+        status = "✅ установлен" if var_value else "❌ отсутствует"
+        logger.info(f"   {var_name}: {status}")
+
+# ======== Генерация текста через OpenRouter/Groq ========
+def generate_article_content(topic):
+    openrouter_key = os.getenv('OPENROUTER_API_KEY')
+    groq_key = os.getenv('GROQ_API_KEY')
+    models_to_try = []
+
+    if groq_key:
+        groq_models = ["llama-3.1-8b-instant", "llama-3.2-1b-preview", "llama-3.1-70b-versatile"]
+        for model_name in groq_models:
+            models_to_try.append((f"Groq-{model_name}", lambda m=model_name: generate_with_groq(groq_key, m, topic)))
+    if openrouter_key:
+        openrouter_models = ["anthropic/claude-3-haiku", "anthropic/claude-3-sonnet", "google/gemini-pro-1.5"]
+        for model_name in openrouter_models:
+            models_to_try.append((model_name, lambda m=model_name: generate_with_openrouter(openrouter_key, m, topic)))
+
+    # Если нет API ключей, используем fallback
+    if not models_to_try:
+        logger.warning("⚠️ Нет доступных API ключей для генерации текста")
+        fallback = generate_fallback_content(topic)
+        return fallback, "fallback-generator"
+
+    for model_name, generate_func in models_to_try:
+        try:
+            logger.info(f"🔄 Пробуем генерацию текста: {model_name}")
+            result = generate_func()
+            if result and len(result.strip()) > 100:
+                logger.info(f"✅ Успешно через {model_name}")
+                return result, model_name
+            else:
+                logger.warning(f"⚠️ Пустой ответ от {model_name}")
+        except Exception as e:
+            logger.error(f"❌ Ошибка {model_name}: {e}")
+            continue
+
+    logger.warning("⚠️ Все модели не сработали, используем fallback")
+    fallback = generate_fallback_content(topic)
+    return fallback, "fallback-generator"
+
+def generate_fallback_content(topic):
+    """Fallback контент если все API не работают"""
+    sections = [
+        f"# {topic}",
+        "",
+        "## Введение",
+        f"Тема '{topic}' становится increasingly important в 2025 году. ",
+        "",
+        "## Основные тенденции",
+        "- Автоматизация процессов разработки",
+        "- Интеграция AI в существующие workflow",
+        "- Улучшение качества и скорости разработки",
+        "",
+        "## Практическое применение",
+        "Компании внедряют AI решения для оптимизации своих процессов.",
+        "",
+        "## Заключение",
+        "Будущее выглядит promising с развитием AI технологий.",
+        "",
+        "*Статья сгенерирована автоматически*"
+    ]
+    return "\n".join(sections)
+
+def generate_with_groq(api_key, model_name, topic):
+    prompt = f"""Напиши развернутую статью на тему: '{topic}' на русском языке.
+
+Требования:
+- Формат Markdown
+- 400-600 слов
+- Структура: введение, основные разделы, заключение
+- Профессиональный стиль
+- Конкретные примеры и кейсы
+"""
+    resp = requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        json={
+            "model": model_name, 
+            "messages":[{"role":"user","content":prompt}], 
+            "max_tokens": 2000,
+            "temperature": 0.7,
+            "top_p": 0.9
+        },
+        timeout=30
+    )
+    
+    if resp.status_code == 200:
+        data = resp.json()
+        return data['choices'][0]['message']['content'].strip()
+    else:
+        raise Exception(f"Groq API error {resp.status_code}: {resp.text}")
+
+def generate_with_openrouter(api_key, model_name, topic):
+    prompt = f"""Напиши развернутую статью на тему: '{topic}' на русском языке.
+
+Требования:
+- Формат Markdown
+- 400-600 слов
+- Структурированный контент с заголовками
+- Практические примеры
+- Профессиональный тон
+"""
+    resp = requests.post(
+        "https://openrouter.ai/api/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {api_key}", 
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://ai-content-generator.com",
+            "X-Title": "AI Content Generator"
+        },
+        json={
+            "model": model_name, 
+            "messages":[{"role":"user","content":prompt}], 
+            "max_tokens": 2000,
+            "temperature": 0.7,
+            "top_p": 0.9
+        },
+        timeout=30
+    )
+    
+    if resp.status_code == 200:
+        data = resp.json()
+        return data['choices'][0]['message']['content'].strip()
+    else:
+        raise Exception(f"OpenRouter API error {resp.status_code}: {resp.text}")
+
+# ======== БЕСПЛАТНАЯ Генерация изображений ========
+def generate_article_image(topic):
+    """Генерация изображения через проверенные бесплатные API"""
+    logger.info(f"🎨 Генерация изображения по промпту: {topic}")
+    
+    prompt = f"{topic}, digital art, futuristic, AI technology, 4k, high quality, trending"
+    
+    # Самые надежные бесплатные API
+    reliable_apis = [
+        try_craiyon,            # Craiyon (DALL-E mini)
+        try_deepai_public,      # DeepAI с публичным ключом
+        try_huggingface_public, # Hugging Face публичные модели
+        try_stability_public    # Stability AI публичный
+    ]
+    
+    # Пробуем самые надежные варианты
+    for api_func in reliable_apis:
+        try:
+            logger.info(f"🔄 Пробуем {api_func.__name__}")
+            result = api_func(prompt[:150], topic)
+            if result:
+                logger.info(f"✅ Успешно через {api_func.__name__}")
+                return result
+            time.sleep(1)
+        except Exception as e:
+            logger.error(f"❌ Ошибка в {api_func.__name__}: {e}")
+            continue
+    
+    # Если все API не сработали, используем улучшенный placeholder
+    logger.warning("✅ Все API не сработали, используем улучшенный placeholder")
+    return generate_enhanced_placeholder(topic)
+
+def try_craiyon(prompt, topic):
+    """Craiyon (бывший DALL-E mini)"""
     try:
-        topics = []
-        
-        # Актуальные темы по AI и технологиям
-        current_trends = [
-            "Новые возможности GPT-5 и искусственного интеллекта",
-            "Генеративный ИИ в бизнесе 2024",
-            "Нейросети для автоматизации контента",
-            "Машинное обучение в веб-разработке",
-            "ИИ и кибербезопасность: новые вызовы",
-            "Этические аспекты искусственного интеллекта",
-            "Автоматизация с помощью языковых моделей",
-            "Компьютерное зрение и обработка изображений",
-            "ИИ в медицине и здравоохранении",
-            "Будущее работы в эпоху искусственного интеллекта",
-            "Генерация видео с помощью нейросетей",
-            "Персональные ИИ-ассистенты 2024",
-            "Квантовые вычисления и машинное обучение",
-            "ИИ для климатических изменений и экологии",
-            "Нейроинтерфейсы и взаимодействие с мозгом",
-            "Большие языковые модели в образовании",
-            "Автономные системы и робототехника",
-            "Диффузионные модели для генерации изображений",
-            "Мультимодальные AI системы",
-            "Edge computing и искусственный интеллект"
-        ]
-        
-        # Пробуем получить темы из RSS (с улучшенной обработкой)
-        rss_feeds = [
-            "https://habr.com/ru/rss/articles/?fl=ru",
-            "https://news.ycombinator.com/rss"
-        ]
-        
-        for feed_url in rss_feeds:
-            try:
-                feed = feedparser.parse(feed_url)
-                for entry in feed.entries[:3]:  # Берем только первые 3
-                    if 'title' in entry:
-                        clean_title = clean_text(entry.title)
-                        if clean_title and len(clean_title) > 20 and len(clean_title) < 120:
-                            # Проверяем, что это не HTML и не содержит ссылок
-                            if not any(char in clean_title for char in ['<', '>', 'http', '://']):
-                                topics.append(clean_title)
-            except Exception as e:
-                print(f"⚠️ Ошибка парсинга RSS: {e}")
-                continue
-        
-        topics.extend(current_trends)
-        
-        # Фильтруем и удаляем дубликаты
-        unique_topics = []
-        seen = set()
-        for topic in topics:
-            if (topic and topic not in seen and 
-                15 <= len(topic) <= 100 and
-                not any(char in topic for char in ['<', '>', 'http', '://'])):
-                unique_topics.append(topic)
-                seen.add(topic)
-        
-        return unique_topics[:20]
-        
-    except Exception as e:
-        print(f"❌ Ошибка получения трендов: {e}")
-        # Возвращаем гарантированно хорошие темы
-        return [
-            "Искусственный интеллект в веб-разработке 2024",
-            "Генеративный ИИ для создания контента",
-            "Машинное обучение и большие данные",
-            "Нейросети в бизнес-автоматизации",
-            "Будущее искусственного интеллекта"
-        ]
-
-def generate_article(topic, api_type="groq"):
-    """Генерация статьи через Groq или OpenRouter"""
-    try:
-        # Дополнительная проверка темы
-        if (not topic or len(topic) < 10 or len(topic) > 150 or
-            any(char in topic for char in ['<', '>', 'http', '://'])):
-            print(f"⚠️ Пропускаем некорректную тему: {topic}")
-            return None
-            
-        if api_type == "groq":
-            api_key = os.getenv('GROQ_API_KEY')
-            url = "https://api.groq.com/openai/v1/chat/completions"
-            model = "llama-3.1-70b-versatile"
-        else:
-            api_key = os.getenv('OPENROUTER_API_KEY')
-            url = "https://openrouter.ai/api/v1/chat/completions"
-            model = "meta-llama/llama-3.1-70b"
-        
-        if not api_key:
-            print(f"❌ {api_type.upper()}_API_KEY not found")
-            return None
-        
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
-        }
-        
-        if api_type == "openrouter":
-            headers.update({
-                "HTTP-Referer": "https://github.com/lybra-bee/lybra-bee.github.io",
-                "X-Title": "AI Content Generator"
-            })
-        
-        # Системный промпт
-        system_prompt = """Ты профессиональный технический писатель и эксперт по искусственному интеллекту. 
-Пиши подробные, информативные статьи на русском языке. Используй Markdown форматирование."""
-
-        payload = {
-            "model": model,
-            "messages": [
-                {
-                    "role": "system",
-                    "content": system_prompt
-                },
-                {
-                    "role": "user", 
-                    "content": f"Напиши подробную статью на тему: '{topic}'. Объем: 1000-1500 слов. Формат: Markdown."
-                }
-            ],
-            "max_tokens": 3000,
-            "temperature": 0.7
-        }
-        
-        print(f"📝 Генерирую статью через {api_type.upper()}: {topic}")
-        response = requests.post(url, headers=headers, json=payload, timeout=90)
-        response.raise_for_status()
-        
-        content = response.json()['choices'][0]['message']['content']
-        print(f"✅ Статья сгенерирована! Длина: {len(content)} символов")
-        
-        return content
-        
-    except Exception as e:
-        print(f"❌ Ошибка генерации статьи ({api_type}): {e}")
-        return None
-
-def generate_image(prompt):
-    """Генерация изображения через Hugging Face"""
-    try:
-        HF_TOKEN = os.getenv('HF_API_TOKEN')
-        if not HF_TOKEN:
-            print("⚠️ HF_API_TOKEN not found, пропускаем генерацию изображения")
-            return None
-        
-        # Упрощаем промпт для изображения
-        image_prompt = f"{prompt}, digital art, professional, 4k quality"
-        print(f"🎨 Генерирую изображение: {image_prompt}")
-        
-        API_URL = "https://api-inference.huggingface.co/models/runwayml/stable-diffusion-v1-5"
-        headers = {"Authorization": f"Bearer {HF_TOKEN}"}
-        
-        payload = {
-            "inputs": image_prompt,
-            "parameters": {
-                "width": 512,
-                "height": 512
-            }
-        }
-        
-        response = requests.post(API_URL, headers=headers, json=payload, timeout=60)
+        logger.info("🎨 Craiyon генерация...")
+        response = requests.post(
+            "https://api.craiyon.com/v3",
+            json={"prompt": prompt},
+            timeout=30
+        )
         
         if response.status_code == 200:
-            filename = f"image_{int(time.time())}.png"
-            filepath = f"static/images/posts/{filename}"
-            
-            with open(filepath, "wb") as f:
-                f.write(response.content)
-            
-            print(f"✅ Изображение создано: {filepath}")
-            return filepath
-        else:
-            print(f"⚠️ Ошибка генерации изображения: {response.status_code}")
-            return None
-            
+            data = response.json()
+            if data.get("images"):
+                image_data = base64.b64decode(data["images"][0])
+                return save_image_bytes(image_data, topic)
     except Exception as e:
-        print(f"❌ Ошибка генерации изображения: {e}")
-        return None
+        logger.error(f"❌ Craiyon error: {e}")
+    return None
 
-def save_article(content, topic, image_path=None):
-    """Сохранение статьи с front matter"""
+def try_deepai_public(prompt, topic):
+    """DeepAI с публичным ключом"""
     try:
-        import re
-        from datetime import date
+        logger.info("🎨 DeepAI генерация...")
+        response = requests.post(
+            "https://api.deepai.org/api/text2img",
+            headers={'api-key': 'quickstart-credential'},
+            data={'text': prompt},
+            timeout=25
+        )
         
-        # Создаем SEO-дружественное имя файла
-        clean_topic = re.sub(r'[^a-zA-Z0-9а-яА-Я\s]', '', topic)
-        filename = re.sub(r'\s+', '-', clean_topic.lower())[:50]
-        
-        today = date.today().strftime("%Y-%m-%d")
-        full_filename = f"content/posts/{today}-{filename}.md"
-        
-        # Front matter для Hugo
-        front_matter = f"""---
-title: "{topic}"
-date: {today}
-draft: false
-description: "Статья о {topic}"
-categories: ["Искусственный Интеллект"]
-tags: ["ai", "технологии"]
-"""
-        
-        # Добавляем изображение если есть
-        if image_path:
-            image_filename = os.path.basename(image_path)
-            front_matter += f"image: \"/images/posts/{image_filename}\"\n"
-        
-        front_matter += "---\n"
-        
-        full_content = front_matter + content
-        
-        with open(full_filename, 'w', encoding='utf-8') as f:
-            f.write(full_content)
-        
-        print(f"💾 Статья сохранена: {full_filename}")
-        return full_filename
-        
+        if response.status_code == 200:
+            data = response.json()
+            if data.get('output_url'):
+                return save_image_from_url(data['output_url'], topic)
     except Exception as e:
-        print(f"❌ Ошибка сохранения статьи: {e}")
+        logger.error(f"❌ DeepAI error: {e}")
+    return None
+
+def try_huggingface_public(prompt, topic):
+    """Hugging Face публичные модели"""
+    try:
+        logger.info("🎨 Hugging Face генерация...")
+        # Пробуем разные модели
+        models = [
+            "runwayml/stable-diffusion-v1-5",
+            "stabilityai/stable-diffusion-2-1"
+        ]
+        
+        for model in models:
+            try:
+                response = requests.post(
+                    f"https://api-inference.huggingface.co/models/{model}",
+                    json={"inputs": prompt},
+                    timeout=30
+                )
+                if response.status_code == 200:
+                    return save_image_bytes(response.content, topic)
+            except:
+                continue
+    except Exception as e:
+        logger.error(f"❌ HF error: {e}")
+    return None
+
+def try_stability_public(prompt, topic):
+    """Stability AI публичный доступ"""
+    try:
+        logger.info("🎨 Stability AI генерация...")
+        response = requests.post(
+            "https://api.stability.ai/v1/generation/stable-diffusion-v1-5/text-to-image",
+            headers={"Authorization": "Bearer sk-public-demo"},
+            json={
+                "text_prompts": [{"text": prompt}],
+                "cfg_scale": 7,
+                "height": 512,
+                "width": 512,
+                "samples": 1,
+                "steps": 30
+            },
+            timeout=25
+        )
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("artifacts"):
+                image_data = base64.b64decode(data["artifacts"][0]["base64"])
+                return save_image_bytes(image_data, topic)
+    except Exception as e:
+        logger.error(f"❌ Stability AI error: {e}")
+    return None
+
+def save_image_bytes(image_data, topic):
+    """Сохранение изображения из bytes"""
+    try:
+        os.makedirs("assets/images/posts", exist_ok=True)
+        filename = f"assets/images/posts/{generate_slug(topic)}.png"
+        
+        with open(filename, "wb") as f:
+            f.write(image_data)
+        
+        logger.info(f"💾 Изображение сохранено: {filename}")
+        return filename
+    except Exception as e:
+        logger.error(f"❌ Ошибка сохранения: {e}")
         return None
 
-def main():
-    parser = argparse.ArgumentParser(description='AI Content Generator')
-    parser.add_argument('--count', type=int, default=1, help='Number of articles')
-    parser.add_argument('--debug', action='store_true', help='Debug mode')
+def save_image_from_url(url, topic):
+    """Сохранение изображения из URL"""
+    try:
+        logger.info(f"📥 Загрузка из URL: {url[:80]}...")
+        response = requests.get(url, timeout=30)
+        if response.status_code == 200:
+            return save_image_bytes(response.content, topic)
+    except Exception as e:
+        logger.error(f"❌ Ошибка загрузки URL: {e}")
+    return None
+
+def generate_enhanced_placeholder(topic):
+    """Улучшенный placeholder с AI-стилем"""
+    try:
+        os.makedirs("assets/images/posts", exist_ok=True)
+        filename = f"assets/images/posts/{generate_slug(topic)}.png"
+        width, height = 800, 400
+        
+        # Создаем футуристический фон
+        img = Image.new('RGB', (width, height), color='#0f172a')
+        draw = ImageDraw.Draw(img)
+        
+        # Создаем градиентный фон с AI-стилем
+        for i in range(height):
+            # Сине-фиолетовый градиент
+            r = int(15 + (i/height)*40)
+            g = int(23 + (i/height)*60)
+            b = int(42 + (i/height)*100)
+            draw.line([(0, i), (width, i)], fill=(r, g, b))
+        
+        # Добавляем сетку (tech grid effect)
+        for i in range(0, width, 40):
+            draw.line([(i, 0), (i, height)], fill=(255, 255, 255, 25))
+        for i in range(0, height, 40):
+            draw.line([(0, i), (width, i)], fill=(255, 255, 255, 25))
+        
+        # Текст
+        wrapped_text = textwrap.fill(topic, width=35)
+        
+        # Пробуем разные шрифты
+        try:
+            font = ImageFont.truetype("Arial.ttf", 22)
+        except:
+            try:
+                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 20)
+            except:
+                font = ImageFont.load_default()
+        
+        # Рассчитываем позицию текста
+        bbox = draw.textbbox((0, 0), wrapped_text, font=font)
+        text_width = bbox[2] - bbox[0]
+        text_height = bbox[3] - bbox[1]
+        
+        x = (width - text_width) / 2
+        y = (height - text_height) / 2
+        
+        # Тень текста
+        draw.text((x+3, y+3), wrapped_text, font=font, fill="#000000")
+        # Основной текст
+        draw.text((x, y), wrapped_text, font=font, fill="#ffffff")
+        
+        # Добавляем AI badge
+        draw.rectangle([(10, height-35), (120, height-10)], fill="#6366f1")
+        draw.text((15, height-30), "AI GENERATED", font=ImageFont.load_default(), fill="#ffffff")
+        
+        img.save(filename)
+        logger.info(f"🎨 Улучшенный placeholder создан: {filename}")
+        return filename
+        
+    except Exception as e:
+        logger.error(f"❌ Ошибка создания placeholder: {e}")
+        return "assets/images/default.png"
+
+# ======== Вспомогательные функции ========
+def generate_slug(text):
+    text = text.lower()
+    text = text.replace(' ', '-')
+    text = re.sub(r'[^a-z0-9\-]', '', text)
+    text = re.sub(r'-+', '-', text)
+    return text[:60]
+
+def generate_frontmatter(title, content, model_used, image_url):
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    escaped_title = title.replace(':', ' -').replace('"', "'")
     
+    frontmatter = f"""---
+title: "{escaped_title}"
+date: {now}
+draft: false
+image: "{image_url}"
+ai_model: "{model_used}"
+tags: ["ai", "технологии", "2025"]
+categories: ["Искусственный интеллект"]
+summary: "Автоматически сгенерированная статья о тенденциях AI в 2025 году"
+---
+
+{content}
+"""
+    return frontmatter
+
+# ======== Запуск ========
+def main():
+    parser = argparse.ArgumentParser(description='Генератор AI контента')
+    parser.add_argument('--debug', action='store_true', help='Включить debug режим')
+    parser.add_argument('--count', type=int, default=1, help='Количество статей для генерации')
     args = parser.parse_args()
     
-    print("🔄 Запуск генератора контента...")
-    print(f"📊 Количество статей: {args.count}")
+    if args.debug:
+        logging.getLogger().setLevel(logging.DEBUG)
     
-    # Получаем актуальные темы
-    print("📡 Получаю актуальные темы...")
-    topics = get_trending_topics()
+    print("🚀 Запуск генератора контента...")
+    print("=" * 50)
     
-    if not topics:
-        print("❌ Не удалось получить темы, используем fallback")
-        topics = [
-            "Искусственный интеллект в веб-разработке",
-            "Генеративный ИИ для создания контента",
-            "Машинное обучение и большие данные"
-        ]
+    check_environment_variables()
+    print("=" * 50)
     
-    selected_topics = topics[:args.count]
-    print(f"🎯 Выбранные темы: {selected_topics}")
-    
-    generated_count = 0
-    
-    for i, topic in enumerate(selected_topics):
-        print(f"\n📖 Генерация {i+1}/{len(selected_topics)}: {topic}")
-        
-        # Генерируем статью
-        content = generate_article(topic, "groq")
-        if not content:
-            content = generate_article(topic, "openrouter")
-        
-        if content:
-            # Генерируем изображение
-            image_path = generate_image(topic)
+    try:
+        for i in range(args.count):
+            print(f"\n📄 Генерация статьи {i+1}/{args.count}...")
+            filename = generate_content()
+            print(f"✅ Статья создана: {filename}")
             
-            # Сохраняем статью
-            article_path = save_article(content, topic, image_path)
-            if article_path:
-                generated_count += 1
-                print(f"✅ Успешно: статья + {'изображение' if image_path else 'без изображения'}")
-        else:
-            print(f"❌ Не удалось сгенерировать статью")
-    
-    print(f"\n🎉 Генерация завершена! Успешно: {generated_count}/{len(selected_topics)}")
+            if i < args.count - 1:
+                time.sleep(2)
+                
+        print("\n🎉 Все статьи успешно сгенерированы!")
+        
+    except Exception as e:
+        print(f"💥 Критическая ошибка: {e}")
+        import traceback
+        traceback.print_exc()
 
 if __name__ == "__main__":
     main()
