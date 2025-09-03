@@ -221,7 +221,13 @@ def main():
     parser = argparse.ArgumentParser(description='Генератор AI контента')
     parser.add_argument('--count', type=int, default=1, help='Количество статей')
     parser.add_argument('--keep', type=int, default=3, help='Сколько статей оставлять')
+    parser.add_argument('--debug', action='store_true', help='Режим отладки')  # ← ДОБАВЛЕНО
     args = parser.parse_args()
+    
+    # Включение debug режима
+    if args.debug:
+        logging.getLogger().setLevel(logging.DEBUG)
+        logger.debug("🔧 Режим отладки включен")
     
     # Проверка переменных окружения
     logger.info("🔍 Проверка переменных окружения:")
