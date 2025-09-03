@@ -2,39 +2,40 @@ import requests
 import os
 import time
 import argparse
-import json
-import random
-from datetime import datetime, timedelta
+import re
+import html
+from datetime import datetime
 import feedparser
-from PIL import Image
-import io
+from bs4 import BeautifulSoup
+
+def clean_text(text):
+    """Очистка текста от HTML тегов и мусора"""
+    if not text:
+        return ""
+    
+    # Декодируем HTML entities
+    text = html.unescape(text)
+    
+    # Удаляем HTML теги
+    text = re.sub(r'<[^>]*>', '', text)
+    
+    # Удаляем URL и специальные символы
+    text = re.sub(r'http\S+', '', text)
+    text = re.sub(r'[^\w\sа-яА-ЯёЁ.,!?;-]', ' ', text)
+    
+    # Убираем лишние пробелы
+    text = re.sub(r'\s+', ' ', text).strip()
+    
+    return text
 
 def get_trending_topics():
-    """Получение актуальных тем из RSS и новостей"""
+    """Получение актуальных тем"""
     try:
         topics = []
         
-        # RSS источники для актуальных тем
-        rss_feeds = [
-            "https://habr.com/ru/rss/articles/?fl=ru",
-            "https://news.ycombinator.com/rss",
-            "https://www.reddit.com/r/MachineLearning/.rss"
-        ]
-        
-        for feed_url in rss_feeds:
-            try:
-                feed = feedparser.parse(feed_url)
-                for entry in feed.entries[:10]:
-                    if 'title' in entry:
-                        topics.append(entry.title)
-                        if 'summary' in entry:
-                            topics.append(entry.summary[:100])
-            except:
-                continue
-        
-        # Добавляем актуальные темы по AI
+        # Актуальные темы по AI и технологиям
         current_trends = [
-            "Новые возможности GPT-5 и ИИ будущего",
+            "Новые возможности GPT-5 и искусственного интеллекта",
             "Генеративный ИИ в бизнесе 2024",
             "Нейросети для автоматизации контента",
             "Машинное обучение в веб-разработке",
@@ -48,24 +49,68 @@ def get_trending_topics():
             "Персональные ИИ-ассистенты 2024",
             "Квантовые вычисления и машинное обучение",
             "ИИ для климатических изменений и экологии",
-            "Нейроинтерфейсы и brain-computer interfaces"
+            "Нейроинтерфейсы и взаимодействие с мозгом",
+            "Большие языковые модели в образовании",
+            "Автономные системы и робототехника",
+            "Диффузионные модели для генерации изображений",
+            "Мультимодальные AI системы",
+            "Edge computing и искусственный интеллект"
         ]
         
+        # Пробуем получить темы из RSS (с улучшенной обработкой)
+        rss_feeds = [
+            "https://habr.com/ru/rss/articles/?fl=ru",
+            "https://news.ycombinator.com/rss"
+        ]
+        
+        for feed_url in rss_feeds:
+            try:
+                feed = feedparser.parse(feed_url)
+                for entry in feed.entries[:3]:  # Берем только первые 3
+                    if 'title' in entry:
+                        clean_title = clean_text(entry.title)
+                        if clean_title and len(clean_title) > 20 and len(clean_title) < 120:
+                            # Проверяем, что это не HTML и не содержит ссылок
+                            if not any(char in clean_title for char in ['<', '>', 'http', '://']):
+                                topics.append(clean_title)
+            except Exception as e:
+                print(f"⚠️ Ошибка парсинга RSS: {e}")
+                continue
+        
         topics.extend(current_trends)
-        return list(set(topics))[:20]  # Убираем дубли
+        
+        # Фильтруем и удаляем дубликаты
+        unique_topics = []
+        seen = set()
+        for topic in topics:
+            if (topic and topic not in seen and 
+                15 <= len(topic) <= 100 and
+                not any(char in topic for char in ['<', '>', 'http', '://'])):
+                unique_topics.append(topic)
+                seen.add(topic)
+        
+        return unique_topics[:20]
         
     except Exception as e:
         print(f"❌ Ошибка получения трендов: {e}")
+        # Возвращаем гарантированно хорошие темы
         return [
             "Искусственный интеллект в веб-разработке 2024",
             "Генеративный ИИ для создания контента",
             "Машинное обучение и большие данные",
-            "Нейросети в бизнес-автоматизации"
+            "Нейросети в бизнес-автоматизации",
+            "Будущее искусственного интеллекта"
         ]
 
 def generate_article(topic, api_type="groq"):
     """Генерация статьи через Groq или OpenRouter"""
     try:
+        # Дополнительная проверка темы
+        if (not topic or len(topic) < 10 or len(topic) > 150 or
+            any(char in topic for char in ['<', '>', 'http', '://'])):
+            print(f"⚠️ Пропускаем некорректную тему: {topic}")
+            return None
+            
         if api_type == "groq":
             api_key = os.getenv('GROQ_API_KEY')
             url = "https://api.groq.com/openai/v1/chat/completions"
@@ -76,7 +121,8 @@ def generate_article(topic, api_type="groq"):
             model = "meta-llama/llama-3.1-70b"
         
         if not api_key:
-            raise ValueError(f"{api_type.upper()}_API_KEY not found")
+            print(f"❌ {api_type.upper()}_API_KEY not found")
+            return None
         
         headers = {
             "Authorization": f"Bearer {api_key}",
@@ -89,10 +135,9 @@ def generate_article(topic, api_type="groq"):
                 "X-Title": "AI Content Generator"
             })
         
-        # Системный промпт для качественной статьи
+        # Системный промпт
         system_prompt = """Ты профессиональный технический писатель и эксперт по искусственному интеллекту. 
-Пиши подробные, информативные и хорошо структурированные статьи на русском языке. 
-Используй заголовки H2, H3, списки и примеры. Статья должна быть полезной и практичной."""
+Пиши подробные, информативные статьи на русском языке. Используй Markdown форматирование."""
 
         payload = {
             "model": model,
@@ -103,16 +148,15 @@ def generate_article(topic, api_type="groq"):
                 },
                 {
                     "role": "user", 
-                    "content": f"Напиши развернутую статью на тему: '{topic}'. Объем: 1500-2000 слов. Включи практические примеры, кейсы использования и будущие тренды. Формат: Markdown с заголовками ## и ###."
+                    "content": f"Напиши подробную статью на тему: '{topic}'. Объем: 1000-1500 слов. Формат: Markdown."
                 }
             ],
-            "max_tokens": 4000,
-            "temperature": 0.7,
-            "top_p": 0.9
+            "max_tokens": 3000,
+            "temperature": 0.7
         }
         
         print(f"📝 Генерирую статью через {api_type.upper()}: {topic}")
-        response = requests.post(url, headers=headers, json=payload, timeout=120)
+        response = requests.post(url, headers=headers, json=payload, timeout=90)
         response.raise_for_status()
         
         content = response.json()['choices'][0]['message']['content']
@@ -124,130 +168,44 @@ def generate_article(topic, api_type="groq"):
         print(f"❌ Ошибка генерации статьи ({api_type}): {e}")
         return None
 
-def generate_image(prompt, retry_count=0):
-    """Генерация изображения через Hugging Face с fallback"""
+def generate_image(prompt):
+    """Генерация изображения через Hugging Face"""
     try:
-        # Сначала пробуем Hugging Face
         HF_TOKEN = os.getenv('HF_API_TOKEN')
-        if HF_TOKEN and retry_count < 2:
-            try:
-                print(f"🎨 Пробую Hugging Face: {prompt}")
-                
-                API_URL = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0"
-                headers = {"Authorization": f"Bearer {HF_TOKEN}"}
-                
-                payload = {
-                    "inputs": f"{prompt}, digital art, futuristic, professional, 4k, ultra detailed, high quality",
-                    "parameters": {
-                        "width": 1024,
-                        "height": 512,
-                        "num_inference_steps": 25,
-                        "guidance_scale": 7.5
-                    }
-                }
-                
-                response = requests.post(API_URL, headers=headers, json=payload, timeout=60)
-                
-                if response.status_code == 200:
-                    filename = f"image_{int(time.time())}.png"
-                    filepath = f"static/images/posts/{filename}"
-                    
-                    with open(filepath, "wb") as f:
-                        f.write(response.content)
-                    
-                    print(f"✅ Изображение создано: {filepath}")
-                    return filepath
-                else:
-                    print(f"⚠️ HF вернул {response.status_code}, пробую fallback...")
-            except:
-                pass
+        if not HF_TOKEN:
+            print("⚠️ HF_API_TOKEN not found, пропускаем генерацию изображения")
+            return None
         
-        # Fallback: Replicate
-        REPLICATE_TOKEN = os.getenv('REPLICATE_API_TOKEN')
-        if REPLICATE_TOKEN:
-            try:
-                print(f"🔄 Пробую Replicate: {prompt}")
-                
-                response = requests.post(
-                    "https://api.replicate.com/v1/predictions",
-                    headers={
-                        "Authorization": f"Token {REPLICATE_TOKEN}",
-                        "Content-Type": "application/json"
-                    },
-                    json={
-                        "version": "ac732df83cea7fff18b8472768c88ad041fa750ff7682a21affe81863cbe77e4",
-                        "input": {
-                            "prompt": f"{prompt}, digital art, professional, 4k quality",
-                            "width": 1024,
-                            "height": 512,
-                            "num_outputs": 1
-                        }
-                    },
-                    timeout=60
-                )
-                
-                if response.status_code == 200:
-                    prediction_id = response.json()['id']
-                    
-                    # Ждем завершения
-                    for _ in range(10):
-                        time.sleep(5)
-                        status_response = requests.get(
-                            f"https://api.replicate.com/v1/predictions/{prediction_id}",
-                            headers={"Authorization": f"Token {REPLICATE_TOKEN}"}
-                        )
-                        
-                        if status_response.json()['status'] == 'succeeded':
-                            image_url = status_response.json()['output'][0]
-                            img_data = requests.get(image_url).content
-                            
-                            filename = f"image_{int(time.time())}.png"
-                            filepath = f"static/images/posts/{filename}"
-                            
-                            with open(filepath, "wb") as f:
-                                f.write(img_data)
-                            
-                            print(f"✅ Изображение создано через Replicate: {filepath}")
-                            return filepath
-                
-            except:
-                pass
+        # Упрощаем промпт для изображения
+        image_prompt = f"{prompt}, digital art, professional, 4k quality"
+        print(f"🎨 Генерирую изображение: {image_prompt}")
         
-        # Final fallback: Unsplash
-        UNSPLASH_KEY = os.getenv('UNSPLASH_API_KEY')
-        if UNSPLASH_KEY:
-            try:
-                print(f"🌅 Пробую Unsplash: {prompt}")
-                
-                search_url = "https://api.unsplash.com/search/photos"
-                headers = {"Authorization": f"Client-ID {UNSPLASH_KEY}"}
-                
-                search_response = requests.get(
-                    search_url,
-                    headers=headers,
-                    params={"query": prompt, "per_page": 1},
-                    timeout=30
-                )
-                
-                if search_response.status_code == 200:
-                    results = search_response.json()['results']
-                    if results:
-                        image_url = results[0]['urls']['regular']
-                        img_data = requests.get(image_url).content
-                        
-                        filename = f"unsplash_{int(time.time())}.jpg"
-                        filepath = f"static/images/posts/{filename}"
-                        
-                        with open(filepath, "wb") as f:
-                            f.write(img_data)
-                        
-                        print(f"✅ Изображение с Unsplash: {filepath}")
-                        return filepath
-            except:
-                pass
+        API_URL = "https://api-inference.huggingface.co/models/runwayml/stable-diffusion-v1-5"
+        headers = {"Authorization": f"Bearer {HF_TOKEN}"}
         
-        return None
+        payload = {
+            "inputs": image_prompt,
+            "parameters": {
+                "width": 512,
+                "height": 512
+            }
+        }
         
+        response = requests.post(API_URL, headers=headers, json=payload, timeout=60)
+        
+        if response.status_code == 200:
+            filename = f"image_{int(time.time())}.png"
+            filepath = f"static/images/posts/{filename}"
+            
+            with open(filepath, "wb") as f:
+                f.write(response.content)
+            
+            print(f"✅ Изображение создано: {filepath}")
+            return filepath
+        else:
+            print(f"⚠️ Ошибка генерации изображения: {response.status_code}")
+            return None
+            
     except Exception as e:
         print(f"❌ Ошибка генерации изображения: {e}")
         return None
@@ -270,18 +228,19 @@ def save_article(content, topic, image_path=None):
 title: "{topic}"
 date: {today}
 draft: false
-description: "Автоматически сгенерированная статья на тему {topic}"
-categories: ["Искусственный Интеллект", "Технологии"]
-tags: ["ai", "генерация", "технологии", "нейросети"]
----
+description: "Статья о {topic}"
+categories: ["Искусственный Интеллект"]
+tags: ["ai", "технологии"]
 """
         
         # Добавляем изображение если есть
         if image_path:
             image_filename = os.path.basename(image_path)
-            front_matter = front_matter.replace('---', f'---\nimage: "/images/posts/{image_filename}"')
+            front_matter += f"image: \"/images/posts/{image_filename}\"\n"
         
-        full_content = front_matter + "\n" + content
+        front_matter += "---\n"
+        
+        full_content = front_matter + content
         
         with open(full_filename, 'w', encoding='utf-8') as f:
             f.write(full_content)
@@ -306,7 +265,17 @@ def main():
     # Получаем актуальные темы
     print("📡 Получаю актуальные темы...")
     topics = get_trending_topics()
-    selected_topics = random.sample(topics, min(args.count, len(topics)))
+    
+    if not topics:
+        print("❌ Не удалось получить темы, используем fallback")
+        topics = [
+            "Искусственный интеллект в веб-разработке",
+            "Генеративный ИИ для создания контента",
+            "Машинное обучение и большие данные"
+        ]
+    
+    selected_topics = topics[:args.count]
+    print(f"🎯 Выбранные темы: {selected_topics}")
     
     generated_count = 0
     
@@ -320,17 +289,17 @@ def main():
         
         if content:
             # Генерируем изображение
-            image_prompt = f"{topic}, digital art, futuristic style"
-            image_path = generate_image(image_prompt)
+            image_path = generate_image(topic)
             
             # Сохраняем статью
             article_path = save_article(content, topic, image_path)
             if article_path:
                 generated_count += 1
+                print(f"✅ Успешно: статья + {'изображение' if image_path else 'без изображения'}")
         else:
-            print(f"❌ Не удалось сгенерировать статью: {topic}")
+            print(f"❌ Не удалось сгенерировать статью")
     
-    print(f"\n✅ Генерация завершена! Успешно: {generated_count}/{len(selected_topics)}")
+    print(f"\n🎉 Генерация завершена! Успешно: {generated_count}/{len(selected_topics)}")
 
 if __name__ == "__main__":
     main()
