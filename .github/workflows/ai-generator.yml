@@ -19,8 +19,45 @@ permissions:
   contents: write
 
 jobs:
+  activate-colab:
+    runs-on: ubuntu-latest
+    outputs:
+      activation_status: ${{ steps.activate.outputs.status }}
+    
+    steps:
+    - name: 🚀 Activate Colab
+      id: activate
+      env:
+        ACTIVATION_SECRET: ${{ secrets.ACTIVATION_SECRET }}
+        ADMIN_CHAT_ID: ${{ secrets.ADMIN_CHAT_ID }}
+      run: |
+        # Генерируем промпт для Colab
+        PROMPT="Генерация AI контента: $(date +'%Y-%m-%d %H:%M')"
+        
+        echo "🚀 Активирую Colab: $PROMPT"
+        
+        # Отправляем запрос активации
+        response=$(curl -s -X POST "https://your-domain.com/api/activate-colab" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "prompt": "'"$PROMPT"'",
+            "secret": "'"$ACTIVATION_SECRET"'",
+            "action_type": "scheduled"
+          }')
+        
+        echo "📋 Response: $response"
+        
+        # Ждем 30 секунд для активации Colab
+        echo "⏳ Ожидаю активации Colab (30 сек)..."
+        sleep 30
+        
+        echo "✅ Colab активирован"
+        echo "status=success" >> $GITHUB_OUTPUT
+
   generate-content:
     runs-on: ubuntu-latest
+    needs: activate-colab
+    if: needs.activate-colab.outputs.activation_status == 'success'
     
     steps:
     - name: Checkout repository
@@ -108,3 +145,24 @@ jobs:
         
         echo "🔍 Webhook status:"
         curl -s "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/getWebhookInfo" | jq .
+
+  notify-completion:
+    runs-on: ubuntu-latest
+    needs: generate-content
+    if: always()
+    
+    steps:
+    - name: Send completion notification
+      env:
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      run: |
+        if [ "${{ job.status }}" = "success" ]; then
+          MESSAGE="✅ Генерация контента завершена успешно! $(date +'%Y-%m-%d %H:%M')"
+        else
+          MESSAGE="❌ Ошибка генерации контента. Статус: ${{ job.status }}"
+        fi
+        
+        curl -s -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
+          -H "Content-Type: application/json" \
+          -d "{\"chat_id\": \"$TELEGRAM_CHAT_ID\", \"text\": \"$MESSAGE\"}"
