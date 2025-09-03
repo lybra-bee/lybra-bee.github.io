@@ -33,8 +33,8 @@ jobs:
       id: activate
       env:
         ACTIVATION_SECRET: ${{ secrets.ACTIVATION_SECRET }}
-        ADMIN_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        SERVER_URL: ${{ secrets.SERVER_URL }}  # URL вашего сервера/endpoint
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}  # Используем WEBHOOK_URL
       run: |
         # Определяем тип запуска и промпт
         if [ "${{ github.event_name }}" = "schedule" ]; then
@@ -46,15 +46,16 @@ jobs:
         fi
         
         echo "🚀 Активирую Colab: $PROMPT"
+        echo "🌐 Webhook URL: $WEBHOOK_URL"
         
         # Отправляем запрос активации
-        response=$(curl -s -X POST "$SERVER_URL/api/activate-colab" \
+        response=$(curl -s -X POST "$WEBHOOK_URL/api/activate-colab" \
           -H "Content-Type: application/json" \
           -d '{
             "prompt": "'"$PROMPT"'",
             "secret": "'"$ACTIVATION_SECRET"'",
             "action_type": "'"$ACTION_TYPE"'",
-            "chat_id": "'"$ADMIN_CHAT_ID"'"
+            "chat_id": "'"$TELEGRAM_CHAT_ID"'"
           }')
         
         echo "📋 Response: $response"
@@ -167,13 +168,13 @@ jobs:
     - name: 🤖 Setup Telegram Webhook
       env:
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-        VERCEL_URL: ${{ secrets.SERVER_URL }}
+        WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}  # Используем WEBHOOK_URL
       run: |
         echo "🔄 Setting up webhook..."
         response=$(curl -s -X POST \
           "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook" \
           -H "Content-Type: application/json" \
-          -d "{\"url\": \"$VERCEL_URL/api/telegram\", \"max_connections\": 100, \"drop_pending_updates\": true}")
+          -d "{\"url\": \"$WEBHOOK_URL/api/telegram\", \"max_connections\": 100, \"drop_pending_updates\": true}")
         
         echo "📋 Webhook response: $response"
         
