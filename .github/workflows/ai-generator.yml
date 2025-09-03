@@ -52,13 +52,12 @@ jobs:
       run: |
         echo "🔄 Запуск генератора контента..."
         echo "📁 Текущая директория: $(pwd)"
-        echo "📁 Содержимое: $(ls -la)"
         
         if [ -f ".github/scripts/generate_content.py" ]; then
             echo "✅ Найден .github/scripts/generate_content.py"
             python .github/scripts/generate_content.py --count ${{ github.event.inputs.article_count }} --debug
         else
-            echo "❌ Файл не найден! Ищем:"
+            echo "❌ Файл не найден!"
             find . -name "*.py" -type f
             exit 1
         fi
@@ -103,7 +102,7 @@ jobs:
         response=$(curl -s -X POST \
           "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook" \
           -H "Content-Type: application/json" \
-          -d "{\"url\": \"$VERCEL_URL/api/telegram\", \"max_connections\": 100}")
+          -d "{\"url\": \"$VERCEL_URL/api/telegram\", \"max_connections\": 100, \"drop_pending_updates\": true}")
         
         echo "📋 Webhook response: $response"
         
