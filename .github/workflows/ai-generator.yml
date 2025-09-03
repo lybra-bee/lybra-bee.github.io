@@ -12,8 +12,12 @@ on:
         - '1'
         - '2'
         - '3'
+      custom_prompt:
+        description: 'Custom prompt for Colab'
+        required: false
+        default: 'Генерация AI контента для блога'
   schedule:
-    - cron: '0 8 * * *'  # Every day at 8 AM
+    - cron: '0 8 * * *'  # Каждый день в 8:00 UTC
 
 permissions:
   contents: write
@@ -29,30 +33,60 @@ jobs:
       id: activate
       env:
         ACTIVATION_SECRET: ${{ secrets.ACTIVATION_SECRET }}
-        ADMIN_CHAT_ID: ${{ secrets.ADMIN_CHAT_ID }}
+        ADMIN_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        SERVER_URL: ${{ secrets.SERVER_URL }}  # URL вашего сервера/endpoint
       run: |
-        # Генерируем промпт для Colab
-        PROMPT="Генерация AI контента: $(date +'%Y-%m-%d %H:%M')"
+        # Определяем тип запуска и промпт
+        if [ "${{ github.event_name }}" = "schedule" ]; then
+          PROMPT="Плановая генерация контента: AI и технологии $(date +'%Y-%m-%d')"
+          ACTION_TYPE="scheduled"
+        else
+          PROMPT="${{ github.event.inputs.custom_prompt }}"
+          ACTION_TYPE="manual"
+        fi
         
         echo "🚀 Активирую Colab: $PROMPT"
         
         # Отправляем запрос активации
-        response=$(curl -s -X POST "https://your-domain.com/api/activate-colab" \
+        response=$(curl -s -X POST "$SERVER_URL/api/activate-colab" \
           -H "Content-Type: application/json" \
           -d '{
             "prompt": "'"$PROMPT"'",
             "secret": "'"$ACTIVATION_SECRET"'",
-            "action_type": "scheduled"
+            "action_type": "'"$ACTION_TYPE"'",
+            "chat_id": "'"$ADMIN_CHAT_ID"'"
           }')
         
         echo "📋 Response: $response"
         
-        # Ждем 30 секунд для активации Colab
-        echo "⏳ Ожидаю активации Colab (30 сек)..."
-        sleep 30
+        # Ждем активации Colab
+        echo "⏳ Ожидаю активации Colab (40 сек)..."
+        sleep 40
         
-        echo "✅ Colab активирован"
-        echo "status=success" >> $GITHUB_OUTPUT
+        # Проверяем статус активации
+        if echo "$response" | grep -q "success"; then
+          echo "✅ Colab активирован успешно"
+          echo "status=success" >> $GITHUB_OUTPUT
+        else
+          echo "❌ Ошибка активации Colab"
+          echo "status=failed" >> $GITHUB_OUTPUT
+        fi
+
+    - name: 📨 Уведомление о запуске
+      if: always()
+      env:
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      run: |
+        if [ "${{ job.status }}" = "success" ]; then
+          MESSAGE="🚀 Colab активирован! Запускаю генерацию контента..."
+        else
+          MESSAGE="❌ Ошибка активации Colab. Проверьте логи."
+        fi
+        
+        curl -s -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
+          -H "Content-Type: application/json" \
+          -d "{\"chat_id\": \"$TELEGRAM_CHAT_ID\", \"text\": \"$MESSAGE\"}"
 
   generate-content:
     runs-on: ubuntu-latest
@@ -60,27 +94,27 @@ jobs:
     if: needs.activate-colab.outputs.activation_status == 'success'
     
     steps:
-    - name: Checkout repository
+    - name: 📥 Checkout repository
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
         token: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Set up Python
+    - name: 🐍 Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.10'
 
-    - name: Install dependencies
+    - name: 📦 Install dependencies
       run: |
         pip install requests pillow python-dotenv
 
-    - name: Create content directories
+    - name: 📁 Create content directories
       run: |
         mkdir -p content/posts
         mkdir -p static/images/posts
 
-    - name: Generate AI content
+    - name: 🤖 Generate AI content
       env:
         OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
@@ -99,7 +133,7 @@ jobs:
             exit 1
         fi
 
-    - name: Commit and push generated content
+    - name: 💾 Commit and push generated content
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
@@ -127,13 +161,13 @@ jobs:
     if: success()
     
     steps:
-    - name: Checkout
+    - name: 📥 Checkout
       uses: actions/checkout@v4
 
-    - name: Setup Telegram Webhook
+    - name: 🤖 Setup Telegram Webhook
       env:
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-        VERCEL_URL: "https://lybra-bee-github-io.vercel.app"
+        VERCEL_URL: ${{ secrets.SERVER_URL }}
       run: |
         echo "🔄 Setting up webhook..."
         response=$(curl -s -X POST \
@@ -152,7 +186,7 @@ jobs:
     if: always()
     
     steps:
-    - name: Send completion notification
+    - name: 📨 Send completion notification
       env:
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
