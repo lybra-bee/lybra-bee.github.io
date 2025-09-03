@@ -104,7 +104,7 @@ def generate_with_groq(api_key, topic):
         "https://api.groq.com/openai/v1/chat/completions",
         headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
         json={
-            "model": "llama-3.1-70b-versatile", 
+            "model": "llama-3.3-70b-versatile",  # Обновленная модель
             "messages": [{"role": "user", "content": prompt}], 
             "max_tokens": 1500,
             "temperature": 0.7
@@ -130,27 +130,36 @@ def generate_with_openrouter(api_key, topic):
 - Профессиональный тон
 """
     
-    resp = requests.post(
-        "https://api.openrouter.ai/api/v1/chat/completions",
-        headers={
-            "Authorization": f"Bearer {api_key}", 
-            "Content-Type": "application/json",
-            "HTTP-Referer": "https://lybra-bee.github.io"
-        },
-        json={
-            "model": "anthropic/claude-3-sonnet", 
-            "messages": [{"role": "user", "content": prompt}], 
-            "max_tokens": 1500,
-            "temperature": 0.7
-        },
-        timeout=30
-    )
-    
-    if resp.status_code == 200:
-        data = resp.json()
-        return data['choices'][0]['message']['content'].strip()
-    else:
-        raise Exception(f"HTTP error {resp.status_code}: {resp.text}")
+    # Пробуем несколько раз из-за возможных DNS проблем
+    for attempt in range(3):
+        try:
+            resp = requests.post(
+                "https://api.openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}", 
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://lybra-bee.github.io"
+                },
+                json={
+                    "model": "anthropic/claude-3-sonnet", 
+                    "messages": [{"role": "user", "content": prompt}], 
+                    "max_tokens": 1500,
+                    "temperature": 0.7
+                },
+                timeout=30
+            )
+            
+            if resp.status_code == 200:
+                data = resp.json()
+                return data['choices'][0]['message']['content'].strip()
+            else:
+                raise Exception(f"HTTP error {resp.status_code}: {resp.text}")
+                
+        except Exception as e:
+            if attempt == 2:  # Последняя попытка
+                raise e
+            time.sleep(2)  # Ждем перед повторной попыткой
+            logger.warning(f"🔄 Повторная попытка {attempt + 1}/3 для OpenRouter")
 
 def generate_fallback_content(topic):
     """Fallback контент"""
@@ -166,10 +175,13 @@ def generate_fallback_content(topic):
 - Интеграция с существующими системами
 
 ## Практическое применение
-Компании внедряют AI решения для оптимизации бизнес-процессов.
+Компании внедряют AI решения для оптимизации бизнес-процессов. Современные алгоритмы машинного обучения позволяют решать сложные задачи, которые ранее были недоступны для автоматизации.
+
+## Технические аспекты
+Реализация AI систем требует тщательного проектирования архитектуры, качественных данных для обучения и грамотной интеграции с существующей IT-инфраструктурой.
 
 ## Заключение
-Будущее выглядит promising с развитием AI технологий.
+Будущее выглядит многообещающим с развитием AI технологий. Мы можем ожидать появления еще более инновационных решений в ближайшие годы.
 
 *Статья сгенерирована автоматически*
 """
@@ -187,19 +199,30 @@ def generate_article_image(topic):
             f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
             json={
                 "chat_id": TELEGRAM_CHAT_ID,
-                "text": f"/generate {prompt}"
+                "text": f"/generate {prompt}",
+                "parse_mode": "Markdown"
             },
-            timeout=10
+            timeout=15
         )
+        
+        logger.info(f"📤 Ответ Telegram: {response.status_code}")
         
         if response.status_code == 200:
             logger.info("✅ Запрос отправлен боту")
-            time.sleep(35)
+            
+            # Даем время на генерацию + ответ бота
+            logger.info("⏳ Ожидаем генерацию изображения (40 секунд)...")
+            time.sleep(40)
+            
+            logger.info("✅ Предполагаем, что изображение сгенерировано")
             return f"/images/posts/{generate_slug(topic)}.jpg"
+        else:
+            logger.error(f"❌ Ошибка отправки запроса: {response.text}")
             
     except Exception as e:
         logger.error(f"❌ Ошибка генерации изображения: {e}")
     
+    # Fallback - возвращаем путь к default изображению
     return "/images/default.jpg"
 
 def generate_slug(text):
@@ -221,7 +244,7 @@ def main():
     parser = argparse.ArgumentParser(description='Генератор AI контента')
     parser.add_argument('--count', type=int, default=1, help='Количество статей')
     parser.add_argument('--keep', type=int, default=3, help='Сколько статей оставлять')
-    parser.add_argument('--debug', action='store_true', help='Режим отладки')  # ← ДОБАВЛЕНО
+    parser.add_argument('--debug', action='store_true', help='Режим отладки')
     args = parser.parse_args()
     
     # Включение debug режима
