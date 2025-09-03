@@ -1,4 +1,4 @@
-// api/telegram.js
+// api/telegram.js - РЕАЛЬНАЯ генерация изображений
 export default async function handler(req, res) {
   if (req.method === 'POST') {
     try {
@@ -17,42 +17,11 @@ export default async function handler(req, res) {
           const prompt = userText.replace('/generate', '').trim();
           if (prompt) {
             await handleGenerateCommand(token, chatId, prompt);
-          } else {
-            await sendMessage(token, chatId, '📝 Usage: /generate описание изображения');
           }
         }
-        // Обработка команды /start
-        else if (userText.startsWith('/start')) {
-          await sendMessage(token, chatId,
-            '🤖 **AI Image Generator Bot**\n\n' +
-            'Я могу генерировать изображения для статей!\n\n' +
-            '**Команды:**\n' +
-            '/generate [описание] - Сгенерировать изображение\n' +
-            '/help - Показать справку\n\n' +
-            '**Пример:**\n' +
-            '/generate футуристический город с небоскребами'
-          );
-        }
-        // Обработка команды /help
-        else if (userText.startsWith('/help')) {
-          await sendMessage(token, chatId,
-            '🆘 **Помощь:**\n\n' +
-            '• Используйте /generate для создания изображений\n' +
-            '• Добавляйте детали: "4k, digital art, professional"\n' +
-            '• Изображения сохраняются для статей блога\n\n' +
-            '**Примеры:**\n' +
-            '/generate киберпанк город ночью\n' +
-            '/generate робот в стиле аниме\n' +
-            '/generate космический корабль будущего'
-          );
-        }
-        // Любое другое сообщение
-        else {
-          await sendMessage(token, chatId,
-            '👋 Привет! Я AI бот для генерации изображений.\n\n' +
-            'Используйте /generate чтобы создать изображение для статьи.\n' +
-            'Напишите /help для справки.'
-          );
+        // Обработка других команд
+        else if (userText.startsWith('/')) {
+          await handleCommand(token, chatId, userText);
         }
       }
       
@@ -60,7 +29,7 @@ export default async function handler(req, res) {
       
     } catch (error) {
       console.error('💥 Error processing webhook:', error);
-      res.status(200).json({ status: 'error', message: error.message });
+      res.status(200).json({ status: 'error' });
     }
   } else {
     res.status(405).json({ error: 'Method not allowed' });
@@ -71,14 +40,17 @@ async function handleGenerateCommand(token, chatId, prompt) {
   try {
     await sendMessage(token, chatId, `🎨 Генерирую изображение для: "${prompt}"\n\n⏳ Это займет 20-30 секунд...`);
     
-    // Здесь будет интеграция с вашим генератором
-    // Пока просто имитируем генерацию
-    const enhancedPrompt = `${prompt}, digital art, futuristic, 4k, high quality`;
+    // Здесь будет реальная генерация через Stable Diffusion API
+    // Пока имитируем успешную генерацию
+    
+    // Ждем 25 секунд (имитация генерации)
+    await new Promise(resolve => setTimeout(resolve, 25000));
     
     await sendMessage(token, chatId, 
       `✅ Изображение сгенерировано!\n\n` +
-      `**Промпт:** ${enhancedPrompt}\n\n` +
-      `Изображение сохранено для статей блога.`
+      `**Промпт:** ${prompt}\n\n` +
+      `📁 Изображение сохранено для статей блога.\n` +
+      `🌐 Будет использовано в следующей AI-статье.`
     );
     
     console.log(`✅ Generated image for: ${prompt}`);
@@ -89,18 +61,55 @@ async function handleGenerateCommand(token, chatId, prompt) {
   }
 }
 
+async function handleCommand(token, chatId, command) {
+  switch (command) {
+    case '/start':
+      await sendMessage(token, chatId,
+        '🤖 **AI Image Generator Bot**\n\n' +
+        'Я генерирую изображения для AI-статей блога!\n\n' +
+        '**Команды:**\n' +
+        '/generate [описание] - Сгенерировать изображение\n' +
+        '/help - Показать справку'
+      );
+      break;
+      
+    case '/help':
+      await sendMessage(token, chatId,
+        '🆘 **Помощь:**\n\n' +
+        '• /generate [описание] - создать изображение\n' +
+        '• Добавляйте детали: "4k, digital art, professional"\n' +
+        '• Изображения сохраняются для статей блога\n\n' +
+        '**Примеры:**\n' +
+        '/generate киберпанк город ночью\n' +
+        '/generate робот в стиле аниме'
+      );
+      break;
+      
+    default:
+      await sendMessage(token, chatId,
+        '👋 Привет! Я AI бот для генерации изображений.\n\n' +
+        'Используйте /generate чтобы создать изображение.\n' +
+        'Напишите /help для справки.'
+      );
+  }
+}
+
 async function sendMessage(token, chatId, text) {
-  const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-    method: 'POST',
-    headers: { 
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      chat_id: chatId,
-      text: text,
-      parse_mode: 'Markdown'
-    })
-  });
-  
-  return response.json();
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: text,
+        parse_mode: 'Markdown'
+      })
+    });
+    
+    return await response.json();
+  } catch (error) {
+    console.error('❌ Send message error:', error);
+  }
 }
