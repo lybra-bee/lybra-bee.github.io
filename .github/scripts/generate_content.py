@@ -21,59 +21,54 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Актуальные бесплатные модели Replicate (обновленные версии)
-REPLICATE_FREE_MODELS = [
+# Популярные бесплатные модели Replicate
+REPLICATE_MODELS = [
     {
-        "name": "FLUX.1 Schnell",
-        "id": "black-forest-labs/flux-1-schnell",
-        "version": "5c8c8347c5c4b3bb79a3c0c2f53a2a9e30889f5b4f6b2c2d5c8d2e5e8c2d5c8d",
+        "name": "Stable Diffusion XL",
+        "id": "stability-ai/sdxl",
         "prompt_template": "{topic}, digital art, futuristic, professional, 4k quality"
     },
     {
-        "name": "Stable Diffusion XL", 
-        "id": "stability-ai/sdxl",
-        "version": "39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
-        "prompt_template": "{topic}, digital art, futuristic style, high quality"
-    },
-    {
-        "name": "FLUX Dev",
-        "id": "black-forest-labs/flux-dev",
-        "version": "0e0e2a5f40c9c233d133c5b8f19dc2b1c5b8f19dc2b1c5b8f19dc2b1c5b8f19dc",
-        "prompt_template": "{topic}, experimental, AI art, futuristic technology"
+        "name": "FLUX.1 Schnell", 
+        "id": "black-forest-labs/flux-1-schnell",
+        "prompt_template": "{topic}, AI art, technology, innovation, high quality"
     },
     {
         "name": "Karlo",
-        "id": "kakaobrain/karlo",
-        "version": "3c9c9a5f7b3c3e5f5e5c5b5a5f5e5c5b5a5f5e5c5b5a5f5e5c5b5a5f5e5c5b5a",
-        "prompt_template": "{topic}, digital art, creative, innovative design"
+        "id": "kakaobrain/karlo", 
+        "prompt_template": "{topic}, creative, digital art, modern design"
+    },
+    {
+        "name": "OpenJourney",
+        "id": "prompthero/openjourney",
+        "prompt_template": "{topic}, artistic, creative, vibrant colors"
     }
 ]
 
-# ======== [ОСТАЛЬНОЙ КОД ОСТАЕТСЯ БЕЗ ИЗМЕНЕНИЙ] ========
-# ... (остальные функции без изменений)
+# ======== [ОСТАЛЬНОЙ КОД ОСТАЕТСЯ БЕЗ ИЗМЕНЕНИЙ ДО ФУНКЦИИ try_replicate_free_models] ========
 
 def try_replicate_free_models(topic):
-    """Используем бесплатные модели Replicate с актуальными версиями"""
+    """Используем бесплатные модели Replicate с автоматическим получением версий"""
     REPLICATE_TOKEN = os.getenv('REPLICATE_API_TOKEN')
     if not REPLICATE_TOKEN:
         logger.warning("⚠️ Replicate токен не найден")
         return None
     
     # Перемешиваем модели для разнообразия
-    random.shuffle(REPLICATE_FREE_MODELS)
+    random.shuffle(REPLICATE_MODELS)
     
-    for model_info in REPLICATE_FREE_MODELS:
+    for model_info in REPLICATE_MODELS:
         try:
             logger.info(f"🔄 Пробуем модель: {model_info['name']}")
-            
-            prompt = model_info['prompt_template'].format(topic=topic)
             
             # Получаем актуальную версию модели
             version = get_latest_model_version(REPLICATE_TOKEN, model_info["id"])
             if not version:
                 logger.warning(f"⚠️ Не удалось получить версию для {model_info['name']}")
                 continue
-                
+            
+            prompt = model_info['prompt_template'].format(topic=topic)
+            
             response = requests.post(
                 "https://api.replicate.com/v1/predictions",
                 headers={
@@ -98,12 +93,12 @@ def try_replicate_free_models(topic):
                 logger.info(f"✅ Предсказание создано: {prediction_id}")
                 
                 # Ждем завершения генерации
-                for attempt in range(8):  # Уменьшили количество попыток
-                    time.sleep(2)
+                for attempt in range(8):
+                    time.sleep(3)
                     status_response = requests.get(
                         f"https://api.replicate.com/v1/predictions/{prediction_id}",
                         headers={"Authorization": f"Bearer {REPLICATE_TOKEN}"},
-                        timeout=15
+                        timeout=20
                     )
                     
                     if status_response.status_code == 200:
@@ -146,7 +141,14 @@ def get_latest_model_version(replicate_token, model_id):
             versions = response.json().get('results', [])
             if versions:
                 # Берем последнюю версию
-                return versions[0]['id']
+                latest_version = versions[0]['id']
+                logger.info(f"📦 Актуальная версия {model_id}: {latest_version}")
+                return latest_version
+            else:
+                logger.warning(f"⚠️ Нет доступных версий для {model_id}")
+        else:
+            logger.warning(f"⚠️ Ошибка получения версий для {model_id}: {response.status_code}")
+        
         return None
         
     except Exception as e:
