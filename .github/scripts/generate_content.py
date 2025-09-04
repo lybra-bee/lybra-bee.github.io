@@ -248,7 +248,7 @@ def check_environment_variables():
     env_vars = {
         'GROQ_API_KEY': os.getenv('GROQ_API_KEY'),
         'FUSIONBRAIN_API_KEY': os.getenv('FUSIONBRAIN_API_KEY'),
-        'FUSIONBRAIN_SECRET_KEY': os.getenv('FUSIONBRAIN_SECRET_KEY')
+        'FUSION_SECRET_KEY': os.getenv('FUSION_SECRET_KEY')
     }
     
     logger.info("🔍 Проверка переменных окружения:")
@@ -361,7 +361,7 @@ def generate_article_image(title):
 def try_fusionbrain_api(title):
     """FusionBrain API с правильной реализацией"""
     api_key = os.getenv('FUSIONBRAIN_API_KEY')
-    secret_key = os.getenv('FUSIONBRAIN_SECRET_KEY')
+    secret_key = os.getenv('FUSION_SECRET_KEY')
     
     if not api_key or not secret_key:
         logger.warning("⚠️ FusionBrain ключи не найдены")
