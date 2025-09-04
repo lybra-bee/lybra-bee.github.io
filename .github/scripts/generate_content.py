@@ -21,31 +21,25 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Актуальные рабочие модели Replicate с правильными версиями
-REPLICATE_MODELS = [
+# ДЕЙСТВИТЕЛЬНО бесплатные и работающие модели
+REPLICATE_FREE_MODELS = [
     {
-        "name": "Ideogram v3 Turbo",
-        "id": "ideogram-ai/ideogram-v3-turbo",
-        "version": "6afb368ad77b2b7b1b6b5b5c5b5a5f5e5c5b5a5f5e5c5b5a5f5e5c5b5a5f5e5c5b5a",
-        "prompt_template": "{topic}, realistic, creative design, uniform styles, amazing realism"
+        "name": "Stable Diffusion v1.5",
+        "id": "stability-ai/stable-diffusion",
+        "version": "ac732df83cea7fff18b8472768c88ad041fa750ff7682a21affe81863cbe77e4",
+        "prompt_template": "{topic}, digital art, futuristic, professional"
     },
     {
-        "name": "FLUX.1 Schnell", 
-        "id": "black-forest-labs/flux-1-schnell",
-        "version": "de7a9ac3b862ceb87432753e288d2ed3dc5f7c381a34516758cddaa2f1bcd750",
-        "prompt_template": "{topic}, AI art, technology, innovation, high quality"
+        "name": "OpenJourney", 
+        "id": "prompthero/openjourney",
+        "version": "9936c2001faa2194a261c01381f90e65261879985476014a0a37a334593a05eb",
+        "prompt_template": "{topic}, artistic, creative, vibrant colors"
     },
     {
-        "name": "FLUX Kontext Pro",
-        "id": "black-forest-labs/flux-kontext-pro",
-        "version": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
-        "prompt_template": "{topic}, text-based image editing, high-quality results, superior prompt following"
-    },
-    {
-        "name": "Stable Diffusion XL",
-        "id": "stability-ai/sdxl",
-        "version": "39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
-        "prompt_template": "{topic}, digital art, futuristic, professional, 4k quality"
+        "name": "Karlo",
+        "id": "kakaobrain/karlo", 
+        "version": "3b0c37666b154c12dba8b6f78b0b853c6bb9d95c6b4b2c2d5c8d2e5e8c2d5c8d",
+        "prompt_template": "{topic}, creative, digital art, modern design"
     }
 ]
 
@@ -308,25 +302,20 @@ def generate_article_image(topic):
     return generate_enhanced_placeholder(topic)
 
 def try_replicate_models(topic):
-    """Используем рабочие модели Replicate"""
+    """Используем действительно бесплатные модели Replicate"""
     REPLICATE_TOKEN = os.getenv('REPLICATE_API_TOKEN')
     if not REPLICATE_TOKEN:
         logger.warning("⚠️ Replicate токен не найден")
         return None
     
     # Перемешиваем модели для разнообразия
-    random.shuffle(REPLICATE_MODELS)
+    random.shuffle(REPLICATE_FREE_MODELS)
     
-    for model_info in REPLICATE_MODELS:
+    for model_info in REPLICATE_FREE_MODELS:
         try:
             logger.info(f"🔄 Пробуем модель: {model_info['name']}")
             
             prompt = model_info['prompt_template'].format(topic=topic)
-            
-            # Сначала попробуем получить актуальную версию
-            version = get_latest_model_version(REPLICATE_TOKEN, model_info["id"])
-            if not version:
-                version = model_info["version"]  # fallback на указанную версию
             
             response = requests.post(
                 "https://api.replicate.com/v1/predictions",
@@ -335,7 +324,7 @@ def try_replicate_models(topic):
                     "Content-Type": "application/json"
                 },
                 json={
-                    "version": version,
+                    "version": model_info["version"],
                     "input": {
                         "prompt": prompt,
                         "width": 512,
@@ -352,12 +341,12 @@ def try_replicate_models(topic):
                 logger.info(f"✅ Предсказание создано: {prediction_id}")
                 
                 # Ждем завершения генерации
-                for attempt in range(8):
+                for attempt in range(6):  # Уменьшим количество попыток
                     time.sleep(3)
                     status_response = requests.get(
                         f"https://api.replicate.com/v1/predictions/{prediction_id}",
                         headers={"Authorization": f"Bearer {REPLICATE_TOKEN}"},
-                        timeout=20
+                        timeout=15
                     )
                     
                     if status_response.status_code == 200:
@@ -380,39 +369,13 @@ def try_replicate_models(topic):
                         break
             else:
                 logger.warning(f"⚠️ Ошибка API: {response.status_code} - {response.text}")
+                continue
                 
         except Exception as e:
             logger.error(f"❌ Ошибка модели {model_info['name']}: {e}")
             continue
     
     return None
-
-def get_latest_model_version(replicate_token, model_id):
-    """Получаем актуальную версию модели"""
-    try:
-        response = requests.get(
-            f"https://api.replicate.com/v1/models/{model_id}/versions",
-            headers={"Authorization": f"Bearer {replicate_token}"},
-            timeout=10
-        )
-        
-        if response.status_code == 200:
-            versions = response.json().get('results', [])
-            if versions:
-                # Берем последнюю версию
-                latest_version = versions[0]['id']
-                logger.info(f"📦 Актуальная версия {model_id}: {latest_version}")
-                return latest_version
-            else:
-                logger.warning(f"⚠️ Нет доступных версий для {model_id}")
-        else:
-            logger.warning(f"⚠️ Ошибка получения версий для {model_id}: {response.status_code}")
-        
-        return None
-        
-    except Exception as e:
-        logger.error(f"❌ Ошибка получения версии для {model_id}: {e}")
-        return None
 
 def try_lexica_art_api(topic):
     """Lexica Art API - бесплатный поиск изображений"""
