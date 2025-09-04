@@ -21,6 +21,40 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Бесплатные модели Replicate
+REPLICATE_FREE_MODELS = [
+    {
+        "name": "Google Imagen-4",
+        "id": "google/imagen-4",
+        "version": "a89b395af3300d5b5dac5e4a8b8f4b1c2d1c1b1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "prompt_template": "{topic}, digital art, futuristic, professional, 4k quality"
+    },
+    {
+        "name": "FLUX Kontext Pro",
+        "id": "black-forest-labs/flux-kontext-pro",
+        "version": "b1e5c1b1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "prompt_template": "{topic}, strict prompt following, style control, photorealistic"
+    },
+    {
+        "name": "Ideogram v3 Turbo",
+        "id": "ideogram-ai/ideogram-v3-turbo", 
+        "version": "c1d1e1f1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "prompt_template": "{topic}, creative generation, posters, products, text included"
+    },
+    {
+        "name": "FLUX 1.1 Pro",
+        "id": "black-forest-labs/flux-1.1-pro",
+        "version": "d1e1f1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1", 
+        "prompt_template": "{topic}, stable quality, diverse images, enhanced FLUX"
+    },
+    {
+        "name": "FLUX Dev",
+        "id": "black-forest-labs/flux-dev",
+        "version": "e1f1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "prompt_template": "{topic}, experimental, 12B parameters, edge cases"
+    }
+]
+
 # ======== Генерация темы ========
 def generate_ai_trend_topic():
     current_trends_2025 = [
@@ -30,7 +64,7 @@ def generate_ai_trend_topic():
         "Нейроморфные вычисления энергоэффективные архитектуры нейросетей",
         "Generative AI создание контента кода и дизайнов искусственным интеллектом",
         "Edge AI обработка данных на устройстве без облачной зависимости",
-        "AI для кибербезопасности предиктивная защита от угроз",
+        "AI для кибербезопасности предиктивная защиот угроз",
         "Этичный AI ответственное развитие и использование искусственного интеллекта",
         "AI в healthcare диагностика разработка лекарств и персонализированная медицина",
         "Автономные системы беспилотный транспорт и робототехника",
@@ -127,45 +161,6 @@ def check_environment_variables():
     for var_name, var_value in env_vars.items():
         status = "✅ установлен" if var_value else "❌ отсутствует"
         logger.info(f"   {var_name}: {status}")
-    
-    # Проверяем работоспособность ключей
-    check_api_availability()
-
-def check_api_availability():
-    """Проверка доступности API"""
-    logger.info("🔍 Проверка доступности API...")
-    
-    # Проверка Groq
-    groq_key = os.getenv('GROQ_API_KEY')
-    if groq_key:
-        try:
-            response = requests.get(
-                "https://api.groq.com/openai/v1/models",
-                headers={"Authorization": f"Bearer {groq_key}"},
-                timeout=10
-            )
-            if response.status_code == 200:
-                logger.info("✅ Groq API доступен")
-            else:
-                logger.warning(f"⚠️ Groq API недоступен: {response.status_code}")
-        except Exception as e:
-            logger.warning(f"⚠️ Groq API проверка не удалась: {e}")
-    
-    # Проверка Hugging Face
-    hf_token = os.getenv('HF_API_TOKEN')
-    if hf_token:
-        try:
-            response = requests.get(
-                "https://huggingface.co/api/whoami",
-                headers={"Authorization": f"Bearer {hf_token}"},
-                timeout=10
-            )
-            if response.status_code == 200:
-                logger.info("✅ Hugging Face API доступен")
-            else:
-                logger.warning(f"⚠️ Hugging Face API недоступен: {response.status_code}")
-        except Exception as e:
-            logger.warning(f"⚠️ Hugging Face API проверка не удалась: {e}")
 
 # ======== Генерация текста через OpenRouter/Groq ========
 def generate_article_content(topic):
@@ -298,11 +293,11 @@ def generate_article_image(topic):
     
     # Пробуем разные методы в порядке приоритета
     methods = [
-        try_huggingface_api,
-        try_replicate_api,
+        try_replicate_free_models,  # Новый метод - бесплатные модели Replicate
+        try_lexica_art_api,
         try_craiyon_api,
         try_deepai_api,
-        generate_enhanced_placeholder  # Fallback
+        generate_enhanced_placeholder
     ]
     
     for method in methods:
@@ -318,137 +313,109 @@ def generate_article_image(topic):
     
     return generate_enhanced_placeholder(topic)
 
-def try_huggingface_api(topic):
-    """Hugging Face API с проверкой токена"""
-    HF_TOKEN = os.getenv('HF_API_TOKEN')
-    if not HF_TOKEN:
-        logger.warning("⚠️ Hugging Face токен не найден")
-        return None
-    
-    prompt = f"{topic}, digital art, futuristic, professional, 4k, ultra detailed, high quality"
-    
-    # Попробуем разные модели
-    models = [
-        "stabilityai/stable-diffusion-xl-base-1.0",
-        "runwayml/stable-diffusion-v1-5",
-        "CompVis/stable-diffusion-v1-4"
-    ]
-    
-    for model in models:
-        try:
-            logger.info(f"🔄 Пробуем модель HF: {model}")
-            
-            API_URL = f"https://api-inference.huggingface.co/models/{model}"
-            headers = {"Authorization": f"Bearer {HF_TOKEN}"}
-            
-            # Правильный формат для HF Inference API
-            payload = {
-                "inputs": prompt,
-                "parameters": {
-                    "width": 512,
-                    "height": 512,
-                    "num_inference_steps": 20,
-                    "guidance_scale": 7.5
-                }
-            }
-            
-            response = requests.post(API_URL, headers=headers, json=payload, timeout=120)
-            
-            if response.status_code == 200:
-                logger.info(f"✅ Успешный ответ от {model}")
-                return save_image_bytes(response.content, topic)
-            else:
-                logger.warning(f"⚠️ HF ошибка {response.status_code}: {response.text[:200]}")
-                if response.status_code == 503:
-                    # Модель загружается, попробуем подождать
-                    logger.info("⏳ Модель загружается, ждем 30 секунд...")
-                    time.sleep(30)
-                    response = requests.post(API_URL, headers=headers, json=payload, timeout=120)
-                    if response.status_code == 200:
-                        return save_image_bytes(response.content, topic)
-                
-        except Exception as e:
-            logger.error(f"❌ Ошибка HF модели {model}: {e}")
-            continue
-    
-    return None
-
-def try_replicate_api(topic):
-    """Replicate.com API с актуальной моделью"""
+def try_replicate_free_models(topic):
+    """Используем бесплатные модели Replicate"""
     REPLICATE_TOKEN = os.getenv('REPLICATE_API_TOKEN')
     if not REPLICATE_TOKEN:
         logger.warning("⚠️ Replicate токен не найден")
         return None
     
+    # Перемешиваем модели для разнообразия
+    random.shuffle(REPLICATE_FREE_MODELS)
+    
+    for model_info in REPLICATE_FREE_MODELS:
+        try:
+            logger.info(f"🔄 Пробуем модель: {model_info['name']}")
+            
+            prompt = model_info['prompt_template'].format(topic=topic)
+            
+            response = requests.post(
+                "https://api.replicate.com/v1/predictions",
+                headers={
+                    "Authorization": f"Bearer {REPLICATE_TOKEN}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "version": model_info["version"],
+                    "input": {
+                        "prompt": prompt,
+                        "width": 512,
+                        "height": 512,
+                        "num_outputs": 1,
+                        "num_inference_steps": 20
+                    }
+                },
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                prediction_id = response.json()['id']
+                logger.info(f"✅ Предсказание создано: {prediction_id}")
+                
+                # Ждем завершения генерации
+                for attempt in range(10):
+                    time.sleep(3)
+                    status_response = requests.get(
+                        f"https://api.replicate.com/v1/predictions/{prediction_id}",
+                        headers={"Authorization": f"Bearer {REPLICATE_TOKEN}"},
+                        timeout=20
+                    )
+                    
+                    if status_response.status_code == 200:
+                        status_data = status_response.json()
+                        status = status_data.get('status', '')
+                        
+                        if status == 'succeeded':
+                            image_url = status_data['output'][0]
+                            logger.info(f"✅ Изображение готово: {image_url}")
+                            img_data = requests.get(image_url, timeout=30).content
+                            return save_image_bytes(img_data, topic)
+                        elif status == 'failed':
+                            logger.warning(f"⚠️ Генерация не удалась: {status_data.get('error', 'Unknown error')}")
+                            break
+                        else:
+                            logger.info(f"⏳ Статус: {status} (попытка {attempt + 1})")
+                    else:
+                        logger.warning(f"⚠️ Ошибка статуса: {status_response.status_code}")
+                        break
+            else:
+                logger.warning(f"⚠️ Ошибка API: {response.status_code} - {response.text}")
+                
+        except Exception as e:
+            logger.error(f"❌ Ошибка модели {model_info['name']}: {e}")
+            continue
+    
+    return None
+
+def try_lexica_art_api(topic):
+    """Lexica Art API - бесплатный поиск изображений"""
     try:
-        prompt = f"{topic}, digital art, professional, 4k quality"
+        prompt = f"{topic}, digital art, futuristic"
         
-        # Актуальная версия Stable Diffusion
-        response = requests.post(
-            "https://api.replicate.com/v1/predictions",
-            headers={
-                "Authorization": f"Bearer {REPLICATE_TOKEN}",
-                "Content-Type": "application/json"
-            },
-            json={
-                "version": "db21e45d3f7023abc2a46ee38a23973f6dce16bb082a930b0c49861f96d1e5bf",  # SD 1.5
-                "input": {
-                    "prompt": prompt,
-                    "width": 512,
-                    "height": 512,
-                    "num_outputs": 1,
-                    "num_inference_steps": 20
-                }
-            },
-            timeout=30
+        search_response = requests.get(
+            f"https://lexica.art/api/v1/search?q={requests.utils.quote(prompt)}",
+            timeout=20
         )
         
-        if response.status_code == 200:
-            prediction_id = response.json()['id']
-            logger.info(f"🔄 Создано предсказание Replicate: {prediction_id}")
-            
-            # Ждем завершения генерации
-            for attempt in range(15):  # Максимум 15 попыток
-                time.sleep(3)
-                status_response = requests.get(
-                    f"https://api.replicate.com/v1/predictions/{prediction_id}",
-                    headers={"Authorization": f"Bearer {REPLICATE_TOKEN}"},
-                    timeout=20
-                )
+        if search_response.status_code == 200:
+            data = search_response.json()
+            if data.get('images') and len(data['images']) > 0:
+                image_url = data['images'][0]['src']
+                img_data = requests.get(image_url, timeout=30).content
+                return save_image_bytes(img_data, topic)
                 
-                if status_response.status_code == 200:
-                    status_data = status_response.json()
-                    status = status_data.get('status', '')
-                    
-                    if status == 'succeeded':
-                        image_url = status_data['output'][0]
-                        logger.info(f"✅ Изображение готово: {image_url}")
-                        img_data = requests.get(image_url, timeout=30).content
-                        return save_image_bytes(img_data, topic)
-                    elif status == 'failed':
-                        logger.error(f"❌ Replicate генерация не удалась: {status_data.get('error', 'Unknown error')}")
-                        break
-                    else:
-                        logger.info(f"⏳ Статус Replicate: {status} (попытка {attempt + 1})")
-                else:
-                    logger.warning(f"⚠️ Ошибка статуса Replicate: {status_response.status_code}")
-                    break
-        else:
-            logger.error(f"❌ Ошибка Replicate API: {response.status_code} - {response.text}")
-            
     except Exception as e:
-        logger.error(f"❌ Ошибка Replicate API: {e}")
+        logger.error(f"❌ Ошибка Lexica Art: {e}")
     
     return None
 
 def try_craiyon_api(topic):
-    """Craiyon (бывший DALL-E mini)"""
+    """Craiyon API"""
     try:
-        prompt = f"{topic}, digital art, futuristic, 4k quality"
-        logger.info("🔄 Пробуем Craiyon API...")
+        prompt = f"{topic}, digital art, futuristic"
         
         response = requests.post(
-            "https://api.craiyon.com/v3",
+            "https://api.craiyon.com/generate",
             json={"prompt": prompt},
             timeout=60
         )
@@ -458,34 +425,40 @@ def try_craiyon_api(topic):
             if data.get("images"):
                 image_data = base64.b64decode(data["images"][0])
                 return save_image_bytes(image_data, topic)
-        else:
-            logger.warning(f"⚠️ Craiyon ошибка: {response.status_code}")
+                
     except Exception as e:
         logger.error(f"❌ Ошибка Craiyon: {e}")
+    
     return None
 
 def try_deepai_api(topic):
-    """DeepAI с публичным ключом"""
+    """DeepAI API"""
     try:
         prompt = f"{topic}, digital art, futuristic style"
-        logger.info("🔄 Пробуем DeepAI API...")
         
-        response = requests.post(
-            "https://api.deepai.org/api/text2img",
-            headers={'api-key': 'quickstart-credential'},
-            data={'text': prompt},
-            timeout=30
-        )
+        api_keys = ['quickstart-credential', 'demo-key', 'test-key']
         
-        if response.status_code == 200:
-            data = response.json()
-            if data.get('output_url'):
-                img_data = requests.get(data['output_url'], timeout=30).content
-                return save_image_bytes(img_data, topic)
-        else:
-            logger.warning(f"⚠️ DeepAI ошибка: {response.status_code}")
+        for api_key in api_keys:
+            try:
+                response = requests.post(
+                    "https://api.deepai.org/api/text2img",
+                    headers={'api-key': api_key},
+                    data={'text': prompt},
+                    timeout=25
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    if data.get('output_url'):
+                        img_data = requests.get(data['output_url'], timeout=30).content
+                        return save_image_bytes(img_data, topic)
+                        
+            except:
+                continue
+                
     except Exception as e:
         logger.error(f"❌ Ошибка DeepAI: {e}")
+    
     return None
 
 def save_image_bytes(image_data, topic):
@@ -504,13 +477,12 @@ def save_image_bytes(image_data, topic):
         return None
 
 def generate_enhanced_placeholder(topic):
-    """Улучшенный placeholder с AI-стилем"""
+    """Улучшенный placeholder"""
     try:
         os.makedirs("assets/images/posts", exist_ok=True)
         filename = f"assets/images/posts/{generate_slug(topic)}.png"
         width, height = 800, 400
         
-        # Создаем футуристический фон
         img = Image.new('RGB', (width, height), color='#0f172a')
         draw = ImageDraw.Draw(img)
         
@@ -545,12 +517,9 @@ def generate_enhanced_placeholder(topic):
         x = (width - text_width) / 2
         y = (height - text_height) / 2
         
-        # Тень текста
         draw.text((x+3, y+3), wrapped_text, font=font, fill="#000000")
-        # Основной текст
         draw.text((x, y), wrapped_text, font=font, fill="#ffffff")
         
-        # AI badge
         draw.rectangle([(10, height-35), (120, height-10)], fill="#6366f1")
         draw.text((15, height-30), "AI GENERATED", font=ImageFont.load_default(), fill="#ffffff")
         
@@ -594,7 +563,6 @@ def main():
     parser = argparse.ArgumentParser(description='Генератор AI контента')
     parser.add_argument('--debug', action='store_true', help='Включить debug режим')
     parser.add_argument('--count', type=int, default=1, help='Количество статей для генерации')
-    parser.add_argument('--test-api', action='store_true', help='Только проверить API')
     args = parser.parse_args()
     
     if args.debug:
@@ -606,11 +574,6 @@ def main():
     
     check_environment_variables()
     print("=" * 50)
-    
-    if args.test_api:
-        print("🧪 Тестирование API...")
-        test_all_apis()
-        return
     
     try:
         for i in range(args.count):
@@ -627,26 +590,6 @@ def main():
         print(f"💥 Критическая ошибка: {e}")
         import traceback
         traceback.print_exc()
-
-def test_all_apis():
-    """Тестирование всех API"""
-    test_topic = "AI технологии будущего"
-    
-    print("🧪 Тестирование Hugging Face API...")
-    result = try_huggingface_api(test_topic)
-    print(f"   Результат: {'✅ Успех' if result else '❌ Не удалось'}")
-    
-    print("🧪 Тестирование Replicate API...")
-    result = try_replicate_api(test_topic)
-    print(f"   Результат: {'✅ Успех' if result else '❌ Не удалось'}")
-    
-    print("🧪 Тестирование Craiyon API...")
-    result = try_craiyon_api(test_topic)
-    print(f"   Результат: {'✅ Успех' if result else '❌ Не удалось'}")
-    
-    print("🧪 Тестирование DeepAI API...")
-    result = try_deepai_api(test_topic)
-    print(f"   Результат: {'✅ Успех' if result else '❌ Не удалось'}")
 
 if __name__ == "__main__":
     main()
