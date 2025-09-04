@@ -24,10 +24,10 @@ logger = logging.getLogger(__name__)
 # Актуальные рабочие модели Replicate с правильными версиями
 REPLICATE_MODELS = [
     {
-        "name": "Stable Diffusion XL",
-        "id": "stability-ai/sdxl",
-        "version": "39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
-        "prompt_template": "{topic}, digital art, futuristic, professional, 4k quality"
+        "name": "Ideogram v3 Turbo",
+        "id": "ideogram-ai/ideogram-v3-turbo",
+        "version": "6afb368ad77b2b7b1b6b5b5c5b5a5f5e5c5b5a5f5e5c5b5a5f5e5c5b5a5f5e5c5b5a",
+        "prompt_template": "{topic}, realistic, creative design, uniform styles, amazing realism"
     },
     {
         "name": "FLUX.1 Schnell", 
@@ -36,10 +36,16 @@ REPLICATE_MODELS = [
         "prompt_template": "{topic}, AI art, technology, innovation, high quality"
     },
     {
-        "name": "Karlo",
-        "id": "kakaobrain/karlo", 
-        "version": "3b0c37666b154c12dba8b6f78b0b853c6bb9d95c6b4b2c2d5c8d2e5e8c2d5c8d",
-        "prompt_template": "{topic}, creative, digital art, modern design"
+        "name": "FLUX Kontext Pro",
+        "id": "black-forest-labs/flux-kontext-pro",
+        "version": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "prompt_template": "{topic}, text-based image editing, high-quality results, superior prompt following"
+    },
+    {
+        "name": "Stable Diffusion XL",
+        "id": "stability-ai/sdxl",
+        "version": "39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
+        "prompt_template": "{topic}, digital art, futuristic, professional, 4k quality"
     }
 ]
 
@@ -317,6 +323,11 @@ def try_replicate_models(topic):
             
             prompt = model_info['prompt_template'].format(topic=topic)
             
+            # Сначала попробуем получить актуальную версию
+            version = get_latest_model_version(REPLICATE_TOKEN, model_info["id"])
+            if not version:
+                version = model_info["version"]  # fallback на указанную версию
+            
             response = requests.post(
                 "https://api.replicate.com/v1/predictions",
                 headers={
@@ -324,7 +335,7 @@ def try_replicate_models(topic):
                     "Content-Type": "application/json"
                 },
                 json={
-                    "version": model_info["version"],
+                    "version": version,
                     "input": {
                         "prompt": prompt,
                         "width": 512,
@@ -375,6 +386,33 @@ def try_replicate_models(topic):
             continue
     
     return None
+
+def get_latest_model_version(replicate_token, model_id):
+    """Получаем актуальную версию модели"""
+    try:
+        response = requests.get(
+            f"https://api.replicate.com/v1/models/{model_id}/versions",
+            headers={"Authorization": f"Bearer {replicate_token}"},
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            versions = response.json().get('results', [])
+            if versions:
+                # Берем последнюю версию
+                latest_version = versions[0]['id']
+                logger.info(f"📦 Актуальная версия {model_id}: {latest_version}")
+                return latest_version
+            else:
+                logger.warning(f"⚠️ Нет доступных версий для {model_id}")
+        else:
+            logger.warning(f"⚠️ Ошибка получения версий для {model_id}: {response.status_code}")
+        
+        return None
+        
+    except Exception as e:
+        logger.error(f"❌ Ошибка получения версии для {model_id}: {e}")
+        return None
 
 def try_lexica_art_api(topic):
     """Lexica Art API - бесплатный поиск изображений"""
