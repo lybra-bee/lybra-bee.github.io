@@ -37,7 +37,7 @@ def generate_ai_trend_topic():
         "AI оптимизация сжатие моделей и ускорение inference",
         "Доверенный AI объяснимые и прозрачные алгоритмы",
         "AI для климата оптимизация энергопотребления и экологические решения",
-        "Персональные AI ассистенты индивидуализированные цифровые помощники",
+        "Персonalные AI ассистенты индивидуализированные цифровые помощники",
         "AI в образовании адаптивное обучение и персонализированные учебные планы"
     ]
     application_domains = [
@@ -271,32 +271,25 @@ def generate_article_image(topic):
     return generate_enhanced_placeholder(topic)
 
 def try_craiyon_api(topic):
-    """Craiyon API v3 - правильная реализация"""
+    """Craiyon API - старая стабильная версия"""
     try:
         # Создаем английский промпт для лучшего качества
         english_prompt = f"{topic}, digital art, futuristic technology, AI, 2025, professional"
         
         logger.info(f"🎨 Генерация через Craiyon: {english_prompt}")
         
-        # Используем официальный v3 API
+        # Используем старую стабильную версию API
         response = requests.post(
-            "https://api.craiyon.com/v3",
-            json={
-                "prompt": english_prompt,
-                "negative_prompt": "blurry, low quality, distorted",
-                "model": "art",  # Лучшее качество
-                "version": "35s5hfwn9n78gb06",
-                "width": 512,
-                "height": 512
-            },
-            timeout=120  # Увеличиваем таймаут для генерации
+            "https://api.craiyon.com/generate",
+            json={"prompt": english_prompt},
+            timeout=60
         )
         
         if response.status_code == 200:
             data = response.json()
             
             if data.get("images") and len(data["images"]) > 0:
-                # Берем первое изображение из 9 сгенерированных
+                # Декодируем первое изображение из base64
                 image_data = base64.b64decode(data["images"][0])
                 return save_image_bytes(image_data, topic)
             else:
