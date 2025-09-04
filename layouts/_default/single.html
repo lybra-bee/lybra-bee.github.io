@@ -1,82 +1,14 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ .Title }} | {{ .Site.Title }}</title>
-    {{ $css := resources.Get "css/main.css" | minify | fingerprint }}
-    <link rel="stylesheet" href="{{ $css.Permalink }}">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
-</head>
-<body>
-    <nav class="navbar">
-        <div class="navbar-container">
-            <a href="/" class="navbar-brand">
-                <i class="bi bi-cpu"></i> {{ .Site.Title }}
-            </a>
-            <ul class="nav-menu">
-                {{ range .Site.Menus.main }}
-                <li><a href="{{ .URL }}" class="nav-link">{{ .Name }}</a></li>
-                {{ end }}
-            </ul>
+{{ define "main" }}
+<article class="post">
+    <header class="post-header">
+        <h1>{{ .Title }}</h1>
+        <div class="post-meta">
+            <time datetime="{{ .Date }}">{{ .Date.Format "2 January 2006" }}</time>
         </div>
-    </nav>
+    </header>
 
-    <main class="container">
-        <article class="glass-card" style="max-width: 800px; margin: 2rem auto; padding: 2.5rem;">
-            <h1 style="margin-bottom: 1rem;">{{ .Title }}</h1>
-            
-            <div style="color: var(--text-gray); margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1);">
-                <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
-                    <i class="bi bi-calendar"></i> 
-                    <span>{{ .Date.Format "02 January 2006" }}</span>
-                </div>
-                
-                {{ if .Params.tags }}
-                <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem;">
-                    {{ range .Params.tags }}
-                    <span style="background: var(--primary-blue); padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.8rem; color: white;">
-                        #{{ . }}
-                    </span>
-                    {{ end }}
-                </div>
-                {{ end }}
-            </div>
-
-            {{ if .Params.image }}
-            <img src="{{ .Params.image }}" alt="{{ .Title }}" 
-                 style="width: 100%; border-radius: 16px; margin-bottom: 2rem; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
-            {{ end }}
-
-            <div class="content" style="line-height: 1.8; font-size: 1.1rem;">
-                {{ .Content }}
-            </div>
-
-            <div style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid rgba(255,255,255,0.1);">
-                <a href="/" class="btn" style="display: inline-flex; align-items: center; gap: 0.5rem;">
-                    <i class="bi bi-arrow-left"></i> На главную
-                </a>
-            </div>
-
-            <!-- AI Generation Info -->
-            <div style="margin-top: 3rem; padding: 1.5rem; background: rgba(37, 99, 235, 0.1); border-radius: 12px; border-left: 4px solid var(--primary-blue);">
-                <h4 style="margin: 0 0 1rem; color: var(--primary-blue);">
-                    <i class="bi bi-robot"></i> Сгенерировано искусственным интеллектом
-                </h4>
-                <p style="margin: 0; color: var(--text-gray); font-size: 0.9rem;">
-                    Эта статья была автоматически создана с помощью AI. Текст сгенерирован нейросетью, 
-                    изображение создано алгоритмом компьютерного зрения. Контент обновляется ежедневно.
-                </p>
-            </div>
-        </article>
-    </main>
-
-    <footer style="background: rgba(15, 23, 42, 0.9); padding: 3rem 0; margin-top: 4rem; text-align: center;">
-        <div class="container">
-            <p style="color: var(--text-gray); margin: 0;">
-                © 2025 AI Blog | Сгенерировано с помощью искусственного интеллекта
-            </p>
-        </div>
-    </footer>
-</body>
-</html>
+    <div class="post-content">
+        {{ .Content }}
+    </div>
+</article>
+{{ end }}
