@@ -113,7 +113,7 @@ def generate_content():
     title = extract_title_from_content(content, topic)
     logger.info(f"📌 Извлеченный заголовок: {title}")
     
-    # Генерируем изображение на основе заголовка
+    # Генерируем изображение на основе заголовок
     image_filename = generate_article_image(title)
     
     date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -148,12 +148,9 @@ def extract_title_from_content(content, fallback_topic):
     return fallback_topic
 
 def check_environment_variables():
-    """Проверка всех необходимых переменных окружения"""
+    """Проверка только необходимых переменных окружения"""
     env_vars = {
-        'OPENROUTER_API_KEY': os.getenv('OPENROUTER_API_KEY'),
         'GROQ_API_KEY': os.getenv('GROQ_API_KEY'),
-        'HF_API_TOKEN': os.getenv('HF_API_TOKEN'),
-        'REPLICATE_API_TOKEN': os.getenv('REPLICATE_API_TOKEN'),
         'FUSIONBRAIN_API_KEY': os.getenv('FUSIONBRAIN_API_KEY')
     }
     
@@ -162,26 +159,20 @@ def check_environment_variables():
         status = "✅ установлен" if var_value else "❌ отсутствует"
         logger.info(f"   {var_name}: {status}")
 
-# ======== Генерация текста через OpenRouter/Groq ========
+# ======== Генерация текста через Groq ========
 def generate_article_content(prompt):
-    openrouter_key = os.getenv('OPENROUTER_API_KEY')
     groq_key = os.getenv('GROQ_API_KEY')
-    models_to_try = []
-
-    if groq_key:
-        groq_models = ["llama-3.1-8b-instant", "llama-3.2-1b-preview", "llama-3.1-70b-versatile"]
-        for model_name in groq_models:
-            models_to_try.append((f"Groq-{model_name}", lambda m=model_name: generate_with_groq(groq_key, m, prompt)))
-    if openrouter_key:
-        openrouter_models = ["anthropic/claude-3-haiku", "anthropic/claude-3-sonnet", "google/gemini-pro-1.5"]
-        for model_name in openrouter_models:
-            models_to_try.append((model_name, lambda m=model_name: generate_with_openrouter(openrouter_key, m, prompt)))
-
-    # Если нет API ключей, используем fallback
-    if not models_to_try:
+    
+    if not groq_key:
         logger.warning("⚠️ Нет доступных API ключей для генерации текста")
         fallback = generate_fallback_content(prompt)
         return fallback, "fallback-generator"
+
+    models_to_try = [
+        ("llama-3.1-8b-instant", lambda: generate_with_groq(groq_key, "llama-3.1-8b-instant", prompt)),
+        ("llama-3.2-1b-preview", lambda: generate_with_groq(groq_key, "llama-3.2-1b-preview", prompt)),
+        ("llama-3.1-70b-versatile", lambda: generate_with_groq(groq_key, "llama-3.1-70b-versatile", prompt))
+    ]
 
     for model_name, generate_func in models_to_try:
         try:
@@ -244,31 +235,6 @@ def generate_with_groq(api_key, model_name, prompt):
     else:
         raise Exception(f"Groq API error {resp.status_code}: {resp.text}")
 
-def generate_with_openrouter(api_key, model_name, prompt):
-    resp = requests.post(
-        "https://openrouter.ai/api/v1/chat/completions",
-        headers={
-            "Authorization": f"Bearer {api_key}", 
-            "Content-Type": "application/json",
-            "HTTP-Referer": "https://ai-content-generator.com",
-            "X-Title": "AI Content Generator"
-        },
-        json={
-            "model": model_name, 
-            "messages":[{"role":"user","content":prompt}], 
-            "max_tokens": 2000,
-            "temperature": 0.7,
-            "top_p": 0.9
-        },
-        timeout=30
-    )
-    
-    if resp.status_code == 200:
-        data = resp.json()
-        return data['choices'][0]['message']['content'].strip()
-    else:
-        raise Exception(f"OpenRouter API error {resp.status_code}: {resp.text}")
-
 # ======== Генерация изображений ========
 def generate_article_image(title):
     """Генерация изображения на основе заголовка статьи"""
@@ -276,7 +242,6 @@ def generate_article_image(title):
     
     # Пробуем разные методы в порядке приоритета
     methods = [
-        try_fusionbrain_api,
         try_craiyon_api,
         try_lexica_art_api,
         generate_enhanced_placeholder
@@ -294,86 +259,6 @@ def generate_article_image(title):
             continue
     
     return generate_enhanced_placeholder(title)
-
-def try_fusionbrain_api(title):
-    """Fusionbrain AI API (Kandinsky модель)"""
-    FUSIONBRAIN_KEY = os.getenv('FUSIONBRAIN_API_KEY')
-    if not FUSIONBRAIN_KEY:
-        logger.warning("⚠️ Fusionbrain API ключ не найден")
-        return None
-    
-    try:
-        # Сначала получаем ID модели Kandinsky
-        models_response = requests.get(
-            "https://api.fusionbrain.ai/web/api/v1/models",
-            headers={"Authorization": f"Bearer {FUSIONBRAIN_KEY}"},
-            timeout=10
-        )
-        
-        if models_response.status_code != 200:
-            logger.warning(f"⚠️ Ошибка получения моделей Fusionbrain: {models_response.status_code}")
-            return None
-        
-        models = models_response.json()
-        kandinsky_model_id = None
-        
-        for model in models:
-            if "kandinsky" in model.get("name", "").lower():
-                kandinsky_model_id = model["id"]
-                break
-        
-        if not kandinsky_model_id:
-            logger.warning("⚠️ Модель Kandinsky не найдена")
-            return None
-        
-        # Генерируем изображение
-        prompt = f"{title}, digital art, futuristic technology, AI, 2025, professional, high quality"
-        
-        generate_response = requests.post(
-            "https://api.fusionbrain.ai/web/api/v1/text2image/run",
-            headers={"Authorization": f"Bearer {FUSIONBRAIN_KEY}"},
-            json={
-                "model_id": kandinsky_model_id,
-                "params": {
-                    "type": "GENERATE",
-                    "width": 512,
-                    "height": 512,
-                    "generateParams": {
-                        "query": prompt
-                    }
-                }
-            },
-            timeout=30
-        )
-        
-        if generate_response.status_code == 200:
-            generation_id = generate_response.json().get("uuid")
-            
-            # Ждем завершения генерации
-            for _ in range(10):
-                time.sleep(3)
-                status_response = requests.get(
-                    f"https://api.fusionbrain.ai/web/api/v1/text2image/status/{generation_id}",
-                    headers={"Authorization": f"Bearer {FUSIONBRAIN_KEY}"},
-                    timeout=10
-                )
-                
-                if status_response.status_code == 200:
-                    status_data = status_response.json()
-                    if status_data.get("status") == "DONE":
-                        image_base64 = status_data.get("images")[0]
-                        image_data = base64.b64decode(image_base64)
-                        return save_image_bytes(image_data, title)
-                    elif status_data.get("status") == "FAIL":
-                        break
-                
-        else:
-            logger.warning(f"⚠️ Ошибка генерации Fusionbrain: {generate_response.status_code}")
-            
-    except Exception as e:
-        logger.error(f"❌ Ошибка Fusionbrain: {e}")
-    
-    return None
 
 def try_craiyon_api(title):
     """Craiyon API - старая стабильная версия"""
