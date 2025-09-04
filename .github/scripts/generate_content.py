@@ -30,26 +30,36 @@ class FusionBrainAPI:
         }
     
     def get_model(self):
-        """Получаем доступную модель"""
+        """Получаем доступную модель через pipelines endpoint"""
         try:
             response = requests.get(
-                self.URL + 'key/api/v1/models',
+                self.URL + 'key/api/v1/pipelines',
                 headers=self.AUTH_HEADERS,
                 timeout=10
             )
             if response.status_code == 200:
-                models = response.json()
-                for model in models:
-                    if "kandinsky" in model.get("name", "").lower():
-                        return model["id"]
+                pipelines = response.json()
+                if pipelines:
+                    # Ищем Kandinsky pipeline
+                    for pipeline in pipelines:
+                        if "kandinsky" in pipeline.get("name", "").lower():
+                            return pipeline['id']
+                    # Если не нашли Kandinsky, возвращаем первый доступный
+                    return pipelines[0]['id']
             return None
         except Exception as e:
             logger.error(f"❌ Ошибка получения моделей FusionBrain: {e}")
             return None
     
-    def generate(self, prompt, model_id, width=512, height=512):
-        """Генерация изображения"""
+    def generate(self, prompt, width=512, height=512):
+        """Генерация изображения через правильный эндпоинт"""
         try:
+            # Получаем pipeline ID
+            pipeline_id = self.get_model()
+            if not pipeline_id:
+                logger.error("❌ Не удалось получить pipeline ID")
+                return None
+            
             params = {
                 "type": "GENERATE",
                 "numImages": 1,
@@ -60,35 +70,37 @@ class FusionBrainAPI:
                 }
             }
             
-            data = {
-                'model_id': (None, model_id),
-                'params': (None, json.dumps(params), 'application/json')
+            # Правильный формат данных согласно документации
+            files = {
+                'params': (None, json.dumps(params), 'application/json'),
+                'pipeline_id': (None, pipeline_id)
             }
             
             response = requests.post(
-                self.URL + 'key/api/v1/text2image/run',
+                self.URL + 'key/api/v1/pipeline/run',
                 headers=self.AUTH_HEADERS,
-                files=data,
+                files=files,
                 timeout=30
             )
             
             if response.status_code == 200:
-                return response.json().get('uuid')
+                data = response.json()
+                return data.get('uuid')
             else:
-                logger.warning(f"⚠️ Ошибка генерации FusionBrain: {response.status_code}")
+                logger.warning(f"⚠️ Ошибка генерации FusionBrain: {response.status_code} - {response.text}")
                 return None
                 
         except Exception as e:
             logger.error(f"❌ Ошибка генерации FusionBrain: {e}")
             return None
     
-    def check_status(self, task_id, attempts=10, delay=3):
+    def check_status(self, task_id, attempts=15, delay=4):
         """Проверка статуса генерации"""
         try:
             for attempt in range(attempts):
                 time.sleep(delay)
                 response = requests.get(
-                    self.URL + f'key/api/v1/text2image/status/{task_id}',
+                    self.URL + f'key/api/v1/pipeline/status/{task_id}',
                     headers=self.AUTH_HEADERS,
                     timeout=10
                 )
@@ -98,20 +110,26 @@ class FusionBrainAPI:
                     status = data.get('status')
                     
                     if status == 'DONE':
-                        images = data.get('images', [])
+                        result = data.get('result', {})
+                        images = result.get('files', [])
                         if images:
                             return images[0]  # Возвращаем первое изображение в base64
+                        else:
+                            logger.warning("⚠️ Нет изображений в ответе")
+                            return None
                     elif status == 'FAIL':
-                        logger.warning(f"⚠️ Генерация FusionBrain не удалась: {data.get('error', 'Unknown error')}")
+                        error_msg = data.get('errorDescription', 'Unknown error')
+                        logger.warning(f"⚠️ Генерация FusionBrain не удалась: {error_msg}")
                         return None
                     elif status in ['INITIAL', 'PROCESSING']:
-                        logger.info(f"⏳ Статус FusionBrain: {status} (попытка {attempt + 1})")
+                        logger.info(f"⏳ Статус FusionBrain: {status} (попытка {attempt + 1}/{attempts})")
                     else:
                         logger.warning(f"⚠️ Неизвестный статус FusionBrain: {status}")
                         return None
                 else:
                     logger.warning(f"⚠️ Ошибка статуса FusionBrain: {response.status_code}")
             
+            logger.warning("⚠️ Превышено количество попыток проверки статуса")
             return None
             
         except Exception as e:
@@ -370,18 +388,12 @@ def try_fusionbrain_api(title):
     try:
         fb_api = FusionBrainAPI(api_key, secret_key)
         
-        # Получаем модель
-        model_id = fb_api.get_model()
-        if not model_id:
-            logger.warning("⚠️ Не удалось получить модель FusionBrain")
-            return None
-        
         # Создаем промпт на английском для лучшего качества
         english_prompt = f"{title}, digital art, futuristic technology, AI, 2025, professional, high quality"
         logger.info(f"🎨 Генерация через FusionBrain: {english_prompt}")
         
         # Генерируем изображение
-        task_id = fb_api.generate(english_prompt, model_id, width=512, height=512)
+        task_id = fb_api.generate(english_prompt, width=512, height=512)
         if not task_id:
             logger.warning("⚠️ Не удалось создать задание FusionBrain")
             return None
