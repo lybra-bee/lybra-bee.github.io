@@ -21,10 +21,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Получаем корневую директорию репозитория
-REPO_ROOT = os.getcwd()
-logger.info(f"📁 Рабочая директория: {REPO_ROOT}")
-
 class FusionBrainAPI:
     def __init__(self, api_key, secret_key):
         self.URL = 'https://api-key.fusionbrain.ai/'
@@ -80,15 +76,12 @@ class FusionBrainAPI:
                 'pipeline_id': (None, pipeline_id)
             }
             
-            logger.debug(f"📤 Отправка запроса к FusionBrain API")
             response = requests.post(
                 self.URL + 'key/api/v1/pipeline/run',
                 headers=self.AUTH_HEADERS,
                 files=files,
                 timeout=30
             )
-            
-            logger.debug(f"📥 Ответ FusionBrain: {response.status_code}")
             
             # Код 201 - это УСПЕШНЫЙ ответ!
             if response.status_code in [200, 201]:
@@ -162,72 +155,45 @@ class FusionBrainAPI:
 def generate_article_prompt():
     """Генерируем промпт для статьи на основе трендов"""
     trends = [
-        "мультимодальный искусственный интеллект",
-        "автономные AI агенты", 
-        "квантовые вычисления и машинное обучение",
-        "нейроморфные вычисления",
-        "генеративный искусственный интеллект",
-        "периферийный искусственный интеллект (Edge AI)",
-        "искусственный интеллект для кибербезопасности",
-        "этичный искусственный интеллект",
-        "искусственный интеллект в здравоохранении",
-        "автономные транспортные системы",
-        "оптимизация AI моделей",
-        "доверенный искусственный интеллект", 
-        "искусственный интеллект для экологии",
-        "персональные AI ассистенты",
-        "искусственный интеллект в образовании"
+        "AI", "машинное обучение", "нейросети", "генеративный AI", 
+        "компьютерное зрение", "обработка естественного языка"
     ]
     
     domains = [
-        "веб разработка и cloud native приложения",
-        "мобильные приложения и IoT экосистемы",
-        "облачные сервисы и распределенные системы",
-        "анализ больших данных и бизнес аналитика",
-        "компьютерная безопасность и киберзащита",
-        "медицинская диагностика и биотехнологии",
-        "финансовые технологии и финтех",
-        "автономные транспортные системы",
-        "умные города и инфраструктура",
-        "образовательные технологии и EdTech"
+        "веб-разработка", "мобильные приложения", "облачные технологии",
+        "анализ данных", "кибербезопасность", "медицинские технологии"
     ]
     
     trend = random.choice(trends)
     domain = random.choice(domains)
     
-    prompt = f"""Проанализируй последние тренды в области искусственного интеллекта и высоких технологий и напиши развернутую статью на тему: "{trend} в {domain} в 2025 году".
+    prompt = f"""Напиши статью на тему "{trend} в {domain}" на русском языке.
 
-Требования к статье:
+Требования:
 - Формат: Markdown
-- Объем: 400-600 слов
-- Структура: заглавление, введение, основные разделы, заключение
-- Стиль: профессиональный, информативный
-- Контент: конкретные примеры, кейсы использования, практические применения
-- Фокус: инновации, тенденции 2025 года, перспективы развития
-
-Статья должна быть полезной для технических специалистов, разработчиков и IT-менеджеров."""
+- Объем: 300-500 слов
+- Структура: заголовок, введение, основной текст, заключение
+- Стиль: технический, информативный
+- Фокус: практическое применение и тренды 2024-2025 годов"""
     
-    return prompt, f"{trend} в {domain} в 2025 году"
+    return prompt, f"{trend} в {domain}"
 
 # ======== Очистка старых статей ========
 def clean_old_articles(keep_last=3):
+    """Очистка старых статей"""
     logger.info(f"🧹 Очистка старых статей, оставляем {keep_last} последних...")
-    content_dir = os.path.join(REPO_ROOT, "content")
-    if os.path.exists(content_dir):
-        posts_dir = os.path.join(content_dir, "posts")
-        if os.path.exists(posts_dir):
-            posts = sorted([f for f in os.listdir(posts_dir) if f.endswith('.md')], 
-                          reverse=True)
-            for post in posts[keep_last:]:
-                os.remove(os.path.join(posts_dir, post))
-                logger.info(f"🗑️ Удален старый пост: {post}")
-    else:
-        os.makedirs(os.path.join(content_dir, "posts"), exist_ok=True)
-        with open(os.path.join(content_dir, "_index.md"), "w", encoding="utf-8") as f:
-            f.write("---\ntitle: \"Главная\"\n---")
-        with open(os.path.join(content_dir, "posts", "_index.md"), "w", encoding="utf-8") as f:
-            f.write("---\ntitle: \"Статьи\"\n---")
-        logger.info("✅ Создана структура content")
+    
+    content_dir = "content"
+    posts_dir = os.path.join(content_dir, "posts")
+    
+    if os.path.exists(posts_dir):
+        posts = [f for f in os.listdir(posts_dir) if f.endswith('.md') and os.path.isfile(os.path.join(posts_dir, f))]
+        posts.sort(reverse=True)
+        
+        for post in posts[keep_last:]:
+            post_path = os.path.join(posts_dir, post)
+            os.remove(post_path)
+            logger.info(f"🗑️ Удален старый пост: {post}")
 
 # ======== Генерация статьи ========
 def generate_content():
@@ -254,49 +220,43 @@ def generate_content():
     
     date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     slug = generate_slug(title)
-    filename = os.path.join(REPO_ROOT, "content", "posts", f"{date}-{slug}.md")
+    filename = f"content/posts/{date}-{slug}.md"
     
     frontmatter = generate_frontmatter(title, content, model_used, image_filename)
     
-    os.makedirs(os.path.join(REPO_ROOT, "content", "posts"), exist_ok=True)
+    # Создаем директории если не существуют
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+    
     with open(filename, 'w', encoding='utf-8') as f:
         f.write(frontmatter)
     
-    # Проверяем, что файл создан
+    logger.info(f"✅ Статья создана: {filename}")
+    
+    # Проверяем что файл действительно создан
     if os.path.exists(filename):
-        logger.info(f"✅ Статья создана: {filename}")
-        
-        # Проверяем, что изображение существует
-        if image_filename and os.path.exists(image_filename):
-            logger.info(f"✅ Изображение найдено: {image_filename}")
-        else:
-            logger.warning(f"⚠️ Изображение не найдено: {image_filename}")
-            
-        return filename
+        logger.info(f"✅ Файл статьи существует: {os.path.abspath(filename)}")
     else:
-        logger.error(f"❌ Статья не была создана: {filename}")
-        return None
+        logger.error(f"❌ Файл статьи не создан: {filename}")
+    
+    return filename
 
 def extract_title_from_content(content, fallback_topic):
     """Извлекаем заголовок из сгенерированного контента"""
     try:
-        # Ищем первый заголовок Markdown (начинается с #)
         lines = content.split('\n')
         for line in lines:
             line = line.strip()
             if line.startswith('# ') and len(line) > 2:
-                # Убираем Markdown синтаксис
                 title = line.replace('# ', '').strip()
-                if 10 <= len(title) <= 100:  # Проверяем reasonable длину
+                if 5 <= len(title) <= 100:
                     return title
     except:
         pass
     
-    # Если не нашли заголовок, используем fallback
     return fallback_topic
 
 def check_environment_variables():
-    """Проверка только необходимых переменных окружения"""
+    """Проверка переменных окружения"""
     env_vars = {
         'GROQ_API_KEY': os.getenv('GROQ_API_KEY'),
         'FUSIONBRAIN_API_KEY': os.getenv('FUSIONBRAIN_API_KEY'),
@@ -341,28 +301,21 @@ def generate_article_content(prompt):
     return fallback, "fallback-generator"
 
 def generate_fallback_content(prompt):
-    """Fallback контент если все API не работают"""
-    sections = [
-        "# Тенденции искусственного интеллекта в 2025 году",
-        "",
-        "## Введение",
-        "Искусственный интеллект продолжает трансформировать различные отрасли и сферы деятельности. В 2025 году мы ожидаем значительные advancements в области AI технологий.",
-        "",
-        "## Основные тенденции",
-        "- Автоматизация сложных процессов",
-        "- Интеграция AI в повседневные workflow",
-        "- Улучшение качества и скорости обработки данных",
-        "- Развитие мультимодальных моделей",
-        "",
-        "## Практическое применение",
-        "Компании внедряют AI решения для оптимизации бизнес-процессов и создания инновационных продуктов.",
-        "",
-        "## Заключение",
-        "Будущее выглядит многообещающе с развитием искусственного интеллекта и машинного обучения.",
-        "",
-        "*Статья сгенерирована автоматически*"
-    ]
-    return "\n".join(sections)
+    """Fallback контент"""
+    return f"""# {prompt.split('"')[1] if '"' in prompt else "AI и технологии"}
+
+## Введение
+Искусственный интеллект продолжает развиваться быстрыми темпами, предлагая новые возможности для различных отраслей.
+
+## Основные направления
+- Автоматизация процессов
+- Улучшение пользовательского опыта
+- Оптимизация бизнес-процессов
+
+## Заключение
+Будущее выглядит многообещающе с развитием AI технологий.
+
+*Статья сгенерирована автоматически*"""
 
 def generate_with_groq(api_key, model_name, prompt):
     resp = requests.post(
@@ -371,9 +324,8 @@ def generate_with_groq(api_key, model_name, prompt):
         json={
             "model": model_name, 
             "messages":[{"role":"user","content":prompt}], 
-            "max_tokens": 2000,
-            "temperature": 0.7,
-            "top_p": 0.9
+            "max_tokens": 1500,
+            "temperature": 0.7
         },
         timeout=30
     )
@@ -386,16 +338,10 @@ def generate_with_groq(api_key, model_name, prompt):
 
 # ======== Генерация изображений ========
 def generate_article_image(title):
-    """Генерация изображения на основе заголовка статьи"""
+    """Генерация изображения"""
     logger.info(f"🎨 Генерация изображения для: {title}")
     
-    # Пробуем разные методы в порядке приоритета
-    methods = [
-        try_fusionbrain_api,
-        try_craiyon_api,
-        try_lexica_art_api,
-        generate_enhanced_placeholder
-    ]
+    methods = [try_fusionbrain_api, generate_enhanced_placeholder]
     
     for method in methods:
         try:
@@ -411,7 +357,7 @@ def generate_article_image(title):
     return generate_enhanced_placeholder(title)
 
 def try_fusionbrain_api(title):
-    """FusionBrain API с правильной реализацией"""
+    """FusionBrain API"""
     api_key = os.getenv('FUSIONBRAIN_API_KEY')
     secret_key = os.getenv('FUSION_SECRET_KEY')
     
@@ -422,168 +368,60 @@ def try_fusionbrain_api(title):
     try:
         fb_api = FusionBrainAPI(api_key, secret_key)
         
-        # Создаем промпт на английском для лучшего качества
-        english_prompt = f"trusted artificial intelligence in mobile applications IoT ecosystems 2025, digital art, futuristic technology, professional, high quality"
+        english_prompt = f"{title}, digital art, technology, futuristic, professional"
         logger.info(f"🎨 Генерация через FusionBrain: {english_prompt}")
         
-        # Генерируем изображение
         task_id = fb_api.generate(english_prompt, width=512, height=512)
         
         if task_id:
-            logger.info(f"✅ Задача FusionBrain создана, task_id: {task_id}")
-            logger.info(f"⏳ Ожидание генерации FusionBrain...")
+            logger.info(f"✅ Задача создана, task_id: {task_id}")
             
-            # Проверяем статус с большим количеством попыток
-            image_base64 = fb_api.check_status(task_id, attempts=30, delay=6)
+            image_base64 = fb_api.check_status(task_id, attempts=20, delay=5)
             if image_base64:
-                logger.info(f"✅ Получено изображение в base64, длина: {len(image_base64)} символов")
-                try:
-                    image_data = base64.b64decode(image_base64)
-                    logger.info(f"✅ Декодировано изображение, размер: {len(image_data)} байт")
-                    return save_image_bytes(image_data, title)
-                except Exception as e:
-                    logger.error(f"❌ Ошибка декодирования base64: {e}")
-                    return None
-            else:
-                logger.warning("⚠️ Генерация FusionBrain не завершилась успешно")
-        else:
-            logger.warning("⚠️ Не удалось создать задание FusionBrain")
+                logger.info(f"✅ Получено изображение")
+                image_data = base64.b64decode(image_base64)
+                return save_image_bytes(image_data, title)
+        return None
             
     except Exception as e:
         logger.error(f"❌ Ошибка FusionBrain: {e}")
-    
-    return None
-
-def try_craiyon_api(title):
-    """Craiyon API - старая стабильная версия"""
-    try:
-        english_prompt = f"{title}, digital art, futuristic technology, AI, 2025, professional"
-        logger.info(f"🎨 Генерация через Craiyon: {english_prompt}")
-        
-        response = requests.post(
-            "https://api.craiyon.com/generate",
-            json={"prompt": english_prompt},
-            timeout=60
-        )
-        
-        if response.status_code == 200:
-            data = response.json()
-            if data.get("images") and len(data["images"]) > 0:
-                image_data = base64.b64decode(data["images"][0])
-                return save_image_bytes(image_data, title)
-            else:
-                logger.warning("⚠️ Craiyon не вернул изображения")
-        else:
-            logger.warning(f"⚠️ Ошибка Craiyon API: {response.status_code}")
-            
-    except Exception as e:
-        logger.error(f"❌ Ошибка Craiyon: {e}")
-    
-    return None
-
-def try_lexica_art_api(title):
-    """Lexica Art API - поиск существующих AI изображений"""
-    try:
-        prompt = f"{title}, digital art, futuristic"
-        
-        search_response = requests.get(
-            f"https://lexica.art/api/v1/search?q={requests.utils.quote(prompt)}",
-            timeout=20
-        )
-        
-        if search_response.status_code == 200:
-            data = search_response.json()
-            if data.get('images') and len(data['images']) > 0:
-                image_url = data['images'][0]['src']
-                img_data = requests.get(image_url, timeout=30).content
-                return save_image_bytes(img_data, title)
-                
-    except Exception as e:
-        logger.error(f"❌ Ошибка Lexica Art: {e}")
-    
-    return None
+        return None
 
 def save_image_bytes(image_data, title):
-    """Сохранение изображения из bytes"""
+    """Сохранение изображения"""
     try:
-        # Создаем папку если не существует
-        assets_dir = os.path.join(REPO_ROOT, "assets", "images", "posts")
-        os.makedirs(assets_dir, exist_ok=True)
+        os.makedirs("assets/images/posts", exist_ok=True)
+        filename = f"assets/images/posts/{generate_slug(title)}.png"
         
-        slug = generate_slug(title)
-        filename = os.path.join(assets_dir, f"{slug}.png")
-        
-        # Сохраняем изображение
         with open(filename, "wb") as f:
             f.write(image_data)
         
-        # Проверяем, что файл действительно создан
         if os.path.exists(filename):
-            file_size = os.path.getsize(filename)
-            logger.info(f"💾 Изображение сохранено: {filename} (размер: {file_size} байт)")
-            
-            # Логируем абсолютный путь для отладки
-            abs_path = os.path.abspath(filename)
-            logger.info(f"📁 Абсолютный путь к изображению: {abs_path}")
-            
+            logger.info(f"💾 Изображение сохранено: {filename}")
             return filename
-        else:
-            logger.error(f"❌ Файл не был создан: {filename}")
-            return None
+        return None
             
     except Exception as e:
-        logger.error(f"❌ Ошибка сохранения изображения: {e}")
+        logger.error(f"❌ Ошибка сохранения: {e}")
         return None
 
 def generate_enhanced_placeholder(title):
-    """Улучшенный placeholder с AI-стилем"""
+    """Создание placeholder"""
     try:
-        assets_dir = os.path.join(REPO_ROOT, "assets", "images", "posts")
-        os.makedirs(assets_dir, exist_ok=True)
+        os.makedirs("assets/images/posts", exist_ok=True)
+        filename = f"assets/images/posts/{generate_slug(title)}.png"
         
-        slug = generate_slug(title)
-        filename = os.path.join(assets_dir, f"{slug}.png")
-        width, height = 800, 400
-        
-        img = Image.new('RGB', (width, height), color='#0f172a')
+        img = Image.new('RGB', (800, 400), color='#1a365d')
         draw = ImageDraw.Draw(img)
         
-        # Градиентный фон
-        for i in range(height):
-            r = int(15 + (i/height)*40)
-            g = int(23 + (i/height)*60)
-            b = int(42 + (i/height)*100)
-            draw.line([(0, i), (width, i)], fill=(r, g, b))
-        
-        # Сетка
-        for i in range(0, width, 40):
-            draw.line([(i, 0), (i, height)], fill=(255, 255, 255, 25))
-        for i in range(0, height, 40):
-            draw.line([(0, i), (width, i)], fill=(255, 255, 255, 25))
-        
-        # Текст
-        wrapped_text = textwrap.fill(title, width=35)
-        
+        # Простой текст
         try:
-            font = ImageFont.truetype("Arial.ttf", 22)
+            font = ImageFont.load_default()
         except:
-            try:
-                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 20)
-            except:
-                font = ImageFont.load_default()
+            font = None
         
-        bbox = draw.textbbox((0, 0), wrapped_text, font=font)
-        text_width = bbox[2] - bbox[0]
-        text_height = bbox[3] - bbox[1]
-        
-        x = (width - text_width) / 2
-        y = (height - text_height) / 2
-        
-        draw.text((x+3, y+3), wrapped_text, font=font, fill="#000000")
-        draw.text((x, y), wrapped_text, font=font, fill="#ffffff")
-        
-        draw.rectangle([(10, height-35), (120, height-10)], fill="#6366f1")
-        draw.text((15, height-30), "AI GENERATED", font=ImageFont.load_default(), fill="#ffffff")
+        text = f"{title}\nAI Generated"
+        draw.text((50, 150), text, fill="white", font=font)
         
         img.save(filename)
         logger.info(f"🎨 Создан placeholder: {filename}")
@@ -591,35 +429,28 @@ def generate_enhanced_placeholder(title):
         
     except Exception as e:
         logger.error(f"❌ Ошибка создания placeholder: {e}")
-        return os.path.join(REPO_ROOT, "assets", "images", "default.png")
+        return None
 
 # ======== Вспомогательные функции ========
 def generate_slug(text):
     text = text.lower()
+    text = re.sub(r'[^a-z0-9а-яё\s]', '', text)
     text = text.replace(' ', '-')
-    text = re.sub(r'[^a-z0-9\-]', '', text)
     text = re.sub(r'-+', '-', text)
-    return text[:60]
+    return text[:50]
 
 def generate_frontmatter(title, content, model_used, image_url):
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    escaped_title = title.replace(':', ' -').replace('"', "'")
-    
-    # Используем относительный путь для изображения
-    if image_url and image_url.startswith(REPO_ROOT):
-        relative_image_url = os.path.relpath(image_url, REPO_ROOT)
-    else:
-        relative_image_url = image_url
     
     frontmatter = f"""---
-title: "{escaped_title}"
+title: "{title.replace('"', "'")}"
 date: {now}
 draft: false
-image: "{relative_image_url}"
+image: "{image_url}"
 ai_model: "{model_used}"
-tags: ["ai", "технологии", "2025"]
+tags: ["ai", "технологии"]
 categories: ["Искусственный интеллект"]
-summary: "Автоматически сгенерированная статья о тенденциях AI в 2025 году"
+summary: "Автоматически сгенерированная статья"
 ---
 
 {content}
@@ -629,37 +460,25 @@ summary: "Автоматически сгенерированная статья
 # ======== Запуск ========
 def main():
     parser = argparse.ArgumentParser(description='Генератор AI контента')
-    parser.add_argument('--debug', action='store_true', help='Включить debug режим')
-    parser.add_argument('--count', type=int, default=1, help='Количество статей для генерации')
+    parser.add_argument('--count', type=int, default=1, help='Количество статей')
     args = parser.parse_args()
     
-    if args.debug:
-        logging.getLogger().setLevel(logging.DEBUG)
-        logger.info("🔧 Debug режим включен")
-    
     print("🚀 Запуск генератора контента...")
-    print("=" * 50)
-    
-    check_environment_variables()
-    print("=" * 50)
     
     try:
         for i in range(args.count):
             print(f"\n📄 Генерация статьи {i+1}/{args.count}...")
             filename = generate_content()
             
-            if filename:
+            if filename and os.path.exists(filename):
                 print(f"✅ Статья создана: {filename}")
             else:
-                print(f"❌ Статья не была создана")
-            
-            if i < args.count - 1:
-                time.sleep(2)
+                print("❌ Ошибка создания статьи")
                 
-        print("\n🎉 Все статьи успешно сгенерированы!")
+        print("\n🎉 Генерация завершена!")
         
     except Exception as e:
-        print(f"💥 Критическая ошибка: {e}")
+        print(f"💥 Ошибка: {e}")
         import traceback
         traceback.print_exc()
 
