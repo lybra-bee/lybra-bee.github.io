@@ -97,7 +97,7 @@ def generate_content():
     topic = generate_ai_trend_topic()
     logger.info(f"📝 Тема статьи: {topic}")
     
-    # Генерируем изображение (только бесплатные методы)
+    # Генерируем изображение через Craiyon
     image_filename = generate_article_image(topic)
     content, model_used = generate_article_content(topic)
     
@@ -252,103 +252,63 @@ def generate_with_openrouter(api_key, model_name, topic):
     else:
         raise Exception(f"OpenRouter API error {resp.status_code}: {resp.text}")
 
-# ======== Генерация изображений ========
+# ======== Генерация изображений через Craiyon ========
 def generate_article_image(topic):
-    """Генерация изображения через бесплатные API"""
+    """Генерация изображения через Craiyon API"""
     logger.info(f"🎨 Генерация изображения для: {topic}")
     
-    # Только бесплатные методы (Replicate убран)
-    methods = [
-        try_lexica_art_api,
-        try_craiyon_api,
-        try_deepai_api,
-        generate_enhanced_placeholder
-    ]
+    # Пробуем Craiyon
+    try:
+        logger.info("🔄 Пробуем метод: try_craiyon_api")
+        result = try_craiyon_api(topic)
+        if result:
+            logger.info("✅ Изображение создано через try_craiyon_api")
+            return result
+    except Exception as e:
+        logger.error(f"❌ Ошибка в try_craiyon_api: {e}")
     
-    for method in methods:
-        try:
-            logger.info(f"🔄 Пробуем метод: {method.__name__}")
-            result = method(topic)
-            if result:
-                logger.info(f"✅ Изображение создано через {method.__name__}")
-                return result
-        except Exception as e:
-            logger.error(f"❌ Ошибка в {method.__name__}: {e}")
-            continue
-    
+    # Fallback на placeholder
     return generate_enhanced_placeholder(topic)
 
-def try_lexica_art_api(topic):
-    """Lexica Art API - бесплатный поиск изображений"""
-    try:
-        prompt = f"{topic}, digital art, futuristic"
-        
-        search_response = requests.get(
-            f"https://lexica.art/api/v1/search?q={requests.utils.quote(prompt)}",
-            timeout=20
-        )
-        
-        if search_response.status_code == 200:
-            data = search_response.json()
-            if data.get('images') and len(data['images']) > 0:
-                image_url = data['images'][0]['src']
-                img_data = requests.get(image_url, timeout=30).content
-                return save_image_bytes(img_data, topic)
-                
-    except Exception as e:
-        logger.error(f"❌ Ошибка Lexica Art: {e}")
-    
-    return None
-
 def try_craiyon_api(topic):
-    """Craiyon API - бесплатная генерация"""
+    """Craiyon API v3 - правильная реализация"""
     try:
-        prompt = f"{topic}, digital art, futuristic"
+        # Создаем английский промпт для лучшего качества
+        english_prompt = f"{topic}, digital art, futuristic technology, AI, 2025, professional"
         
+        logger.info(f"🎨 Генерация через Craiyon: {english_prompt}")
+        
+        # Используем официальный v3 API
         response = requests.post(
-            "https://api.craiyon.com/generate",
-            json={"prompt": prompt},
-            timeout=60
+            "https://api.craiyon.com/v3",
+            json={
+                "prompt": english_prompt,
+                "negative_prompt": "blurry, low quality, distorted",
+                "model": "art",  # Лучшее качество
+                "version": "35s5hfwn9n78gb06",
+                "width": 512,
+                "height": 512
+            },
+            timeout=120  # Увеличиваем таймаут для генерации
         )
         
         if response.status_code == 200:
             data = response.json()
-            if data.get("images"):
+            
+            if data.get("images") and len(data["images"]) > 0:
+                # Берем первое изображение из 9 сгенерированных
                 image_data = base64.b64decode(data["images"][0])
                 return save_image_bytes(image_data, topic)
+            else:
+                logger.warning("⚠️ Craiyon не вернул изображения")
                 
+        else:
+            logger.warning(f"⚠️ Ошибка Craiyon API: {response.status_code}")
+            
+    except requests.exceptions.Timeout:
+        logger.warning("⏰ Таймаут Craiyon API - сервер перегружен")
     except Exception as e:
         logger.error(f"❌ Ошибка Craiyon: {e}")
-    
-    return None
-
-def try_deepai_api(topic):
-    """DeepAI API - бесплатный с публичными ключами"""
-    try:
-        prompt = f"{topic}, digital art, futuristic style"
-        
-        api_keys = ['quickstart-credential', 'demo-key', 'test-key']
-        
-        for api_key in api_keys:
-            try:
-                response = requests.post(
-                    "https://api.deepai.org/api/text2img",
-                    headers={'api-key': api_key},
-                    data={'text': prompt},
-                    timeout=25
-                )
-                
-                if response.status_code == 200:
-                    data = response.json()
-                    if data.get('output_url'):
-                        img_data = requests.get(data['output_url'], timeout=30).content
-                        return save_image_bytes(img_data, topic)
-                        
-            except:
-                continue
-                
-    except Exception as e:
-        logger.error(f"❌ Ошибка DeepAI: {e}")
     
     return None
 
