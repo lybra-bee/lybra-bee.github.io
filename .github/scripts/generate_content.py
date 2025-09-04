@@ -85,7 +85,13 @@ class FusionBrainAPI:
             
             if response.status_code == 200:
                 data = response.json()
-                return data.get('uuid')
+                # Статус 201 и INITIAL - это нормальный ответ при успешном создании задачи
+                if data.get('status') == 'INITIAL' and data.get('uuid'):
+                    logger.info(f"✅ Задача FusionBrain создана: {data['uuid']}")
+                    return data['uuid']
+                else:
+                    logger.warning(f"⚠️ Неожиданный ответ FusionBrain: {data}")
+                    return None
             else:
                 logger.warning(f"⚠️ Ошибка генерации FusionBrain: {response.status_code} - {response.text}")
                 return None
@@ -94,11 +100,13 @@ class FusionBrainAPI:
             logger.error(f"❌ Ошибка генерации FusionBrain: {e}")
             return None
     
-    def check_status(self, task_id, attempts=15, delay=4):
+    def check_status(self, task_id, attempts=20, delay=5):
         """Проверка статуса генерации"""
         try:
             for attempt in range(attempts):
+                logger.info(f"⏳ Проверка статуса FusionBrain (попытка {attempt + 1}/{attempts})")
                 time.sleep(delay)
+                
                 response = requests.get(
                     self.URL + f'key/api/v1/pipeline/status/{task_id}',
                     headers=self.AUTH_HEADERS,
@@ -113,6 +121,7 @@ class FusionBrainAPI:
                         result = data.get('result', {})
                         images = result.get('files', [])
                         if images:
+                            logger.info("✅ Генерация FusionBrain завершена успешно")
                             return images[0]  # Возвращаем первое изображение в base64
                         else:
                             logger.warning("⚠️ Нет изображений в ответе")
@@ -122,7 +131,9 @@ class FusionBrainAPI:
                         logger.warning(f"⚠️ Генерация FusionBrain не удалась: {error_msg}")
                         return None
                     elif status in ['INITIAL', 'PROCESSING']:
-                        logger.info(f"⏳ Статус FusionBrain: {status} (попытка {attempt + 1}/{attempts})")
+                        logger.info(f"⏳ Статус FusionBrain: {status}")
+                        # Продолжаем ждать
+                        continue
                     else:
                         logger.warning(f"⚠️ Неизвестный статус FusionBrain: {status}")
                         return None
@@ -398,8 +409,9 @@ def try_fusionbrain_api(title):
             logger.warning("⚠️ Не удалось создать задание FusionBrain")
             return None
         
+        logger.info(f"⏳ Ожидание генерации FusionBrain, task_id: {task_id}")
         # Проверяем статус
-        image_base64 = fb_api.check_status(task_id, attempts=15, delay=4)
+        image_base64 = fb_api.check_status(task_id, attempts=20, delay=5)
         if image_base64:
             image_data = base64.b64decode(image_base64)
             return save_image_bytes(image_data, title)
