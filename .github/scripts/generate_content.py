@@ -485,9 +485,11 @@ def save_image_bytes(image_data, title):
     """Сохранение изображения из bytes"""
     try:
         # Создаем папку если не существует
-        os.makedirs("assets/images/posts", exist_ok=True)
+        assets_dir = "assets/images/posts"
+        os.makedirs(assets_dir, exist_ok=True)
+        
         slug = generate_slug(title)
-        filename = f"assets/images/posts/{slug}.png"
+        filename = f"{assets_dir}/{slug}.png"
         
         # Сохраняем изображение
         with open(filename, "wb") as f:
@@ -497,7 +499,9 @@ def save_image_bytes(image_data, title):
         if os.path.exists(filename):
             file_size = os.path.getsize(filename)
             logger.info(f"💾 Изображение сохранено: {filename} (размер: {file_size} байт)")
-            return filename
+            
+            # Возвращаем ОТНОСИТЕЛЬНЫЙ путь для Hugo
+            return f"/{filename}"  # Добавляем / в начале
         else:
             logger.error(f"❌ Файл не был создан: {filename}")
             return None
