@@ -21,6 +21,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Получаем корневую директорию репозитория
+REPO_ROOT = os.getcwd()
+logger.info(f"📁 Рабочая директория: {REPO_ROOT}")
+
 class FusionBrainAPI:
     def __init__(self, api_key, secret_key):
         self.URL = 'https://api-key.fusionbrain.ai/'
@@ -208,7 +212,7 @@ def generate_article_prompt():
 # ======== Очистка старых статей ========
 def clean_old_articles(keep_last=3):
     logger.info(f"🧹 Очистка старых статей, оставляем {keep_last} последних...")
-    content_dir = "content"
+    content_dir = os.path.join(REPO_ROOT, "content")
     if os.path.exists(content_dir):
         posts_dir = os.path.join(content_dir, "posts")
         if os.path.exists(posts_dir):
@@ -218,10 +222,10 @@ def clean_old_articles(keep_last=3):
                 os.remove(os.path.join(posts_dir, post))
                 logger.info(f"🗑️ Удален старый пост: {post}")
     else:
-        os.makedirs("content/posts", exist_ok=True)
-        with open("content/_index.md", "w", encoding="utf-8") as f:
+        os.makedirs(os.path.join(content_dir, "posts"), exist_ok=True)
+        with open(os.path.join(content_dir, "_index.md"), "w", encoding="utf-8") as f:
             f.write("---\ntitle: \"Главная\"\n---")
-        with open("content/posts/_index.md", "w", encoding="utf-8") as f:
+        with open(os.path.join(content_dir, "posts", "_index.md"), "w", encoding="utf-8") as f:
             f.write("---\ntitle: \"Статьи\"\n---")
         logger.info("✅ Создана структура content")
 
@@ -250,11 +254,11 @@ def generate_content():
     
     date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     slug = generate_slug(title)
-    filename = f"content/posts/{date}-{slug}.md"
+    filename = os.path.join(REPO_ROOT, "content", "posts", f"{date}-{slug}.md")
     
     frontmatter = generate_frontmatter(title, content, model_used, image_filename)
     
-    os.makedirs("content/posts", exist_ok=True)
+    os.makedirs(os.path.join(REPO_ROOT, "content", "posts"), exist_ok=True)
     with open(filename, 'w', encoding='utf-8') as f:
         f.write(frontmatter)
     
@@ -304,7 +308,7 @@ def check_environment_variables():
         status = "✅ установлен" if var_value else "❌ отсутствует"
         logger.info(f"   {var_name}: {status}")
 
-# ======== Генeration текста через Groq ========
+# ======== Генерация текста через Groq ========
 def generate_article_content(prompt):
     groq_key = os.getenv('GROQ_API_KEY')
     
@@ -419,7 +423,7 @@ def try_fusionbrain_api(title):
         fb_api = FusionBrainAPI(api_key, secret_key)
         
         # Создаем промпт на английском для лучшего качества
-        english_prompt = f"artificial intelligence in education big data analysis business analytics 2025, digital art, futuristic technology, professional, high quality"
+        english_prompt = f"trusted artificial intelligence in mobile applications IoT ecosystems 2025, digital art, futuristic technology, professional, high quality"
         logger.info(f"🎨 Генерация через FusionBrain: {english_prompt}")
         
         # Генерируем изображение
@@ -503,9 +507,11 @@ def save_image_bytes(image_data, title):
     """Сохранение изображения из bytes"""
     try:
         # Создаем папку если не существует
-        os.makedirs("assets/images/posts", exist_ok=True)
+        assets_dir = os.path.join(REPO_ROOT, "assets", "images", "posts")
+        os.makedirs(assets_dir, exist_ok=True)
+        
         slug = generate_slug(title)
-        filename = f"assets/images/posts/{slug}.png"
+        filename = os.path.join(assets_dir, f"{slug}.png")
         
         # Сохраняем изображение
         with open(filename, "wb") as f:
@@ -515,6 +521,11 @@ def save_image_bytes(image_data, title):
         if os.path.exists(filename):
             file_size = os.path.getsize(filename)
             logger.info(f"💾 Изображение сохранено: {filename} (размер: {file_size} байт)")
+            
+            # Логируем абсолютный путь для отладки
+            abs_path = os.path.abspath(filename)
+            logger.info(f"📁 Абсолютный путь к изображению: {abs_path}")
+            
             return filename
         else:
             logger.error(f"❌ Файл не был создан: {filename}")
@@ -527,9 +538,11 @@ def save_image_bytes(image_data, title):
 def generate_enhanced_placeholder(title):
     """Улучшенный placeholder с AI-стилем"""
     try:
-        os.makedirs("assets/images/posts", exist_ok=True)
+        assets_dir = os.path.join(REPO_ROOT, "assets", "images", "posts")
+        os.makedirs(assets_dir, exist_ok=True)
+        
         slug = generate_slug(title)
-        filename = f"assets/images/posts/{slug}.png"
+        filename = os.path.join(assets_dir, f"{slug}.png")
         width, height = 800, 400
         
         img = Image.new('RGB', (width, height), color='#0f172a')
@@ -578,7 +591,7 @@ def generate_enhanced_placeholder(title):
         
     except Exception as e:
         logger.error(f"❌ Ошибка создания placeholder: {e}")
-        return "assets/images/default.png"
+        return os.path.join(REPO_ROOT, "assets", "images", "default.png")
 
 # ======== Вспомогательные функции ========
 def generate_slug(text):
@@ -592,11 +605,17 @@ def generate_frontmatter(title, content, model_used, image_url):
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     escaped_title = title.replace(':', ' -').replace('"', "'")
     
+    # Используем относительный путь для изображения
+    if image_url and image_url.startswith(REPO_ROOT):
+        relative_image_url = os.path.relpath(image_url, REPO_ROOT)
+    else:
+        relative_image_url = image_url
+    
     frontmatter = f"""---
 title: "{escaped_title}"
 date: {now}
 draft: false
-image: "{image_url}"
+image: "{relative_image_url}"
 ai_model: "{model_used}"
 tags: ["ai", "технологии", "2025"]
 categories: ["Искусственный интеллект"]
