@@ -21,28 +21,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# ДЕЙСТВИТЕЛЬНО бесплатные и работающие модели
-REPLICATE_FREE_MODELS = [
-    {
-        "name": "Stable Diffusion v1.5",
-        "id": "stability-ai/stable-diffusion",
-        "version": "ac732df83cea7fff18b8472768c88ad041fa750ff7682a21affe81863cbe77e4",
-        "prompt_template": "{topic}, digital art, futuristic, professional"
-    },
-    {
-        "name": "OpenJourney", 
-        "id": "prompthero/openjourney",
-        "version": "9936c2001faa2194a261c01381f90e65261879985476014a0a37a334593a05eb",
-        "prompt_template": "{topic}, artistic, creative, vibrant colors"
-    },
-    {
-        "name": "Karlo",
-        "id": "kakaobrain/karlo", 
-        "version": "3b0c37666b154c12dba8b6f78b0b853c6bb9d95c6b4b2c2d5c8d2e5e8c2d5c8d",
-        "prompt_template": "{topic}, creative, digital art, modern design"
-    }
-]
-
 # ======== Генерация темы ========
 def generate_ai_trend_topic():
     current_trends_2025 = [
@@ -119,7 +97,7 @@ def generate_content():
     topic = generate_ai_trend_topic()
     logger.info(f"📝 Тема статьи: {topic}")
     
-    # Генерируем изображение (пробуем разные методы)
+    # Генерируем изображение (только бесплатные методы)
     image_filename = generate_article_image(topic)
     content, model_used = generate_article_content(topic)
     
@@ -276,12 +254,11 @@ def generate_with_openrouter(api_key, model_name, topic):
 
 # ======== Генерация изображений ========
 def generate_article_image(topic):
-    """Генерация изображения через различные API"""
+    """Генерация изображения через бесплатные API"""
     logger.info(f"🎨 Генерация изображения для: {topic}")
     
-    # Пробуем разные методы в порядке приоритета
+    # Только бесплатные методы (Replicate убран)
     methods = [
-        try_replicate_models,
         try_lexica_art_api,
         try_craiyon_api,
         try_deepai_api,
@@ -300,82 +277,6 @@ def generate_article_image(topic):
             continue
     
     return generate_enhanced_placeholder(topic)
-
-def try_replicate_models(topic):
-    """Используем действительно бесплатные модели Replicate"""
-    REPLICATE_TOKEN = os.getenv('REPLICATE_API_TOKEN')
-    if not REPLICATE_TOKEN:
-        logger.warning("⚠️ Replicate токен не найден")
-        return None
-    
-    # Перемешиваем модели для разнообразия
-    random.shuffle(REPLICATE_FREE_MODELS)
-    
-    for model_info in REPLICATE_FREE_MODELS:
-        try:
-            logger.info(f"🔄 Пробуем модель: {model_info['name']}")
-            
-            prompt = model_info['prompt_template'].format(topic=topic)
-            
-            response = requests.post(
-                "https://api.replicate.com/v1/predictions",
-                headers={
-                    "Authorization": f"Bearer {REPLICATE_TOKEN}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "version": model_info["version"],
-                    "input": {
-                        "prompt": prompt,
-                        "width": 512,
-                        "height": 512,
-                        "num_outputs": 1,
-                        "num_inference_steps": 20
-                    }
-                },
-                timeout=30
-            )
-            
-            if response.status_code == 200:
-                prediction_id = response.json()['id']
-                logger.info(f"✅ Предсказание создано: {prediction_id}")
-                
-                # Ждем завершения генерации
-                for attempt in range(6):  # Уменьшим количество попыток
-                    time.sleep(3)
-                    status_response = requests.get(
-                        f"https://api.replicate.com/v1/predictions/{prediction_id}",
-                        headers={"Authorization": f"Bearer {REPLICATE_TOKEN}"},
-                        timeout=15
-                    )
-                    
-                    if status_response.status_code == 200:
-                        status_data = status_response.json()
-                        status = status_data.get('status', '')
-                        
-                        if status == 'succeeded':
-                            image_url = status_data['output'][0]
-                            logger.info(f"✅ Изображение готово: {image_url}")
-                            img_data = requests.get(image_url, timeout=30).content
-                            return save_image_bytes(img_data, topic)
-                        elif status == 'failed':
-                            error_msg = status_data.get('error', 'Unknown error')
-                            logger.warning(f"⚠️ Генерация не удалась: {error_msg}")
-                            break
-                        else:
-                            logger.info(f"⏳ Статус: {status} (попытка {attempt + 1})")
-                    else:
-                        logger.warning(f"⚠️ Ошибка статуса: {status_response.status_code}")
-                        break
-            else:
-                logger.warning(f"⚠️ Ошибка API: {response.status_code} - {response.text}")
-                continue
-                
-        except Exception as e:
-            logger.error(f"❌ Ошибка модели {model_info['name']}: {e}")
-            continue
-    
-    return None
 
 def try_lexica_art_api(topic):
     """Lexica Art API - бесплатный поиск изображений"""
@@ -400,7 +301,7 @@ def try_lexica_art_api(topic):
     return None
 
 def try_craiyon_api(topic):
-    """Craiyon API"""
+    """Craiyon API - бесплатная генерация"""
     try:
         prompt = f"{topic}, digital art, futuristic"
         
@@ -422,7 +323,7 @@ def try_craiyon_api(topic):
     return None
 
 def try_deepai_api(topic):
-    """DeepAI API"""
+    """DeepAI API - бесплатный с публичными ключами"""
     try:
         prompt = f"{topic}, digital art, futuristic style"
         
@@ -467,12 +368,13 @@ def save_image_bytes(image_data, topic):
         return None
 
 def generate_enhanced_placeholder(topic):
-    """Улучшенный placeholder"""
+    """Улучшенный placeholder с AI-стилем"""
     try:
         os.makedirs("assets/images/posts", exist_ok=True)
         filename = f"assets/images/posts/{generate_slug(topic)}.png"
         width, height = 800, 400
         
+        # Создаем футуристический фон
         img = Image.new('RGB', (width, height), color='#0f172a')
         draw = ImageDraw.Draw(img)
         
@@ -507,9 +409,12 @@ def generate_enhanced_placeholder(topic):
         x = (width - text_width) / 2
         y = (height - text_height) / 2
         
+        # Тень текста
         draw.text((x+3, y+3), wrapped_text, font=font, fill="#000000")
+        # Основной текст
         draw.text((x, y), wrapped_text, font=font, fill="#ffffff")
         
+        # AI badge
         draw.rectangle([(10, height-35), (120, height-10)], fill="#6366f1")
         draw.text((15, height-30), "AI GENERATED", font=ImageFont.load_default(), fill="#ffffff")
         
