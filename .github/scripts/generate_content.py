@@ -76,12 +76,15 @@ class FusionBrainAPI:
                 'pipeline_id': (None, pipeline_id)
             }
             
+            logger.debug(f"📤 Отправка запроса к FusionBrain API")
             response = requests.post(
                 self.URL + 'key/api/v1/pipeline/run',
                 headers=self.AUTH_HEADERS,
                 files=files,
                 timeout=30
             )
+            
+            logger.debug(f"📥 Ответ FusionBrain: {response.status_code}, {response.text}")
             
             # Код 201 - это УСПЕШНЫЙ ответ!
             if response.status_code in [200, 201]:
@@ -168,7 +171,7 @@ def generate_article_prompt():
         "оптимизация AI моделей",
         "доверенный искусственный интеллект", 
         "искусственный интеллект для экологии",
-        "персональные AI ассистенты",
+        "персonalные AI ассистенты",
         "искусственный интеллект в образовании"
     ]
     
@@ -409,18 +412,21 @@ def try_fusionbrain_api(title):
         
         # Генерируем изображение
         task_id = fb_api.generate(english_prompt, width=512, height=512)
-        if not task_id:
-            logger.warning("⚠️ Не удалось создать задание FusionBrain")
-            return None
         
-        logger.info(f"⏳ Ожидание генерации FusionBrain, task_id: {task_id}")
-        # Проверяем статус с большим количеством попыток
-        image_base64 = fb_api.check_status(task_id, attempts=30, delay=6)
-        if image_base64:
-            image_data = base64.b64decode(image_base64)
-            return save_image_bytes(image_data, title)
+        # ОБРАТИТЕ ВНИМАНИЕ: ответ с кодом 201 и UUID - это УСПЕХ!
+        if task_id:
+            logger.info(f"✅ Задача FusionBrain создана, task_id: {task_id}")
+            logger.info(f"⏳ Ожидание генерации FusionBrain...")
+            
+            # Проверяем статус с большим количеством попыток
+            image_base64 = fb_api.check_status(task_id, attempts=30, delay=6)
+            if image_base64:
+                image_data = base64.b64decode(image_base64)
+                return save_image_bytes(image_data, title)
+            else:
+                logger.warning("⚠️ Генерация FusionBrain не завершилась успешно")
         else:
-            logger.warning("⚠️ Генерация FusionBrain не завершилась успешно")
+            logger.warning("⚠️ Не удалось создать задание FusionBrain")
             
     except Exception as e:
         logger.error(f"❌ Ошибка FusionBrain: {e}")
