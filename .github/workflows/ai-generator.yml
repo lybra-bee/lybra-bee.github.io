@@ -1,71 +1,41 @@
-name: AI Content Generator
+name: Generate AI Content
 
 on:
   workflow_dispatch:
-    inputs:
-      article_count:
-        description: 'Number of articles to generate'
-        required: true
-        default: '1'
-        type: choice
-        options:
-        - '1'
-        - '2'
-        - '3'
   schedule:
-    - cron: '0 8 * * *'  # Каждый день в 8:00 UTC
-
-permissions:
-  contents: write
+    - cron: '0 8 * * *'  # Ежедневно в 8:00 UTC
 
 jobs:
   generate-content:
     runs-on: ubuntu-latest
+    
     env:
-      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      REPLICATE_API_TOKEN: ${{ secrets.REPLICATE_API_TOKEN }}
       GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
       HF_API_TOKEN: ${{ secrets.HF_API_TOKEN }}
     
     steps:
-    - name: 📥 Checkout repository
+    - name: Checkout repository
       uses: actions/checkout@v4
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: 🐍 Set up Python
+    - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.10'
 
-    - name: 📦 Install dependencies
+    - name: Install dependencies
       run: |
-        pip install requests pillow python-dotenv feedparser beautifulsoup4
+        python -m pip install --upgrade pip
+        pip install requests pillow
 
-    - name: 📁 Create content directories
-      run: |
-        mkdir -p content/posts
-        mkdir -p static/images/posts
+    - name: Generate content
+      run: python .github/scripts/generate_content.py --count 1
 
-    - name: 🤖 Generate AI content
-      run: |
-        python .github/scripts/generate_content.py --count ${{ github.event.inputs.article_count }}
-
-    - name: 💾 Commit and push generated content
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        
-        # Добавляем только новые файлы
-        git add content/posts/
-        git add static/images/posts/
-        
-        # Коммит если есть изменения
-        if ! git diff --cached --quiet; then
-            git commit -m "Auto-generated AI content $(date +'%Y-%m-%d %H:%M')"
-            git push origin main
-            echo "✅ Изменения отправлены успешно"
-        else
-            echo "✅ Нет новых изменений для коммита"
-        fi
+    - name: Upload generated content
+      uses: actions/upload-artifact@v4
+      with:
+        name: generated-content
+        path: |
+          content/
+          assets/
