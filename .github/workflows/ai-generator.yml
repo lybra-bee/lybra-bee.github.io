@@ -1,17 +1,19 @@
 name: Generate AI Content
 
 on:
-  workflow_dispatch:
   schedule:
-    - cron: '0 8 * * *'
+    - cron: '0 0 * * *'  # Запускать каждый день в полночь
+  workflow_dispatch:  # Разрешить ручной запуск
 
 jobs:
   generate-content:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -28,12 +30,25 @@ jobs:
         GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         FUSIONBRAIN_API_KEY: ${{ secrets.FUSIONBRAIN_API_KEY }}
         FUSION_SECRET_KEY: ${{ secrets.FUSION_SECRET_KEY }}
-      run: python .github/scripts/generate_content.py --count 1
+      run: |
+        python .github/scripts/generate_content.py --count 1
 
-    - name: Upload generated content
-      uses: actions/upload-artifact@v4
-      with:
-        name: generated-content
-        path: |
-          content/
-          assets/
+    - name: Check for changes
+      id: check-changes
+      run: |
+        git add content/ assets/
+        if git diff --staged --quiet; then
+          echo "changes=false" >> $GITHUB_OUTPUT
+        else
+          echo "changes=true" >> $GITHUB_OUTPUT
+          echo "📁 Изменения обнаружены:"
+          git diff --staged --name-status
+        fi
+
+    - name: Commit and push changes
+      if: steps.check-changes.outputs.changes == 'true'
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git commit -m "🤖 Auto-generated AI content [skip ci]"
+        git push
