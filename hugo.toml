@@ -2,7 +2,7 @@ baseURL = 'https://lybra-bee.github.io/'
 languageCode = 'ru-ru'
 defaultContentLanguage = 'ru'
 title = 'AI Blog - Генерация контента ИИ'
-# theme = ''  # Убрали тему, так как используем кастомные макеты
+theme = ''
 
 # Параметры сайта
 [params]
@@ -11,6 +11,11 @@ title = 'AI Blog - Генерация контента ИИ'
   backgroundColor = '#0f172a'
   textColor = '#f8fafc'
   subtitle = 'Самые свежие статьи и тренды AI 2025'
+  recent_posts_number = 3
+  show_reading_time = true
+  show_word_count = true
+  custom_css = ["css/custom.css"]
+  mainSections = ["posts"]
 
 # Настройки автора
 [author]
@@ -38,20 +43,32 @@ title = 'AI Blog - Генерация контента ИИ'
     weight = 2
 
   [[menu.main]]
+    name = 'Галерея'
+    url = '/gallery/'
+    weight = 3
+
+  [[menu.main]]
     name = 'Архив'
     url = '/archive/'
-    weight = 3
+    weight = 4
 
   [[menu.main]]
     name = 'Теги'
     url = '/tags/'
-    weight = 4
+    weight = 5
+
+  [[menu.main]]
+    name = 'Обо мне'
+    url = '/about/'
+    weight = 6
 
 # Настройки сборки
 [build]
   writeStats = true
   buildFuture = true
   buildExpired = true
+  noChmod = true
+  noTimes = true
 
 # Настройки модулей
 [module]
@@ -71,20 +88,45 @@ title = 'AI Blog - Генерация контента ИИ'
     source = 'layouts'
     target = 'layouts'
 
+  [[module.mounts]]
+    source = 'archetypes'
+    target = 'archetypes'
+
+  [[module.mounts]]
+    source = 'data'
+    target = 'data'
+
+  [[module.mounts]]
+    source = 'i18n'
+    target = 'i18n'
+
 # Настройки обработки изображений
 [imaging]
-  quality = 80
+  quality = 85
   resampleFilter = 'Lanczos'
-  anchor = 'smart'
+  anchor = 'center'
+  bgColor = '#ffffff'
+  [imaging.exif]
+    includeFields = '.*'
+    excludeFields = '^ThumbnailImage$'
 
 # Настройки Markdown
 [markup]
   [markup.goldmark]
     [markup.goldmark.renderer]
       unsafe = true
+      hardWraps = false
+      xHTML = false
   [markup.highlight]
     style = 'monokai'
     lineNos = true
+    lineNumbersInTable = true
+    noClasses = false
+    [markup.highlight.codeFences]
+      language = 'auto'
+  [markup.tableOfContents]
+    startLevel = 2
+    endLevel = 6
 
 # Настройки налоговомий
 [taxonomies]
@@ -92,7 +134,7 @@ title = 'AI Blog - Генерация контента ИИ'
   tag = 'tags'
   series = 'series'
 
-# Настройки социальных сетей (опционально)
+# Настройки социальных сетей
 [social]
   GitHub = 'https://github.com/lybra-bee'
 
@@ -100,21 +142,226 @@ title = 'AI Blog - Генерация контента ИИ'
 [sitemap]
   changefreq = 'weekly'
   priority = 0.5
-
-# Настройки безопасности
-[security]
-  [security.exec]
-    allow = ['^dart-sass-embedded$', '^go$', '^npx$', '^postcss$']
-
-# Отключение ненужных видов output
-[outputs]
-  home = ['HTML', 'RSS']
-  page = ['HTML']
-  section = ['HTML']
-  taxonomy = ['HTML']
-  term = ['HTML']
+  filename = 'sitemap.xml'
 
 # Настройки RSS
 [services]
   [services.rss]
     limit = 20
+    [services.rss.media]
+      types = ['image/jpeg', 'image/png', 'image/gif']
+
+# Настройки безопасности
+[security]
+  [security.exec]
+    allow = ['^dart-sass-embedded$', '^go$', '^npx$', '^postcss$', '^python$']
+  [security.funcs]
+    getenv = ['^HUGO_', '^CI$', '^GITHUB_']
+
+# Настройки кэширования
+[caches]
+  [caches.assets]
+    dir = ':resourceDir/_gen'
+    maxAge = -1
+  [caches.getjson]
+    dir = ':cacheDir/:project'
+    maxAge = -1
+  [caches.getcsv]
+    dir = ':cacheDir/:project'
+    maxAge = -1
+  [caches.images]
+    dir = ':resourceDir/_gen'
+    maxAge = -1
+  [caches.modules]
+    dir = ':cacheDir/modules'
+    maxAge = -1
+
+# Настройки развертывания
+[deployment]
+  [deployment.targets]
+    [deployment.targets.gh-pages]
+      URL = "https://github.com/lybra-bee/lybra-bee.github.io.git"
+      branch = "gh-pages"
+
+# Настройки обработки данных
+[data]
+  [data.config]
+    kind = 'yaml'
+
+# Настройки обработки контента
+[content]
+  [content.frontmatter]
+    date = ['date', 'publishDate', 'lastmod']
+    lastmod = ['lastmod', 'date', 'publishDate']
+    publishDate = ['publishDate', 'date']
+    expiryDate = ['expiryDate']
+  [content.frontmatter.synced]
+    date = ['git', 'lastmod']
+
+# Настройки обработки ресурсов
+[related]
+  includeNewer = true
+  threshold = 80
+  toLower = true
+  indices = [
+    {name = 'tags', weight = 100},
+    {name = 'categories', weight = 80},
+    {name = 'series', weight = 50}
+  ]
+
+# Настройки обработки URL
+[permalinks]
+  posts = '/posts/:year/:month/:title/'
+  pages = '/:slug/'
+  tags = '/tags/:slug/'
+  categories = '/categories/:slug/'
+
+# Настройки обработки времени
+[time]
+  location = 'Europe/Moscow'
+
+# Настройки обработки форм
+[forms]
+  [forms.contact]
+    method = 'POST'
+    [forms.contact.fields]
+      [forms.contact.fields.name]
+        label = 'Имя'
+        type = 'text'
+        required = true
+      [forms.contact.fields.email]
+        label = 'Email'
+        type = 'email'
+        required = true
+      [forms.contact.fields.message]
+        label = 'Сообщение'
+        type = 'textarea'
+        required = true
+
+# Настройки поиска
+[search]
+  [search.algolia]
+    appID = ''
+    indexName = ''
+    searchKey = ''
+
+# Настройки аналитики
+[analytics]
+  [analytics.google]
+    id = ''
+  [analytics.fathom]
+    id = ''
+    server = ''
+
+# Настройки комментариев
+[comments]
+  [comments.disqus]
+    shortname = ''
+
+# Настройки кэширования браузера
+[client]
+  [client.cache]
+    maxAge = 31536000
+
+# Настройки обработки ошибок
+[error]
+  404 = '/404.html'
+
+# Настройки обработки минификации
+[minify]
+  disableCSS = false
+  disableHTML = false
+  disableJS = false
+  disableJSON = false
+  disableSVG = false
+  disableXML = false
+  [minify.tdewolff]
+    [minify.tdewolff.css]
+      keepCSS2 = true
+      precision = 0
+    [minify.tdewolff.html]
+      keepConditionalComments = true
+      keepDefaultAttrVals = true
+      keepDocumentTags = true
+      keepEndTags = true
+      keepQuotes = false
+      keepWhitespace = false
+    [minify.tdewolff.js]
+      keepVarNames = false
+      precision = 0
+    [minify.tdewolff.json]
+      precision = 0
+    [minify.tdewolff.svg]
+      precision = 0
+    [minify.tdewolff.xml]
+      keepWhitespace = false
+
+# Настройки обработки ресурсов
+[asset]
+  [asset.postcss]
+    noMap = true
+    [asset.postcss.config]
+      from = 'assets/css/main.css'
+      to = 'assets/css/main.min.css'
+
+# Настройки обработки шрифтов
+[font]
+  [font.google]
+    families = ['Inter:400,500,600,700', 'JetBrains+Mono:400,500']
+
+# Настройки обработки иконок
+[icon]
+  [icon.favicon]
+    src = 'favicon.ico'
+    sizes = '16x16,32x32,48x48'
+  [icon.apple]
+    src = 'apple-touch-icon.png'
+    sizes = '180x180'
+  [icon.android]
+    src = 'android-chrome-192x192.png'
+    sizes = '192x192'
+
+# Настройки обработки метаданных
+[meta]
+  [meta.openGraph]
+    title = 'AI Blog - Генерация контента ИИ'
+    description = 'Автоматически генерируемый блог об искусственном интеллекте и технологиях 2025 года'
+    image = '/images/og-image.jpg'
+    siteName = 'AI Blog'
+    [meta.openGraph.locales]
+      [meta.openGraph.locales.ru]
+        title = 'AI Blog - Генерация контента ИИ'
+        description = 'Автоматически генерируемый блог об искусственном интеллекте и технологиях 2025 года'
+
+  [meta.twitter]
+    card = 'summary_large_image'
+    site = '@lybra_bee'
+    creator = '@lybra_bee'
+    title = 'AI Blog - Генерация контента ИИ'
+    description = 'Автоматически генерируемый блог об искусственном интеллекте и технологиях 2025 года'
+    image = '/images/twitter-image.jpg'
+
+# Настройки обработки PWA
+[pwa]
+  manifest = 'manifest.json'
+  themeColor = '#2563eb'
+  backgroundColor = '#0f172a'
+
+# Настройки обработки RSS feed
+[outputFormats]
+  [outputFormats.RSS]
+    mediatype = 'application/rss+xml'
+    baseName = 'index'
+
+# Настройки обработки JSON feed
+[outputFormats.JSON]
+  mediatype = 'application/json'
+  baseName = 'index'
+
+# Настройки обработка кастомных output
+[outputs]
+  home = ['HTML', 'RSS', 'JSON']
+  page = ['HTML']
+  section = ['HTML']
+  taxonomy = ['HTML']
+  term = ['HTML']
