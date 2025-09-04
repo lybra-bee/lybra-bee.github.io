@@ -12,6 +12,7 @@ import time
 import logging
 import argparse
 import base64
+import uuid
 
 # Настройка логирования
 logging.basicConfig(
@@ -152,7 +153,8 @@ def check_environment_variables():
         'OPENROUTER_API_KEY': os.getenv('OPENROUTER_API_KEY'),
         'GROQ_API_KEY': os.getenv('GROQ_API_KEY'),
         'HF_API_TOKEN': os.getenv('HF_API_TOKEN'),
-        'REPLICATE_API_TOKEN': os.getenv('REPLICATE_API_TOKEN')
+        'REPLICATE_API_TOKEN': os.getenv('REPLICATE_API_TOKEN'),
+        'FUSIONBRAIN_API_KEY': os.getenv('FUSIONBRAIN_API_KEY')
     }
     
     logger.info("🔍 Проверка переменных окружения:")
@@ -272,8 +274,9 @@ def generate_article_image(title):
     """Генерация изображения на основе заголовка статьи"""
     logger.info(f"🎨 Генерация изображения для: {title}")
     
-    # Пробуем разные методы
+    # Пробуем разные методы в порядке приоритета
     methods = [
+        try_fusionbrain_api,
         try_craiyon_api,
         try_lexica_art_api,
         generate_enhanced_placeholder
@@ -291,6 +294,86 @@ def generate_article_image(title):
             continue
     
     return generate_enhanced_placeholder(title)
+
+def try_fusionbrain_api(title):
+    """Fusionbrain AI API (Kandinsky модель)"""
+    FUSIONBRAIN_KEY = os.getenv('FUSIONBRAIN_API_KEY')
+    if not FUSIONBRAIN_KEY:
+        logger.warning("⚠️ Fusionbrain API ключ не найден")
+        return None
+    
+    try:
+        # Сначала получаем ID модели Kandinsky
+        models_response = requests.get(
+            "https://api.fusionbrain.ai/web/api/v1/models",
+            headers={"Authorization": f"Bearer {FUSIONBRAIN_KEY}"},
+            timeout=10
+        )
+        
+        if models_response.status_code != 200:
+            logger.warning(f"⚠️ Ошибка получения моделей Fusionbrain: {models_response.status_code}")
+            return None
+        
+        models = models_response.json()
+        kandinsky_model_id = None
+        
+        for model in models:
+            if "kandinsky" in model.get("name", "").lower():
+                kandinsky_model_id = model["id"]
+                break
+        
+        if not kandinsky_model_id:
+            logger.warning("⚠️ Модель Kandinsky не найдена")
+            return None
+        
+        # Генерируем изображение
+        prompt = f"{title}, digital art, futuristic technology, AI, 2025, professional, high quality"
+        
+        generate_response = requests.post(
+            "https://api.fusionbrain.ai/web/api/v1/text2image/run",
+            headers={"Authorization": f"Bearer {FUSIONBRAIN_KEY}"},
+            json={
+                "model_id": kandinsky_model_id,
+                "params": {
+                    "type": "GENERATE",
+                    "width": 512,
+                    "height": 512,
+                    "generateParams": {
+                        "query": prompt
+                    }
+                }
+            },
+            timeout=30
+        )
+        
+        if generate_response.status_code == 200:
+            generation_id = generate_response.json().get("uuid")
+            
+            # Ждем завершения генерации
+            for _ in range(10):
+                time.sleep(3)
+                status_response = requests.get(
+                    f"https://api.fusionbrain.ai/web/api/v1/text2image/status/{generation_id}",
+                    headers={"Authorization": f"Bearer {FUSIONBRAIN_KEY}"},
+                    timeout=10
+                )
+                
+                if status_response.status_code == 200:
+                    status_data = status_response.json()
+                    if status_data.get("status") == "DONE":
+                        image_base64 = status_data.get("images")[0]
+                        image_data = base64.b64decode(image_base64)
+                        return save_image_bytes(image_data, title)
+                    elif status_data.get("status") == "FAIL":
+                        break
+                
+        else:
+            logger.warning(f"⚠️ Ошибка генерации Fusionbrain: {generate_response.status_code}")
+            
+    except Exception as e:
+        logger.error(f"❌ Ошибка Fusionbrain: {e}")
+    
+    return None
 
 def try_craiyon_api(title):
     """Craiyon API - старая стабильная версия"""
