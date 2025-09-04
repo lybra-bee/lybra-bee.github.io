@@ -12,7 +12,6 @@ import time
 import logging
 import argparse
 import base64
-import uuid
 
 # Настройка логирования
 logging.basicConfig(
@@ -21,6 +20,103 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 logger = logging.getLogger(__name__)
+
+class FusionBrainAPI:
+    def __init__(self, api_key, secret_key):
+        self.URL = 'https://api-key.fusionbrain.ai/'
+        self.AUTH_HEADERS = {
+            'X-Key': f'Key {api_key}',
+            'X-Secret': f'Secret {secret_key}',
+        }
+    
+    def get_model(self):
+        """Получаем доступную модель"""
+        try:
+            response = requests.get(
+                self.URL + 'key/api/v1/models',
+                headers=self.AUTH_HEADERS,
+                timeout=10
+            )
+            if response.status_code == 200:
+                models = response.json()
+                for model in models:
+                    if "kandinsky" in model.get("name", "").lower():
+                        return model["id"]
+            return None
+        except Exception as e:
+            logger.error(f"❌ Ошибка получения моделей FusionBrain: {e}")
+            return None
+    
+    def generate(self, prompt, model_id, width=512, height=512):
+        """Генерация изображения"""
+        try:
+            params = {
+                "type": "GENERATE",
+                "numImages": 1,
+                "width": width,
+                "height": height,
+                "generateParams": {
+                    "query": prompt
+                }
+            }
+            
+            data = {
+                'model_id': (None, model_id),
+                'params': (None, json.dumps(params), 'application/json')
+            }
+            
+            response = requests.post(
+                self.URL + 'key/api/v1/text2image/run',
+                headers=self.AUTH_HEADERS,
+                files=data,
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                return response.json().get('uuid')
+            else:
+                logger.warning(f"⚠️ Ошибка генерации FusionBrain: {response.status_code}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"❌ Ошибка генерации FusionBrain: {e}")
+            return None
+    
+    def check_status(self, task_id, attempts=10, delay=3):
+        """Проверка статуса генерации"""
+        try:
+            for attempt in range(attempts):
+                time.sleep(delay)
+                response = requests.get(
+                    self.URL + f'key/api/v1/text2image/status/{task_id}',
+                    headers=self.AUTH_HEADERS,
+                    timeout=10
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    status = data.get('status')
+                    
+                    if status == 'DONE':
+                        images = data.get('images', [])
+                        if images:
+                            return images[0]  # Возвращаем первое изображение в base64
+                    elif status == 'FAIL':
+                        logger.warning(f"⚠️ Генерация FusionBrain не удалась: {data.get('error', 'Unknown error')}")
+                        return None
+                    elif status in ['INITIAL', 'PROCESSING']:
+                        logger.info(f"⏳ Статус FusionBrain: {status} (попытка {attempt + 1})")
+                    else:
+                        logger.warning(f"⚠️ Неизвестный статус FusionBrain: {status}")
+                        return None
+                else:
+                    logger.warning(f"⚠️ Ошибка статуса FusionBrain: {response.status_code}")
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"❌ Ошибка проверки статуса FusionBrain: {e}")
+            return None
 
 # ======== Генерация промпта для статьи ========
 def generate_article_prompt():
@@ -113,7 +209,7 @@ def generate_content():
     title = extract_title_from_content(content, topic)
     logger.info(f"📌 Извлеченный заголовок: {title}")
     
-    # Генерируем изображение на основе заголовок
+    # Генерируем изображение на основе заголовка
     image_filename = generate_article_image(title)
     
     date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -151,7 +247,8 @@ def check_environment_variables():
     """Проверка только необходимых переменных окружения"""
     env_vars = {
         'GROQ_API_KEY': os.getenv('GROQ_API_KEY'),
-        'FUSIONBRAIN_API_KEY': os.getenv('FUSIONBRAIN_API_KEY')
+        'FUSIONBRAIN_API_KEY': os.getenv('FUSIONBRAIN_API_KEY'),
+        'FUSIONBRAIN_SECRET_KEY': os.getenv('FUSIONBRAIN_SECRET_KEY')
     }
     
     logger.info("🔍 Проверка переменных окружения:")
@@ -242,6 +339,7 @@ def generate_article_image(title):
     
     # Пробуем разные методы в порядке приоритета
     methods = [
+        try_fusionbrain_api,
         try_craiyon_api,
         try_lexica_art_api,
         generate_enhanced_placeholder
@@ -259,6 +357,47 @@ def generate_article_image(title):
             continue
     
     return generate_enhanced_placeholder(title)
+
+def try_fusionbrain_api(title):
+    """FusionBrain API с правильной реализацией"""
+    api_key = os.getenv('FUSIONBRAIN_API_KEY')
+    secret_key = os.getenv('FUSIONBRAIN_SECRET_KEY')
+    
+    if not api_key or not secret_key:
+        logger.warning("⚠️ FusionBrain ключи не найдены")
+        return None
+    
+    try:
+        fb_api = FusionBrainAPI(api_key, secret_key)
+        
+        # Получаем модель
+        model_id = fb_api.get_model()
+        if not model_id:
+            logger.warning("⚠️ Не удалось получить модель FusionBrain")
+            return None
+        
+        # Создаем промпт на английском для лучшего качества
+        english_prompt = f"{title}, digital art, futuristic technology, AI, 2025, professional, high quality"
+        logger.info(f"🎨 Генерация через FusionBrain: {english_prompt}")
+        
+        # Генерируем изображение
+        task_id = fb_api.generate(english_prompt, model_id, width=512, height=512)
+        if not task_id:
+            logger.warning("⚠️ Не удалось создать задание FusionBrain")
+            return None
+        
+        # Проверяем статус
+        image_base64 = fb_api.check_status(task_id, attempts=15, delay=4)
+        if image_base64:
+            image_data = base64.b64decode(image_base64)
+            return save_image_bytes(image_data, title)
+        else:
+            logger.warning("⚠️ Генерация FusionBrain не завершилась успешно")
+            
+    except Exception as e:
+        logger.error(f"❌ Ошибка FusionBrain: {e}")
+    
+    return None
 
 def try_craiyon_api(title):
     """Craiyon API - старая стабильная версия"""
