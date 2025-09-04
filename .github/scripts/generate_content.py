@@ -84,7 +84,7 @@ class FusionBrainAPI:
                 timeout=30
             )
             
-            logger.debug(f"📥 Ответ FusionBrain: {response.status_code}, {response.text}")
+            logger.debug(f"📥 Ответ FusionBrain: {response.status_code}")
             
             # Код 201 - это УСПЕШНЫЙ ответ!
             if response.status_code in [200, 201]:
@@ -171,7 +171,7 @@ def generate_article_prompt():
         "оптимизация AI моделей",
         "доверенный искусственный интеллект", 
         "искусственный интеллект для экологии",
-        "персonalные AI ассистенты",
+        "персональные AI ассистенты",
         "искусственный интеллект в образовании"
     ]
     
@@ -196,7 +196,7 @@ def generate_article_prompt():
 Требования к статье:
 - Формат: Markdown
 - Объем: 400-600 слов
-- Структура: заголовок, введение, основные разделы, заключение
+- Структура: заглавление, введение, основные разделы, заключение
 - Стиль: профессиональный, информативный
 - Контент: конкретные примеры, кейсы использования, практические применения
 - Фокус: инновации, тенденции 2025 года, перспективы развития
@@ -258,8 +258,20 @@ def generate_content():
     with open(filename, 'w', encoding='utf-8') as f:
         f.write(frontmatter)
     
-    logger.info(f"✅ Статья создана: {filename}")
-    return filename
+    # Проверяем, что файл создан
+    if os.path.exists(filename):
+        logger.info(f"✅ Статья создана: {filename}")
+        
+        # Проверяем, что изображение существует
+        if image_filename and os.path.exists(image_filename):
+            logger.info(f"✅ Изображение найдено: {image_filename}")
+        else:
+            logger.warning(f"⚠️ Изображение не найдено: {image_filename}")
+            
+        return filename
+    else:
+        logger.error(f"❌ Статья не была создана: {filename}")
+        return None
 
 def extract_title_from_content(content, fallback_topic):
     """Извлекаем заголовок из сгенерированного контента"""
@@ -292,7 +304,7 @@ def check_environment_variables():
         status = "✅ установлен" if var_value else "❌ отсутствует"
         logger.info(f"   {var_name}: {status}")
 
-# ======== Генерация текста через Groq ========
+# ======== Генeration текста через Groq ========
 def generate_article_content(prompt):
     groq_key = os.getenv('GROQ_API_KEY')
     
@@ -407,13 +419,12 @@ def try_fusionbrain_api(title):
         fb_api = FusionBrainAPI(api_key, secret_key)
         
         # Создаем промпт на английском для лучшего качества
-        english_prompt = f"ethical artificial intelligence in financial technology fintech 2025, digital art, futuristic technology, professional, high quality"
+        english_prompt = f"artificial intelligence in education big data analysis business analytics 2025, digital art, futuristic technology, professional, high quality"
         logger.info(f"🎨 Генерация через FusionBrain: {english_prompt}")
         
         # Генерируем изображение
         task_id = fb_api.generate(english_prompt, width=512, height=512)
         
-        # ОБРАТИТЕ ВНИМАНИЕ: ответ с кодом 201 и UUID - это УСПЕХ!
         if task_id:
             logger.info(f"✅ Задача FusionBrain создана, task_id: {task_id}")
             logger.info(f"⏳ Ожидание генерации FusionBrain...")
@@ -421,8 +432,14 @@ def try_fusionbrain_api(title):
             # Проверяем статус с большим количеством попыток
             image_base64 = fb_api.check_status(task_id, attempts=30, delay=6)
             if image_base64:
-                image_data = base64.b64decode(image_base64)
-                return save_image_bytes(image_data, title)
+                logger.info(f"✅ Получено изображение в base64, длина: {len(image_base64)} символов")
+                try:
+                    image_data = base64.b64decode(image_base64)
+                    logger.info(f"✅ Декодировано изображение, размер: {len(image_data)} байт")
+                    return save_image_bytes(image_data, title)
+                except Exception as e:
+                    logger.error(f"❌ Ошибка декодирования base64: {e}")
+                    return None
             else:
                 logger.warning("⚠️ Генерация FusionBrain не завершилась успешно")
         else:
@@ -485,14 +502,24 @@ def try_lexica_art_api(title):
 def save_image_bytes(image_data, title):
     """Сохранение изображения из bytes"""
     try:
+        # Создаем папку если не существует
         os.makedirs("assets/images/posts", exist_ok=True)
-        filename = f"assets/images/posts/{generate_slug(title)}.png"
+        slug = generate_slug(title)
+        filename = f"assets/images/posts/{slug}.png"
         
+        # Сохраняем изображение
         with open(filename, "wb") as f:
             f.write(image_data)
         
-        logger.info(f"💾 Изображение сохранено: {filename}")
-        return filename
+        # Проверяем, что файл действительно создан
+        if os.path.exists(filename):
+            file_size = os.path.getsize(filename)
+            logger.info(f"💾 Изображение сохранено: {filename} (размер: {file_size} байт)")
+            return filename
+        else:
+            logger.error(f"❌ Файл не был создан: {filename}")
+            return None
+            
     except Exception as e:
         logger.error(f"❌ Ошибка сохранения изображения: {e}")
         return None
@@ -501,7 +528,8 @@ def generate_enhanced_placeholder(title):
     """Улучшенный placeholder с AI-стилем"""
     try:
         os.makedirs("assets/images/posts", exist_ok=True)
-        filename = f"assets/images/posts/{generate_slug(title)}.png"
+        slug = generate_slug(title)
+        filename = f"assets/images/posts/{slug}.png"
         width, height = 800, 400
         
         img = Image.new('RGB', (width, height), color='#0f172a')
@@ -600,7 +628,11 @@ def main():
         for i in range(args.count):
             print(f"\n📄 Генерация статьи {i+1}/{args.count}...")
             filename = generate_content()
-            print(f"✅ Статья создана: {filename}")
+            
+            if filename:
+                print(f"✅ Статья создана: {filename}")
+            else:
+                print(f"❌ Статья не была создана")
             
             if i < args.count - 1:
                 time.sleep(2)
