@@ -4,23 +4,31 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ .Title }} | {{ .Site.Title }}</title>
-    {{ partial "head.html" . }}
+    <link rel="stylesheet" href="{{ "css/custom.css" | absURL }}">
 </head>
 <body>
-    {{ partial "header.html" . }}
+    <header class="site-header">
+        <nav class="nav">
+            <div class="nav-brand">
+                <a href="{{ .Site.BaseURL }}">{{ .Site.Title }}</a>
+            </div>
+            <ul class="nav-menu">
+                {{ range .Site.Menus.main }}
+                <li class="nav-item">
+                    <a href="{{ .URL }}" class="nav-link">{{ .Name }}</a>
+                </li>
+                {{ end }}
+            </ul>
+        </nav>
+    </header>
     
     <main class="container">
         <article class="gallery-page">
-            <header class="page-header">
-                <h1>{{ .Title }}</h1>
-                {{ with .Params.description }}
-                <p class="description">{{ . }}</p>
-                {{ end }}
-            </header>
-
-            <section class="gallery-content">
+            <h1>{{ .Title }}</h1>
+            
+            <div class="gallery-content">
                 {{ .Content }}
-            </section>
+            </div>
 
             <div class="gallery-grid">
                 {{ range where .Site.RegularPages "Type" "posts" }}
@@ -40,6 +48,10 @@
         </article>
     </main>
 
-    {{ partial "footer.html" . }}
+    <footer class="site-footer">
+        <div class="footer-content">
+            <p>&copy; {{ now.Year }} {{ .Site.Title }}</p>
+        </div>
+    </footer>
 </body>
 </html>
