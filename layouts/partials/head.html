@@ -1,0 +1,16 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ if .IsHome }}{{ .Site.Title }}{{ else }}{{ .Title }} | {{ .Site.Title }}{{ end }}</title>
+<meta name="description" content="{{ .Site.Params.description }}">
+
+<!-- Styles -->
+<link rel="stylesheet" href="{{ "css/main.css" | absURL }}">
+{{ range .Site.Params.custom_css }}
+<link rel="stylesheet" href="{{ . | absURL }}">
+{{ end }}
+
+<!-- Favicon -->
+<link rel="icon" href="{{ "favicon.ico" | absURL }}">
+
+<!-- RSS -->
+<link rel="alternate" type="application/rss+xml" href="{{ "index.xml" | absURL }}" title="{{ .Site.Title }}">
