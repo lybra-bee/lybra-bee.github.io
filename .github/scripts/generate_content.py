@@ -70,7 +70,6 @@ def clean_old_articles(keep_last=3):
     logger.info(f"🧹 Очистка старых статей, оставляем {keep_last} последних...")
     content_dir = "content"
     if os.path.exists(content_dir):
-        # Удаляем только старые файлы, оставляя последние keep_last
         posts_dir = os.path.join(content_dir, "posts")
         if os.path.exists(posts_dir):
             posts = sorted([f for f in os.listdir(posts_dir) if f.endswith('.md')], 
@@ -98,8 +97,8 @@ def generate_content():
     topic = generate_ai_trend_topic()
     logger.info(f"📝 Тема статьи: {topic}")
     
-    # Генерируем изображение через Hugging Face
-    image_filename = generate_with_huggingface(topic)
+    # Генерируем изображение (пробуем разные методы)
+    image_filename = generate_article_image(topic)
     content, model_used = generate_article_content(topic)
     
     date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -120,13 +119,53 @@ def check_environment_variables():
     env_vars = {
         'OPENROUTER_API_KEY': os.getenv('OPENROUTER_API_KEY'),
         'GROQ_API_KEY': os.getenv('GROQ_API_KEY'),
-        'HF_API_TOKEN': os.getenv('HF_API_TOKEN')
+        'HF_API_TOKEN': os.getenv('HF_API_TOKEN'),
+        'REPLICATE_API_TOKEN': os.getenv('REPLICATE_API_TOKEN')
     }
     
     logger.info("🔍 Проверка переменных окружения:")
     for var_name, var_value in env_vars.items():
         status = "✅ установлен" if var_value else "❌ отсутствует"
         logger.info(f"   {var_name}: {status}")
+    
+    # Проверяем работоспособность ключей
+    check_api_availability()
+
+def check_api_availability():
+    """Проверка доступности API"""
+    logger.info("🔍 Проверка доступности API...")
+    
+    # Проверка Groq
+    groq_key = os.getenv('GROQ_API_KEY')
+    if groq_key:
+        try:
+            response = requests.get(
+                "https://api.groq.com/openai/v1/models",
+                headers={"Authorization": f"Bearer {groq_key}"},
+                timeout=10
+            )
+            if response.status_code == 200:
+                logger.info("✅ Groq API доступен")
+            else:
+                logger.warning(f"⚠️ Groq API недоступен: {response.status_code}")
+        except Exception as e:
+            logger.warning(f"⚠️ Groq API проверка не удалась: {e}")
+    
+    # Проверка Hugging Face
+    hf_token = os.getenv('HF_API_TOKEN')
+    if hf_token:
+        try:
+            response = requests.get(
+                "https://huggingface.co/api/whoami",
+                headers={"Authorization": f"Bearer {hf_token}"},
+                timeout=10
+            )
+            if response.status_code == 200:
+                logger.info("✅ Hugging Face API доступен")
+            else:
+                logger.warning(f"⚠️ Hugging Face API недоступен: {response.status_code}")
+        except Exception as e:
+            logger.warning(f"⚠️ Hugging Face API проверка не удалась: {e}")
 
 # ======== Генерация текста через OpenRouter/Groq ========
 def generate_article_content(topic):
@@ -252,69 +291,170 @@ def generate_with_openrouter(api_key, model_name, topic):
     else:
         raise Exception(f"OpenRouter API error {resp.status_code}: {resp.text}")
 
-# ======== Генерация изображений через Hugging Face ========
-def generate_with_huggingface(topic):
-    """Генерация изображения через Hugging Face API"""
-    try:
-        HF_TOKEN = os.getenv('HF_API_TOKEN')
-        if not HF_TOKEN:
-            logger.warning("⚠️ HF_API_TOKEN не установлен, пропускаем генерацию изображения")
-            return generate_enhanced_placeholder(topic)
-        
-        # Создаем промпт для изображения
-        image_prompt = f"{topic}, digital art, futuristic, professional, 4k, ultra detailed, high quality"
-        logger.info(f"🎨 Генерация изображения через Hugging Face: {image_prompt[:80]}...")
-        
-        # Популярные модели для генерации изображений
-        models = [
-            "stabilityai/stable-diffusion-2-1",
-            "runwayml/stable-diffusion-v1-5",
-            "CompVis/stable-diffusion-v1-4"
-        ]
-        
-        for model in models:
-            try:
-                API_URL = f"https://api-inference.huggingface.co/models/{model}"
-                headers = {"Authorization": f"Bearer {HF_TOKEN}"}
-                
-                payload = {
-                    "inputs": image_prompt,
-                    "parameters": {
-                        "width": 512,
-                        "height": 512,
-                        "num_inference_steps": 20,
-                        "guidance_scale": 7.5
-                    }
-                }
-                
-                logger.info(f"🔄 Пробуем модель: {model}")
-                response = requests.post(API_URL, headers=headers, json=payload, timeout=60)
-                
-                if response.status_code == 200:
-                    # Сохраняем изображение
-                    filename = save_huggingface_image(response.content, topic)
-                    if filename:
-                        logger.info(f"✅ Изображение создано: {filename}")
-                        return filename
-                elif response.status_code == 503:
-                    logger.warning(f"⚠️ Модель {model} загружается, пробуем следующую...")
-                else:
-                    logger.warning(f"⚠️ Ошибка {response.status_code} от модели {model}")
-                    
-            except Exception as e:
-                logger.error(f"❌ Ошибка при работе с моделью {model}: {e}")
-                continue
-        
-        # Если все модели не сработали
-        logger.warning("⚠️ Все модели Hugging Face не сработали, используем placeholder")
-        return generate_enhanced_placeholder(topic)
-        
-    except Exception as e:
-        logger.error(f"❌ Критическая ошибка генерации изображения: {e}")
-        return generate_enhanced_placeholder(topic)
+# ======== Генерация изображений ========
+def generate_article_image(topic):
+    """Генерация изображения через различные API"""
+    logger.info(f"🎨 Генерация изображения для: {topic}")
+    
+    # Пробуем разные методы в порядке приоритета
+    methods = [
+        try_huggingface_api,
+        try_replicate_api,
+        try_craiyon_api,
+        try_deepai_api,
+        generate_enhanced_placeholder  # Fallback
+    ]
+    
+    for method in methods:
+        try:
+            result = method(topic)
+            if result:
+                logger.info(f"✅ Изображение создано через {method.__name__}")
+                return result
+        except Exception as e:
+            logger.error(f"❌ Ошибка в {method.__name__}: {e}")
+            continue
+    
+    return generate_enhanced_placeholder(topic)
 
-def save_huggingface_image(image_data, topic):
-    """Сохранение изображения от Hugging Face"""
+def try_huggingface_api(topic):
+    """Hugging Face API с проверкой токена"""
+    HF_TOKEN = os.getenv('HF_API_TOKEN')
+    if not HF_TOKEN:
+        return None
+    
+    prompt = f"{topic}, digital art, futuristic, professional, 4k, ultra detailed, high quality"
+    
+    models = [
+        "stabilityai/stable-diffusion-2-1",
+        "runwayml/stable-diffusion-v1-5",
+        "CompVis/stable-diffusion-v1-4"
+    ]
+    
+    for model in models:
+        try:
+            API_URL = f"https://api-inference.huggingface.co/models/{model}"
+            headers = {
+                "Authorization": f"Bearer {HF_TOKEN}",
+                "Content-Type": "application/json"
+            }
+            
+            payload = {
+                "inputs": prompt,
+                "parameters": {
+                    "width": 512,
+                    "height": 512,
+                    "num_inference_steps": 20,
+                    "guidance_scale": 7.5
+                }
+            }
+            
+            response = requests.post(API_URL, headers=headers, json=payload, timeout=60)
+            
+            if response.status_code == 200:
+                return save_image_bytes(response.content, topic)
+            elif response.status_code == 503:
+                logger.warning(f"⚠️ Модель {model} загружается...")
+            else:
+                logger.warning(f"⚠️ HF ошибка {response.status_code}: {response.text[:100]}")
+                
+        except Exception as e:
+            logger.error(f"❌ Ошибка HF модели {model}: {e}")
+            continue
+    
+    return None
+
+def try_replicate_api(topic):
+    """Replicate.com API"""
+    REPLICATE_TOKEN = os.getenv('REPLICATE_API_TOKEN')
+    if not REPLICATE_TOKEN:
+        return None
+    
+    try:
+        response = requests.post(
+            "https://api.replicate.com/v1/predictions",
+            headers={
+                "Authorization": f"Token {REPLICATE_TOKEN}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "version": "ac732df83cea7fff18b8472768c88ad041fa750ff7682a21affe81863cbe77e4",
+                "input": {
+                    "prompt": f"{topic}, digital art, professional, 4k quality",
+                    "width": 512,
+                    "height": 512,
+                    "num_outputs": 1
+                }
+            },
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            prediction_id = response.json()['id']
+            
+            # Ждем завершения генерации
+            for _ in range(10):
+                time.sleep(3)
+                status_response = requests.get(
+                    f"https://api.replicate.com/v1/predictions/{prediction_id}",
+                    headers={"Authorization": f"Token {REPLICATE_TOKEN}"},
+                    timeout=20
+                )
+                
+                if status_response.status_code == 200:
+                    status_data = status_response.json()
+                    if status_data['status'] == 'succeeded':
+                        image_url = status_data['output'][0]
+                        img_data = requests.get(image_url, timeout=30).content
+                        return save_image_bytes(img_data, topic)
+                    elif status_data['status'] == 'failed':
+                        break
+                
+        return None
+    except:
+        return None
+
+def try_craiyon_api(topic):
+    """Craiyon (бывший DALL-E mini)"""
+    try:
+        prompt = f"{topic}, digital art, futuristic, 4k quality"
+        response = requests.post(
+            "https://api.craiyon.com/v3",
+            json={"prompt": prompt},
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("images"):
+                image_data = base64.b64decode(data["images"][0])
+                return save_image_bytes(image_data, topic)
+    except:
+        pass
+    return None
+
+def try_deepai_api(topic):
+    """DeepAI с публичным ключом"""
+    try:
+        prompt = f"{topic}, digital art, futuristic style"
+        response = requests.post(
+            "https://api.deepai.org/api/text2img",
+            headers={'api-key': 'quickstart-credential'},
+            data={'text': prompt},
+            timeout=25
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            if data.get('output_url'):
+                img_data = requests.get(data['output_url'], timeout=30).content
+                return save_image_bytes(img_data, topic)
+    except:
+        pass
+    return None
+
+def save_image_bytes(image_data, topic):
+    """Сохранение изображения из bytes"""
     try:
         os.makedirs("assets/images/posts", exist_ok=True)
         filename = f"assets/images/posts/{generate_slug(topic)}.png"
@@ -322,7 +462,6 @@ def save_huggingface_image(image_data, topic):
         with open(filename, "wb") as f:
             f.write(image_data)
         
-        logger.info(f"💾 Изображение сохранено: {filename}")
         return filename
     except Exception as e:
         logger.error(f"❌ Ошибка сохранения изображения: {e}")
@@ -339,15 +478,14 @@ def generate_enhanced_placeholder(topic):
         img = Image.new('RGB', (width, height), color='#0f172a')
         draw = ImageDraw.Draw(img)
         
-        # Создаем градиентный фон с AI-стилем
+        # Градиентный фон
         for i in range(height):
-            # Сине-фиолетовый градиент
             r = int(15 + (i/height)*40)
             g = int(23 + (i/height)*60)
             b = int(42 + (i/height)*100)
             draw.line([(0, i), (width, i)], fill=(r, g, b))
         
-        # Добавляем сетку (tech grid effect)
+        # Сетка
         for i in range(0, width, 40):
             draw.line([(i, 0), (i, height)], fill=(255, 255, 255, 25))
         for i in range(0, height, 40):
@@ -356,7 +494,6 @@ def generate_enhanced_placeholder(topic):
         # Текст
         wrapped_text = textwrap.fill(topic, width=35)
         
-        # Пробуем разные шрифты
         try:
             font = ImageFont.truetype("Arial.ttf", 22)
         except:
@@ -365,7 +502,6 @@ def generate_enhanced_placeholder(topic):
             except:
                 font = ImageFont.load_default()
         
-        # Рассчитываем позицию текста
         bbox = draw.textbbox((0, 0), wrapped_text, font=font)
         text_width = bbox[2] - bbox[0]
         text_height = bbox[3] - bbox[1]
@@ -378,12 +514,11 @@ def generate_enhanced_placeholder(topic):
         # Основной текст
         draw.text((x, y), wrapped_text, font=font, fill="#ffffff")
         
-        # Добавляем AI badge
+        # AI badge
         draw.rectangle([(10, height-35), (120, height-10)], fill="#6366f1")
         draw.text((15, height-30), "AI GENERATED", font=ImageFont.load_default(), fill="#ffffff")
         
         img.save(filename)
-        logger.info(f"🎨 Улучшенный placeholder создан: {filename}")
         return filename
         
     except Exception as e:
