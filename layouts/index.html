@@ -1,11 +1,13 @@
 {{ define "main" }}
-<h1>Последняя статья</h1>
-{{ $last := first 1 (where .Site.RegularPages "Section" "posts") }}
-{{ range $last }}
-  <article>
-    <h2><a href="{{ .RelPermalink }}">{{ .Title }}</a></h2>
-    <img src="{{ .Params.image }}" alt="{{ .Title }}">
-    <p>{{ .Summary }}</p>
-  </article>
-{{ end }}
+  <h1>Последняя статья</h1>
+  {{ $latest := first 1 (where .Site.RegularPages "Section" "posts") }}
+  {{ range $latest }}
+    <article>
+      <h2><a href="{{ .RelPermalink }}">{{ .Title }}</a></h2>
+      {{ if .Params.image }}
+        <img src="{{ .Params.image | relURL }}" alt="{{ .Title }}">
+      {{ end }}
+      <p>{{ .Summary }}</p>
+    </article>
+  {{ end }}
 {{ end }}
