@@ -1,7 +1,6 @@
-baseURL = "https://yourusername.github.io/"
-title = "Alexey AI Portfolio"
+baseURL = "https://lybra-bee.github.io/"
 languageCode = "ru-ru"
-theme = "ananke"
-
-[params]
-  description = "Портфолио генеративного контента и AI проектов"
+title = "Alexey AI"
+theme = "ananke"   # или любая выбранная тема
+enableRobotsTXT = true
+paginate = 5
