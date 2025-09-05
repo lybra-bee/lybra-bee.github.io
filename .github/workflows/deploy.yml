@@ -1,11 +1,9 @@
-name: Build and Deploy Site
+name: Build and Deploy Static Site
 
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
-  schedule:
-    - cron: '0 0 * * *'
 
 permissions:
   contents: write
@@ -22,13 +20,14 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
 
     - name: Setup Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.9'
+
+    - name: Install dependencies
+      run: pip install frontmatter
 
     - name: Create directory structure
       run: |
@@ -47,17 +46,20 @@ jobs:
           echo '{"articles": [], "images": []}' > data/articles.json
         fi
 
-    - name: Build site
+    - name: Build static site
       run: |
-        echo "🏗️ Building site..."
+        echo "🏗️ Building site with build_site.py..."
         python build_site.py
+        echo "✅ Site built successfully"
 
-    - name: List generated files
+    - name: Show generated files
       run: |
         echo "📄 Generated files:"
         ls -la *.html
-        echo "📁 Data files:"
+        echo "📁 Data directory:"
         ls -la data/
+        echo "📁 Assets directory:"
+        ls -la assets/
 
     - name: Setup Pages
       uses: actions/configure-pages@v3
@@ -73,4 +75,4 @@ jobs:
 
     - name: Show deployment URL
       run: |
-        echo "🌐 Site deployed to: ${{ steps.deployment.outputs.page_url }}"
+        echo "🌐 Site will be available at: https://lybra-bee.github.io/"
