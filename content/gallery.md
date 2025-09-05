@@ -1,18 +1,20 @@
 ---
-title: "Галерея AI-изображений"
+title: "Галерея"
 date: 2024-01-01
 draft: false
-layout: gallery
 ---
 
-## 🎨 Галерея изображений, сгенерированных AI
+## 🎨 Галерея AI-изображений
 
-Все изображения созданы искусственным интеллектом для статей этого блога.
+Изображения, сгенерированные искусственным интеллектом:
 
-### 📊 Статистика:
-- **Всего изображений**: {{ len (where .Site.RegularPages "Type" "posts") }}
-- **Технология**: Kandinsky 3.0, FusionBrain AI
-- **Стиль**: Цифровое искусство
-- **Размер**: 512x512 пикселей
-
-*Обновляется автоматически каждый день*
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; margin: 2rem 0;">
+{{ range where .Site.RegularPages "Type" "posts" }}
+    {{ if .Params.image }}
+    <div style="background: rgba(15,23,42,0.6); padding: 1rem; border-radius: 12px; text-align: center;">
+        <img src="{{ .Params.image }}" alt="{{ .Title }}" style="width: 100%; height: 200px; object-fit: cover; border-radius: 8px;">
+        <p style="margin-top: 0.5rem; font-size: 0.9rem;">{{ .Title }}</p>
+    </div>
+    {{ end }}
+{{ end }}
+</div>
