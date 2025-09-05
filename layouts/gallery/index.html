@@ -1,6 +1,11 @@
-<h1>Галерея изображений</h1>
-<div class="gallery">
-{{ range (where .Site.RegularPages "Section" "posts") }}
-  <img src="{{ .Params.image }}" alt="{{ .Title }}">
+{{ define "main" }}
+  <h1>Галерея</h1>
+  <div class="gallery">
+    {{ $images := readDir "static/images/posts" }}
+    {{ range $images }}
+      <div class="gallery-item">
+        <img src="/images/posts/{{ .Name }}" alt="{{ .Name }}">
+      </div>
+    {{ end }}
+  </div>
 {{ end }}
-</div>
