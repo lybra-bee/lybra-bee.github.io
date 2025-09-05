@@ -1,42 +1,24 @@
 baseURL = 'https://lybra-bee.github.io/'
 languageCode = 'ru-ru'
-defaultContentLanguage = 'ru'
 title = 'AI Blog - Генерация контента ИИ'
 
 [params]
-  description = 'Автоматически генерируемый блог об искусственном интеллекте и технологиях 2025 года'
-  background_image = "/assets/images/design/hero-bg.jpg"
-  primary_color = "#0af"
-  secondary_color = "#08c"
+  description = 'Автоматически генерируемый блог об искусственном интеллекте'
 
 [menu]
   [[menu.main]]
     name = 'Главная'
     url = '/'
     weight = 1
-
   [[menu.main]]
     name = 'Статьи'
     url = '/posts/'
     weight = 2
-
   [[menu.main]]
     name = 'Галерея'
     url = '/gallery/'
     weight = 3
-
   [[menu.main]]
     name = 'Обо мне'
     url = '/about/'
     weight = 4
-
-[build]
-  buildFuture = true
-  buildExpired = true
-
-[outputs]
-  home = ['HTML']
-  page = ['HTML']
-
-[imaging]
-  quality = 85
