@@ -1,135 +1,34 @@
-// assets/scripts/articles-loader.js
-
-const ARTICLES_DATA_URL = 'data/articles.json';
-
-async function fetchArticlesData() {
-    try {
-        const response = await fetch(ARTICLES_DATA_URL);
-        if (!response.ok) throw new Error('Failed to fetch articles data');
-        return await response.json();
-    } catch (error) {
-        console.error('Error loading articles data:', error);
-        return { articles: [], images: [] };
+/{
+  "articles": [
+    {
+      "id": "welcome-to-my-blog",
+      "title": "Добро пожаловать в мой блог",
+      "excerpt": "Первая статья в моем новом блоге о веб-разработке и дизайне.",
+      "date": "2024-01-15",
+      "image": "welcome-to-my-blog.jpg",
+      "content": "# Добро пожаловать!\n\nЭто моя первая статья в новом блоге. Здесь я буду делиться своими знаниями и опытом в веб-разработке.\n\n## О чем этот блог\n\nВ этом блоге я планирую освещать:\n\n- Современные технологии веб-разработки\n- Лучшие практики и паттерны\n- Интересные кейсы и проекты\n- Полезные инструменты и ресурсы\n\n## Планы на будущее\n\nЯ надеюсь, что этот блог станет полезным ресурсом для других разработчиков."
+    },
+    {
+      "id": "web-development-tips",
+      "title": "Советы по веб-разработке",
+      "excerpt": "Полезные советы и лучшие практики для начинающих разработчиков.",
+      "date": "2024-01-20",
+      "image": "web-development-tips.jpg",
+      "content": "# Советы по веб-разработке\n\nВ этой статье я поделюсь полезными советами для начинающих разработчиков.\n\n## Основные принципы\n\n1. Пишите чистый и читаемый код\n2. Используйте систему контроля версий\n3. Тестируйте свой код\n4. Изучайте новые технологии\n\n## Рекомендации\n\nРегулярно практикуйтесь и не бойтесь совершать ошибки - это часть процесса обучения."
+    },
+    {
+      "id": "css-tricks",
+      "title": "Полезные трюки CSS",
+      "excerpt": "Интересные приемы и техники работы с CSS для современных интерфейсов.",
+      "date": "2024-01-25",
+      "image": "css-tricks.jpg",
+      "content": "# Полезные трюки CSS\n\nНесколько интересных приемов работы с CSS для создания современных интерфейсов.\n\n## Flexbox и Grid\n\nИспользуйте современные методы верстки для создания адаптивных интерфейсов.\n\n## Анимации\n\nCSS анимации могут сделать ваш сайт более живым и интерактивным.\n\n## Переменные CSS\n\nИспользуйте CSS переменные для удобства поддержки кода."
     }
+  ],
+  "images": [
+    "welcome-to-my-blog.jpg",
+    "web-development-tips.jpg",
+    "css-tricks.jpg"
+  ],
+  "generated_at": "2024-01-15T12:00:00Z"
 }
-
-// Загрузка последней статьи на главную
-async function loadLatestArticle() {
-    const container = document.getElementById('latest-article');
-    if (!container) return;
-
-    container.innerHTML = '<div class="loading">Загрузка...</div>';
-
-    try {
-        const data = await fetchArticlesData();
-        const latestArticle = data.articles[0];
-
-        if (latestArticle) {
-            container.innerHTML = createArticleCard(latestArticle);
-        } else {
-            container.innerHTML = '<div class="no-articles">Статьи не найдены</div>';
-        }
-    } catch (error) {
-        container.innerHTML = '<div class="error">Ошибка загрузки статьи</div>';
-    }
-}
-
-// Загрузка всех статей
-async function loadAllArticles() {
-    const container = document.getElementById('all-articles');
-    if (!container) return;
-
-    container.innerHTML = '<div class="loading">Загрузка статей...</div>';
-
-    try {
-        const data = await fetchArticlesData();
-        
-        if (data.articles.length > 0) {
-            container.innerHTML = data.articles.map(article => 
-                createArticleCard(article)
-            ).join('');
-        } else {
-            container.innerHTML = '<div class="no-articles">Статьи не найдены</div>';
-        }
-    } catch (error) {
-        container.innerHTML = '<div class="error">Ошибка загрузки статей</div>';
-    }
-}
-
-// Создание карточки статьи
-function createArticleCard(article) {
-    const imagePath = article.image ? `assets/images/posts/${article.image}` : '';
-    
-    return `
-        <div class="article-card" data-article-id="${article.id}">
-            ${imagePath ? `
-                <img src="${imagePath}" 
-                     alt="${article.title}" 
-                     class="article-image"
-                     onerror="this.style.display='none'">
-            ` : ''}
-            <div class="article-content">
-                <h3>${article.title}</h3>
-                <p>${article.excerpt}</p>
-                <p><small>Опубликовано: ${article.date}</small></p>
-                <button class="read-more" onclick="showArticle('${article.id}')">
-                    Читать далее
-                </button>
-            </div>
-        </div>
-    `;
-}
-
-// Показ полной статьи
-async function showArticle(articleId) {
-    try {
-        const data = await fetchArticlesData();
-        const article = data.articles.find(a => a.id === articleId);
-        
-        if (!article) {
-            alert('Статья не найдена');
-            return;
-        }
-
-        // Создаем модальное окно для статьи
-        const modal = document.createElement('div');
-        modal.className = 'article-modal';
-        modal.innerHTML = `
-            <div class="modal-content">
-                <span class="close-modal" onclick="closeModal()">&times;</span>
-                ${article.image ? `
-                    <img src="assets/images/posts/${article.image}" 
-                         alt="${article.title}" 
-                         class="modal-image"
-                         onerror="this.style.display='none'">
-                ` : ''}
-                <h2>${article.title}</h2>
-                <p><small>Опубликовано: ${article.date}</small></p>
-                <div class="article-full-content">
-                    ${article.content ? marked.parse(article.content) : '<p>Содержание недоступно</p>'}
-                </div>
-            </div>
-        `;
-        
-        document.body.appendChild(modal);
-        document.body.style.overflow = 'hidden';
-    } catch (error) {
-        alert('Ошибка загрузки статьи');
-    }
-}
-
-// Закрытие модального окна
-function closeModal() {
-    const modal = document.querySelector('.article-modal');
-    if (modal) {
-        modal.remove();
-        document.body.style.overflow = 'auto';
-    }
-}
-
-// Закрытие по клику вне контента
-document.addEventListener('click', function(e) {
-    if (e.target.classList.contains('article-modal')) {
-        closeModal();
-    }
-});
