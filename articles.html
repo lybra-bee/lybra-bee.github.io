@@ -27,60 +27,23 @@
     
     <main class="container">
         <h1>Все статьи</h1>
-        
-        <div class="articles-grid">
-            <div class="article-card">
-                <img src="assets/images/posts/welcome-to-my-blog.jpg" 
-                     alt="Добро пожаловать в мой блог" 
-                     class="article-image"
-                     onerror="this.style.display='none'">
-                <div class="article-content">
-                    <h3>Добро пожаловать в мой блог</h3>
-                    <p>Первая статья в моем новом блоге о веб-разработке и дизайне.</p>
-                    <p><small>Опубликовано: 2024-01-15</small></p>
-                    <a href="#welcome-to-my-blog" class="read-more">Читать далее</a>
-                </div>
-            </div>
-            
-            <div class="article-card">
-                <img src="assets/images/posts/web-development-tips.jpg" 
-                     alt="Советы по веб-разработке" 
-                     class="article-image"
-                     onerror="this.style.display='none'">
-                <div class="article-content">
-                    <h3>Советы по веб-разработке</h3>
-                    <p>Полезные советы и лучшие практики для начинающих разработчиков.</p>
-                    <p><small>Опубликовано: 2024-01-20</small></p>
-                    <a href="#web-development-tips" class="read-more">Читать далее</a>
-                </div>
-            </div>
-            
-            <div class="article-card">
-                <img src="assets/images/posts/css-tricks.jpg" 
-                     alt="Полезные трюки CSS" 
-                     class="article-image"
-                     onerror="this.style.display='none'">
-                <div class="article-content">
-                    <h3>Полезные трюки CSS</h3>
-                    <p>Интересные приемы и техники работы с CSS для современных интерфейсов.</p>
-                    <p><small>Опубликовано: 2024-01-25</small></p>
-                    <a href="#css-tricks" class="read-more">Читать далее</a>
-                </div>
-            </div>
+        <div class="articles-grid" id="all-articles">
+            <!-- Статьи загрузятся динамически -->
         </div>
     </main>
     
     <footer class="main-footer">
         <div class="footer-content">
             <p>&copy; 2024 Мой блог. Все права защищены.</p>
-            <div class="social-links">
-                <a href="#">Twitter</a>
-                <a href="#">GitHub</a>
-                <a href="#">LinkedIn</a>
-            </div>
         </div>
     </footer>
 
     <script src="assets/scripts/main.js"></script>
+    <script src="assets/scripts/articles-loader.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            loadAllArticles();
+        });
+    </script>
 </body>
 </html>
