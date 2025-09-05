@@ -19,7 +19,7 @@ jobs:
 
       # 2. Установка Hugo
       - name: Setup Hugo
-        uses: peaceiris/actions-hugo@v4
+        uses: peaceiris/actions-hugo@v2
         with:
           hugo-version: '0.116.0'  # можно заменить на актуальную
           extended: true
@@ -30,7 +30,7 @@ jobs:
 
       # 4. Деплой на GitHub Pages
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v6
+        uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./public
