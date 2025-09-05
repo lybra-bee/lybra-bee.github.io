@@ -33,19 +33,8 @@
         
         <section class="featured-articles">
             <h2>Последняя статья</h2>
-            <div class="articles-grid">
-                <div class="article-card">
-                    <img src="assets/images/posts/css-tricks.jpg" 
-                         alt="Полезные трюки CSS" 
-                         class="article-image"
-                         onerror="this.style.display='none'">
-                    <div class="article-content">
-                        <h3>Полезные трюки CSS</h3>
-                        <p>Интересные приемы и техники работы с CSS для создания современных интерфейсов.</p>
-                        <p><small>Опубликовано: 2024-01-25</small></p>
-                        <a href="articles.html#css-tricks" class="read-more">Читать далее</a>
-                    </div>
-                </div>
+            <div class="articles-grid" id="latest-article">
+                <!-- Динамически загрузится последняя статья -->
             </div>
         </section>
     </main>
@@ -53,14 +42,15 @@
     <footer class="main-footer">
         <div class="footer-content">
             <p>&copy; 2024 Мой блог. Все права защищены.</p>
-            <div class="social-links">
-                <a href="#">Twitter</a>
-                <a href="#">GitHub</a>
-                <a href="#">LinkedIn</a>
-            </div>
         </div>
     </footer>
 
     <script src="assets/scripts/main.js"></script>
+    <script src="assets/scripts/articles-loader.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            loadLatestArticle();
+        });
+    </script>
 </body>
 </html>
