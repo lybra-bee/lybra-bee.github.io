@@ -19,69 +19,57 @@ def fix_image_references():
     
     print("🔍 Поиск статей и изображений...")
     
-    # Получаем все существующие изображения
-    existing_images = {}
+    # Создаем mapping: имя файла -> путь к изображению
+    image_mapping = {}
     for img_path in glob.glob(f"{images_dir}/*.png"):
-        img_name = Path(img_path).stem
-        existing_images[img_name] = img_path
-        print(f"📁 Найдено изображение: {img_name}")
+        stem = Path(img_path).stem
+        image_mapping[stem] = f"/assets/images/posts/{Path(img_path).name}"
     
-    # Обрабатываем каждую статью
+    print(f"📁 Найдено {len(image_mapping)} изображений")
+    
+    # Обрабатываем статьи
+    updated_count = 0
     for post_file in glob.glob(f"{posts_dir}/*.md"):
         try:
             with open(post_file, 'r', encoding='utf-8') as f:
                 content = f.read()
             
-            # Извлекаем заголовок статьи
-            title_match = re.search(r'title:\s*["\'](.*?)["\']', content)
-            if not title_match:
-                print(f"⚠️ Не найден заголовок в {post_file}")
-                continue
+            post_stem = Path(post_file).stem
+            
+            # Ищем изображение с таким же именем
+            if post_stem in image_mapping:
+                image_path = image_mapping[post_stem]
                 
-            title = title_match.group(1)
-            post_slug = generate_slug(title)
-            post_name = Path(post_file).stem
-            
-            print(f"📄 Обработка статьи: {post_name} -> '{title}'")
-            
-            # Ищем соответствующее изображение
-            matching_image = None
-            possible_names = [post_slug, post_name, post_name.replace('-', ' ')]
-            
-            for name in possible_names:
-                if name in existing_images:
-                    matching_image = existing_images[name]
-                    break
-            
-            if matching_image:
-                image_path = f"/assets/images/posts/{Path(matching_image).name}"
-                print(f"🖼️ Найдено изображение: {image_path}")
-                
-                # Обновляем frontmatter
+                # Обновляем или добавляем поле image
                 if 'image:' in content:
-                    # Заменяем существующее изображение
                     new_content = re.sub(
                         r'image:\s*["\'].*?["\']', 
                         f'image: "{image_path}"', 
                         content
                     )
                 else:
-                    # Добавляем новое поле image
-                    new_content = content.replace('title:', f'image: "{image_path}"\ntitle:')
+                    # Добавляем после первой строки с ---
+                    lines = content.split('\n')
+                    for i, line in enumerate(lines):
+                        if line.strip() == '---':
+                            lines.insert(i + 1, f'image: "{image_path}"')
+                            break
+                    new_content = '\n'.join(lines)
                 
-                # Сохраняем изменения
                 if new_content != content:
                     with open(post_file, 'w', encoding='utf-8') as f:
                         f.write(new_content)
-                    print(f"✅ Исправлено: {post_file}")
+                    print(f"✅ Исправлено: {post_stem} -> {image_path}")
+                    updated_count += 1
                 else:
-                    print(f"✅ Уже правильно: {post_file}")
-                    
+                    print(f"✓ Уже правильно: {post_stem}")
             else:
-                print(f"⚠️ Не найдено изображение для: {post_name}")
+                print(f"⚠️ Нет изображения для: {post_stem}")
                 
         except Exception as e:
-            print(f"❌ Ошибка обработки {post_file}: {e}")
+            print(f"❌ Ошибка в {post_file}: {e}")
+    
+    print(f"🎉 Обновлено статей: {updated_count}")
 
 if __name__ == "__main__":
     fix_image_references()
