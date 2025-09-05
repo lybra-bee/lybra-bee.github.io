@@ -7,26 +7,66 @@
     <link rel="stylesheet" href="assets/styles/main.css">
 </head>
 <body>
-    <div id="header"></div>
+    <header class="main-header">
+        <nav class="navbar">
+            <div class="nav-brand">
+                <a href="index.html">Мой блог</a>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="index.html">Главная</a></li>
+                <li><a href="articles.html">Статьи</a></li>
+                <li><a href="gallery.html">Галерея</a></li>
+            </ul>
+            <div class="hamburger">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </nav>
+    </header>
     
     <main class="container">
         <h1>Галерея изображений</h1>
         
         <div class="gallery" id="image-gallery">
-            <!-- Изображения будут загружены через JS -->
+            <div class="gallery-item">
+                <img src="assets/images/posts/welcome-to-my-blog.jpg" 
+                     alt="Добро пожаловать в мой блог" 
+                     class="gallery-image"
+                     onerror="this.style.display='none'">
+                <div class="image-overlay">Добро пожаловать в мой блог</div>
+            </div>
+            
+            <div class="gallery-item">
+                <img src="assets/images/posts/web-development-tips.jpg" 
+                     alt="Советы по веб-разработке" 
+                     class="gallery-image"
+                     onerror="this.style.display='none'">
+                <div class="image-overlay">Советы по веб-разработке</div>
+            </div>
+            
+            <div class="gallery-item">
+                <img src="assets/images/posts/css-tricks.jpg" 
+                     alt="Полезные трюки CSS" 
+                     class="gallery-image"
+                     onerror="this.style.display='none'">
+                <div class="image-overlay">Полезные трюки CSS</div>
+            </div>
         </div>
     </main>
     
-    <div id="footer"></div>
+    <footer class="main-footer">
+        <div class="footer-content">
+            <p>&copy; 2024 Мой блог. Все права защищены.</p>
+            <div class="social-links">
+                <a href="#">Twitter</a>
+                <a href="#">GitHub</a>
+                <a href="#">LinkedIn</a>
+            </div>
+        </div>
+    </footer>
 
     <script src="assets/scripts/main.js"></script>
     <script src="assets/scripts/gallery-loader.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            loadComponent('header', 'components/header.html');
-            loadComponent('footer', 'components/footer.html');
-            loadGalleryImages();
-        });
-    </script>
 </body>
 </html>
