@@ -6,10 +6,18 @@ async function fetchGalleryData() {
     try {
         const response = await fetch(ARTICLES_DATA_URL);
         if (!response.ok) throw new Error('Failed to fetch gallery data');
-        return await response.json();
+        const data = await response.json();
+        return data;
     } catch (error) {
         console.error('Error loading gallery data:', error);
-        return { images: [] };
+        // Возвращаем тестовые изображения
+        return { 
+            images: [
+                "welcome-to-my-blog.jpg",
+                "web-development-tips.jpg", 
+                "css-tricks.jpg"
+            ] 
+        };
     }
 }
 
@@ -22,7 +30,7 @@ async function loadGalleryImages() {
     try {
         const data = await fetchGalleryData();
         
-        if (data.images.length > 0) {
+        if (data.images && data.images.length > 0) {
             gallery.innerHTML = data.images.map(image => {
                 const imageName = image.replace(/\.[^/.]+$/, '').replace(/-/g, ' ');
                 return `
@@ -41,6 +49,7 @@ async function loadGalleryImages() {
             gallery.innerHTML = '<div class="no-images">Изображения не найдены</div>';
         }
     } catch (error) {
+        console.error('Error:', error);
         gallery.innerHTML = '<div class="error">Ошибка загрузки галереи</div>';
     }
 }
