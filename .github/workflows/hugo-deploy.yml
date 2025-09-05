@@ -3,33 +3,32 @@ name: Deploy Hugo site to GitHub Pages
 on:
   push:
     branches:
-      - main  # или ветка, которую используешь для исходников
+      - main  # ветка, из которой деплоим
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      # 1. Checkout репозиторий
+      # Клонируем репозиторий
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
-          submodules: true  # подтягиваем подмодули, включая тему
+          submodules: true  # если используешь темы через submodule
 
-      # 2. Setup Hugo
+      # Устанавливаем Hugo
       - name: Setup Hugo
-        uses: peaceiris/actions-hugo@v5
+        uses: peaceiris/actions-hugo@v4
         with:
-          hugo-version: '0.115.0'
-          extended: true
+          hugo-version: '0.114.0'  # можно указать последнюю стабильную
 
-      # 3. Build Hugo site
-      - name: Build Hugo site
+      # Собираем сайт
+      - name: Build
         run: hugo --minify
-        working-directory: .  # если config.toml в корне, иначе укажи путь
 
-      # 4. Deploy на GitHub Pages
-      - name: Deploy to GitHub Pages
+      # Деплой на GitHub Pages
+      - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./public  # Hugo выводит сайт в public
+          publish_dir: ./public
