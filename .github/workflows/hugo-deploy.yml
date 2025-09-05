@@ -1,29 +1,34 @@
-name: Build and Deploy Hugo site
+name: Deploy Hugo site to GitHub Pages
 
 on:
   push:
     branches:
-      - main  # или master, если твоя основная ветка так называется
+      - main  # или твоя основная ветка
 
 jobs:
   build:
-    name: Build
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
-      with:
-        submodules: true  # подтягиваем тему
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: true  # инициализация темы
 
-    - name: Setup Hugo
-      uses: peaceiris/actions-hugo@v3
-      with:
-        hugo-version: '0.115.0'  # укажи нужную версию Hugo
-        extended: true
+      - name: Setup Hugo
+        uses: peaceiris/actions-hugo@v3
+        with:
+          hugo-version: '0.123.0'  # последняя стабильная версия
 
-    - name: Build Hugo site
-      run: hugo --minify
+      - name: Build Hugo site
+        run: hugo --minify
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
+
 
     - name: Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v4
