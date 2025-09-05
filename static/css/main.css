@@ -427,3 +427,13 @@ footer p {
 ::-webkit-scrollbar-thumb:hover {
     background: var(--secondary-purple);
 }
+.loading, .no-articles, .no-images, .error {
+    text-align: center;
+    padding: 2rem;
+    font-size: 1.1rem;
+    color: #666;
+}
+
+.error {
+    color: #e74c3c;
+}
