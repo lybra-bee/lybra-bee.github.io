@@ -326,3 +326,23 @@ p {
 ::-webkit-scrollbar-thumb:hover {
     background: var(--blue-hover);
 }
+
+/* Добавьте в конец main.css */
+img[style*="display: none"] {
+    display: none !important;
+}
+
+.article-card:has(img[style*="display: none"]) {
+    min-height: 200px;
+}
+
+/* Запасной фон для карточек без изображений */
+.article-card:not(:has(img:not([style*="display: none"]))) {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.article-card:not(:has(img:not([style*="display: none"]))) .read-more {
+    background: white;
+    color: #667eea;
+}
