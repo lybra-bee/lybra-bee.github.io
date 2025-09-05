@@ -1,0 +1,7 @@
+baseURL = "https://yourusername.github.io/"
+title = "Alexey AI Portfolio"
+languageCode = "ru-ru"
+theme = "ananke"
+
+[params]
+  description = "Портфолио генеративного контента и AI проектов"
