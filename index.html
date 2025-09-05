@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Главная - Мой блог</title>
+    <link rel="stylesheet" href="assets/styles/main.css">
+</head>
+<body>
+    <div id="header"></div>
+    
+    <main class="container">
+        <section class="hero">
+            <h1>Добро пожаловать в мой блог</h1>
+            <p>Здесь я делюсь своими мыслями и идеями</p>
+        </section>
+        
+        <section class="featured-articles">
+            <h2>Последние статьи</h2>
+            <div class="articles-grid" id="featured-articles">
+                <!-- Статьи будут загружены через JS -->
+            </div>
+        </section>
+    </main>
+    
+    <div id="footer"></div>
+
+    <script src="assets/scripts/main.js"></script>
+    <script>
+        // Загрузка последних статей на главную
+        document.addEventListener('DOMContentLoaded', function() {
+            loadComponent('header', 'components/header.html');
+            loadComponent('footer', 'components/footer.html');
+            loadFeaturedArticles(3); // Показываем 3 последние статьи
+        });
+    </script>
+</body>
+</html>
