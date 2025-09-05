@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Галерея - Мой блог</title>
+    <link rel="stylesheet" href="assets/styles/main.css">
+</head>
+<body>
+    <div id="header"></div>
+    
+    <main class="container">
+        <h1>Галерея изображений</h1>
+        
+        <div class="gallery" id="image-gallery">
+            <!-- Изображения будут загружены через JS -->
+        </div>
+    </main>
+    
+    <div id="footer"></div>
+
+    <script src="assets/scripts/main.js"></script>
+    <script src="assets/scripts/gallery-loader.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            loadComponent('header', 'components/header.html');
+            loadComponent('footer', 'components/footer.html');
+            loadGalleryImages();
+        });
+    </script>
+</body>
+</html>
