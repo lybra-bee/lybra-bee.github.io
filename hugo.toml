@@ -1,7 +1,6 @@
 baseURL = "https://lybra-bee.github.io/"
 languageCode = "ru"
 title = "AI Blog"
-theme = "ananke"
 paginate = 10
 
 [params]
