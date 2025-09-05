@@ -1,27 +1,18 @@
 {{ define "main" }}
-<section class="hero" style="text-align: center; padding: 4rem 1rem; color: white;">
-    <h1 style="font-size: 3rem; margin-bottom: 1rem;">{{ .Site.Title }}</h1>
-    <p style="font-size: 1.4rem;">{{ .Site.Params.description }}</p>
-</section>
+<h1>Последние статьи</h1>
 
-{{ $posts := where .Site.RegularPages "Type" "posts" }}
-{{ if $posts }}
-    {{ with index $posts 0 }}
-    <div class="glass-card">
-        <h2>🔥 Последняя статья</h2>
-        {{ if .Params.image }}
-        <img src="{{ .Params.image }}" alt="{{ .Title }}" style="width: 100%; height: 300px; object-fit: cover; border-radius: 12px; margin: 1rem 0;">
-        {{ end }}
-        <h3>{{ .Title }}</h3>
-        <p style="color: #aaa;"><i class="bi bi-calendar"></i> {{ .Date.Format "2 January 2006" }}</p>
-        <p>{{ .Summary }}</p>
-        <a href="{{ .Permalink }}" class="btn">Читать статью</a>
-    </div>
+<div class="swiper">
+  <div class="swiper-wrapper">
+    {{ range first 10 .Site.RegularPages }}
+      <div class="swiper-slide">
+        <a href="{{ .RelPermalink }}">
+          {{ if .Params.image }}
+            <img src="{{ .Params.image | relURL }}" alt="{{ .Title }}" style="border-radius: 12px;">
+          {{ end }}
+          <h3>{{ .Title }}</h3>
+        </a>
+      </div>
     {{ end }}
-{{ else }}
-    <div class="glass-card">
-        <h2>🤖 Статьи скоро появятся!</h2>
-        <p>Система AI-генерации контента готовит первые статьи</p>
-    </div>
-{{ end }}
+  </div>
+</div>
 {{ end }}
