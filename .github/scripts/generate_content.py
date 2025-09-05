@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import os
 import json
-import requests
 import random
 from datetime import datetime, timezone
 import shutil
