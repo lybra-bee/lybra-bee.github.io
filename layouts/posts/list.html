@@ -1,8 +1,12 @@
-<h1>Все статьи</h1>
-<ul>
-{{ range .Pages }}
-  <li>
-    <a href="{{ .RelPermalink }}">{{ .Title }}</a> — {{ .Date.Format "2006-01-02" }}
-  </li>
+{{ define "main" }}
+  <h1>Все статьи</h1>
+  {{ range .Pages }}
+    <article>
+      <h2><a href="{{ .RelPermalink }}">{{ .Title }}</a></h2>
+      {{ if .Params.image }}
+        <img src="{{ .Params.image | relURL }}" alt="{{ .Title }}">
+      {{ end }}
+      <p>{{ .Summary }}</p>
+    </article>
+  {{ end }}
 {{ end }}
-</ul>
