@@ -1,6 +1,0 @@
-{
-  "name": "telegram-bot-api",
-  "version": "1.0.0",
-  "description": "Telegram bot webhook handler",
-  "type": "module"
-}
