@@ -32,3 +32,10 @@
   ],
   "generated_at": "2024-01-15T12:00:00Z"
 }
+// Отладочная информация
+console.log('Articles loader loaded');
+fetchArticlesData().then(data => {
+    console.log('Articles data:', data);
+}).catch(error => {
+    console.error('Fetch error:', error);
+});
