@@ -1,141 +1,27 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ .Site.Title }}</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="https://unpkg.com/aos@2.3.1/dist/aos.css" />
-    <style>
-        /* Основные стили */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: url('https://raw.githubusercontent.com/lybra-bee/lybra-bee.github.io/main/assets/images/design/hero-bg.jpg') no-repeat center center fixed;
-            background-size: cover;
-            color: #e0e0e0;
-            min-height: 100vh;
-        }
-        
-        .navbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1rem 2rem;
-            background: rgba(15, 23, 42, 0.7);
-            backdrop-filter: blur(12px);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
+{{ define "main" }}
+<section class="hero" style="text-align: center; padding: 4rem 1rem; color: white;">
+    <h1 style="font-size: 3rem; margin-bottom: 1rem;">{{ .Site.Title }}</h1>
+    <p style="font-size: 1.4rem;">{{ .Site.Params.description }}</p>
+</section>
 
-        .navbar-brand {
-            font-size: 1.8rem;
-            font-weight: 700;
-            color: #0af;
-            text-decoration: none;
-        }
-
-        .nav-menu {
-            display: flex;
-            list-style: none;
-            gap: 1.5rem;
-        }
-
-        .nav-link {
-            color: #e0e0e0;
-            text-decoration: none;
-            padding: 0.5rem 0.8rem;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-        }
-
-        .nav-link:hover {
-            background: rgba(0, 170, 255, 0.2);
-        }
-
-        .hero {
-            text-align: center;
-            padding: 4rem 1rem;
-            color: white;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 2rem 1rem;
-        }
-
-        .article-card {
-            background: rgba(15, 23, 42, 0.6);
-            backdrop-filter: blur(12px);
-            border-radius: 16px;
-            padding: 1.5rem;
-            margin: 1rem 0;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .article-card img {
-            width: 100%;
-            height: 200px;
-            object-fit: cover;
-            border-radius: 8px;
-            margin-bottom: 1rem;
-        }
-
-        .btn {
-            display: inline-block;
-            padding: 0.7rem 1.5rem;
-            background: #0af;
-            color: #fff;
-            border-radius: 8px;
-            text-decoration: none;
-            margin-top: 1rem;
-        }
-    </style>
-</head>
-<body>
-    <nav class="navbar">
-        <a href="/" class="navbar-brand"><i class="bi bi-cpu"></i> AI Blog</a>
-        <ul class="nav-menu">
-            <li><a href="/" class="nav-link">Главная</a></li>
-            <li><a href="/posts/" class="nav-link">Статьи</a></li>
-            <li><a href="/gallery/" class="nav-link">Галерея</a></li>
-            <li><a href="/about/" class="nav-link">Обо мне</a></li>
-        </ul>
-    </nav>
-
-    <section class="hero">
-        <h1>AI Blog - Генерация контента ИИ</h1>
-        <p>Самые свежие статьи и тренды AI 2025</p>
-    </section>
-
-    <main class="container">
-        {{ $posts := where .Site.RegularPages "Type" "posts" }}
-        {{ if $posts }}
-            {{ with index $posts 0 }}
-            <div class="article-card">
-                <h2>🔥 Последняя статья</h2>
-                {{ if .Params.image }}
-                <img src="{{ .Params.image }}" alt="{{ .Title }}">
-                {{ else }}
-                <div style="background: rgba(255,255,255,0.1); height: 200px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                    <i class="bi bi-image" style="font-size: 3rem; color: #999;"></i>
-                </div>
-                {{ end }}
-                <h3>{{ .Title }}</h3>
-                <p>{{ .Date.Format "2 January 2006" }}</p>
-                <p>{{ .Summary | truncate 200 }}</p>
-                <a href="{{ .Permalink }}" class="btn">Читать статью</a>
-            </div>
-            {{ end }}
-        {{ else }}
-            <div class="article-card">
-                <h2>🤖 Статьи скоро появятся!</h2>
-                <p>Система AI-генерации контента готовит первые статьи</p>
-            </div>
+{{ $posts := where .Site.RegularPages "Type" "posts" }}
+{{ if $posts }}
+    {{ with index $posts 0 }}
+    <div class="glass-card">
+        <h2>🔥 Последняя статья</h2>
+        {{ if .Params.image }}
+        <img src="{{ .Params.image }}" alt="{{ .Title }}" style="width: 100%; height: 300px; object-fit: cover; border-radius: 12px; margin: 1rem 0;">
         {{ end }}
-    </main>
-</body>
-</html>
+        <h3>{{ .Title }}</h3>
+        <p style="color: #aaa;"><i class="bi bi-calendar"></i> {{ .Date.Format "2 January 2006" }}</p>
+        <p>{{ .Summary }}</p>
+        <a href="{{ .Permalink }}" class="btn">Читать статью</a>
+    </div>
+    {{ end }}
+{{ else }}
+    <div class="glass-card">
+        <h2>🤖 Статьи скоро появятся!</h2>
+        <p>Система AI-генерации контента готовит первые статьи</p>
+    </div>
+{{ end }}
+{{ end }}
