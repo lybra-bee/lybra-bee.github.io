@@ -7,21 +7,17 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="https://unpkg.com/aos@2.3.1/dist/aos.css" />
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        /* Основные стили */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: url('{{ .Site.Params.background_image }}') no-repeat center center fixed;
+            background: url('https://raw.githubusercontent.com/lybra-bee/lybra-bee.github.io/main/assets/images/design/hero-bg.jpg') no-repeat center center fixed;
             background-size: cover;
             color: #e0e0e0;
             min-height: 100vh;
         }
         
-        /* Новая красивая шапка */
         .navbar {
             display: flex;
             justify-content: space-between;
@@ -32,38 +28,13 @@
             position: sticky;
             top: 0;
             z-index: 100;
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            transition: all 0.4s ease;
-        }
-
-        .navbar.scrolled {
-            padding: 0.7rem 2rem;
-            background: rgba(15, 23, 42, 0.95);
         }
 
         .navbar-brand {
-            display: flex;
-            align-items: center;
             font-size: 1.8rem;
             font-weight: 700;
-            color: {{ .Site.Params.primary_color }};
+            color: #0af;
             text-decoration: none;
-            transition: all 0.3s ease;
-        }
-
-        .navbar-brand i {
-            margin-right: 10px;
-            font-size: 2rem;
-            transition: transform 0.5s ease;
-        }
-
-        .navbar-brand:hover {
-            color: #7df;
-        }
-
-        .navbar-brand:hover i {
-            transform: rotate(15deg);
         }
 
         .nav-menu {
@@ -73,88 +44,27 @@
         }
 
         .nav-link {
-            position: relative;
-            text-decoration: none;
             color: #e0e0e0;
-            font-weight: 500;
+            text-decoration: none;
             padding: 0.5rem 0.8rem;
             border-radius: 8px;
             transition: all 0.3s ease;
-            overflow: hidden;
-            z-index: 1;
-        }
-
-        .nav-link::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(45deg, {{ .Site.Params.primary_color }}, {{ .Site.Params.secondary_color }});
-            opacity: 0;
-            transform: translateY(100%);
-            transition: all 0.3s ease;
-            z-index: -1;
-            border-radius: 8px;
         }
 
         .nav-link:hover {
-            color: white;
-            transform: translateY(-3px);
-            box-shadow: 0 5px 15px rgba(0, 170, 255, 0.4);
+            background: rgba(0, 170, 255, 0.2);
         }
 
-        .nav-link:hover::before {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        .nav-link:active {
-            transform: translateY(0);
-            box-shadow: 0 2px 8px rgba(0, 170, 255, 0.3);
-        }
-
-        /* Остальные стили */
         .hero {
-            position: relative;
-            height: 80vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
             text-align: center;
+            padding: 4rem 1rem;
             color: white;
-            overflow: hidden;
-            padding: 0 1rem;
         }
 
-        .hero h1 {
-            font-size: 3.5rem;
-            margin: 0;
-            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
-        }
-
-        .hero p {
-            font-size: 1.4rem;
-            margin-top: 1.5rem;
-            max-width: 800px;
-            text-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
-        }
-
-        /* Glass cards */
-        .glass-card {
-            background: rgba(15, 23, 42, 0.6);
-            backdrop-filter: blur(12px);
-            border-radius: 16px;
-            padding: 1.8rem;
-            transition: transform 0.3s, box-shadow 0.3s;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .glass-card:hover {
-            transform: translateY(-5px) scale(1.02);
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
         }
 
         .article-card {
@@ -162,16 +72,8 @@
             backdrop-filter: blur(12px);
             border-radius: 16px;
             padding: 1.5rem;
-            transition: transform 0.3s, box-shadow 0.3s;
+            margin: 1rem 0;
             border: 1px solid rgba(255, 255, 255, 0.1);
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .article-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
         }
 
         .article-card img {
@@ -185,210 +87,55 @@
         .btn {
             display: inline-block;
             padding: 0.7rem 1.5rem;
-            background: linear-gradient(45deg, {{ .Site.Params.primary_color }}, {{ .Site.Params.secondary_color }});
+            background: #0af;
             color: #fff;
             border-radius: 8px;
             text-decoration: none;
-            transition: all 0.3s ease;
-            border: none;
-            cursor: pointer;
-            font-weight: 500;
-            margin-top: auto;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 170, 255, 0.4);
-        }
-
-        footer {
-            background: rgba(15, 23, 42, 0.95);
-            padding: 3rem 1rem;
-            text-align: center;
-            margin-top: 4rem;
-            backdrop-filter: blur(10px);
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        /* Частицы */
-        #tsparticles {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            top: 0;
-            left: 0;
-            z-index: 0;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 2rem 1rem;
-        }
-
-        .featured-article {
-            margin-bottom: 3rem;
-        }
-
-        .articles-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
-            margin-top: 2rem;
-        }
-
-        @media (max-width: 768px) {
-            .navbar {
-                flex-direction: column;
-                padding: 1rem;
-            }
-            
-            .nav-menu {
-                margin-top: 1rem;
-                gap: 0.8rem;
-            }
-            
-            .hero h1 {
-                font-size: 2.5rem;
-            }
-            
-            .hero p {
-                font-size: 1.1rem;
-            }
+            margin-top: 1rem;
         }
     </style>
 </head>
 <body>
-    <!-- Новая красивая шапка -->
     <nav class="navbar">
-        <a href="/" class="navbar-brand"><i class="bi bi-cpu"></i> {{ .Site.Title }}</a>
+        <a href="/" class="navbar-brand"><i class="bi bi-cpu"></i> AI Blog</a>
         <ul class="nav-menu">
-            {{ range .Site.Menus.main }}
-            <li><a href="{{ .URL }}" class="nav-link">{{ .Name }}</a></li>
-            {{ end }}
+            <li><a href="/" class="nav-link">Главная</a></li>
+            <li><a href="/posts/" class="nav-link">Статьи</a></li>
+            <li><a href="/gallery/" class="nav-link">Галерея</a></li>
+            <li><a href="/about/" class="nav-link">Обо мне</a></li>
         </ul>
     </nav>
 
     <section class="hero">
-        <div id="tsparticles"></div>
-        <h1 id="typed"></h1>
-        <p>{{ .Site.Params.description }}</p>
+        <h1>AI Blog - Генерация контента ИИ</h1>
+        <p>Самые свежие статьи и тренды AI 2025</p>
     </section>
 
     <main class="container">
         {{ $posts := where .Site.RegularPages "Type" "posts" }}
         {{ if $posts }}
-        <section class="featured-article" data-aos="fade-up">
             {{ with index $posts 0 }}
-            <div class="glass-card">
-                <h2>🔥 Главная статья</h2>
+            <div class="article-card">
+                <h2>🔥 Последняя статья</h2>
                 {{ if .Params.image }}
-                <img src="{{ .Params.image }}" alt="{{ .Title }}" style="width: 100%; height: 200px; object-fit: cover; border-radius: 12px; margin-bottom: 1.5rem;">
+                <img src="{{ .Params.image }}" alt="{{ .Title }}">
                 {{ else }}
-                <div style="background: rgba(255,255,255,0.1); height: 200px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.5rem;">
+                <div style="background: rgba(255,255,255,0.1); height: 200px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
                     <i class="bi bi-image" style="font-size: 3rem; color: #999;"></i>
                 </div>
                 {{ end }}
                 <h3>{{ .Title }}</h3>
-                <p style="color: #aaa;"><i class="bi bi-calendar"></i> {{ .Date.Format "02.01.2006" }}</p>
+                <p>{{ .Date.Format "2 January 2006" }}</p>
                 <p>{{ .Summary | truncate 200 }}</p>
-                <div style="margin: 1.5rem 0;">
-                    {{ range first 3 .Params.tags }}
-                    <span style="background: {{ $.Site.Params.primary_color }}; padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.8rem; margin-right: 0.5rem;">#{{ . }}</span>
-                    {{ end }}
-                </div>
-                <a href="{{ .Permalink }}" class="btn"><i class="bi bi-book"></i> Читать статью</a>
+                <a href="{{ .Permalink }}" class="btn">Читать статью</a>
             </div>
             {{ end }}
-        </section>
-
-        <section>
-            <h2 style="text-align: center; margin: 3rem 0 2rem;">📚 Последние статьи</h2>
-            <div class="articles-grid">
-                {{ range first 3 (after 1 $posts) }}
-                <article class="article-card" data-aos="fade-up">
-                    {{ if .Params.image }}
-                    <img src="{{ .Params.image }}" alt="{{ .Title }}">
-                    {{ else }}
-                    <div style="background: rgba(255,255,255,0.1); height: 200px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
-                        <i class="bi bi-image" style="font-size: 2rem; color: #999;"></i>
-                    </div>
-                    {{ end }}
-                    <h4 style="margin: 0 0 0.5rem;">{{ .Title }}</h4>
-                    <p style="color: #aaa; font-size: 0.9rem; margin: 0 0 1rem;"><i class="bi bi-calendar"></i> {{ .Date.Format "02.01.2006" }}</p>
-                    <p style="color: #aaa; margin: 0 0 1.5rem;">{{ .Summary | truncate 100 }}</p>
-                    <a href="{{ .Permalink }}" class="btn" style="text-align: center;">Читать</a>
-                </article>
-                {{ end }}
-            </div>
-        </section>
         {{ else }}
-        <section class="featured-article" data-aos="fade-up">
-            <div class="glass-card">
+            <div class="article-card">
                 <h2>🤖 Статьи скоро появятся!</h2>
-                <p>Система AI-генерации контента готовит первые статьи. Проверьте позже!</p>
+                <p>Система AI-генерации контента готовит первые статьи</p>
             </div>
-        </section>
         {{ end }}
     </main>
-
-    <footer>
-        <p>© {{ now.Year }} {{ .Site.Title }} | Сгенерировано с помощью искусственного интеллекта</p>
-    </footer>
-
-    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/typed.js@2.0.12"></script>
-    <script src="https://cdn.jsdelivr.net/npm/tsparticles@2.11.1/tsparticles.min.js"></script>
-    <script>
-        // Инициализация AOS анимаций
-        AOS.init({
-            duration: 1000,
-            once: true
-        });
-
-        // Анимация текста с помощью Typed.js
-        var typed = new Typed('#typed', {
-            strings: ["🤖 Искусственный Интеллект", "🚀 AI Тренды 2025", "💡 Автоматизация и генерация контента"],
-            typeSpeed: 70,
-            backSpeed: 50,
-            loop: true
-        });
-
-        // Частицы с tsParticles
-        tsParticles.load("tsparticles", {
-            particles: {
-                number: { value: 80 },
-                color: { value: ["#0af","#0ff","#08c"] },
-                shape: { type: "circle" },
-                opacity: { value: 0.5 },
-                size: { value: { min: 1, max: 4 } },
-                move: {
-                    enable: true,
-                    speed: 1.5,
-                    random: true,
-                    outModes: { default: "out" }
-                }
-            },
-            interactivity: {
-                events: {
-                    onhover: {
-                        enable: true,
-                        mode: "repulse"
-                    }
-                }
-            },
-            detectRetina: true
-        });
-
-        // Эффект изменения шапки при скролле
-        window.addEventListener('scroll', function() {
-            const navbar = document.querySelector('.navbar');
-            if (window.scrollY > 50) {
-                navbar.classList.add('scrolled');
-            } else {
-                navbar.classList.remove('scrolled');
-            }
-        });
-    </script>
 </body>
 </html>
