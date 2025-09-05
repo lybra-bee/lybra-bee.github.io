@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Статьи | {{ .Site.Title }}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://unpkg.com/aos@2.3.1/dist/aos.css" />
+    <style>
+        /* Все стили из index.html */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: url('{{ .Site.Params.background_image }}') no-repeat center center fixed;
+            background-size: cover;
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+        
+        /* Все остальные стили из index.html */
+        .navbar { /* ... */ }
+        .container { /* ... */ }
+        .article-card { /* ... */ }
+        .btn { /* ... */ }
+        /* и т.д. - скопируйте все стили из index.html */
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="/" class="navbar-brand"><i class="bi bi-cpu"></i> {{ .Site.Title }}</a>
+        <ul class="nav-menu">
+            {{ range .Site.Menus.main }}
+            <li><a href="{{ .URL }}" class="nav-link">{{ .Name }}</a></li>
+            {{ end }}
+        </ul>
+    </nav>
+
+    <main class="container">
+        <h1 style="text-align: center; margin: 3rem 0;">📚 Все статьи</h1>
+        
+        <div class="articles-grid">
+            {{ range .Pages }}
+            <article class="article-card" data-aos="fade-up">
+                {{ if .Params.image }}
+                <img src="{{ .Params.image }}" alt="{{ .Title }}">
+                {{ else }}
+                <div style="background: rgba(255,255,255,0.1); height: 200px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                    <i class="bi bi-image" style="font-size: 2rem; color: #999;"></i>
+                </div>
+                {{ end }}
+                <h3>{{ .Title }}</h3>
+                <p style="color: #aaa;"><i class="bi bi-calendar"></i> {{ .Date.Format "02.01.2006" }}</p>
+                <p>{{ .Summary | truncate 150 }}</p>
+                <a href="{{ .Permalink }}" class="btn">Читать статью</a>
+            </article>
+            {{ end }}
+        </div>
+    </main>
+
+    <footer>
+        <p>© {{ now.Year }} {{ .Site.Title }} | Сгенерировано с помощью искусственного интеллекта</p>
+    </footer>
+
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script>
+        AOS.init({ duration: 1000, once: true });
+    </script>
+</body>
+</html>
