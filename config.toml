@@ -1,6 +1,0 @@
-baseURL = "https://lybra-bee.github.io/"
-languageCode = "ru-ru"
-title = "Alexey AI"
-theme = "ananke"   # или любая выбранная тема
-enableRobotsTXT = true
-paginate = 5
