@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 import shutil
 import re
 import textwrap
+from PIL import Image, ImageDraw, ImageFont
 import time
 import logging
 import argparse
