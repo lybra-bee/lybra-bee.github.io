@@ -1,0 +1,76 @@
+name: Build and Deploy Site
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *'
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Create directory structure
+      run: |
+        mkdir -p content/posts
+        mkdir -p assets/images/posts
+        mkdir -p data
+        echo "📁 Directory structure created"
+
+    - name: Generate content data
+      run: |
+        if [ -f ".github/scripts/generate_content.py" ]; then
+          echo "🔄 Running generate_content.py..."
+          python .github/scripts/generate_content.py
+        else
+          echo "ℹ️ No generate_content.py found, creating empty data"
+          echo '{"articles": [], "images": []}' > data/articles.json
+        fi
+
+    - name: Build site
+      run: |
+        echo "🏗️ Building site..."
+        python build_site.py
+
+    - name: List generated files
+      run: |
+        echo "📄 Generated files:"
+        ls -la *.html
+        echo "📁 Data files:"
+        ls -la data/
+
+    - name: Setup Pages
+      uses: actions/configure-pages@v3
+
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v2
+      with:
+        path: .
+
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v2
+
+    - name: Show deployment URL
+      run: |
+        echo "🌐 Site deployed to: ${{ steps.deployment.outputs.page_url }}"
