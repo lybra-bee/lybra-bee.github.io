@@ -8,6 +8,9 @@ on:
       - 'content/posts/**'
       - 'assets/images/posts/**'
 
+permissions:
+  contents: write  # Даем разрешение на запись
+
 jobs:
   fix-images:
     runs-on: ubuntu-latest
@@ -17,6 +20,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}  # Важно!
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -27,10 +31,9 @@ jobs:
       run: |
         python .github/scripts/fix_image_references.py
 
-    - name: Commit changes
-      run: |
-        git config --local user.email "github-actions[bot]@users.noreply.github.com"
-        git config --local user.name "github-actions[bot]"
-        git add content/posts/*.md
-        git diff --staged --quiet || git commit -m "🤖 Fix image references in articles"
-        git push
+    - name: Commit and push changes
+      uses: stefanzweifel/git-auto-commit-action@v5
+      with:
+        commit_message: "🤖 Fix image references in articles"
+        file_pattern: content/posts/*.md
+        branch: main
