@@ -2,14 +2,14 @@ name: Generate AI Content
 
 on:
   schedule:
-    - cron: '0 0 * * *'
-  workflow_dispatch:
+    - cron: '0 0 * * *'  # Запускать каждый день в полночь
+  workflow_dispatch:  # Разрешить ручной запуск
 
 jobs:
   generate-content:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write  # Даем разрешение на запись
 
     steps:
     - name: Checkout repository
@@ -23,12 +23,19 @@ jobs:
       with:
         python-version: '3.10'
 
-    - name: Install dependencies
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libjpeg-dev zlib1g-dev
+
+    - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install requests pillow
-        # Проверяем установку
-        python -c "import PIL; print(f'Pillow version: {PIL.__version__}')"
+        pip install --force-reinstall pillow
+        pip install requests
+        echo "Проверка установки Pillow:"
+        python -c "from PIL import Image; print('✅ Pillow успешно установлен')"
+        python -c "import PIL; print(f'Версия Pillow: {PIL.__version__}')"
 
     - name: Generate content
       env:
@@ -36,30 +43,38 @@ jobs:
         FUSIONBRAIN_API_KEY: ${{ secrets.FUSIONBRAIN_API_KEY }}
         FUSION_SECRET_KEY: ${{ secrets.FUSION_SECRET_KEY }}
       run: |
-        echo "🔄 Running generate_content.py..."
+        echo "🔄 Запуск generate_content.py..."
         if [ -f ".github/scripts/generate_content.py" ]; then
           python .github/scripts/generate_content.py --count 1
         else
-          echo "❌ Script not found!"
+          echo "❌ Файл generate_content.py не найден!"
+          echo "Текущая директория: $(pwd)"
+          echo "Содержимое .github/scripts/:"
+          ls -la .github/scripts/ 2>/dev/null || echo "Директория .github/scripts/ не существует"
           exit 1
         fi
 
     - name: Check for changes
       id: check-changes
       run: |
-        git add content/ assets/
+        echo "Проверка изменений..."
+        git add content/ assets/ 2>/dev/null || echo "Директории content/ или assets/ не существуют"
         if git diff --staged --quiet; then
           echo "changes=false" >> $GITHUB_OUTPUT
+          echo "✅ Изменений нет"
         else
           echo "changes=true" >> $GITHUB_OUTPUT
-          echo "📁 Changes detected:"
+          echo "📁 Обнаружены изменения:"
           git diff --staged --name-status
         fi
 
     - name: Commit and push changes
       if: steps.check-changes.outputs.changes == 'true'
       run: |
+        echo "📤 Коммит и отправка изменений..."
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
         git commit -m "🤖 Auto-generated AI content [skip ci]"
         git push
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
