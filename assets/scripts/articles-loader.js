@@ -1,45 +1,37 @@
 // assets/scripts/articles-loader.js
 
-// Предполагаемый список статей (в реальности нужно получать через GitHub API)
-const articlesData = [
-    {
-        id: 'welcome-to-my-blog',
-        title: 'Добро пожаловать в мой блог',
-        excerpt: 'Первая статья в моем новом блоге о веб-разработке и дизайне.',
-        date: '2024-01-15',
-        image: 'welcome-to-my-blog.jpg',
-        content: 'Полное содержание статьи...'
-    },
-    {
-        id: 'web-development-tips',
-        title: 'Советы по веб-разработке',
-        excerpt: 'Полезные советы и лучшие практики для начинающих разработчиков.',
-        date: '2024-01-20',
-        image: 'web-development-tips.jpg',
-        content: 'Полное содержание статьи...'
-    },
-    {
-        id: 'css-tricks',
-        title: 'Полезные трюки CSS',
-        excerpt: 'Интересные приемы и техники работы с CSS для современных интерфейсов.',
-        date: '2024-01-25',
-        image: 'css-tricks.jpg',
-        content: 'Полное содержание статьи...'
+const ARTICLES_DATA_URL = 'data/articles.json';
+
+async function fetchArticlesData() {
+    try {
+        const response = await fetch(ARTICLES_DATA_URL);
+        if (!response.ok) throw new Error('Failed to fetch articles data');
+        return await response.json();
+    } catch (error) {
+        console.error('Error loading articles data:', error);
+        return { articles: [], images: [] };
     }
-];
+}
 
 // Загрузка последней статьи на главную
 async function loadLatestArticle() {
     const container = document.getElementById('latest-article');
     if (!container) return;
 
-    // Сортируем статьи по дате и берем последнюю
-    const sortedArticles = [...articlesData].sort((a, b) => 
-        new Date(b.date) - new Date(a.date)
-    );
-    const latestArticle = sortedArticles[0];
+    container.innerHTML = '<div class="loading">Загрузка...</div>';
 
-    container.innerHTML = createArticleCard(latestArticle);
+    try {
+        const data = await fetchArticlesData();
+        const latestArticle = data.articles[0];
+
+        if (latestArticle) {
+            container.innerHTML = createArticleCard(latestArticle);
+        } else {
+            container.innerHTML = '<div class="no-articles">Статьи не найдены</div>';
+        }
+    } catch (error) {
+        container.innerHTML = '<div class="error">Ошибка загрузки статьи</div>';
+    }
 }
 
 // Загрузка всех статей
@@ -47,24 +39,35 @@ async function loadAllArticles() {
     const container = document.getElementById('all-articles');
     if (!container) return;
 
-    // Сортируем статьи по дате (новые сначала)
-    const sortedArticles = [...articlesData].sort((a, b) => 
-        new Date(b.date) - new Date(a.date)
-    );
+    container.innerHTML = '<div class="loading">Загрузка статей...</div>';
 
-    container.innerHTML = sortedArticles.map(article => 
-        createArticleCard(article)
-    ).join('');
+    try {
+        const data = await fetchArticlesData();
+        
+        if (data.articles.length > 0) {
+            container.innerHTML = data.articles.map(article => 
+                createArticleCard(article)
+            ).join('');
+        } else {
+            container.innerHTML = '<div class="no-articles">Статьи не найдены</div>';
+        }
+    } catch (error) {
+        container.innerHTML = '<div class="error">Ошибка загрузки статей</div>';
+    }
 }
 
 // Создание карточки статьи
 function createArticleCard(article) {
+    const imagePath = article.image ? `assets/images/posts/${article.image}` : '';
+    
     return `
-        <div class="article-card">
-            <img src="assets/images/posts/${article.image}" 
-                 alt="${article.title}" 
-                 class="article-image"
-                 onerror="this.style.display='none'">
+        <div class="article-card" data-article-id="${article.id}">
+            ${imagePath ? `
+                <img src="${imagePath}" 
+                     alt="${article.title}" 
+                     class="article-image"
+                     onerror="this.style.display='none'">
+            ` : ''}
             <div class="article-content">
                 <h3>${article.title}</h3>
                 <p>${article.excerpt}</p>
@@ -78,30 +81,41 @@ function createArticleCard(article) {
 }
 
 // Показ полной статьи
-function showArticle(articleId) {
-    const article = articlesData.find(a => a.id === articleId);
-    if (!article) return;
+async function showArticle(articleId) {
+    try {
+        const data = await fetchArticlesData();
+        const article = data.articles.find(a => a.id === articleId);
+        
+        if (!article) {
+            alert('Статья не найдена');
+            return;
+        }
 
-    // Создаем модальное окно для статьи
-    const modal = document.createElement('div');
-    modal.className = 'article-modal';
-    modal.innerHTML = `
-        <div class="modal-content">
-            <span class="close-modal" onclick="closeModal()">&times;</span>
-            <img src="assets/images/posts/${article.image}" 
-                 alt="${article.title}" 
-                 class="modal-image"
-                 onerror="this.style.display='none'">
-            <h2>${article.title}</h2>
-            <p><small>Опубликовано: ${article.date}</small></p>
-            <div class="article-full-content">
-                ${article.content}
+        // Создаем модальное окно для статьи
+        const modal = document.createElement('div');
+        modal.className = 'article-modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <span class="close-modal" onclick="closeModal()">&times;</span>
+                ${article.image ? `
+                    <img src="assets/images/posts/${article.image}" 
+                         alt="${article.title}" 
+                         class="modal-image"
+                         onerror="this.style.display='none'">
+                ` : ''}
+                <h2>${article.title}</h2>
+                <p><small>Опубликовано: ${article.date}</small></p>
+                <div class="article-full-content">
+                    ${article.content ? marked.parse(article.content) : '<p>Содержание недоступно</p>'}
+                </div>
             </div>
-        </div>
-    `;
-    
-    document.body.appendChild(modal);
-    document.body.style.overflow = 'hidden';
+        `;
+        
+        document.body.appendChild(modal);
+        document.body.style.overflow = 'hidden';
+    } catch (error) {
+        alert('Ошибка загрузки статьи');
+    }
 }
 
 // Закрытие модального окна
