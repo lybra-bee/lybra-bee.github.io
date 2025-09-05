@@ -1,0 +1,32 @@
+name: Hugo Build & Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Клонируем репозиторий
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # 2. Устанавливаем Hugo
+      - name: Setup Hugo
+        uses: peaceiris/actions-hugo@v3
+        with:
+          hugo-version: '0.115.4' # можно указать последнюю версию
+
+      # 3. Собираем сайт
+      - name: Build Hugo site
+        run: hugo --minify
+
+      # 4. Деплой на GitHub Pages
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
