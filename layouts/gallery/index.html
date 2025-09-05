@@ -1,0 +1,6 @@
+<h1>Галерея изображений</h1>
+<div class="gallery">
+{{ range (where .Site.RegularPages "Section" "posts") }}
+  <img src="{{ .Params.image }}" alt="{{ .Title }}">
+{{ end }}
+</div>
