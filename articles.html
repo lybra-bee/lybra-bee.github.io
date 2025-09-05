@@ -7,36 +7,74 @@
     <link rel="stylesheet" href="assets/styles/main.css">
 </head>
 <body>
-    <div id="header"></div>
+    <header class="main-header">
+        <nav class="navbar">
+            <div class="nav-brand">
+                <a href="index.html">Мой блог</a>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="index.html">Главная</a></li>
+                <li><a href="articles.html">Статьи</a></li>
+                <li><a href="gallery.html">Галерея</a></li>
+            </ul>
+            <div class="hamburger">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </nav>
+    </header>
     
     <main class="container">
-        <h1>Статьи</h1>
+        <h1>Все статьи</h1>
         
-        <div class="carousel-container" id="articles-carousel">
-            <!-- Карусель статей будет загружена через JS -->
-        </div>
-        
-        <div class="all-articles" id="all-articles">
-            <!-- Все статьи будут загружены здесь -->
+        <div class="articles-grid">
+            <div class="article-card">
+                <img src="assets/images/posts/welcome-to-my-blog.jpg" 
+                     alt="Добро пожаловать" 
+                     class="article-image">
+                <div class="article-content">
+                    <h3>Добро пожаловать в мой блог</h3>
+                    <p>Первая статья в моем новом блоге о веб-разработке и дизайне.</p>
+                    <a href="#welcome-to-my-blog" class="read-more">Читать далее</a>
+                </div>
+            </div>
+            
+            <div class="article-card">
+                <img src="assets/images/posts/web-development-tips.jpg" 
+                     alt="Советы по разработке" 
+                     class="article-image">
+                <div class="article-content">
+                    <h3>Советы по веб-разработке</h3>
+                    <p>Полезные советы и лучшие практики для начинающих разработчиков.</p>
+                    <a href="#web-development-tips" class="read-more">Читать далее</a>
+                </div>
+            </div>
+            
+            <div class="article-card">
+                <img src="assets/images/posts/css-tricks.jpg" 
+                     alt="CSS трюки" 
+                     class="article-image">
+                <div class="article-content">
+                    <h3>Полезные трюки CSS</h3>
+                    <p>Интересные приемы и техники работы с CSS для современных интерфейсов.</p>
+                    <a href="#css-tricks" class="read-more">Читать далее</a>
+                </div>
+            </div>
         </div>
     </main>
     
-    <div id="footer"></div>
+    <footer class="main-footer">
+        <div class="footer-content">
+            <p>&copy; 2024 Мой блог. Все права защищены.</p>
+            <div class="social-links">
+                <a href="#">Twitter</a>
+                <a href="#">GitHub</a>
+                <a href="#">LinkedIn</a>
+            </div>
+        </div>
+    </footer>
 
     <script src="assets/scripts/main.js"></script>
-    <script src="assets/scripts/articles-carousel.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            loadComponent('header', 'components/header.html');
-            loadComponent('footer', 'components/footer.html');
-            
-            // Инициализация карусели
-            const carousel = new ArticlesCarousel('articles-carousel');
-            carousel.loadArticles();
-            
-            // Загрузка всех статей
-            loadAllArticles();
-        });
-    </script>
 </body>
 </html>
