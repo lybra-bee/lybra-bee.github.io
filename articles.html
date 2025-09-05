@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Статьи - Мой блог</title>
+    <link rel="stylesheet" href="assets/styles/main.css">
+</head>
+<body>
+    <div id="header"></div>
+    
+    <main class="container">
+        <h1>Статьи</h1>
+        
+        <div class="carousel-container" id="articles-carousel">
+            <!-- Карусель статей будет загружена через JS -->
+        </div>
+        
+        <div class="all-articles" id="all-articles">
+            <!-- Все статьи будут загружены здесь -->
+        </div>
+    </main>
+    
+    <div id="footer"></div>
+
+    <script src="assets/scripts/main.js"></script>
+    <script src="assets/scripts/articles-carousel.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            loadComponent('header', 'components/header.html');
+            loadComponent('footer', 'components/footer.html');
+            
+            // Инициализация карусели
+            const carousel = new ArticlesCarousel('articles-carousel');
+            carousel.loadArticles();
+            
+            // Загрузка всех статей
+            loadAllArticles();
+        });
+    </script>
+</body>
+</html>
