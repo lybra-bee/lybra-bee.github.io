@@ -1,5 +1,5 @@
 ---
-title: ""Будущее уже здесь: Как новые тренды в искусственном интеллекте и высоких технологиях формируют нашу реальность""
+title: "Будущее уже здесь: Как новые тренды в искусственном интеллекте и высоких технологиях формируют нашу реальность"
 date: 2025-09-06
 image: "/images/posts/budushchee-uzhe-zdes-kak-novye-trendy-v-iskusstvennom-intellekte-i-vysokikh-tekhnologiiakh-formiruiut-nashu-realnost.png"
 model: OpenRouter GPT
