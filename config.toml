@@ -1,7 +1,7 @@
 baseURL = "https://lybra-bee.github.io/"
 languageCode = "ru-ru"
 title = "AI Генератор Контента"
-theme = "my-theme"
+# theme = "my-theme"  # Убираем эту строку
 
 [params]
   description = "Автоматически генерируемый контент об искусственном интеллекте"
