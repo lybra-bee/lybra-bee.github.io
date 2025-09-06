@@ -1,5 +1,5 @@
 ---
-title: ""Будущее технологий: самые горячие тренды в ИИ 2024 года""
+title: "Будущее технологий: самые горячие тренды в ИИ 2024 года"
 date: 2025-09-06
 image: "/images/posts/budushchee-tekhnologii-samye-goriachie-trendy-v-ii-2024-goda.png"
 model: OpenRouter GPT
