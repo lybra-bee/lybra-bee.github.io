@@ -2,14 +2,16 @@
 <section class="posts-list">
     <h1>Все статьи</h1>
     <div class="posts-grid">
-        {{ range where .Site.RegularPages "Type" "posts" }}
+        {{ range first 5 (where .Site.RegularPages "Type" "posts") }}
         <article class="post-card">
-            <img src="{{ .Params.image }}" alt="{{ .Title }}">
+            {{ with .Params.image }}
+            <img src="{{ . }}" alt="{{ $.Title }}">
+            {{ end }}
             <div class="card-content">
                 <h2>{{ .Title }}</h2>
                 <p class="meta">{{ .Date.Format "02.01.2006" }} • {{ .Params.model }}</p>
                 <p class="excerpt">{{ .Summary | truncate 100 }}</p>
-                <a href="{{ .Permalink }}" class="read-more">Читать</a>
+                <a href="{{ .RelPermalink }}" class="read-more">Читать</a>
             </div>
         </article>
         {{ else }}
