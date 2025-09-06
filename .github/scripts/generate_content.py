@@ -1,139 +1,141 @@
 #!/usr/bin/env python3
-import os
-import requests
-import logging
-import json
-import re
-from datetime import datetime
-from pathlib import Path
+# -*- coding: utf-8 -*-
 
-# Логирование
+import os
+import json
+import requests
+import random
+import time
+import logging
+import textwrap
+import base64
+from datetime import datetime, timezone
+from pathlib import Path
+from PIL import Image, ImageDraw, ImageFont
+import re
+
+# ===== Настройка логирования =====
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
 )
+logger = logging.getLogger(__name__)
 
-# Пути
-POSTS_DIR = Path("content/posts")
-IMAGES_DIR = Path("static/images/posts")
-GALLERY_DIR = Path("static/images/gallery")
+# ===== Пути =====
+CONTENT_DIR = Path("content/posts")
+GALLERY_DIR = Path("assets/images/posts")
+MAX_ARTICLES = 5
 
-# Создание директорий (с проверкой существования)
-for d in [POSTS_DIR, IMAGES_DIR, GALLERY_DIR]:
-    if not d.exists():
-        d.mkdir(parents=True, exist_ok=True)
+# ===== Проверка и создание директорий =====
+CONTENT_DIR.mkdir(parents=True, exist_ok=True)
+GALLERY_DIR.mkdir(parents=True, exist_ok=True)
 
-# Ключи из секретов
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-FUSIONBRAIN_API_KEY = os.getenv("FUSIONBRAIN_API_KEY")
-FUSION_SECRET_KEY = os.getenv("FUSION_SECRET_KEY")
+# ===== Переменные окружения =====
+GROQ_KEY = os.getenv("GROQ_API_KEY")
+FUSION_KEY = os.getenv("FUSIONBRAIN_API_KEY")
+FUSION_SECRET = os.getenv("FUSION_SECRET_KEY")
 
+# ===== Генерация статьи через Groq =====
+def generate_text(prompt: str) -> str:
+    headers = {"Authorization": f"Bearer {GROQ_KEY}", "Content-Type": "application/json"}
+    data = {
+        "model": "llama-3.1-8b-instant",
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.7,
+        "max_tokens": 2000,
+    }
+    resp = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=data, timeout=30)
+    if resp.status_code != 200:
+        logger.warning(f"⚠️ Groq вернул статус {resp.status_code}: {resp.text}")
+        return fallback_article()
+    return resp.json()['choices'][0]['message']['content'].strip()
 
+# ===== Fallback статья =====
+def fallback_article() -> str:
+    return (
+        "# Искусственный интеллект и высокие технологии\n\n"
+        "## Введение\n"
+        "Искусственный интеллект продолжает активно развиваться, внедряясь в различные отрасли.\n\n"
+        "## Основные тенденции\n"
+        "- Генеративные нейросети\n"
+        "- Автономные системы\n"
+        "- Компьютерное зрение\n\n"
+        "## Заключение\n"
+        "Будущее технологий обещает множество инноваций.\n"
+    )
+
+# ===== Генерация изображения через FusionBrain =====
+def generate_image(title: str) -> str:
+    url = "https://api-key.fusionbrain.ai/text2image/run"
+    headers = {"X-Key": FUSION_KEY, "X-Secret": FUSION_SECRET}
+    prompt = f"{title}, digital art, futuristic, high quality, professional"
+    data = {"prompt": prompt, "width": 512, "height": 512, "num_images": 1}
+    try:
+        resp = requests.post(url, headers=headers, json=data, timeout=60)
+        resp.raise_for_status()
+        img_base64 = resp.json()['images'][0]
+        img_bytes = base64.b64decode(img_base64)
+        filename = GALLERY_DIR / f"{slugify(title)}.png"
+        with open(filename, "wb") as f:
+            f.write(img_bytes)
+        logger.info(f"✅ Изображение создано: {filename}")
+        return f"/{filename}"
+    except Exception as e:
+        logger.error(f"❌ Ошибка генерации изображения FusionBrain: {e}")
+        return "/assets/images/default.png"
+
+# ===== Слаг =====
 def slugify(text: str) -> str:
-    return re.sub(r"[^a-zA-Zа-яА-Я0-9]+", "-", text).strip("-").lower()
+    text = re.sub(r'[^a-zA-Z0-9а-яА-Я\s]', '', text).lower()
+    text = re.sub(r'\s+', '-', text).strip('-')
+    timestamp = str(int(time.time()))[-4:]
+    return f"{text[:40]}-{timestamp}"
 
-
-def generate_article() -> dict:
-    """Генерация статьи про нейросети и высокие технологии"""
-    logging.info("📝 Генерация статьи через OpenRouter / Groq")
-
-    url = "https://openrouter.ai/api/v1/chat/completions"
-    headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}"}
-    payload = {
-        "model": "anthropic/claude-3.5-sonnet",
-        "messages": [
-            {"role": "system", "content": "Ты пишешь статью для AI-блога."},
-            {
-                "role": "user",
-                "content": "Напиши статью на русском языке про последние тренды в области нейросетей и высоких технологий.",
-            },
-        ],
-    }
-
-    response = requests.post(url, headers=headers, json=payload, timeout=60)
-    response.raise_for_status()
-    content = response.json()["choices"][0]["message"]["content"]
-
-    # Заголовок = первая строка или первая фраза
-    title = content.split("\n")[0].strip().replace("#", "")
-    body = "\n".join(content.split("\n")[1:]).strip()
-
-    return {"title": title, "body": body}
-
-
-def generate_image(prompt: str, filename: str) -> str:
-    """Генерация изображения через FusionBrain"""
-    logging.info("🎨 Генерация изображения через FusionBrain")
-
-    url = "https://api.fusionbrain.ai/v1/text2image/run"
-    headers = {
-        "X-Key": f"Key {FUSIONBRAIN_API_KEY}",
-        "X-Secret": f"Secret {FUSION_SECRET_KEY}",
-    }
-    files = {
-        "prompt": (None, prompt),
-        "width": (None, "1024"),
-        "height": (None, "576"),
-    }
-
-    response = requests.post(url, headers=headers, files=files, timeout=120)
-
-    if response.status_code != 200:
-        logging.error(f"Ошибка при генерации изображения: {response.text}")
-        return ""
-
-    out_path = IMAGES_DIR / filename
-    with open(out_path, "wb") as f:
-        f.write(response.content)
-
-    # Копируем в галерею
-    gallery_path = GALLERY_DIR / filename
-    with open(gallery_path, "wb") as f:
-        f.write(response.content)
-
-    return str(out_path)
-
-
-def save_post(title: str, body: str, image_path: str):
-    """Сохраняем пост в Hugo"""
+# ===== Сохранение статьи =====
+def save_article(title: str, content: str, image_path: str):
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     slug = slugify(title)
-    date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    filename = CONTENT_DIR / f"{slug}.md"
+    frontmatter = f"""---
+title: "{title}"
+date: {now}
+draft: false
+image: "{image_path}"
+tags: ["AI", "технологии", "2025"]
+categories: ["Искусственный интеллект"]
+summary: "Автоматически сгенерированная статья"
+---
 
-    frontmatter = [
-        "---",
-        f'title: "{title}"',
-        f"date: {date}",
-        f"slug: {slug}",
-        f"image: /images/posts/{Path(image_path).name}" if image_path else "",
-        "---",
-    ]
+{content}
+"""
+    with open(filename, "w", encoding="utf-8") as f:
+        f.write(frontmatter)
+    logger.info(f"📄 Статья сохранена: {filename}")
+    return filename
 
-    content = "\n".join(frontmatter) + "\n\n" + body
-    out_file = POSTS_DIR / f"{slug}.md"
-
-    with open(out_file, "w", encoding="utf-8") as f:
-        f.write(content)
-
-    logging.info(f"📄 Статья сохранена: {out_file}")
-
-
-def cleanup_posts(keep: int = 5):
-    """Удаляем старые статьи, оставляем последние N"""
-    posts = sorted(POSTS_DIR.glob("*.md"), key=os.path.getmtime, reverse=True)
-    for old in posts[keep:]:
+# ===== Ограничение количества статей =====
+def prune_old_articles():
+    articles = sorted(CONTENT_DIR.glob("*.md"), key=lambda x: x.stat().st_mtime, reverse=True)
+    if len(articles) <= MAX_ARTICLES:
+        return
+    for old in articles[MAX_ARTICLES:]:
         old.unlink()
-        logging.info(f"🗑 Удалена старая статья: {old}")
+        logger.info(f"🗑️ Удалена старая статья: {old}")
 
-
+# ===== Основная генерация =====
 def main():
-    article = generate_article()
-    filename = slugify(article["title"]) + ".jpg"
-    image_path = generate_image(article["title"], filename)
-    save_post(article["title"], article["body"], image_path)
-    cleanup_posts()
+    logger.info("📝 Генерация статьи через Groq")
+    prompt = "Напиши статью на русском языке про нейросети и высокие технологии. Формат Markdown, 400-600 слов."
+    content = generate_text(prompt)
+    title_line = content.splitlines()[0].replace("#", "").strip()
+    title = title_line if title_line else "Нейросети и высокие технологии"
+    logger.info(f"📌 Заголовок статьи: {title}")
 
+    logger.info("🎨 Генерация изображения через FusionBrain")
+    image_path = generate_image(title)
+
+    save_article(title, content, image_path)
+    prune_old_articles()
 
 if __name__ == "__main__":
     main()
