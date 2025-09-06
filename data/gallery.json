@@ -1,0 +1,20 @@
+[
+  {
+    "src": "/images/posts/machine-learning-в-web-development.png",
+    "alt": "AI generated image: Machine Learning В Web Development",
+    "title": "Machine Learning В Web Development",
+    "filename": "machine-learning-в-web-development.png"
+  },
+  {
+    "src": "/images/posts/deep-learning-в-mobile-applications.png",
+    "alt": "AI generated image: Deep Learning В Mobile Applications",
+    "title": "Deep Learning В Mobile Applications",
+    "filename": "deep-learning-в-mobile-applications.png"
+  },
+  {
+    "src": "/images/posts/глубокое-обучение-в-кибербезопасность.png",
+    "alt": "AI generated image: Глубокое Обучение В Кибербезопасность",
+    "title": "Глубокое Обучение В Кибербезопасность",
+    "filename": "глубокое-обучение-в-кибербезопасность.png"
+  }
+]
