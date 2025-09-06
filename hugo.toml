@@ -1,0 +1,43 @@
+baseURL = "https://lybra-bee.github.io/"
+languageCode = "ru-ru"
+defaultContentLanguage = "ru"
+title = "AI Blog - Генерация контента ИИ"
+theme = "" # если у тебя нет темы — оставь пустым (мы используем кастомные layouts)
+
+[params]
+  subtitle = "Самые свежие статьи и тренды AI 2025"
+  primaryColor = "#0af"
+  backgroundColor = "#0f172a"
+  textColor = "#e0e0e0"
+
+[author]
+  name = "Lybra-Bee"
+
+[languages]
+  [languages.ru]
+    weight = 1
+    languageName = "Русский"
+
+[menu]
+[[menu.main]]
+name = "Главная"
+url = "/"
+weight = 1
+
+[[menu.main]]
+name = "Обо мне"
+url = "/about/"
+weight = 2
+
+[[menu.main]]
+name = "Статьи"
+url = "/posts/"
+weight = 3
+
+[[menu.main]]
+name = "Галерея"
+url = "/gallery/"
+weight = 4
+
+[outputs]
+home = ["HTML", "RSS"]
