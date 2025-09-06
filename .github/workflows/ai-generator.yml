@@ -39,23 +39,28 @@ jobs:
         FUSIONBRAIN_API_KEY: ${{ secrets.FUSIONBRAIN_API_KEY }}
         FUSION_SECRET_KEY: ${{ secrets.FUSION_SECRET_KEY }}
 
-    - name: Copy images to static directory
+    - name: Force copy images to static
       run: |
-        echo "=== Copying images to static folder ==="
+        echo "=== ПРИНУДИТЕЛЬНОЕ КОПИРОВАНИЕ ИЗОБРАЖЕНИЙ ==="
+        
+        # Создаем директории
         mkdir -p static/images/posts
         
-        if [ -d "assets/images/posts" ] && [ "$(ls -A assets/images/posts)" ]; then
-            echo "Copying images from assets/images/posts to static/images/posts"
-            cp -r assets/images/posts/* static/images/posts/
-            echo "Images in static folder:"
+        # Копируем все изображения из assets в static
+        if [ -d "assets/images/posts" ] && [ "$(ls -A assets/images/posts 2>/dev/null)" ]; then
+            echo "Копируем изображения из assets в static..."
+            cp -v assets/images/posts/*.png static/images/posts/ 2>/dev/null || echo "No PNG files"
+            cp -v assets/images/posts/*.jpg static/images/posts/ 2>/dev/null || echo "No JPG files"
+            cp -v assets/images/posts/*.jpeg static/images/posts/ 2>/dev/null || echo "No JPEG files"
+            
+            echo "Скопированные изображения:"
             ls -la static/images/posts/ | head -10
-            echo "Total images: $(ls -1 static/images/posts/ | wc -l)"
+            echo "Всего изображений: $(ls -1 static/images/posts/ | wc -l)"
         else
-            echo "No images found in assets/images/posts, creating placeholder..."
+            echo "Нет изображений для копирования, создаем placeholder..."
             mkdir -p static/images/
-            # Create a simple placeholder image
-            convert -size 800x400 xc:#0f172a -pointsize 30 -fill white -gravity center -annotate +0+0 "AI Generated Image" static/images/placeholder.jpg 2>/dev/null || \
-            echo "Placeholder text" > static/images/placeholder.jpg
+            # Создаем простой placeholder
+            echo "AI Generated Image Placeholder" > static/images/placeholder.jpg
         fi
 
     - name: Setup Hugo
@@ -70,27 +75,33 @@ jobs:
         hugo --minify --verbose
         echo "=== Build completed ==="
 
-    - name: Debug - Show built files
+    - name: Debug - Check files
       run: |
-        echo "=== PUBLIC DIRECTORY STRUCTURE ==="
-        ls -la public/
-        echo "=== HTML FILES ==="
-        find public/ -name "*.html" | head -10
-        echo "=== IMAGES IN PUBLIC ==="
-        find public/ -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" | head -10
-        echo "=== CREATE TEST FILE ==="
-        echo "Workflow successful: $(date)" > public/TEST_DEPLOY.txt
-        echo "Build timestamp: $(date '+%Y-%m-%d %H:%M:%S UTC')" >> public/TEST_DEPLOY.txt
-        echo "Git SHA: ${{ github.sha }}" >> public/TEST_DEPLOY.txt
-
-    - name: Verify content files
-      run: |
-        echo "=== CONTENT POSTS ==="
-        ls -la content/posts/ || echo "No content/posts directory"
+        echo "=== ПРОВЕРКА ФАЙЛОВ ==="
+        echo "1. Изображения в assets:"
+        ls -la assets/images/posts/ 2>/dev/null || echo "  ❌ Нет assets/images/posts"
+        
+        echo "2. Изображения в static:"
+        ls -la static/images/posts/ 2>/dev/null || echo "  ❌ Нет static/images/posts"
+        find static/ -name "*.jpg" -o -name "*.png" -o -name "*.jpeg" | head -10
+        
+        echo "3. Данные галереи:"
+        ls -la data/ 2>/dev/null || echo "  ❌ Нет data directory"
+        if [ -f "data/gallery.yaml" ]; then
+            echo "  ✅ gallery.yaml существует"
+            echo "  Первые 5 записей:"
+            head -15 data/gallery.yaml
+        fi
+        
+        echo "4. Сгенерированные статьи:"
         find content/posts/ -name "*.md" | head -5
-        echo "=== DATA GALLERY ==="
-        ls -la data/ || echo "No data directory"
-        cat data/gallery.yaml 2>/dev/null || echo "No gallery data"
+
+    - name: Create test files
+      run: |
+        echo "Создаем тестовые файлы для проверки..."
+        echo "Deployment successful: $(date)" > public/DEPLOY_TEST.txt
+        echo "Git SHA: ${{ github.sha }}" >> public/DEPLOY_TEST.txt
+        echo "Workflow: ${{ github.workflow }}" >> public/DEPLOY_TEST.txt
 
     - name: Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v3
@@ -109,24 +120,25 @@ jobs:
         echo "✅ Deployment completed successfully!"
         echo "📅 Next scheduled run: daily at 06:00 UTC"
         echo "🌐 Site URL: https://lybra-bee.github.io"
-        echo "📊 Test file: https://lybra-bee.github.io/TEST_DEPLOY.txt"
+        echo "📊 Test file: https://lybra-bee.github.io/DEPLOY_TEST.txt"
         echo "🖼️ Gallery: https://lybra-bee.github.io/gallery/"
         echo "📝 Articles: https://lybra-bee.github.io/posts/"
 
-  # Опционально: добавьте job для проверки деплоя
   verify:
     needs: generate
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
     - name: Check if site is accessible
       run: |
         echo "Waiting for GitHub Pages to deploy..."
-        sleep 60
+        sleep 120  # Даем больше времени на деплой
+        
         echo "Checking site availability..."
-        if curl -s -f https://lybra-bee.github.io/TEST_DEPLOY.txt > /dev/null; then
+        if curl -s -f https://lybra-bee.github.io/DEPLOY_TEST.txt > /dev/null; then
             echo "✅ Site is accessible!"
             echo "📋 Test file content:"
-            curl -s https://lybra-bee.github.io/TEST_DEPLOY.txt
+            curl -s https://lybra-bee.github.io/DEPLOY_TEST.txt
         else
             echo "❌ Site is not accessible yet"
             echo "Check GitHub Pages settings:"
