@@ -346,6 +346,43 @@ def generate_content():
     except Exception as e:
         logger.error(f"❌ Критическая ошибка в generate_content: {e}")
         return None
+    def copy_images_to_static():
+    """Копирует изображения в статическую папку для Hugo"""
+    try:
+        # Создаем директории если не существуют
+        os.makedirs("static/images/posts", exist_ok=True)
+        
+        # Копируем изображения
+        if os.path.exists("assets/images/posts") and os.listdir("assets/images/posts"):
+            for img_file in os.listdir("assets/images/posts"):
+                if img_file.endswith(('.png', '.jpg', '.jpeg')):
+                    src = os.path.join("assets/images/posts", img_file)
+                    dst = os.path.join("static/images/posts", img_file)
+                    shutil.copy2(src, dst)
+            
+            logger.info(f"Скопировано {len(os.listdir('assets/images/posts'))} изображений в static/images/posts/")
+        else:
+            logger.warning("Нет изображений для копирования в static")
+            # Создаем placeholder
+            self.create_placeholder_image()
+            
+    except Exception as e:
+        logger.error(f"Ошибка копирования изображений: {e}")
+        self.create_placeholder_image()
+
+def create_placeholder_image(self):
+    """Создает placeholder изображение"""
+    try:
+        os.makedirs("static/images", exist_ok=True)
+        placeholder_path = "static/images/placeholder.jpg"
+        
+        # Простое создание placeholder
+        with open(placeholder_path, "w") as f:
+            f.write("Placeholder image")
+        
+        logger.info("Создан placeholder изображение")
+    except Exception as e:
+        logger.error(f"Ошибка создания placeholder: {e}")
 
 if __name__ == "__main__":
     generate_content()
