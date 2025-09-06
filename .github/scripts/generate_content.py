@@ -132,6 +132,75 @@ def generate_placeholder_image(title):
     
     return f"/images/posts/{slug}.png"
 
+def create_static_placeholder():
+    """Создает placeholder изображение в static папке"""
+    try:
+        os.makedirs("static/images", exist_ok=True)
+        placeholder_path = "static/images/placeholder.jpg"
+        
+        # Создаем простое изображение с помощью PIL
+        img = Image.new('RGB', (800, 400), color='#2d3748')
+        draw = ImageDraw.Draw(img)
+        
+        try:
+            font = ImageFont.truetype("arial.ttf", 24)
+        except:
+            font = ImageFont.load_default()
+        
+        text = "AI Generated Image\nComing Soon"
+        bbox = draw.textbbox((0, 0), text, font=font)
+        text_width = bbox[2] - bbox[0]
+        text_height = bbox[3] - bbox[1]
+        x = (800 - text_width) / 2
+        y = (400 - text_height) / 2
+        
+        draw.text((x, y), text, fill='white', font=font, align='center')
+        img.save(placeholder_path, "JPEG")
+        
+        logger.info("Создан placeholder изображение в static/images/")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Ошибка создания placeholder: {e}")
+        # Fallback - создаем простой файл
+        try:
+            with open("static/images/placeholder.jpg", "w") as f:
+                f.write("Placeholder image content")
+            return True
+        except:
+            return False
+
+def copy_images_to_static():
+    """Копирует изображения из assets в static папку для Hugo"""
+    try:
+        # Создаем директории если не существуют
+        os.makedirs("static/images/posts", exist_ok=True)
+        
+        # Проверяем есть ли изображения для копирования
+        assets_dir = "assets/images/posts"
+        if os.path.exists(assets_dir) and os.listdir(assets_dir):
+            copied_count = 0
+            for img_file in os.listdir(assets_dir):
+                if img_file.endswith(('.png', '.jpg', '.jpeg')):
+                    src = os.path.join(assets_dir, img_file)
+                    dst = os.path.join("static/images/posts", img_file)
+                    shutil.copy2(src, dst)
+                    copied_count += 1
+            
+            logger.info(f"Скопировано {copied_count} изображений в static/images/posts/")
+            
+            if copied_count == 0:
+                logger.warning("Нет изображений для копирования в static")
+                create_static_placeholder()
+                
+        else:
+            logger.warning("Директория assets/images/posts не существует или пуста")
+            create_static_placeholder()
+            
+    except Exception as e:
+        logger.error(f"Ошибка копирования изображений: {e}")
+        create_static_placeholder()
+
 # ====== Генерация текста ======
 def generate_article_prompt():
     trends = ["машинное обучение", "нейросети", "генеративный AI", "компьютерное зрение", "глубокое обучение"]
@@ -289,27 +358,6 @@ def update_hugo_data():
     
     logger.info(f"Данные галереи обновлены: {len(gallery_images)} изображений")
 
-def copy_images_to_static():
-    """Копирует изображения в статическую папку для Hugo"""
-    try:
-        # Создаем директории если не существуют
-        os.makedirs("static/images/posts", exist_ok=True)
-        
-        # Копируем изображения
-        if os.path.exists("assets/images/posts"):
-            for img_file in os.listdir("assets/images/posts"):
-                if img_file.endswith(('.png', '.jpg', '.jpeg')):
-                    src = os.path.join("assets/images/posts", img_file)
-                    dst = os.path.join("static/images/posts", img_file)
-                    shutil.copy2(src, dst)
-            
-            logger.info("Изображения скопированы в static/images/posts/")
-        else:
-            logger.warning("Нет изображений для копирования в static")
-            
-    except Exception as e:
-        logger.error(f"Ошибка копирования изображений: {e}")
-
 def generate_content():
     try:
         logger.info("=== НАЧАЛО ГЕНЕРАЦИИ КОНТЕНТА ===")
@@ -336,53 +384,27 @@ def generate_content():
         with open(filename, "w", encoding="utf-8") as f:
             f.write(generate_frontmatter(title, content, model, image_path))
         
-        # Обновляем данные Hugo и копируем изображения
+        # Обновляем данные Hugo
         update_hugo_data()
+        
+        # Копируем изображения в static папку
         copy_images_to_static()
         
         logger.info(f"✅ Статья создана: {filename}")
+        logger.info("✅ Изображения скопированы в static папку")
+        logger.info("✅ Данные галереи обновлены")
+        
         return filename
         
     except Exception as e:
         logger.error(f"❌ Критическая ошибка в generate_content: {e}")
+        # Все равно пытаемся скопировать изображения если есть
+        try:
+            copy_images_to_static()
+            update_hugo_data()
+        except:
+            pass
         return None
-    def copy_images_to_static():
-    """Копирует изображения в статическую папку для Hugo"""
-    try:
-        # Создаем директории если не существуют
-        os.makedirs("static/images/posts", exist_ok=True)
-        
-        # Копируем изображения
-        if os.path.exists("assets/images/posts") and os.listdir("assets/images/posts"):
-            for img_file in os.listdir("assets/images/posts"):
-                if img_file.endswith(('.png', '.jpg', '.jpeg')):
-                    src = os.path.join("assets/images/posts", img_file)
-                    dst = os.path.join("static/images/posts", img_file)
-                    shutil.copy2(src, dst)
-            
-            logger.info(f"Скопировано {len(os.listdir('assets/images/posts'))} изображений в static/images/posts/")
-        else:
-            logger.warning("Нет изображений для копирования в static")
-            # Создаем placeholder
-            self.create_placeholder_image()
-            
-    except Exception as e:
-        logger.error(f"Ошибка копирования изображений: {e}")
-        self.create_placeholder_image()
-
-def create_placeholder_image(self):
-    """Создает placeholder изображение"""
-    try:
-        os.makedirs("static/images", exist_ok=True)
-        placeholder_path = "static/images/placeholder.jpg"
-        
-        # Простое создание placeholder
-        with open(placeholder_path, "w") as f:
-            f.write("Placeholder image")
-        
-        logger.info("Создан placeholder изображение")
-    except Exception as e:
-        logger.error(f"Ошибка создания placeholder: {e}")
 
 if __name__ == "__main__":
     generate_content()
