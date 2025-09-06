@@ -154,4 +154,11 @@ def main():
         logging.error("❌ Статья не сгенерирована")
         return
 
-    title = text.split("\n")[0][:80]  # берем первую строку как заг
+    title = text.split("\n")[0][:80]  # берем первую строку как заголовок
+    slug = save_article(title, text)
+    img_path = generate_image(title, slug)
+    if img_path:
+        update_gallery(title, img_path, slug)
+
+if __name__ == "__main__":
+    main()
