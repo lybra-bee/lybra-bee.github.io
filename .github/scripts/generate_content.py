@@ -105,6 +105,7 @@ def save_image_bytes(image_data, title):
     filename = f"assets/images/posts/{slug}.png"
     with open(filename, "wb") as f:
         f.write(image_data)
+    # Возвращаем относительный путь для Hugo
     return f"/images/posts/{slug}.png"
 
 def generate_placeholder_image(title):
@@ -210,7 +211,9 @@ def generate_article_image(title):
                 if b64:
                     try:
                         image_data = base64.b64decode(b64)
-                        return save_image_bytes(image_data, title)
+                        image_path = save_image_bytes(image_data, title)
+                        logger.info(f"Изображение сохранено: {image_path}")
+                        return image_path
                     except Exception as e:
                         logger.error(f"Ошибка декодирования изображения: {e}")
         except Exception as e:
@@ -256,43 +259,92 @@ def update_hugo_data():
     # Создаем данные для галереи
     gallery_images = []
     images_dir = "assets/images/posts"
+    
     if os.path.exists(images_dir):
         for img_file in os.listdir(images_dir):
             if img_file.endswith(('.png', '.jpg', '.jpeg')):
+                # Получаем название из имени файла
+                image_name = img_file.split('.')[0].replace('-', ' ')
                 gallery_images.append({
                     'src': f"/images/posts/{img_file}",
-                    'alt': img_file.split('.')[0].replace('-', ' '),
-                    'title': img_file.split('.')[0].replace('-', ' ')
+                    'alt': image_name,
+                    'title': image_name.capitalize(),
+                    'filename': img_file
                 })
+        logger.info(f"Найдено {len(gallery_images)} изображений для галереи")
+    else:
+        logger.warning(f"Директория {images_dir} не существует")
+        # Создаем placeholder для галереи
+        gallery_images.append({
+            'src': '/images/placeholder.jpg',
+            'alt': 'Изображения скоро появятся',
+            'title': 'Галерея AI-изображений',
+            'filename': 'placeholder.jpg'
+        })
     
     # Сохраняем данные галереи
     os.makedirs("data", exist_ok=True)
     with open("data/gallery.yaml", "w", encoding="utf-8") as f:
         yaml.dump(gallery_images, f, allow_unicode=True)
+    
+    logger.info(f"Данные галереи обновлены: {len(gallery_images)} изображений")
+
+def copy_images_to_static():
+    """Копирует изображения в статическую папку для Hugo"""
+    try:
+        # Создаем директории если не существуют
+        os.makedirs("static/images/posts", exist_ok=True)
+        
+        # Копируем изображения
+        if os.path.exists("assets/images/posts"):
+            for img_file in os.listdir("assets/images/posts"):
+                if img_file.endswith(('.png', '.jpg', '.jpeg')):
+                    src = os.path.join("assets/images/posts", img_file)
+                    dst = os.path.join("static/images/posts", img_file)
+                    shutil.copy2(src, dst)
+            
+            logger.info("Изображения скопированы в static/images/posts/")
+        else:
+            logger.warning("Нет изображений для копирования в static")
+            
+    except Exception as e:
+        logger.error(f"Ошибка копирования изображений: {e}")
 
 def generate_content():
     try:
+        logger.info("=== НАЧАЛО ГЕНЕРАЦИИ КОНТЕНТА ===")
+        
+        # Очищаем старые статьи
         clean_old_articles(keep_last=5)
+        
+        # Генерируем контент
         prompt, topic = generate_article_prompt()
+        logger.info(f"Тема статьи: {topic}")
+        
         content, model = generate_article_content(prompt)
+        logger.info(f"Статья сгенерирована через: {model}")
+        
         title = topic
         image_path = generate_article_image(title)
-        slug = generate_slug(title)
+        logger.info(f"Путь к изображению: {image_path}")
         
+        # Создаем markdown файл
+        slug = generate_slug(title)
         filename = f"content/posts/{datetime.now().strftime('%Y-%m-%d')}-{slug}.md"
         os.makedirs("content/posts", exist_ok=True)
         
         with open(filename, "w", encoding="utf-8") as f:
             f.write(generate_frontmatter(title, content, model, image_path))
         
-        # Обновляем данные Hugo
+        # Обновляем данные Hugo и копируем изображения
         update_hugo_data()
+        copy_images_to_static()
         
-        logger.info(f"Статья создана: {filename}")
+        logger.info(f"✅ Статья создана: {filename}")
         return filename
         
     except Exception as e:
-        logger.error(f"Критическая ошибка в generate_content: {e}")
+        logger.error(f"❌ Критическая ошибка в generate_content: {e}")
         return None
 
 if __name__ == "__main__":
