@@ -1,0 +1,15 @@
+{{ define "main" }}
+<section class="gallery">
+    <h1>Галерея изображений</h1>
+    <div class="gallery-grid">
+        {{ range .Site.Data.gallery }}
+        <div class="gallery-item">
+            <img src="{{ .src }}" alt="{{ .alt }}" title="{{ .title }}">
+            <div class="gallery-caption">{{ .title }}</div>
+        </div>
+        {{ else }}
+        <p>Изображения пока не сгенерированы.</p>
+        {{ end }}
+    </div>
+</section>
+{{ end }}
