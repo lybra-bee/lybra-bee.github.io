@@ -10,7 +10,7 @@ from datetime import datetime
 from slugify import slugify
 import yaml
 
-# Настройка логирования
+# Логирование
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # API ключи
@@ -35,38 +35,46 @@ PLACEHOLDER = 'static/images/placeholder.jpg'
 for d in [POSTS_DIR, ASSETS_DIR, STATIC_IMG_DIR, os.path.dirname(PLACEHOLDER)]:
     os.makedirs(d, exist_ok=True)
 
-def generate_article():
-    prompt = "Проанализируй последние тренды в искусственном интеллекте и высоких технологиях и напиши статью на 400-600 слов."
-    
+# --------- Генерация через Groq / OpenRouter ---------
+def query_groq_or_openrouter(prompt):
     # Groq основной
     try:
-        logging.info("📝 Генерация статьи через Groq...")
         headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
         r = requests.post("https://api.groq.com/v1/chat/completions",
                           headers=headers,
                           json={"model": "gpt-4o-mini", "messages":[{"role":"user","content":prompt}]})
         r.raise_for_status()
-        text = r.json()["choices"][0]["message"]["content"]
-        logging.info("✅ Статья получена через Groq")
-        return text, "Groq GPT"
+        return r.json()["choices"][0]["message"]["content"], "Groq GPT"
     except Exception as e:
         logging.warning(f"⚠️ Groq не сработал: {e}")
 
     # OpenRouter запасной
     try:
-        logging.info("📝 Генерация статьи через OpenRouter...")
         headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}"}
         r = requests.post("https://openrouter.ai/api/v1/chat/completions",
                           headers=headers,
                           json={"model": "gpt-4o-mini", "messages":[{"role":"user","content":prompt}]})
         r.raise_for_status()
-        text = r.json()["choices"][0]["message"]["content"]
-        logging.info("✅ Статья получена через OpenRouter")
-        return text, "OpenRouter GPT"
+        return r.json()["choices"][0]["message"]["content"], "OpenRouter GPT"
     except Exception as e:
-        logging.error(f"❌ Ошибка генерации статьи: {e}")
-        return "Статья временно недоступна.", "None"
+        logging.error(f"❌ Ошибка генерации текста: {e}")
+        return "Текст временно недоступен.", "None"
 
+# --------- Генерация заголовка ---------
+def generate_title():
+    prompt = "Составь уникальный заголовок для статьи о последних трендах в искусственном интеллекте и высоких технологиях, 7-10 слов, привлекательный для читателя."
+    title, model = query_groq_or_openrouter(prompt)
+    # убираем лишние переносы строк
+    title = " ".join(title.strip().split())
+    return title, model
+
+# --------- Генерация статьи по заголовку ---------
+def generate_article_by_title(title):
+    prompt = f"Напиши статью 400-600 слов по заголовку: {title}"
+    text, model = query_groq_or_openrouter(prompt)
+    return text, model
+
+# --------- FusionBrain Image ---------
 def get_pipeline_id():
     r = requests.get(BASE_URL + 'key/api/v1/pipelines', headers=AUTH_HEADERS)
     r.raise_for_status()
@@ -108,6 +116,7 @@ def generate_image(title, slug):
             f.write(img_bytes)
 
         # Копируем в static для Hugo
+        os.makedirs(STATIC_IMG_DIR, exist_ok=True)
         static_img_path = os.path.join(STATIC_IMG_DIR, f'{slug}.png')
         shutil.copy(img_path, static_img_path)
 
@@ -117,6 +126,7 @@ def generate_image(title, slug):
         logging.error(f"❌ Ошибка генерации изображения: {e}")
         return PLACEHOLDER
 
+# --------- Сохранение статьи ---------
 def save_article(title, text, model, slug, image_path):
     filename = os.path.join(POSTS_DIR, f'{slug}.md')
     date = datetime.now().strftime("%Y-%m-%d")
@@ -124,6 +134,7 @@ def save_article(title, text, model, slug, image_path):
         f.write(f"---\ntitle: \"{title}\"\ndate: {date}\nimage: \"/{image_path}\"\nmodel: {model}\ntags: [AI, Tech]\n---\n\n{text}")
     logging.info(f"✅ Статья сохранена: {filename}")
 
+# --------- Обновление галереи ---------
 def update_gallery(title, slug, image_path):
     gallery = []
     if os.path.exists(GALLERY_FILE):
@@ -137,16 +148,20 @@ def update_gallery(title, slug, image_path):
         yaml.safe_dump(gallery, f, allow_unicode=True)
     logging.info(f"✅ Галерея обновлена: {GALLERY_FILE}")
 
+# --------- Main ---------
 def main():
-    text, model = generate_article()
-
-    # Заголовок на основе первого предложения
-    title = text.split('.')[0][:60].strip()
+    # Генерация заголовка
+    title, title_model = generate_title()
     slug = slugify(title)
 
+    # Генерация статьи по заголовку
+    text, article_model = generate_article_by_title(title)
+
+    # Генерация изображения
     image_path = generate_image(title, slug)
 
-    save_article(title, text, model, slug, image_path)
+    # Сохранение
+    save_article(title, text, article_model, slug, image_path)
     update_gallery(title, slug, image_path)
 
 if __name__ == "__main__":
