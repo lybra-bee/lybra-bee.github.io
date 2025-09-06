@@ -1,15 +1,24 @@
 {{ define "main" }}
 <section class="gallery">
     <h1>Галерея изображений</h1>
+    
+    {{ if .Site.Data.gallery }}
     <div class="gallery-grid">
         {{ range .Site.Data.gallery }}
         <div class="gallery-item">
-            <img src="{{ .src }}" alt="{{ .alt }}" title="{{ .title }}">
-            <div class="gallery-caption">{{ .title }}</div>
+            <img src="{{ .src }}" alt="{{ .alt }}" title="{{ .title }}" loading="lazy">
+            <div class="gallery-caption">
+                <h3>{{ .title }}</h3>
+                <p>Файл: {{ .filename }}</p>
+            </div>
         </div>
-        {{ else }}
-        <p>Изображения пока не сгенерированы.</p>
         {{ end }}
     </div>
+    {{ else }}
+    <div class="no-images">
+        <p>🚫 Изображения пока не сгенерированы</p>
+        <p>Следующая генерация: ежедневно в 6:00 UTC</p>
+    </div>
+    {{ end }}
 </section>
 {{ end }}
