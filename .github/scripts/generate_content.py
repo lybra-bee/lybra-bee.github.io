@@ -1,141 +1,128 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 import os
 import json
 import requests
-import random
 import time
-import logging
-import textwrap
-import base64
-from datetime import datetime, timezone
 from pathlib import Path
-from PIL import Image, ImageDraw, ImageFont
+import logging
 import re
+import shutil
 
-# ===== Настройка логирования =====
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-)
-logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# ===== Пути =====
-CONTENT_DIR = Path("content/posts")
-GALLERY_DIR = Path("assets/images/posts")
+# Пути
+CONTENT_DIR = Path('content/posts')
+GALLERY_DIR = Path('static/images/gallery')
 MAX_ARTICLES = 5
 
-# ===== Проверка и создание директорий =====
 CONTENT_DIR.mkdir(parents=True, exist_ok=True)
 GALLERY_DIR.mkdir(parents=True, exist_ok=True)
 
-# ===== Переменные окружения =====
-GROQ_KEY = os.getenv("GROQ_API_KEY")
-FUSION_KEY = os.getenv("FUSIONBRAIN_API_KEY")
-FUSION_SECRET = os.getenv("FUSION_SECRET_KEY")
+# Ключи из секретов GitHub Actions
+GROQ_API_KEY = os.getenv('GROQ_API_KEY')
+FUSIONBRAIN_API_KEY = os.getenv('FUSIONBRAIN_API_KEY')
+FUSION_SECRET_KEY = os.getenv('FUSION_SECRET_KEY')
 
-# ===== Генерация статьи через Groq =====
-def generate_text(prompt: str) -> str:
-    headers = {"Authorization": f"Bearer {GROQ_KEY}", "Content-Type": "application/json"}
-    data = {
-        "model": "llama-3.1-8b-instant",
-        "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.7,
-        "max_tokens": 2000,
+# Groq - генерация статьи
+def generate_article():
+    logging.info("📝 Генерация статьи через Groq")
+    headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
+    payload = {
+        "prompt": "Сгенерируй статью на русском языке про нейросети и высокие технологии с упором на последние тренды 2025 года.",
+        "max_tokens": 1200
     }
-    resp = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=data, timeout=30)
-    if resp.status_code != 200:
-        logger.warning(f"⚠️ Groq вернул статус {resp.status_code}: {resp.text}")
-        return fallback_article()
-    return resp.json()['choices'][0]['message']['content'].strip()
+    response = requests.post("https://api.groq.com/v1/generate", headers=headers, json=payload)
+    response.raise_for_status()
+    data = response.json()
+    article_text = data['text'] if 'text' in data else data.get('output', '')
+    # Заголовок из первой строки
+    title = article_text.split('\n')[0]
+    logging.info(f"📌 Заголовок статьи: {title}")
+    return title, article_text
 
-# ===== Fallback статья =====
-def fallback_article() -> str:
-    return (
-        "# Искусственный интеллект и высокие технологии\n\n"
-        "## Введение\n"
-        "Искусственный интеллект продолжает активно развиваться, внедряясь в различные отрасли.\n\n"
-        "## Основные тенденции\n"
-        "- Генеративные нейросети\n"
-        "- Автономные системы\n"
-        "- Компьютерное зрение\n\n"
-        "## Заключение\n"
-        "Будущее технологий обещает множество инноваций.\n"
-    )
+# FusionBrain Kandinsky 3.0 - генерация изображения
+class FusionBrainAPI:
+    def __init__(self, api_key, secret_key):
+        self.URL = 'https://api-key.fusionbrain.ai/'
+        self.AUTH_HEADERS = {
+            'X-Key': f'Key {api_key}',
+            'X-Secret': f'Secret {secret_key}',
+        }
 
-# ===== Генерация изображения через FusionBrain =====
-def generate_image(title: str) -> str:
-    url = "https://api-key.fusionbrain.ai/text2image/run"
-    headers = {"X-Key": FUSION_KEY, "X-Secret": FUSION_SECRET}
-    prompt = f"{title}, digital art, futuristic, high quality, professional"
-    data = {"prompt": prompt, "width": 512, "height": 512, "num_images": 1}
-    try:
-        resp = requests.post(url, headers=headers, json=data, timeout=60)
-        resp.raise_for_status()
-        img_base64 = resp.json()['images'][0]
-        img_bytes = base64.b64decode(img_base64)
-        filename = GALLERY_DIR / f"{slugify(title)}.png"
-        with open(filename, "wb") as f:
-            f.write(img_bytes)
-        logger.info(f"✅ Изображение создано: {filename}")
-        return f"/{filename}"
-    except Exception as e:
-        logger.error(f"❌ Ошибка генерации изображения FusionBrain: {e}")
-        return "/assets/images/default.png"
+    def get_pipeline(self):
+        response = requests.get(self.URL + 'key/api/v1/pipelines', headers=self.AUTH_HEADERS)
+        data = response.json()
+        return data[0]['id']
 
-# ===== Слаг =====
-def slugify(text: str) -> str:
-    text = re.sub(r'[^a-zA-Z0-9а-яА-Я\s]', '', text).lower()
-    text = re.sub(r'\s+', '-', text).strip('-')
-    timestamp = str(int(time.time()))[-4:]
-    return f"{text[:40]}-{timestamp}"
+    def generate(self, prompt, pipeline_id, width=1024, height=1024):
+        params = {
+            "type": "GENERATE",
+            "numImages": 1,
+            "width": width,
+            "height": height,
+            "generateParams": {"query": prompt}
+        }
+        data = {
+            'pipeline_id': (None, pipeline_id),
+            'params': (None, json.dumps(params), 'application/json')
+        }
+        response = requests.post(self.URL + 'key/api/v1/pipeline/run', headers=self.AUTH_HEADERS, files=data)
+        response.raise_for_status()
+        return response.json()['uuid']
 
-# ===== Сохранение статьи =====
-def save_article(title: str, content: str, image_path: str):
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    slug = slugify(title)
-    filename = CONTENT_DIR / f"{slug}.md"
-    frontmatter = f"""---
-title: "{title}"
-date: {now}
-draft: false
-image: "{image_path}"
-tags: ["AI", "технологии", "2025"]
-categories: ["Искусственный интеллект"]
-summary: "Автоматически сгенерированная статья"
----
+    def check_generation(self, uuid, attempts=10, delay=5):
+        for _ in range(attempts):
+            response = requests.get(self.URL + f'key/api/v1/pipeline/status/{uuid}', headers=self.AUTH_HEADERS)
+            data = response.json()
+            if data['status'] == 'DONE':
+                return data['result']['files'][0]  # Base64 изображения
+            elif data['status'] in ['FAIL', 'CANCELLED']:
+                raise Exception("Ошибка генерации изображения: " + str(data))
+            time.sleep(delay)
+        raise TimeoutError("Превышено время ожидания генерации изображения")
 
-{content}
-"""
-    with open(filename, "w", encoding="utf-8") as f:
-        f.write(frontmatter)
-    logger.info(f"📄 Статья сохранена: {filename}")
+# Сохраняем статью
+def save_article(title, text, image_filename):
+    safe_title = re.sub(r'[^\w\s-]', '', title).strip().replace(' ', '-')
+    filename = CONTENT_DIR / f"{safe_title}.md"
+    with open(filename, 'w', encoding='utf-8') as f:
+        f.write(f"---\n")
+        f.write(f"title: \"{title}\"\n")
+        f.write(f"image: \"/images/gallery/{image_filename}\"\n")
+        f.write(f"date: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write(f"---\n\n")
+        f.write(text)
+    logging.info(f"📄 Статья сохранена: {filename}")
     return filename
 
-# ===== Ограничение количества статей =====
-def prune_old_articles():
-    articles = sorted(CONTENT_DIR.glob("*.md"), key=lambda x: x.stat().st_mtime, reverse=True)
-    if len(articles) <= MAX_ARTICLES:
-        return
-    for old in articles[MAX_ARTICLES:]:
-        old.unlink()
-        logger.info(f"🗑️ Удалена старая статья: {old}")
+# Ограничиваем количество статей
+def cleanup_old_articles():
+    files = sorted(CONTENT_DIR.glob("*.md"), key=lambda x: x.stat().st_mtime, reverse=True)
+    for old_file in files[MAX_ARTICLES:]:
+        old_file.rename('content/posts/archive_' + old_file.name)
 
-# ===== Основная генерация =====
 def main():
-    logger.info("📝 Генерация статьи через Groq")
-    prompt = "Напиши статью на русском языке про нейросети и высокие технологии. Формат Markdown, 400-600 слов."
-    content = generate_text(prompt)
-    title_line = content.splitlines()[0].replace("#", "").strip()
-    title = title_line if title_line else "Нейросети и высокие технологии"
-    logger.info(f"📌 Заголовок статьи: {title}")
+    title, article_text = generate_article()
 
-    logger.info("🎨 Генерация изображения через FusionBrain")
-    image_path = generate_image(title)
+    fusion = FusionBrainAPI(FUSIONBRAIN_API_KEY, FUSION_SECRET_KEY)
+    pipeline_id = fusion.get_pipeline()
 
-    save_article(title, content, image_path)
-    prune_old_articles()
+    try:
+        uuid = fusion.generate(title, pipeline_id)
+        image_base64 = fusion.check_generation(uuid)
+        import base64
+        image_data = base64.b64decode(image_base64)
+        image_filename = re.sub(r'[^\w\s-]', '', title).strip().replace(' ', '-') + ".png"
+        image_path = GALLERY_DIR / image_filename
+        with open(image_path, 'wb') as f:
+            f.write(image_data)
+        logging.info(f"🎨 Изображение сохранено: {image_path}")
+    except Exception as e:
+        logging.error(f"❌ Ошибка генерации изображения FusionBrain: {e}")
+        image_filename = "default.png"
+
+    save_article(title, article_text, image_filename)
+    cleanup_old_articles()
 
 if __name__ == "__main__":
     main()
