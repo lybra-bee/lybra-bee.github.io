@@ -1,0 +1,36 @@
+baseURL = "https://lybra-bee.github.io/"
+languageCode = "ru-ru"
+title = "AI Генератор Контента"
+theme = "my-theme"
+
+[params]
+  description = "Автоматически генерируемый контент об искусственном интеллекте"
+  author = "Ваше Имя"
+  github = "lybra-bee"
+  email = "your@email.com"
+
+[menu]
+  [[menu.main]]
+    identifier = "home"
+    name = "Главная"
+    url = "/"
+    weight = 1
+  [[menu.main]]
+    identifier = "articles"
+    name = "Статьи"
+    url = "/posts/"
+    weight = 2
+  [[menu.main]]
+    identifier = "gallery"
+    name = "Галерея"
+    url = "/gallery/"
+    weight = 3
+  [[menu.main]]
+    identifier = "about"
+    name = "Обо мне"
+    url = "/about/"
+    weight = 4
+
+[markup]
+  [markup.highlight]
+    style = "monokai"
