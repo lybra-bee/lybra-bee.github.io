@@ -1,154 +1,150 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 import os
 import json
-import time
-import logging
 import requests
-from slugify import slugify
+import time
+import base64
+import logging
 from datetime import datetime
+from slugify import slugify
+import yaml
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+# Настройка логирования
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Пути для сохранения
-POSTS_DIR = "content/posts/"
-GALLERY_FILE = "data/gallery.yaml"
+# API ключи из переменных окружения
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
+FUSION_API_KEY = os.environ.get("FUSIONBRAIN_API_KEY")
+FUSION_SECRET_KEY = os.environ.get("FUSION_SECRET_KEY")
+BASE_URL = 'https://api-key.fusionbrain.ai/'
+
+AUTH_HEADERS = {
+    'X-Key': f'Key {FUSION_API_KEY}',
+    'X-Secret': f'Secret {FUSION_SECRET_KEY}',
+}
+
+# Папки
+POSTS_DIR = 'content/posts'
+ASSETS_DIR = 'assets/images/posts'
+GALLERY_FILE = 'data/gallery.yaml'
+PLACEHOLDER = 'static/images/placeholder.jpg'
+
+os.makedirs(POSTS_DIR, exist_ok=True)
+os.makedirs(ASSETS_DIR, exist_ok=True)
+os.makedirs(os.path.dirname(PLACEHOLDER), exist_ok=True)
 
 # =========================
 # Генерация статьи
 # =========================
 def generate_article():
     prompt = "Проанализируй последние тренды в искусственном интеллекте и высоких технологиях и напиши статью на 400-600 слов."
-    
-    # Основной генератор: Groq
-    headers_groq = {
-        "Authorization": f"Bearer {os.getenv('GROQ_API_KEY')}",
-        "Content-Type": "application/json"
-    }
-    payload_groq = {
-        "model": "openai/gpt-oss-20b",
-        "messages": [{"role": "user", "content": prompt}]
-    }
-    
+
+    # Groq основной
     try:
-        r = requests.post("https://api.groq.com/v1/chat/completions", headers=headers_groq, json=payload_groq, timeout=60)
+        logging.info("📝 Генерация статьи через Groq...")
+        headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
+        r = requests.post(
+            "https://api.groq.com/v1/chat/completions",
+            headers=headers,
+            json={"model": "gpt-4o-mini", "messages":[{"role":"user","content":prompt}]}
+        )
         r.raise_for_status()
         text = r.json()["choices"][0]["message"]["content"]
         logging.info("✅ Статья получена через Groq")
-        return text, "Groq"
+        return text, "Groq GPT"
     except Exception as e:
         logging.warning(f"⚠️ Groq не сработал: {e}")
 
-    # Запасной генератор: OpenRouter
-    headers_or = {
-        "Authorization": f"Bearer {os.getenv('OPENROUTER_KEY')}",
-        "Content-Type": "application/json"
-    }
-    payload_or = {
-        "model": "gpt-4.1-mini",
-        "messages": [{"role": "user", "content": prompt}]
-    }
-    
+    # OpenRouter запасной
     try:
-        r = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers_or, json=payload_or, timeout=60)
+        logging.info("📝 Генерация статьи через OpenRouter...")
+        headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}"}
+        r = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers=headers,
+            json={"model": "gpt-4o-mini", "messages":[{"role":"user","content":prompt}]}
+        )
         r.raise_for_status()
-        text = r.json()["completion"]
+        text = r.json()["choices"][0]["message"]["content"]
         logging.info("✅ Статья получена через OpenRouter")
-        return text, "OpenRouter"
+        return text, "OpenRouter GPT"
     except Exception as e:
         logging.error(f"❌ Ошибка генерации статьи: {e}")
-        return None, None
+        return "Статья временно недоступна.", "None"
 
 # =========================
 # Генерация изображения через FusionBrain Kandinsky
 # =========================
-class FusionBrainAPI:
-    def __init__(self):
-        self.URL = "https://api-key.fusionbrain.ai/"
-        self.AUTH_HEADERS = {
-            "X-Key": f"Key {os.getenv('FUSIONBRAIN_API_KEY')}",
-            "X-Secret": f"Secret {os.getenv('FUSION_SECRET_KEY')}"
-        }
+def get_pipeline_id():
+    r = requests.get(BASE_URL + 'key/api/v1/pipelines', headers=AUTH_HEADERS)
+    r.raise_for_status()
+    return r.json()[0]['id']
 
-    def get_pipeline(self):
-        response = requests.get(self.URL + "key/api/v1/pipelines", headers=self.AUTH_HEADERS)
-        response.raise_for_status()
-        data = response.json()
-        return data[0]["id"]
-
-    def generate(self, prompt, pipeline_id, width=1024, height=1024):
+def generate_image(title, slug):
+    try:
+        pipeline_id = get_pipeline_id()
         params = {
             "type": "GENERATE",
             "numImages": 1,
-            "width": width,
-            "height": height,
-            "generateParams": {
-                "query": prompt
-            }
+            "width": 1024,
+            "height": 1024,
+            "generateParams": {"query": title}
         }
-        data = {
-            "pipeline_id": (None, pipeline_id),
-            "params": (None, json.dumps(params), "application/json")
+        files = {
+            'pipeline_id': (None, pipeline_id),
+            'params': (None, json.dumps(params), 'application/json')
         }
-        response = requests.post(self.URL + "key/api/v1/pipeline/run", headers=self.AUTH_HEADERS, files=data)
-        response.raise_for_status()
-        return response.json()["uuid"]
+        r = requests.post(BASE_URL + 'key/api/v1/pipeline/run', headers=AUTH_HEADERS, files=files)
+        r.raise_for_status()
+        uuid = r.json()['uuid']
 
-    def check_generation(self, request_id, attempts=10, delay=10):
-        while attempts > 0:
-            response = requests.get(self.URL + f"key/api/v1/pipeline/status/{request_id}", headers=self.AUTH_HEADERS)
-            response.raise_for_status()
-            data = response.json()
-            if data["status"] == "DONE":
-                return data["result"]["files"]
-            attempts -= 1
-            time.sleep(delay)
-        return None
-
-def generate_image(title, slug):
-    api = FusionBrainAPI()
-    try:
-        pipeline_id = api.get_pipeline()
-        uuid = api.generate(title, pipeline_id)
-        files = api.check_generation(uuid)
-        if files:
-            img_path = f"assets/images/posts/{slug}.png"
-            img_data = requests.get(files[0]).content
-            os.makedirs(os.path.dirname(img_path), exist_ok=True)
-            with open(img_path, "wb") as f:
-                f.write(img_data)
-            logging.info(f"✅ Изображение сохранено: {img_path}")
-            return img_path
+        for _ in range(20):
+            r_status = requests.get(BASE_URL + f'key/api/v1/pipeline/status/{uuid}', headers=AUTH_HEADERS)
+            r_status.raise_for_status()
+            data = r_status.json()
+            if data['status'] == 'DONE':
+                image_base64 = data['result']['files'][0]
+                break
+            time.sleep(3)
         else:
-            logging.error("❌ Изображение не было сгенерировано")
-            return None
+            logging.warning("❌ Изображение не сгенерировано за отведённое время")
+            return PLACEHOLDER
+
+        img_bytes = base64.b64decode(image_base64)
+        img_path = os.path.join(ASSETS_DIR, f'{slug}.png')
+        with open(img_path, 'wb') as f:
+            f.write(img_bytes)
+
+        logging.info(f"✅ Изображение сохранено: {img_path}")
+        return img_path
     except Exception as e:
         logging.error(f"❌ Ошибка генерации изображения: {e}")
-        return None
+        return PLACEHOLDER
 
 # =========================
-# Сохранение статьи и обновление галереи
+# Сохранение статьи
 # =========================
-def save_article(title, text):
-    slug = slugify(title)
+def save_article(title, text, model, slug, image_path):
+    filename = os.path.join(POSTS_DIR, f'{slug}.md')
     date = datetime.now().strftime("%Y-%m-%d")
-    filename = os.path.join(POSTS_DIR, f"{slug}.md")
-    os.makedirs(os.path.dirname(filename), exist_ok=True)
-    with open(filename, "w", encoding="utf-8") as f:
-        f.write(f"---\ntitle: {title}\ndate: {date}\n---\n\n{text}")
+    with open(filename, 'w', encoding='utf-8') as f:
+        f.write(f"---\ntitle: \"{title}\"\ndate: {date}\nimage: \"/{image_path}\"\nmodel: {model}\ntags: [AI, Tech]\n---\n\n{text}")
     logging.info(f"✅ Статья сохранена: {filename}")
-    return slug
 
-def update_gallery(slug, img_path):
-    import yaml
-    os.makedirs(os.path.dirname(GALLERY_FILE), exist_ok=True)
+# =========================
+# Обновление галереи
+# =========================
+def update_gallery(title, slug, image_path):
     gallery = []
     if os.path.exists(GALLERY_FILE):
-        with open(GALLERY_FILE, "r", encoding="utf-8") as f:
+        with open(GALLERY_FILE, 'r', encoding='utf-8') as f:
             gallery = yaml.safe_load(f) or []
-    gallery.append({"slug": slug, "image": img_path})
-    with open(GALLERY_FILE, "w", encoding="utf-8") as f:
+
+    gallery.insert(0, {"title": title, "alt": title, "src": f"/{image_path}"})
+    gallery = gallery[:20]  # максимум 20 изображений
+
+    with open(GALLERY_FILE, 'w', encoding='utf-8') as f:
         yaml.safe_dump(gallery, f, allow_unicode=True)
     logging.info(f"✅ Галерея обновлена: {GALLERY_FILE}")
 
@@ -156,17 +152,14 @@ def update_gallery(slug, img_path):
 # Главная функция
 # =========================
 def main():
-    text, source = generate_article()
-    if not text:
-        logging.error("❌ Статья не сгенерирована")
-        return
+    title = "Тренды в искусственном интеллекте и высоких технологиях"
+    slug = slugify(title)
 
-    # Берем заголовок из первых 6 слов текста
-    title = " ".join(text.split()[:6])
-    slug = save_article(title, text)
-    img_path = generate_image(title, slug)
-    if img_path:
-        update_gallery(slug, img_path)
+    text, model = generate_article()
+    image_path = generate_image(title, slug)
+
+    save_article(title, text, model, slug, image_path)
+    update_gallery(title, slug, image_path)
 
 if __name__ == "__main__":
     main()
