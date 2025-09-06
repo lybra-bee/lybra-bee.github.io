@@ -17,6 +17,7 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
+        token: ${{ secrets.GIT_TOKEN }}
         fetch-depth: 0
 
     - name: Setup Python
@@ -27,7 +28,7 @@ jobs:
     - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install requests pillow pyyaml
+        pip install requests pillow pyyaml python-slugify
 
     - name: Generate article and image
       run: |
@@ -38,13 +39,15 @@ jobs:
         FUSIONBRAIN_API_KEY: ${{ secrets.FUSIONBRAIN_API_KEY }}
         FUSION_SECRET_KEY: ${{ secrets.FUSION_SECRET_KEY }}
 
-    - name: Commit generated content to main
+    - name: Copy generated images
       run: |
-        git config user.name "github-actions[bot]"
-        git config user.email "github-actions[bot]@users.noreply.github.com"
-        git add content/posts/ assets/images/posts/ data/
-        git diff-index --quiet HEAD || git commit -m "📝 Добавлены новые статьи и изображения"
-        git push origin main
+        mkdir -p static/images/posts
+        if [ -d "assets/images/posts" ] && [ "$(ls -A assets/images/posts 2>/dev/null)" ]; then
+            cp -v assets/images/posts/* static/images/posts/
+        else
+            mkdir -p static/images/
+            echo "placeholder" > static/images/placeholder.jpg
+        fi
 
     - name: Setup Hugo
       uses: peaceiris/actions-hugo@v2
@@ -54,6 +57,13 @@ jobs:
 
     - name: Build Hugo site
       run: hugo --minify --verbose
+
+    - name: Create verification files
+      run: |
+        echo "Галерея: $(find static/images/posts/ -name '*.*' 2>/dev/null | wc -l) изображений" > public/VERIFICATION.txt
+        echo "Статьи: $(find content/posts/ -name '*.md' | wc -l) статей" >> public/VERIFICATION.txt
+        echo "Время сборки: $(date)" >> public/VERIFICATION.txt
+        echo "Workflow: ${{ github.workflow }}" >> public/VERIFICATION.txt
 
     - name: Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v3
@@ -66,3 +76,28 @@ jobs:
         enable_jekyll: false
         user_name: 'github-actions[bot]'
         user_email: 'github-actions[bot]@users.noreply.github.com'
+
+  verify:
+    needs: generate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+    - name: Wait for deployment
+      run: sleep 120
+        
+    - name: Check site accessibility
+      run: |
+        if curl -s -f https://lybra-bee.github.io/VERIFICATION.txt > /dev/null; then
+            echo "✅ Сайт доступен"
+            curl -s https://lybra-bee.github.io/VERIFICATION.txt
+        else
+            echo "❌ Сайт не доступен"
+        fi
+
+    - name: Check gallery
+      run: |
+        if curl -s -f https://lybra-bee.github.io/gallery/ > /dev/null; then
+            echo "✅ Галерея доступна"
+        else
+            echo "❌ Галерея недоступна"
+        fi
