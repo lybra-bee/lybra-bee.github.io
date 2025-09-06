@@ -1,135 +1,183 @@
 #!/usr/bin/env python3
 import os
-import json
 import requests
-import yaml
-import re
-from datetime import datetime, timezone
 import logging
-import textwrap
 import base64
 import shutil
-import random
+import re
+from datetime import datetime, timezone
+import time
 
-# === НАСТРОЙКИ ===
+# Логирование
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
+
+# Директории
+CONTENT_DIR = "content/posts"
+ASSETS_DIR = "assets/images/posts"
+STATIC_DIR = "static/images/posts"
+
+# Ключи из ENV
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 FUSIONBRAIN_API_KEY = os.getenv("FUSIONBRAIN_API_KEY")
 
-CONTENT_DIR = "content/posts"
-ASSETS_DIR = "assets/images/posts"
-STATIC_DIR = "static/images/posts"
-DATA_DIR = "data"
+# Утилита для слага
+def slugify(text):
+    return re.sub(r'[^a-z0-9-]', '', text.lower().replace(" ", "-"))[:50]
 
-os.makedirs(CONTENT_DIR, exist_ok=True)
-os.makedirs(ASSETS_DIR, exist_ok=True)
-os.makedirs(STATIC_DIR, exist_ok=True)
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s"
-)
-
-PROMPT = "Проанализируй последние тренды в искусственном интеллекте и высоких технологиях и напиши статью на 400-600 слов."
-
-
-# === ФУНКЦИИ ===
+# === Генерация статьи ===
 def generate_article():
     logging.info("📝 Генерация статьи...")
-    headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}"}
-    payload = {
-        "model": "openai/gpt-4o-mini",
-        "messages": [{"role": "user", "content": PROMPT}],
-        "max_tokens": 1000
+
+    prompt = (
+        "Проанализируй последние тренды в искусственном интеллекте и высоких технологиях "
+        "и напиши статью на русском языке, объемом 400–600 слов. "
+        "В начале укажи заголовок в формате: 'Заголовок: ...'."
+    )
+
+    headers = {"Content-Type": "application/json"}
+    body = {
+        "model": "gpt-4o-mini",
+        "messages": [{"role": "user", "content": prompt}]
     }
-    r = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload)
-    r.raise_for_status()
-    content = r.json()["choices"][0]["message"]["content"]
 
-    # Если статья не в Markdown, добавим заголовок
-    if not content.startswith("# "):
-        first_line = content.split(".")[0][:80]
-        content = f"# {first_line}\n\n{content}"
+    # Пробуем OpenRouter
+    if OPENROUTER_API_KEY:
+        try:
+            r = requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={**headers, "Authorization": f"Bearer {OPENROUTER_API_KEY}"},
+                json=body,
+                timeout=60
+            )
+            r.raise_for_status()
+            content = r.json()["choices"][0]["message"]["content"]
+            logging.info("✅ Статья получена через OpenRouter")
+            return content, "OpenRouter"
+        except Exception as e:
+            logging.warning(f"⚠️ OpenRouter не сработал: {e}")
 
-    return content.strip()
+    # Пробуем Groq
+    if GROQ_API_KEY:
+        try:
+            r = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={**headers, "Authorization": f"Bearer {GROQ_API_KEY}"},
+                json=body,
+                timeout=60
+            )
+            r.raise_for_status()
+            content = r.json()["choices"][0]["message"]["content"]
+            logging.info("✅ Статья получена через Groq")
+            return content, "Groq"
+        except Exception as e:
+            logging.warning(f"⚠️ Groq не сработал: {e}")
 
+    raise RuntimeError("❌ Не удалось сгенерировать статью")
 
-def extract_title(content):
-    match = re.match(r"# (.+)", content)
+# === Извлечение заголовка ===
+def extract_title(text):
+    match = re.search(r"Заголовок:\s*(.+)", text)
     if match:
         return match.group(1).strip()
-    return "AI статья"
+    return "AI и технологии: свежий обзор"
 
-
-def slugify(text):
-    return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
-
-
+# === Генерация изображения ===
 def generate_image(title, slug):
-    logging.info("🎨 Генерация изображения...")
-    headers = {"Authorization": f"Bearer {FUSIONBRAIN_API_KEY}"}
-    payload = {"prompt": f"Иллюстрация к статье: {title}. Современный стиль, hi-tech, AI."}
-    r = requests.post("https://api.fusionbrain.ai/v1/text2image", headers=headers, json=payload)
+    logging.info("🎨 Генерация изображения через FusionBrain...")
+
+    url = "https://api-key.fusionbrain.ai/key/api/v1/text2image/run"
+    headers = {"X-Key": f"Key {FUSIONBRAIN_API_KEY}"}
+
+    payload = {
+        "type": "GENERATE",
+        "style": "DEFAULT",
+        "width": 1024,
+        "height": 576,
+        "num_images": 1,
+        "text": f"Иллюстрация к статье: {title}. Современный стиль, hi-tech, искусственный интеллект."
+    }
+
+    r = requests.post(url, headers=headers, json=payload, timeout=60)
     r.raise_for_status()
     data = r.json()
-    if "image_base64" in data:
-        img_data = base64.b64decode(data["image_base64"])
-        img_path = os.path.join(ASSETS_DIR, f"{slug}.png")
-        with open(img_path, "wb") as f:
-            f.write(img_data)
-        shutil.copy(img_path, os.path.join(STATIC_DIR, f"{slug}.png"))
-        return f"/images/posts/{slug}.png"
+    uuid = data.get("uuid")
+
+    if not uuid:
+        logging.error("❌ FusionBrain не вернул UUID задачи")
+        return "/images/placeholder.jpg"
+
+    # Ожидание результата
+    status_url = f"https://api-key.fusionbrain.ai/key/api/v1/text2image/status/{uuid}"
+    for i in range(20):  # до 60 секунд ожидания
+        s = requests.get(status_url, headers=headers)
+        s.raise_for_status()
+        resp = s.json()
+
+        if resp.get("status") == "DONE":
+            img_b64 = resp["images"][0]
+            img_data = base64.b64decode(img_b64)
+
+            os.makedirs(ASSETS_DIR, exist_ok=True)
+            os.makedirs(STATIC_DIR, exist_ok=True)
+
+            img_path = os.path.join(ASSETS_DIR, f"{slug}.png")
+            with open(img_path, "wb") as f:
+                f.write(img_data)
+            shutil.copy(img_path, os.path.join(STATIC_DIR, f"{slug}.png"))
+
+            logging.info("✅ Изображение сохранено")
+            return f"/images/posts/{slug}.png"
+
+        logging.info(f"⌛ Ждём генерацию изображения... ({i+1}/20)")
+        time.sleep(3)
+
+    logging.error("⚠️ FusionBrain не успел сгенерировать изображение")
     return "/images/placeholder.jpg"
 
+# === Сохранение статьи ===
+def save_article(title, content, model, image_url):
+    os.makedirs(CONTENT_DIR, exist_ok=True)
+    slug = slugify(title)
 
-def update_gallery(img_path, title):
-    yaml_path = os.path.join(DATA_DIR, "gallery.yaml")
-    json_path = os.path.join(DATA_DIR, "gallery.json")
+    filename = os.path.join(
+        CONTENT_DIR, f"{datetime.now().strftime('%Y-%m-%d')}-{slug}.md"
+    )
 
-    entry = {"src": img_path, "alt": title, "title": title}
+    with open(filename, "w", encoding="utf-8") as f:
+        f.write("---\n")
+        f.write(f'title: "{title}"\n')
+        f.write(f'date: {datetime.now(timezone.utc).isoformat()}\n')
+        f.write(f'model: {model}\n')
+        f.write(f'image: {image_url}\n')
+        f.write("---\n\n")
+        f.write(content)
 
-    gallery = []
-    if os.path.exists(yaml_path):
-        with open(yaml_path, "r", encoding="utf-8") as f:
-            try:
-                gallery = yaml.safe_load(f) or []
-            except Exception:
-                gallery = []
+    logging.info(f"✅ Статья сохранена: {filename}")
 
-    gallery.insert(0, entry)
+# === Очистка старых статей ===
+def cleanup_articles():
+    files = sorted(
+        [os.path.join(CONTENT_DIR, f) for f in os.listdir(CONTENT_DIR)],
+        key=os.path.getmtime,
+        reverse=True
+    )
+    for old in files[5:]:
+        os.remove(old)
+        logging.info(f"🗑 Удалена старая статья: {old}")
 
-    with open(yaml_path, "w", encoding="utf-8") as f:
-        yaml.dump(gallery, f, allow_unicode=True)
-
-    with open(json_path, "w", encoding="utf-8") as f:
-        json.dump(gallery, f, ensure_ascii=False, indent=2)
-
-
-def save_article(content, title, slug, img_path):
-    filename = datetime.now(timezone.utc).strftime("%Y-%m-%d-%H%M%S")
-    filepath = os.path.join(CONTENT_DIR, f"{filename}-{slug}.md")
-    meta = textwrap.dedent(f"""\
-    ---
-    title: "{title}"
-    date: {datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S%z")}
-    model: GPT-4o-mini
-    image: {img_path}
-    ---
-    """)
-    with open(filepath, "w", encoding="utf-8") as f:
-        f.write(meta + "\n" + content)
-    logging.info(f"✅ Статья сохранена: {filepath}")
-
-
-# === ОСНОВНОЙ ПРОЦЕСС ===
+# === Основной процесс ===
 def main():
-    content = generate_article()
+    content, model = generate_article()
     title = extract_title(content)
     slug = slugify(title)
     img_path = generate_image(title, slug)
-    save_article(content, title, slug, img_path)
-    update_gallery(img_path, title)
-
+    save_article(title, content, model, img_path)
+    cleanup_articles()
 
 if __name__ == "__main__":
     main()
