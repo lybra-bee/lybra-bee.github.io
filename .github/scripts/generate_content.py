@@ -24,6 +24,7 @@ STATIC_DIR = "static/images/posts"
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 FUSIONBRAIN_API_KEY = os.getenv("FUSIONBRAIN_API_KEY")
+FUSION_SECRET_KEY = os.getenv("FUSION_SECRET_KEY")
 
 # Утилита для слага
 def slugify(text):
@@ -86,14 +87,30 @@ def extract_title(text):
         return match.group(1).strip()
     return "AI и технологии: свежий обзор"
 
-# === Генерация изображения ===
+# === Генерация изображения через FusionBrain ===
 def generate_image(title, slug):
     logging.info("🎨 Генерация изображения через FusionBrain...")
 
-    url = "https://api-key.fusionbrain.ai/key/api/v1/text2image/run"
-    headers = {"X-Key": f"Key {FUSIONBRAIN_API_KEY}"}
+    headers = {
+        "X-Key": f"Key {FUSIONBRAIN_API_KEY}",
+        "X-Secret": f"Secret {FUSION_SECRET_KEY}"
+    }
 
-    payload = {
+    # 1. Получаем список моделей
+    models_url = "https://api-key.fusionbrain.ai/key/api/v1/models"
+    r = requests.get(models_url, headers=headers, timeout=30)
+    r.raise_for_status()
+    models = r.json()
+    if not models:
+        logging.error("❌ FusionBrain не вернул список моделей")
+        return "/images/placeholder.jpg"
+
+    model_id = models[0]["id"]  # берём первую модель
+    logging.info(f"Используем модель ID: {model_id}")
+
+    # 2. Запускаем задачу
+    run_url = "https://api-key.fusionbrain.ai/key/api/v1/text2image/run"
+    params = {
         "type": "GENERATE",
         "style": "DEFAULT",
         "width": 1024,
@@ -102,7 +119,12 @@ def generate_image(title, slug):
         "text": f"Иллюстрация к статье: {title}. Современный стиль, hi-tech, искусственный интеллект."
     }
 
-    r = requests.post(url, headers=headers, json=payload, timeout=60)
+    files = {
+        "model_id": (None, str(model_id)),
+        "params": (None, str(params))
+    }
+
+    r = requests.post(run_url, headers=headers, files=files, timeout=60)
     r.raise_for_status()
     data = r.json()
     uuid = data.get("uuid")
@@ -111,10 +133,10 @@ def generate_image(title, slug):
         logging.error("❌ FusionBrain не вернул UUID задачи")
         return "/images/placeholder.jpg"
 
-    # Ожидание результата
+    # 3. Ожидание результата
     status_url = f"https://api-key.fusionbrain.ai/key/api/v1/text2image/status/{uuid}"
     for i in range(20):  # до 60 секунд ожидания
-        s = requests.get(status_url, headers=headers)
+        s = requests.get(status_url, headers=headers, timeout=30)
         s.raise_for_status()
         resp = s.json()
 
