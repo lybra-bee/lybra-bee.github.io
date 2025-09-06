@@ -45,10 +45,22 @@ jobs:
         extended: true
 
     - name: Build Hugo site
-      run: hugo --minify
+      run: hugo --minify --verbose
+
+    - name: Debug - Show built files
+      run: |
+        echo "=== PUBLIC DIRECTORY ==="
+        ls -la public/
+        echo "=== HTML FILES ==="
+        find public/ -name "*.html"
+        echo "=== CREATE TEST FILE ==="
+        echo "WORKFLOW SUCCESS: $(date)" > public/TEST_DEPLOY.txt
 
     - name: Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v3
       with:
-        github_token: ${{ secrets.GIT_TOKEN }}
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_branch: gh-pages
         publish_dir: ./public
+        force_orphan: true
+        keep_files: false
