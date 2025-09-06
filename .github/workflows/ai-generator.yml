@@ -39,28 +39,36 @@ jobs:
         FUSIONBRAIN_API_KEY: ${{ secrets.FUSIONBRAIN_API_KEY }}
         FUSION_SECRET_KEY: ${{ secrets.FUSION_SECRET_KEY }}
 
-    - name: Force copy images to static
+    - name: Manual copy images (FORCE)
       run: |
         echo "=== ПРИНУДИТЕЛЬНОЕ КОПИРОВАНИЕ ИЗОБРАЖЕНИЙ ==="
         
         # Создаем директории
         mkdir -p static/images/posts
         
-        # Копируем все изображения из assets в static
+        # Проверяем есть ли что копировать
         if [ -d "assets/images/posts" ] && [ "$(ls -A assets/images/posts 2>/dev/null)" ]; then
-            echo "Копируем изображения из assets в static..."
-            cp -v assets/images/posts/*.png static/images/posts/ 2>/dev/null || echo "No PNG files"
-            cp -v assets/images/posts/*.jpg static/images/posts/ 2>/dev/null || echo "No JPG files"
-            cp -v assets/images/posts/*.jpeg static/images/posts/ 2>/dev/null || echo "No JPEG files"
+            echo "Копируем ВСЕ изображения из assets в static..."
             
-            echo "Скопированные изображения:"
-            ls -la static/images/posts/ | head -10
-            echo "Всего изображений: $(ls -1 static/images/posts/ | wc -l)"
+            # Копируем с подробным выводом
+            for img_file in assets/images/posts/*; do
+                if [ -f "$img_file" ]; then
+                    filename=$(basename "$img_file")
+                    cp -v "$img_file" "static/images/posts/$filename"
+                    echo "Скопировано: $filename"
+                fi
+            done
+            
+            echo "Итоговая проверка static:"
+            ls -la static/images/posts/
+            echo "Всего файлов: $(ls -1 static/images/posts/ 2>/dev/null | wc -l)"
         else
-            echo "Нет изображений для копирования, создаем placeholder..."
+            echo "❌ Нет изображений для копирования!"
+            echo "Содержимое assets:"
+            ls -la assets/ 2>/dev/null || echo "Нет assets directory"
+            # Создаем placeholder
             mkdir -p static/images/
-            # Создаем простой placeholder
-            echo "AI Generated Image Placeholder" > static/images/placeholder.jpg
+            echo "placeholder" > static/images/placeholder.jpg
         fi
 
     - name: Setup Hugo
@@ -75,33 +83,36 @@ jobs:
         hugo --minify --verbose
         echo "=== Build completed ==="
 
-    - name: Debug - Check files
+    - name: Verify all files
       run: |
-        echo "=== ПРОВЕРКА ФАЙЛОВ ==="
+        echo "=== ПРОВЕРКА ВСЕХ ФАЙЛОВ ==="
+        
         echo "1. Изображения в assets:"
-        ls -la assets/images/posts/ 2>/dev/null || echo "  ❌ Нет assets/images/posts"
+        ls -la assets/images/posts/ 2>/dev/null || echo "  ❌ Нет assets images"
+        find assets/images/posts/ -name "*.*" 2>/dev/null | head -5
         
         echo "2. Изображения в static:"
-        ls -la static/images/posts/ 2>/dev/null || echo "  ❌ Нет static/images/posts"
-        find static/ -name "*.jpg" -o -name "*.png" -o -name "*.jpeg" | head -10
+        ls -la static/images/posts/ 2>/dev/null || echo "  ❌ Нет static images"
+        find static/images/posts/ -name "*.*" 2>/dev/null | head -5
         
         echo "3. Данные галереи:"
         ls -la data/ 2>/dev/null || echo "  ❌ Нет data directory"
         if [ -f "data/gallery.yaml" ]; then
             echo "  ✅ gallery.yaml существует"
-            echo "  Первые 5 записей:"
-            head -15 data/gallery.yaml
+            echo "  Размер: $(wc -l < data/gallery.yaml) строк"
         fi
         
-        echo "4. Сгенерированные статьи:"
+        echo "4. Статьи:"
+        ls -la content/posts/ 2>/dev/null || echo "  ❌ Нет content/posts"
         find content/posts/ -name "*.md" | head -5
 
-    - name: Create test files
+    - name: Create verification files
       run: |
-        echo "Создаем тестовые файлы для проверки..."
-        echo "Deployment successful: $(date)" > public/DEPLOY_TEST.txt
-        echo "Git SHA: ${{ github.sha }}" >> public/DEPLOY_TEST.txt
-        echo "Workflow: ${{ github.workflow }}" >> public/DEPLOY_TEST.txt
+        echo "Создаем файлы для проверки..."
+        echo "Галерея: $(find static/images/posts/ -name '*.*' 2>/dev/null | wc -l) изображений" > public/VERIFICATION.txt
+        echo "Статьи: $(find content/posts/ -name '*.md' | wc -l) статей" >> public/VERIFICATION.txt
+        echo "Время сборки: $(date)" >> public/VERIFICATION.txt
+        echo "Workflow: ${{ github.workflow }}" >> public/VERIFICATION.txt
 
     - name: Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v3
@@ -115,32 +126,43 @@ jobs:
         user_name: 'github-actions[bot]'
         user_email: 'github-actions[bot]@users.noreply.github.com'
 
-    - name: Verify deployment
+    - name: Show deployment info
       run: |
-        echo "✅ Deployment completed successfully!"
-        echo "📅 Next scheduled run: daily at 06:00 UTC"
-        echo "🌐 Site URL: https://lybra-bee.github.io"
-        echo "📊 Test file: https://lybra-bee.github.io/DEPLOY_TEST.txt"
-        echo "🖼️ Gallery: https://lybra-bee.github.io/gallery/"
-        echo "📝 Articles: https://lybra-bee.github.io/posts/"
+        echo "✅ Деплой завершен!"
+        echo "🌐 Сайт: https://lybra-bee.github.io"
+        echo "📊 Проверка: https://lybra-bee.github.io/VERIFICATION.txt"
+        echo "🖼️ Галерея: https://lybra-bee.github.io/gallery/"
+        echo "📝 Статьи: https://lybra-bee.github.io/posts/"
+        echo "⏰ Следующий запуск: ежедневно в 06:00 UTC"
 
   verify:
     needs: generate
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-    - name: Check if site is accessible
+    - name: Wait for deployment
       run: |
-        echo "Waiting for GitHub Pages to deploy..."
-        sleep 120  # Даем больше времени на деплой
+        echo "Ждем деплой GitHub Pages..."
+        sleep 120
         
-        echo "Checking site availability..."
-        if curl -s -f https://lybra-bee.github.io/DEPLOY_TEST.txt > /dev/null; then
-            echo "✅ Site is accessible!"
-            echo "📋 Test file content:"
-            curl -s https://lybra-bee.github.io/DEPLOY_TEST.txt
+    - name: Check site accessibility
+      run: |
+        echo "Проверяем доступность сайта..."
+        if curl -s -f https://lybra-bee.github.io/VERIFICATION.txt > /dev/null; then
+            echo "✅ Сайт доступен!"
+            echo "📋 Содержимое verification:"
+            curl -s https://lybra-bee.github.io/VERIFICATION.txt
         else
-            echo "❌ Site is not accessible yet"
-            echo "Check GitHub Pages settings:"
+            echo "❌ Сайт не доступен"
+            echo "Проверьте настройки GitHub Pages:"
             echo "https://github.com/lybra-bee/lybra-bee.github.io/settings/pages"
+        fi
+
+    - name: Check gallery
+      run: |
+        echo "Проверяем галерею..."
+        if curl -s -f https://lybra-bee.github.io/gallery/ > /dev/null; then
+            echo "✅ Страница галереи загружается"
+        else
+            echo "❌ Страница галереи не доступна"
         fi
