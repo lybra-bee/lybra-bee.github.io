@@ -1,0 +1,12 @@
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="/">🤖 AI Content</a>
+        </div>
+        <ul class="nav-menu">
+            {{ range .Site.Menus.main }}
+            <li><a href="{{ .URL }}">{{ .Name }}</a></li>
+            {{ end }}
+        </ul>
+    </nav>
+</header>
