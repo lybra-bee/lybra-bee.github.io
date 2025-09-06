@@ -9,6 +9,8 @@ import time
 import logging
 from PIL import Image, ImageDraw, ImageFont
 import re
+import shutil
+import yaml
 
 # ===== ЛОГИРОВАНИЕ =====
 logging.basicConfig(
@@ -103,7 +105,7 @@ def save_image_bytes(image_data, title):
     filename = f"assets/images/posts/{slug}.png"
     with open(filename, "wb") as f:
         f.write(image_data)
-    return filename
+    return f"/images/posts/{slug}.png"
 
 def generate_placeholder_image(title):
     os.makedirs("assets/images/posts", exist_ok=True)
@@ -118,7 +120,6 @@ def generate_placeholder_image(title):
     except:
         font = ImageFont.load_default()
     
-    # Центрирование текста
     bbox = draw.textbbox((0, 0), title, font=font)
     text_width = bbox[2] - bbox[0]
     text_height = bbox[3] - bbox[1]
@@ -128,15 +129,15 @@ def generate_placeholder_image(title):
     draw.text((x, y), title, fill='white', font=font)
     img.save(filename)
     
-    return filename
+    return f"/images/posts/{slug}.png"
 
 # ====== Генерация текста ======
 def generate_article_prompt():
-    trends = ["machine learning", "neural networks", "generative AI", "computer vision", "deep learning"]
-    domains = ["web development", "mobile applications", "cloud computing", "data analysis", "cybersecurity"]
+    trends = ["машинное обучение", "нейросети", "генеративный AI", "компьютерное зрение", "глубокое обучение"]
+    domains = ["веб-разработка", "мобильные приложения", "облачные вычисления", "анализ данных", "кибербезопасность"]
     trend = random.choice(trends)
     domain = random.choice(domains)
-    prompt = f"Напиши статью на русском языке на тему '{trend} в {domain}'. Статья должна содержать заголовок, введение, несколько разделов и заключение. Объем: 500-800 слов."
+    prompt = f"Напиши развернутую статью на русском языке на тему '{trend} в {domain}'. Статья должна содержать заголовок, введение, несколько разделов с подзаголовками и заключение. Объем: 800-1200 слов."
     return prompt, f"{trend} в {domain}"
 
 def generate_fallback_content(prompt):
@@ -153,14 +154,14 @@ def generate_article_content(prompt):
             'env_key': 'OPENROUTER_API_KEY',
             'url': 'https://openrouter.ai/api/v1/chat/completions',
             'headers': {'Authorization': f'Bearer {os.getenv("OPENROUTER_API_KEY")}', 'Content-Type': 'application/json'},
-            'data': {'model': 'anthropic/claude-3-sonnet', 'messages': [{'role': 'user', 'content': prompt}], 'max_tokens': 2000}
+            'data': {'model': 'anthropic/claude-3-sonnet', 'messages': [{'role': 'user', 'content': prompt}], 'max_tokens': 3000}
         },
         {
             'name': 'Groq',
             'env_key': 'GROQ_API_KEY',
             'url': 'https://api.groq.com/openai/v1/chat/completions',
             'headers': {'Authorization': f'Bearer {os.getenv("GROQ_API_KEY")}', 'Content-Type': 'application/json'},
-            'data': {'model': 'llama-3.1-8b-instant', 'messages': [{'role': 'user', 'content': prompt}], 'max_tokens': 2000}
+            'data': {'model': 'llama-3.1-8b-instant', 'messages': [{'role': 'user', 'content': prompt}], 'max_tokens': 3000}
         }
     ]
     
@@ -176,7 +177,7 @@ def generate_article_content(prompt):
                 provider['url'],
                 headers=provider['headers'],
                 json=provider['data'],
-                timeout=45
+                timeout=60
             )
             
             if response.status_code == 200:
@@ -200,8 +201,8 @@ def generate_article_image(title):
     if fb_key and fb_secret:
         try:
             fb = FusionBrainAPI(fb_key, fb_secret)
-            prompt = f"{title}, digital art, futuristic, professional, high quality"
-            task_id = fb.generate(prompt, width=800, height=400)
+            prompt = f"{title}, digital art, futuristic, professional, high quality, 4k"
+            task_id = fb.generate(prompt, width=1024, height=512)
             
             if task_id:
                 logger.info(f"Ожидание генерации изображения...")
@@ -219,7 +220,8 @@ def generate_article_image(title):
     return generate_placeholder_image(title)
 
 # ====== Работа с файлами ======
-def clean_old_articles(keep_last=3):
+def clean_old_articles(keep_last=5):
+    """Удаляем старые статьи, но сохраняем изображения"""
     os.makedirs("content/posts", exist_ok=True)
     posts = sorted([f for f in os.listdir("content/posts") if f.endswith(".md")], reverse=True)
     
@@ -236,32 +238,55 @@ def sanitize_title(title):
     """Очистка заголовка от специальных символов"""
     return re.sub(r'[^\w\s\-]', '', title)
 
-def generate_frontmatter(title, content, model, image_file):
+def generate_frontmatter(title, content, model, image_path):
     sanitized_title = sanitize_title(title)
-    return f"""---
-title: "{sanitized_title}"
-date: {datetime.now().isoformat()}
-image: "{image_file}"
-model: "{model}"
----
+    frontmatter = {
+        'title': sanitized_title,
+        'date': datetime.now().isoformat(),
+        'draft': False,
+        'image': image_path,
+        'model': model,
+        'categories': ['AI'],
+        'tags': ['автоматическая генерация', 'искусственный интеллект']
+    }
+    return f"---\n{yaml.dump(frontmatter, allow_unicode=True)}---\n\n{content}"
 
-{content}
-"""
+def update_hugo_data():
+    """Обновляет данные для Hugo"""
+    # Создаем данные для галереи
+    gallery_images = []
+    images_dir = "assets/images/posts"
+    if os.path.exists(images_dir):
+        for img_file in os.listdir(images_dir):
+            if img_file.endswith(('.png', '.jpg', '.jpeg')):
+                gallery_images.append({
+                    'src': f"/images/posts/{img_file}",
+                    'alt': img_file.split('.')[0].replace('-', ' '),
+                    'title': img_file.split('.')[0].replace('-', ' ')
+                })
+    
+    # Сохраняем данные галереи
+    os.makedirs("data", exist_ok=True)
+    with open("data/gallery.yaml", "w", encoding="utf-8") as f:
+        yaml.dump(gallery_images, f, allow_unicode=True)
 
 def generate_content():
     try:
-        clean_old_articles()
+        clean_old_articles(keep_last=5)
         prompt, topic = generate_article_prompt()
         content, model = generate_article_content(prompt)
         title = topic
-        image_file = generate_article_image(title)
+        image_path = generate_article_image(title)
         slug = generate_slug(title)
         
         filename = f"content/posts/{datetime.now().strftime('%Y-%m-%d')}-{slug}.md"
         os.makedirs("content/posts", exist_ok=True)
         
         with open(filename, "w", encoding="utf-8") as f:
-            f.write(generate_frontmatter(title, content, model, image_file))
+            f.write(generate_frontmatter(title, content, model, image_path))
+        
+        # Обновляем данные Hugo
+        update_hugo_data()
         
         logger.info(f"Статья создана: {filename}")
         return filename
@@ -269,25 +294,6 @@ def generate_content():
     except Exception as e:
         logger.error(f"Критическая ошибка в generate_content: {e}")
         return None
-def update_index():
-    """Обновляет индексную страницу со списком последних статей"""
-    posts = sorted([f for f in os.listdir("content/posts") if f.endswith(".md")], reverse=True)
-    
-    index_content = """# Последние статьи\n\n"""
-    
-    for post in posts[:5]:
-        with open(f"content/posts/{post}", "r", encoding="utf-8") as f:
-            content = f.read()
-            # Извлекаем заголовок из frontmatter
-            title_match = re.search(r'title: "(.*?)"', content)
-            if title_match:
-                title = title_match.group(1)
-                date = post.split("-")[:3]
-                date_str = f"{date[2].split('.')[0]}.{date[1]}.{date[0]}"
-                index_content += f"- [{title}](/content/posts/{post}) - {date_str}\n"
-    
-    with open("index.md", "w", encoding="utf-8") as f:
-        f.write(index_content)
 
 if __name__ == "__main__":
     generate_content()
