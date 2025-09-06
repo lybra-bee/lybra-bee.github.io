@@ -1,86 +1,47 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 import os
 import json
 import requests
 import logging
 import time
+import base64
 from datetime import datetime
 from slugify import slugify
-import yaml
 
+# Настройка логирования
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
-# =======================
-# Настройки API
-# =======================
-
-# OpenRouter (или Groq) - рабочие ключи и URL как в старом скрипте
-OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "твоя_копия_ключа")
-OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "твоя_копия_ключа")
-GROQ_URL = "https://api.groq.com/v1/chat/completions"
-
-# FusionBrain Kandinsky
-FUSIONBRAIN_KEY = os.environ.get("FUSIONBRAIN_KEY", "твоя_копия_ключа")
-FUSIONBRAIN_SECRET = os.environ.get("FUSIONBRAIN_SECRET", "твоя_копия_секрета")
+# Ключи и URL
+OPENROUTER_KEY = os.environ.get("OPENROUTER_KEY")
 FUSIONBRAIN_URL = "https://api-key.fusionbrain.ai/"
+FUSIONBRAIN_KEY = os.environ.get("FUSIONBRAIN_KEY")
+FUSIONBRAIN_SECRET = os.environ.get("FUSIONBRAIN_SECRET")
 
 
-# =======================
-# Генерация статьи
-# =======================
-
+# ========== Функции генерации статьи ==========
 def generate_article():
     prompt = "Проанализируй последние тренды в искусственном интеллекте и высоких технологиях и напиши статью на 400-600 слов."
-    
-    headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "Content-Type": "application/json"
-    }
-
+    headers = {"Authorization": f"Bearer {OPENROUTER_KEY}"}
     data = {
-        "model": "gpt-4o-mini",
+        "model": "gpt-4.1-mini",
         "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.7
     }
 
     try:
-        r = requests.post(OPENROUTER_URL, headers=headers, json=data)
+        r = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=data)
         r.raise_for_status()
-        result = r.json()
-        text = result['choices'][0]['message']['content']
-        logging.info("✅ Статья получена через OpenRouter")
-        return text, "OpenRouter GPT"
+        resp = r.json()
+        text = resp["choices"][0]["message"]["content"]
+        return text, "gpt-4.1-mini"
     except Exception as e:
         logging.error(f"❌ Ошибка генерации статьи: {e}")
-        # Попытка через Groq
-        headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
-        data = {
-            "model": "groq:chat",
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.7
-        }
-        try:
-            r = requests.post(GROQ_URL, headers=headers, json=data)
-            r.raise_for_status()
-            result = r.json()
-            text = result['choices'][0]['message']['content']
-            logging.info("✅ Статья получена через Groq")
-            return text, "Groq Chat"
-        except Exception as e2:
-            logging.error(f"❌ Ошибка генерации статьи: {e2}")
-            return None, None
+        return None, None
 
-# =======================
-# Генерация изображения
-# =======================
 
+# ========== Класс для FusionBrain ==========
 class FusionBrainAPI:
     def __init__(self, url, api_key, secret_key):
         self.URL = url
@@ -104,6 +65,7 @@ class FusionBrainAPI:
                 "query": prompt
             }
         }
+
         data = {
             'pipeline_id': (None, pipeline_id),
             'params': (None, json.dumps(params), 'application/json')
@@ -122,6 +84,8 @@ class FusionBrainAPI:
             time.sleep(delay)
         return None
 
+
+# ========== Генерация изображения ==========
 def generate_image(prompt, slug):
     try:
         api = FusionBrainAPI(FUSIONBRAIN_URL, FUSIONBRAIN_KEY, FUSIONBRAIN_SECRET)
@@ -131,8 +95,12 @@ def generate_image(prompt, slug):
         if not files:
             logging.error("❌ Ошибка генерации изображения: файл не получен")
             return None
+
         img_base64 = files[0]
-        img_data = base64.b64decode(img_base64.split(",")[-1])
+        if "," in img_base64:
+            img_base64 = img_base64.split(",")[-1]
+
+        img_data = base64.b64decode(img_base64)
         os.makedirs("static/images/posts", exist_ok=True)
         img_path = f"static/images/posts/{slug}.png"
         with open(img_path, "wb") as f:
@@ -143,22 +111,18 @@ def generate_image(prompt, slug):
         logging.error(f"❌ Ошибка генерации изображения: {e}")
         return None
 
-# =======================
-# Сохранение статьи
-# =======================
 
-def save_post(title, text, model, image_path):
+# ========== Сохранение статьи ==========
+def save_article(title, text, image_url, model):
     slug = slugify(title)
-    date_str = datetime.now().strftime("%Y-%m-%d")
-    filename = f"content/posts/{slug}.md"
     os.makedirs("content/posts", exist_ok=True)
+    filename = f"content/posts/{slug}.md"
+    date = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
     content = f"""---
 title: "{title}"
-date: {date_str}
-draft: false
-type: posts
-model: {model}
-image: "{image_path if image_path else ''}"
+date: {date}
+image: "{image_url if image_url else ''}"
+model: "{model}"
 ---
 
 {text}
@@ -168,39 +132,43 @@ image: "{image_path if image_path else ''}"
     logging.info(f"✅ Статья сохранена: {filename}")
     return slug
 
-# =======================
-# Обновление галереи
-# =======================
 
-def update_gallery(title, image_path):
-    slug = slugify(title)
-    gallery_file = "data/gallery.yaml"
+# ========== Обновление галереи ==========
+def update_gallery(slug, title, image_url):
     os.makedirs("data", exist_ok=True)
+    gallery_file = "data/gallery.yaml"
     gallery = []
     if os.path.exists(gallery_file):
+        import yaml
         with open(gallery_file, "r", encoding="utf-8") as f:
             gallery = yaml.safe_load(f) or []
-    gallery.insert(0, {"title": title, "src": image_path, "alt": title})
-    gallery = gallery[:20]  # оставляем последние 20
+
+    gallery.insert(0, {"src": image_url, "alt": title, "title": title})
+    gallery = gallery[:10]  # оставляем последние 10
     with open(gallery_file, "w", encoding="utf-8") as f:
-        yaml.safe_dump(gallery, f, allow_unicode=True)
+        yaml.dump(gallery, f, allow_unicode=True)
     logging.info(f"✅ Галерея обновлена: {gallery_file}")
 
-# =======================
-# Основной процесс
-# =======================
 
+# ========== Главная функция ==========
 def main():
+    logging.info("📝 Генерация статьи...")
     text, model = generate_article()
     if not text:
         logging.error("❌ Статья не сгенерирована")
         return
-    title = text.split("\n")[0][:60]  # заголовок берем из первых 60 символов
+
+    title = text.split("\n")[0][:100]  # первые 100 символов как заголовок
     slug = slugify(title)
-    image_path = generate_image(title, slug)
-    save_post(title, text, model, image_path)
-    if image_path:
-        update_gallery(title, image_path)
+
+    logging.info("🎨 Генерация изображения...")
+    image_url = generate_image(title, slug)
+
+    save_article(title, text, image_url, model)
+
+    if image_url:
+        update_gallery(slug, title, image_url)
+
 
 if __name__ == "__main__":
     main()
