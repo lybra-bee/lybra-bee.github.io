@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Генератор контента</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .post { margin-bottom: 40px; border-bottom: 1px solid #eee; padding-bottom: 20px; }
+        .post img { max-width: 100%; height: auto; }
+        .post-meta { color: #666; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <h1>Последние AI-статьи</h1>
+    
+    <div id="posts">
+        <!-- Посты будут добавляться автоматически -->
+    </div>
+
+    <script>
+    // Простой скрипт для отображения постов
+    async function loadPosts() {
+        const response = await fetch('content/posts/');
+        const text = await response.text();
+        
+        // Парсим список файлов (упрощенно)
+        const posts = [];
+        const parser = new DOMParser();
+        const html = parser.parseFromString(text, 'text/html');
+        
+        const links = html.querySelectorAll('a[href$=".md"]');
+        links.forEach(link => {
+            posts.push(link.href);
+        });
+
+        // Загружаем и отображаем посты
+        for (const postUrl of posts.slice(0, 5)) {
+            try {
+                const postResponse = await fetch(postUrl);
+                const postText = await postResponse.text();
+                
+                // Простой парсинг markdown (можно использовать библиотеку)
+                const postDiv = document.createElement('div');
+                postDiv.className = 'post';
+                postDiv.innerHTML = postText;
+                document.getElementById('posts').appendChild(postDiv);
+            } catch (error) {
+                console.error('Ошибка загрузки поста:', error);
+            }
+        }
+    }
+
+    loadPosts();
+    </script>
+</body>
+</html>
