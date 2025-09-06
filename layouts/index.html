@@ -3,14 +3,16 @@
     <h1>Последняя AI-статья</h1>
     {{ range first 1 (where .Site.RegularPages "Type" "posts") }}
     <article class="featured-post">
-        <img src="{{ .Params.image }}" alt="{{ .Title }}" class="featured-image">
+        {{ with .Params.image }}
+        <img src="{{ . }}" alt="{{ $.Title }}" class="featured-image">
+        {{ end }}
         <div class="post-content">
             <h2>{{ .Title }}</h2>
             <p class="meta">Опубликовано: {{ .Date.Format "02.01.2006" }} • Модель: {{ .Params.model }}</p>
             <div class="excerpt">
                 {{ .Summary }}
             </div>
-            <a href="{{ .Permalink }}" class="read-more">Читать далее</a>
+            <a href="{{ .RelPermalink }}" class="read-more">Читать далее</a>
         </div>
     </article>
     {{ else }}
