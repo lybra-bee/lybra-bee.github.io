@@ -1,21 +1,23 @@
-name: Generate Content
+name: Generate and Deploy Hugo Site
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 6 * * *' # каждый день в 6:00 UTC
+    - cron: '0 6 * * *'
+  push:
+    branches: [ main ]
 
 jobs:
   generate:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # Добавляем разрешение на запись
+      contents: write
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
-        token: ${{ secrets.GIT_TOKEN }}  # Используем токен для checkout
+        token: ${{ secrets.GIT_TOKEN }}
 
     - name: Setup Python
       uses: actions/setup-python@v4
@@ -25,7 +27,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install requests pillow
+        pip install requests pillow pyyaml
 
     - name: Generate article and image
       run: |
@@ -36,12 +38,17 @@ jobs:
         FUSIONBRAIN_API_KEY: ${{ secrets.FUSIONBRAIN_API_KEY }}
         FUSION_SECRET_KEY: ${{ secrets.FUSION_SECRET_KEY }}
 
-    - name: Commit and Push changes
-      run: |
-        git config --global user.name "github-actions[bot]"
-        git config --global user.email "github-actions[bot]@users.noreply.github.com"
-        git add content/posts/ assets/images/posts/
-        git commit -m "📝 Генерация статьи и изображения [CI]" || echo "No changes to commit"
-        git push
-      env:
-        GITHUB_TOKEN: ${{ secrets.GIT_TOKEN }}  # Используем стандартное имя
+    - name: Setup Hugo
+      uses: peaceiris/actions-hugo@v2
+      with:
+        hugo-version: '0.120.4'
+        extended: true
+
+    - name: Build Hugo site
+      run: hugo --minify
+
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GIT_TOKEN }}
+        publish_dir: ./public
