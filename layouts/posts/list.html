@@ -1,0 +1,38 @@
+{{ define "main" }}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Статьи | {{ .Site.Title }}</title>
+  {{ $css := resources.Get "css/main.css" | minify | fingerprint }}
+  <link rel="stylesheet" href="{{ $css.Permalink }}">
+  <link rel="stylesheet" href="https://unpkg.com/aos@2.3.1/dist/aos.css" />
+</head>
+<body>
+  <nav class="navbar">
+    <a href="/" class="navbar-brand"><i class="bi bi-cpu"></i> {{ .Site.Title }}</a>
+    <ul class="nav-menu">
+      {{ range .Site.Menus.main }}
+      <li><a href="{{ .URL }}" class="nav-link">{{ .Name }}</a></li>
+      {{ end }}
+    </ul>
+  </nav>
+
+  <main class="container">
+    <h1>Статьи</h1>
+    <div class="grid">
+      {{ range .Pages }}
+      <article class="article-card" data-aos="fade-up">
+        {{ if .Params.image }}<img src="{{ .Params.image | relURL }}" alt="{{ .Title }}">{{ end }}
+        <h3><a href="{{ .RelPermalink }}">{{ .Title }}</a></h3>
+        <p class="meta">{{ .Date.Format "02.01.2006" }}</p>
+        <p>{{ .Summary | plainify | truncate 200 }}</p>
+        <a class="btn" href="{{ .RelPermalink }}">Читать</a>
+      </article>
+      {{ end }}
+    </div>
+  </main>
+</body>
+</html>
+{{ end }}
