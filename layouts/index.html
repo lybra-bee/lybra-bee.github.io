@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{{ .Site.Title }}</title>
+
+  <!-- CSS -->
+  {{ $css := resources.Get "css/main.css" | minify | fingerprint }}
+  <link rel="stylesheet" href="{{ $css.Permalink }}">
+  <link rel="stylesheet" href="https://unpkg.com/aos@2.3.1/dist/aos.css" />
+  <link rel="stylesheet" href="https://unpkg.com/swiper@8/swiper-bundle.min.css" />
+
+  <!-- Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+
+  <!-- Third-party libs -->
+  <script src="https://cdn.jsdelivr.net/npm/typed.js@2.0.12"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tsparticles@2.11.1/tsparticles.min.js"></script>
+  <script src="https://unpkg.com/swiper@8/swiper-bundle.min.js"></script>
+
+</head>
+<body>
+  <!-- NAV -->
+  <nav class="navbar">
+    <div class="nav-left">
+      <a href="/" class="navbar-brand"><i class="bi bi-cpu"></i> AI Blog</a>
+    </div>
+    <ul class="nav-menu">
+      {{ range .Site.Menus.main }}
+      <li><a href="{{ .URL }}" class="nav-link">{{ .Name }}</a></li>
+      {{ end }}
+    </ul>
+  </nav>
+
+  <!-- HERO with particles -->
+  <header class="hero">
+    <div id="tsparticles"></div>
+    <div class="hero-inner">
+      <h1 id="typed"></h1>
+      <p class="hero-subtitle">{{ .Site.Params.subtitle }}</p>
+      <div class="hero-cta">
+        <a href="/posts/" class="btn">Читать статьи</a>
+        <a href="/gallery/" class="btn ghost">Галерея</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Featured: homepage content (content/_index.md) -->
+    {{ with .Content }}
+    <section class="featured" data-aos="fade-up">
+      <div class="glass-card">
+        <h2>🔥 Текущая публикация</h2>
+        {{ if .Page.Params.image }}
+          <img src="{{ .Page.Params.image | relURL }}" alt="{{ .Page.Title }}" class="featured-img">
+        {{ end }}
+        <h3>{{ .Page.Title }}</h3>
+        <div class="meta">
+          <span>{{ .Page.Date.Format "02.01.2006" }}</span>
+        </div>
+        <div class="summary">{{ .Summary }}</div>
+        <a href="{{ .Page.RelPermalink }}" class="btn">Читать полностью</a>
+      </div>
+    </section>
+    {{ end }}
+
+    <!-- Carousel of latest posts -->
+    <section class="posts" data-aos="fade-up">
+      <h2 style="text-align:center; margin-bottom:1rem;">📚 Последние статьи</h2>
+
+      <div class="swiper mySwiper">
+        <div class="swiper-wrapper">
+          {{ $posts := where .Site.RegularPages "Type" "posts" | first 8 }}
+          {{ range $posts }}
+          <div class="swiper-slide">
+            <article class="card article-card">
+              {{ if .Params.image }}
+                <img src="{{ .Params.image | relURL }}" alt="{{ .Title }}">
+              {{ end }}
+              <h4>{{ .Title }}</h4>
+              <p class="meta">{{ .Date.Format "02.01.2006" }}</p>
+              <p class="excerpt">{{ .Summary | plainify | truncate 160 }}</p>
+              <a href="{{ .RelPermalink }}" class="btn">Читать</a>
+            </article>
+          </div>
+          {{ end }}
+        </div>
+        <!-- navigation -->
+        <div class="swiper-button-next"></div>
+        <div class="swiper-button-prev"></div>
+        <div class="swiper-pagination"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer>
+    <div class="container">
+      <p>© {{ now.Format "2006" }} AI Blog | Сгенерировано с помощью ИИ</p>
+    </div>
+  </footer>
+
+  <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+  <script>
+    AOS.init({ duration: 900, once: true });
+
+    // Typed
+    new Typed('#typed', {
+      strings: ["🤖 Искусственный Интеллект", "🚀 AI Тренды 2025", "💡 Автоматизация и генерация контента"],
+      typeSpeed: 60, backSpeed: 40, loop: true
+    });
+
+    // tsParticles
+    tsParticles.load("tsparticles", {
+      particles: {
+        number: { value: 80 }, color: { value:["#0af","#0ff","#08c"] },
+        shape:{type:"circle"}, opacity:{value:0.5}, size:{value:{min:1,max:4}},
+        move:{enable:true,speed:1.2,random:true,outModes:{default:"out"}}
+      },
+      interactivity:{events:{onhover:{enable:true,mode:"repulse"}}}, detectRetina:true
+    });
+
+    // Swiper
+    const swiper = new Swiper(".mySwiper", {
+      slidesPerView: 3, spaceBetween: 24, loop: true,
+      navigation: { nextEl: ".swiper-button-next", prevEl: ".swiper-button-prev" },
+      pagination: { el: ".swiper-pagination", clickable: true },
+      breakpoints: { 0:{slidesPerView:1}, 640:{slidesPerView:2}, 1024:{slidesPerView:3} }
+    });
+  </script>
+</body>
+</html>
