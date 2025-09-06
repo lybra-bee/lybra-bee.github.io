@@ -269,6 +269,25 @@ def generate_content():
     except Exception as e:
         logger.error(f"Критическая ошибка в generate_content: {e}")
         return None
+def update_index():
+    """Обновляет индексную страницу со списком последних статей"""
+    posts = sorted([f for f in os.listdir("content/posts") if f.endswith(".md")], reverse=True)
+    
+    index_content = """# Последние статьи\n\n"""
+    
+    for post in posts[:5]:
+        with open(f"content/posts/{post}", "r", encoding="utf-8") as f:
+            content = f.read()
+            # Извлекаем заголовок из frontmatter
+            title_match = re.search(r'title: "(.*?)"', content)
+            if title_match:
+                title = title_match.group(1)
+                date = post.split("-")[:3]
+                date_str = f"{date[2].split('.')[0]}.{date[1]}.{date[0]}"
+                index_content += f"- [{title}](/content/posts/{post}) - {date_str}\n"
+    
+    with open("index.md", "w", encoding="utf-8") as f:
+        f.write(index_content)
 
 if __name__ == "__main__":
     generate_content()
