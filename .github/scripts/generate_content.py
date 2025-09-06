@@ -7,7 +7,8 @@ from datetime import datetime, timezone
 import base64
 import time
 import logging
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
+import re
 
 # ===== ЛОГИРОВАНИЕ =====
 logging.basicConfig(
@@ -108,10 +109,25 @@ def generate_placeholder_image(title):
     os.makedirs("assets/images/posts", exist_ok=True)
     slug = generate_slug(title)
     filename = f"assets/images/posts/{slug}.png"
-    img = Image.new('RGB', (800,400), color='#0f172a')
+    
+    img = Image.new('RGB', (800, 400), color='#0f172a')
     draw = ImageDraw.Draw(img)
-    draw.text((50,180), title, fill='white')
+    
+    try:
+        font = ImageFont.truetype("arial.ttf", 30)
+    except:
+        font = ImageFont.load_default()
+    
+    # Центрирование текста
+    bbox = draw.textbbox((0, 0), title, font=font)
+    text_width = bbox[2] - bbox[0]
+    text_height = bbox[3] - bbox[1]
+    x = (800 - text_width) / 2
+    y = (400 - text_height) / 2
+    
+    draw.text((x, y), title, fill='white', font=font)
     img.save(filename)
+    
     return filename
 
 # ====== Генерация текста ======
@@ -120,87 +136,139 @@ def generate_article_prompt():
     domains = ["web development", "mobile applications", "cloud computing", "data analysis", "cybersecurity"]
     trend = random.choice(trends)
     domain = random.choice(domains)
-    prompt = f"Напиши статью на русском языке на тему '{trend} в {domain}'"
-    return prompt, f"{trend} in {domain}"
+    prompt = f"Напиши статью на русском языке на тему '{trend} в {domain}'. Статья должна содержать заголовок, введение, несколько разделов и заключение. Объем: 500-800 слов."
+    return prompt, f"{trend} в {domain}"
 
 def generate_fallback_content(prompt):
-    return ("# Тенденции искусственного интеллекта в 2025 году\n"
-            "## Введение\nИскусственный интеллект продолжает трансформировать отрасли...\n"
-            "## Основные тенденции\n- Автоматизация процессов\n- Интеграция AI\n"
-            "## Заключение\nБудущее AI многообещающее\n*Статья сгенерирована автоматически*")
+    return ("# Тенденции искусственного интеллекта в 2025 году\n\n"
+            "## Введение\n\nИскусственный интеллект продолжает трансформировать отрасли, предлагая инновационные решения для сложных задач.\n\n"
+            "## Основные тенденции\n\n- Автоматизация бизнес-процессов\n- Интеграция AI в повседневные приложения\n- Развитие генеративных моделей\n- Улучшение компьютерного зрения\n\n"
+            "## Заключение\n\nБудущее искусственного интеллекта выглядит многообещающе, с постоянным ростом возможностей и применений.\n\n"
+            "*Статья сгенерирована автоматически*")
 
 def generate_article_content(prompt):
-    # --- OpenRouter ---
-    or_key = os.getenv('OPENROUTER_API_KEY')
-    if or_key:
+    providers = [
+        {
+            'name': 'OpenRouter',
+            'env_key': 'OPENROUTER_API_KEY',
+            'url': 'https://openrouter.ai/api/v1/chat/completions',
+            'headers': {'Authorization': f'Bearer {os.getenv("OPENROUTER_API_KEY")}', 'Content-Type': 'application/json'},
+            'data': {'model': 'anthropic/claude-3-sonnet', 'messages': [{'role': 'user', 'content': prompt}], 'max_tokens': 2000}
+        },
+        {
+            'name': 'Groq',
+            'env_key': 'GROQ_API_KEY',
+            'url': 'https://api.groq.com/openai/v1/chat/completions',
+            'headers': {'Authorization': f'Bearer {os.getenv("GROQ_API_KEY")}', 'Content-Type': 'application/json'},
+            'data': {'model': 'llama-3.1-8b-instant', 'messages': [{'role': 'user', 'content': prompt}], 'max_tokens': 2000}
+        }
+    ]
+    
+    for provider in providers:
+        api_key = os.getenv(provider['env_key'])
+        if not api_key:
+            logger.info(f"Пропуск {provider['name']}: API ключ не найден")
+            continue
+            
         try:
-            resp = requests.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers={"Authorization": f"Bearer {or_key}", "Content-Type": "application/json"},
-                json={"model":"claude-3","messages":[{"role":"user","content":prompt}],"max_tokens":2000},
-                timeout=30
+            logger.info(f"Попытка генерации через {provider['name']}")
+            response = requests.post(
+                provider['url'],
+                headers=provider['headers'],
+                json=provider['data'],
+                timeout=45
             )
-            if resp.status_code == 200:
-                return resp.json()['choices'][0]['message']['content'].strip(), "OpenRouter"
+            
+            if response.status_code == 200:
+                content = response.json()['choices'][0]['message']['content'].strip()
+                logger.info(f"Успешная генерация через {provider['name']}")
+                return content, provider['name']
+            else:
+                logger.warning(f"{provider['name']} вернул статус {response.status_code}: {response.text}")
+                
         except Exception as e:
-            logger.warning(f"OpenRouter не сработал: {e}")
-    # --- Groq как запасной вариант ---
-    groq_key = os.getenv('GROQ_API_KEY')
-    if groq_key:
-        try:
-            resp = requests.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
-                json={"model":"llama-3.1-8b-instant","messages":[{"role":"user","content":prompt}],"max_tokens":2000},
-                timeout=30
-            )
-            if resp.status_code == 200:
-                return resp.json()['choices'][0]['message']['content'].strip(), "Groq"
-        except Exception as e:
-            logger.warning(f"Groq не сработал: {e}")
-    # --- Fallback ---
+            logger.warning(f"{provider['name']} не сработал: {e}")
+    
+    logger.info("Использование fallback контента")
     return generate_fallback_content(prompt), "fallback"
 
 # ====== Генерация изображения ======
 def generate_article_image(title):
     fb_key = os.getenv('FUSIONBRAIN_API_KEY')
     fb_secret = os.getenv('FUSION_SECRET_KEY')
+    
     if fb_key and fb_secret:
-        fb = FusionBrainAPI(fb_key, fb_secret)
-        prompt = f"{title}, digital art, futuristic, professional"
-        task_id = fb.generate(prompt)
-        if task_id:
-            b64 = fb.check_status(task_id)
-            if b64:
-                try:
-                    return save_image_bytes(base64.b64decode(b64), title)
-                except:
-                    pass
+        try:
+            fb = FusionBrainAPI(fb_key, fb_secret)
+            prompt = f"{title}, digital art, futuristic, professional, high quality"
+            task_id = fb.generate(prompt, width=800, height=400)
+            
+            if task_id:
+                logger.info(f"Ожидание генерации изображения...")
+                b64 = fb.check_status(task_id)
+                if b64:
+                    try:
+                        image_data = base64.b64decode(b64)
+                        return save_image_bytes(image_data, title)
+                    except Exception as e:
+                        logger.error(f"Ошибка декодирования изображения: {e}")
+        except Exception as e:
+            logger.error(f"Ошибка FusionBrain API: {e}")
+    
+    logger.info("Создание placeholder изображения")
     return generate_placeholder_image(title)
 
 # ====== Работа с файлами ======
 def clean_old_articles(keep_last=3):
     os.makedirs("content/posts", exist_ok=True)
     posts = sorted([f for f in os.listdir("content/posts") if f.endswith(".md")], reverse=True)
+    
     for post in posts[keep_last:]:
-        os.remove(os.path.join("content/posts", post))
+        file_path = os.path.join("content/posts", post)
+        if os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+                logger.info(f"Удалена старая статья: {post}")
+            except Exception as e:
+                logger.error(f"Ошибка удаления файла {post}: {e}")
+
+def sanitize_title(title):
+    """Очистка заголовка от специальных символов"""
+    return re.sub(r'[^\w\s\-]', '', title)
 
 def generate_frontmatter(title, content, model, image_file):
-    return f"---\ntitle: \"{title}\"\ndate: {datetime.now().isoformat()}\nimage: \"{image_file}\"\nmodel: \"{model}\"\n---\n\n{content}"
+    sanitized_title = sanitize_title(title)
+    return f"""---
+title: "{sanitized_title}"
+date: {datetime.now().isoformat()}
+image: "{image_file}"
+model: "{model}"
+---
+
+{content}
+"""
 
 def generate_content():
-    clean_old_articles()
-    prompt, topic = generate_article_prompt()
-    content, model = generate_article_content(prompt)
-    title = topic
-    image_file = generate_article_image(title)
-    slug = generate_slug(title)
-    filename = f"content/posts/{datetime.now().strftime('%Y-%m-%d')}-{slug}.md"
-    os.makedirs("content/posts", exist_ok=True)
-    with open(filename, "w", encoding="utf-8") as f:
-        f.write(generate_frontmatter(title, content, model, image_file))
-    logger.info(f"Статья создана: {filename}")
-    return filename
+    try:
+        clean_old_articles()
+        prompt, topic = generate_article_prompt()
+        content, model = generate_article_content(prompt)
+        title = topic
+        image_file = generate_article_image(title)
+        slug = generate_slug(title)
+        
+        filename = f"content/posts/{datetime.now().strftime('%Y-%m-%d')}-{slug}.md"
+        os.makedirs("content/posts", exist_ok=True)
+        
+        with open(filename, "w", encoding="utf-8") as f:
+            f.write(generate_frontmatter(title, content, model, image_file))
+        
+        logger.info(f"Статья создана: {filename}")
+        return filename
+        
+    except Exception as e:
+        logger.error(f"Критическая ошибка в generate_content: {e}")
+        return None
 
 if __name__ == "__main__":
     generate_content()
