@@ -172,55 +172,58 @@ def create_static_placeholder():
             return False
 
 def copy_images_to_static():
-    """Копирует изображения из assets в static папку для Hugo"""
+    """Надежное копирование изображений из assets в static"""
     try:
-        logger.info("Начинаем копирование изображений в static...")
+        logger.info("=== НАЧИНАЕМ КОПИРОВАНИЕ ИЗОБРАЖЕНИЙ ===")
         
-        # Создаем директории если не существуют
+        # Создаем целевые директории
         os.makedirs("static/images/posts", exist_ok=True)
         
         # Проверяем исходную директорию
         assets_dir = "assets/images/posts"
         if not os.path.exists(assets_dir):
-            logger.warning(f"Директория {assets_dir} не существует!")
-            create_static_placeholder()
-            return
+            logger.error(f"❌ Директория {assets_dir} не существует!")
+            return False
             
-        image_files = [f for f in os.listdir(assets_dir) if f.endswith(('.png', '.jpg', '.jpeg'))]
+        # Получаем список изображений
+        image_files = []
+        for ext in ['.png', '.jpg', '.jpeg']:
+            image_files.extend([f for f in os.listdir(assets_dir) if f.lower().endswith(ext)])
         
         if not image_files:
-            logger.warning("Нет изображений в assets/images/posts/")
-            create_static_placeholder()
-            return
+            logger.warning("⚠️ Нет изображений в assets/images/posts/")
+            return False
             
+        logger.info(f"Найдено {len(image_files)} изображений для копирования")
+        
         # Копируем каждое изображение
-        copied_count = 0
+        success_count = 0
         for img_file in image_files:
             try:
-                src = os.path.join(assets_dir, img_file)
-                dst = os.path.join("static/images/posts", img_file)
+                src_path = os.path.join(assets_dir, img_file)
+                dst_path = os.path.join("static/images/posts", img_file)
                 
-                # Копируем только если исходный файл существует
-                if os.path.exists(src):
-                    shutil.copy2(src, dst)
-                    copied_count += 1
-                    logger.info(f"Скопировано: {img_file}")
+                if os.path.exists(src_path):
+                    # Удаляем старую версию если существует
+                    if os.path.exists(dst_path):
+                        os.remove(dst_path)
+                    
+                    # Копируем файл
+                    shutil.copy2(src_path, dst_path)
+                    success_count += 1
+                    logger.info(f"✅ Скопировано: {img_file}")
                 else:
-                    logger.warning(f"Файл не существует: {src}")
+                    logger.warning(f"⚠️ Файл не существует: {src_path}")
                     
             except Exception as e:
-                logger.error(f"Ошибка копирования {img_file}: {e}")
+                logger.error(f"❌ Ошибка копирования {img_file}: {e}")
         
-        logger.info(f"Успешно скопировано {copied_count} изображений")
+        logger.info(f"Успешно скопировано {success_count}/{len(image_files)} изображений")
+        return success_count > 0
         
-        # Если ничего не скопировалось, создаем placeholder
-        if copied_count == 0:
-            logger.warning("Не удалось скопировать ни одного изображения")
-            create_static_placeholder()
-            
     except Exception as e:
-        logger.error(f"Критическая ошибка при копировании: {e}")
-        create_static_placeholder()
+        logger.error(f"❌ Критическая ошибка при копировании: {e}")
+        return False
 
 # ====== Генерация текста ======
 def generate_article_prompt():
@@ -316,8 +319,20 @@ def generate_article_image(title):
 def clean_old_articles(keep_last=5):
     """Удаляем старые статьи, но сохраняем изображения"""
     os.makedirs("content/posts", exist_ok=True)
-    posts = sorted([f for f in os.listdir("content/posts") if f.endswith(".md")], reverse=True)
     
+    # Получаем все файлы статей
+    posts = [f for f in os.listdir("content/posts") if f.endswith(".md")]
+    
+    if not posts:
+        logger.info("Нет статей для очистки")
+        return
+    
+    # Сортируем по дате создания (новые сначала)
+    posts.sort(key=lambda x: os.path.getmtime(os.path.join("content/posts", x)), reverse=True)
+    
+    logger.info(f"Найдено {len(posts)} статей, оставляем {keep_last} самых новых")
+    
+    # Удаляем старые, оставляя только keep_last самых новых
     for post in posts[keep_last:]:
         file_path = os.path.join("content/posts", post)
         if os.path.exists(file_path):
@@ -326,6 +341,8 @@ def clean_old_articles(keep_last=5):
                 logger.info(f"Удалена старая статья: {post}")
             except Exception as e:
                 logger.error(f"Ошибка удаления файла {post}: {e}")
+        else:
+            logger.warning(f"Файл не существует: {file_path}")
 
 def sanitize_title(title):
     """Очистка заголовка от специальных символов"""
@@ -345,55 +362,55 @@ def generate_frontmatter(title, content, model, image_path):
     return f"---\n{yaml.dump(frontmatter, allow_unicode=True)}---\n\n{content}"
 
 def update_hugo_data():
-    """Обновляет данные для Hugo"""
+    """Обновляет данные для галереи"""
     try:
-        logger.info("Обновление данных галереи...")
+        logger.info("=== ОБНОВЛЕНИЕ ДАННЫХ ГАЛЕРЕИ ===")
         
-        # Создаем данные для галереи
         gallery_images = []
-        images_dirs = ["assets/images/posts", "static/images/posts"]
+        target_dir = "static/images/posts"  # Теперь смотрим только в static
         
-        for images_dir in images_dirs:
-            if os.path.exists(images_dir):
-                image_files = [f for f in os.listdir(images_dir) if f.endswith(('.png', '.jpg', '.jpeg'))]
+        if os.path.exists(target_dir):
+            image_files = [f for f in os.listdir(target_dir) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+            
+            for img_file in image_files:
+                # Создаем понятное название
+                name = os.path.splitext(img_file)[0]
+                name = name.replace('-', ' ').replace('_', ' ').title()
                 
-                for img_file in image_files:
-                    # Получаем название из имени файла
-                    image_name = img_file.split('.')[0].replace('-', ' ').replace('_', ' ')
-                    gallery_images.append({
-                        'src': f"/images/posts/{img_file}",
-                        'alt': image_name,
-                        'title': image_name.capitalize(),
-                        'filename': img_file
-                    })
-                
-                if gallery_images:
-                    logger.info(f"Найдено {len(gallery_images)} изображений в {images_dir}")
-                    break
-            else:
-                logger.warning(f"Директория {images_dir} не существует")
+                gallery_images.append({
+                    'src': f"/images/posts/{img_file}",
+                    'alt': f"AI generated image: {name}",
+                    'title': name,
+                    'filename': img_file
+                })
+            
+            logger.info(f"Найдено {len(gallery_images)} изображений в static")
+        else:
+            logger.warning(f"Директория {target_dir} не существует")
         
-        # Если изображений нет, добавляем placeholder
+        # Всегда добавляем хотя бы placeholder
         if not gallery_images:
-            logger.warning("Нет изображений для галереи, добавляем placeholder")
+            logger.warning("Нет изображений, добавляем placeholder")
             gallery_images.append({
                 'src': '/images/placeholder.jpg',
-                'alt': 'Изображения скоро появятся',
-                'title': 'Галерея AI-изображений',
+                'alt': 'AI generated images will appear here soon',
+                'title': 'Gallery Placeholder',
                 'filename': 'placeholder.jpg'
             })
         
-        # Сохраняем данные галереи
+        # Сохраняем в data
         os.makedirs("data", exist_ok=True)
-        with open("data/gallery.yaml", "w", encoding="utf-8") as f:
-            yaml.dump(gallery_images, f, allow_unicode=True)
         
-        # Также создаем JSON версию для надежности
+        # YAML
+        with open("data/gallery.yaml", "w", encoding="utf-8") as f:
+            yaml.dump(gallery_images, f, allow_unicode=True, default_flow_style=False)
+        
+        # JSON
         with open("data/gallery.json", "w", encoding="utf-8") as f:
             json.dump(gallery_images, f, ensure_ascii=False, indent=2)
-            
-        logger.info(f"✅ Данные галереи обновлены: {len(gallery_images)} изображений")
-            
+        
+        logger.info(f"✅ Данные галереи сохранены: {len(gallery_images)} изображений")
+        
     except Exception as e:
         logger.error(f"❌ Ошибка обновления данных галереи: {e}")
 
@@ -424,13 +441,13 @@ def generate_content():
             f.write(generate_frontmatter(title, content, model, image_path))
         
         # Копируем изображения в static папку
-        copy_images_to_static()
+        copy_success = copy_images_to_static()
         
         # Обновляем данные Hugo
         update_hugo_data()
         
         logger.info(f"✅ Статья создана: {filename}")
-        logger.info("✅ Изображения скопированы в static папку")
+        logger.info(f"✅ Копирование изображений: {'успешно' if copy_success else 'не удалось'}")
         logger.info("✅ Данные галереи обновлены")
         
         return filename
