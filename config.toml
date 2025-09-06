@@ -1,7 +1,6 @@
 baseURL = "https://lybra-bee.github.io/"
 languageCode = "ru-ru"
 title = "AI Генератор Контента"
-# theme = "my-theme"  # Убираем эту строку
 
 [params]
   description = "Автоматически генерируемый контент об искусственном интеллекте"
@@ -31,6 +30,21 @@ title = "AI Генератор Контента"
     url = "/about/"
     weight = 4
 
+[taxonomies]
+  category = "categories"
+  tag = "tags"
+
 [markup]
   [markup.highlight]
     style = "monokai"
+
+[services]
+  [services.googleAnalytics]
+    id = ""
+
+[outputs]
+  home = ["HTML", "RSS"]
+  page = ["HTML"]
+  section = ["HTML"]
+  taxonomy = ["HTML", "RSS"]
+  term = ["HTML"]
