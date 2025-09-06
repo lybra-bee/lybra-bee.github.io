@@ -1,33 +1,20 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ .Site.Title }}</title>
-    <link rel="stylesheet" href="/css/main.css">
-</head>
-<body>
-    {{ partial "header.html" . }}
-    
-    <main class="container">
-        <section class="hero">
-            <h1>Последняя AI-статья</h1>
-            {{ range first 1 (where .Site.RegularPages "Type" "posts") }}
-            <article class="featured-post">
-                <img src="{{ .Params.image }}" alt="{{ .Title }}">
-                <div class="post-content">
-                    <h2>{{ .Title }}</h2>
-                    <p class="meta">Опубликовано: {{ .Date.Format "02.01.2006" }} • Модель: {{ .Params.model }}</p>
-                    <div class="excerpt">
-                        {{ .Content | truncate 200 }}
-                    </div>
-                    <a href="{{ .Permalink }}" class="read-more">Читать далее</a>
-                </div>
-            </article>
-            {{ end }}
-        </section>
-    </main>
-
-    {{ partial "footer.html" . }}
-</body>
-</html>
+{{ define "main" }}
+<section class="hero">
+    <h1>Последняя AI-статья</h1>
+    {{ range first 1 (where .Site.RegularPages "Type" "posts") }}
+    <article class="featured-post">
+        <img src="{{ .Params.image }}" alt="{{ .Title }}" class="featured-image">
+        <div class="post-content">
+            <h2>{{ .Title }}</h2>
+            <p class="meta">Опубликовано: {{ .Date.Format "02.01.2006" }} • Модель: {{ .Params.model }}</p>
+            <div class="excerpt">
+                {{ .Summary }}
+            </div>
+            <a href="{{ .Permalink }}" class="read-more">Читать далее</a>
+        </div>
+    </article>
+    {{ else }}
+    <p>Статьи пока не сгенерированы. Проверьте позже!</p>
+    {{ end }}
+</section>
+{{ end }}
