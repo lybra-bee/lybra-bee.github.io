@@ -1,0 +1,54 @@
+/* Terms and Taxonomy pages */
+.terms-page, .taxonomy-page {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 15px;
+    padding: 2rem;
+    margin: 2rem auto;
+    max-width: 800px;
+}
+
+.terms-list {
+    display: grid;
+    gap: 1rem;
+}
+
+.term-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem;
+    background: rgba(102, 126, 234, 0.1);
+    border-radius: 8px;
+}
+
+.term-item a {
+    color: #667eea;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.term-item a:hover {
+    text-decoration: underline;
+}
+
+.count {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+/* 404 page */
+.not-found {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: white;
+}
+
+.not-found h1 {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.not-found p {
+    font-size: 1.2rem;
+    margin-bottom: 2rem;
+}

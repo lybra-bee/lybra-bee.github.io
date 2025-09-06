@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Галерея | {{ .Site.Title }}</title>
+  {{ $css := resources.Get "css/main.css" | minify | fingerprint }}
+  <link rel="stylesheet" href="{{ $css.Permalink }}">
+  <link rel="stylesheet" href="https://unpkg.com/aos@2.3.1/dist/aos.css" />
+</head>
+<body>
+  <nav class="navbar">
+    <a href="/" class="navbar-brand"><i class="bi bi-cpu"></i> {{ .Site.Title }}</a>
+    <ul class="nav-menu">
+      {{ range .Site.Menus.main }}
+      <li><a href="{{ .URL }}" class="nav-link">{{ .Name }}</a></li>
+      {{ end }}
+    </ul>
+  </nav>
+
+  <main class="container">
+    <h1>Галерея</h1>
+    <div class="gallery-grid">
+      {{ $files := readDir "static/images/gallery" }}
+      {{ range $i, $f := $files }}
+        {{ if not $f.IsDir }}
+          {{ $url := printf "/images/gallery/%s" $f.Name }}
+          <figure data-aos="fade-up">
+            <img src="{{ $url }}" alt="{{ $f.Name }}">
+            <figcaption>{{ $f.Name }}</figcaption>
+          </figure>
+        {{ end }}
+      {{ end }}
+    </div>
+  </main>
+</body>
+</html>
