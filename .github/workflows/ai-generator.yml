@@ -17,7 +17,6 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
-        token: ${{ secrets.GIT_TOKEN }}
         fetch-depth: 0
 
     - name: Setup Python
@@ -39,37 +38,13 @@ jobs:
         FUSIONBRAIN_API_KEY: ${{ secrets.FUSIONBRAIN_API_KEY }}
         FUSION_SECRET_KEY: ${{ secrets.FUSION_SECRET_KEY }}
 
-    - name: Manual copy images (FORCE)
+    - name: Commit generated content to main
       run: |
-        echo "=== ПРИНУДИТЕЛЬНОЕ КОПИРОВАНИЕ ИЗОБРАЖЕНИЙ ==="
-        
-        # Создаем директории
-        mkdir -p static/images/posts
-        
-        # Проверяем есть ли что копировать
-        if [ -d "assets/images/posts" ] && [ "$(ls -A assets/images/posts 2>/dev/null)" ]; then
-            echo "Копируем ВСЕ изображения из assets в static..."
-            
-            # Копируем с подробным выводом
-            for img_file in assets/images/posts/*; do
-                if [ -f "$img_file" ]; then
-                    filename=$(basename "$img_file")
-                    cp -v "$img_file" "static/images/posts/$filename"
-                    echo "Скопировано: $filename"
-                fi
-            done
-            
-            echo "Итоговая проверка static:"
-            ls -la static/images/posts/
-            echo "Всего файлов: $(ls -1 static/images/posts/ 2>/dev/null | wc -l)"
-        else
-            echo "❌ Нет изображений для копирования!"
-            echo "Содержимое assets:"
-            ls -la assets/ 2>/dev/null || echo "Нет assets directory"
-            # Создаем placeholder
-            mkdir -p static/images/
-            echo "placeholder" > static/images/placeholder.jpg
-        fi
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add content/posts/ assets/images/posts/ data/
+        git diff-index --quiet HEAD || git commit -m "📝 Добавлены новые статьи и изображения"
+        git push origin main
 
     - name: Setup Hugo
       uses: peaceiris/actions-hugo@v2
@@ -78,41 +53,7 @@ jobs:
         extended: true
 
     - name: Build Hugo site
-      run: |
-        echo "=== Building Hugo site ==="
-        hugo --minify --verbose
-        echo "=== Build completed ==="
-
-    - name: Verify all files
-      run: |
-        echo "=== ПРОВЕРКА ВСЕХ ФАЙЛОВ ==="
-        
-        echo "1. Изображения в assets:"
-        ls -la assets/images/posts/ 2>/dev/null || echo "  ❌ Нет assets images"
-        find assets/images/posts/ -name "*.*" 2>/dev/null | head -5
-        
-        echo "2. Изображения в static:"
-        ls -la static/images/posts/ 2>/dev/null || echo "  ❌ Нет static images"
-        find static/images/posts/ -name "*.*" 2>/dev/null | head -5
-        
-        echo "3. Данные галереи:"
-        ls -la data/ 2>/dev/null || echo "  ❌ Нет data directory"
-        if [ -f "data/gallery.yaml" ]; then
-            echo "  ✅ gallery.yaml существует"
-            echo "  Размер: $(wc -l < data/gallery.yaml) строк"
-        fi
-        
-        echo "4. Статьи:"
-        ls -la content/posts/ 2>/dev/null || echo "  ❌ Нет content/posts"
-        find content/posts/ -name "*.md" | head -5
-
-    - name: Create verification files
-      run: |
-        echo "Создаем файлы для проверки..."
-        echo "Галерея: $(find static/images/posts/ -name '*.*' 2>/dev/null | wc -l) изображений" > public/VERIFICATION.txt
-        echo "Статьи: $(find content/posts/ -name '*.md' | wc -l) статей" >> public/VERIFICATION.txt
-        echo "Время сборки: $(date)" >> public/VERIFICATION.txt
-        echo "Workflow: ${{ github.workflow }}" >> public/VERIFICATION.txt
+      run: hugo --minify --verbose
 
     - name: Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v3
@@ -125,44 +66,3 @@ jobs:
         enable_jekyll: false
         user_name: 'github-actions[bot]'
         user_email: 'github-actions[bot]@users.noreply.github.com'
-
-    - name: Show deployment info
-      run: |
-        echo "✅ Деплой завершен!"
-        echo "🌐 Сайт: https://lybra-bee.github.io"
-        echo "📊 Проверка: https://lybra-bee.github.io/VERIFICATION.txt"
-        echo "🖼️ Галерея: https://lybra-bee.github.io/gallery/"
-        echo "📝 Статьи: https://lybra-bee.github.io/posts/"
-        echo "⏰ Следующий запуск: ежедневно в 06:00 UTC"
-
-  verify:
-    needs: generate
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-    - name: Wait for deployment
-      run: |
-        echo "Ждем деплой GitHub Pages..."
-        sleep 120
-        
-    - name: Check site accessibility
-      run: |
-        echo "Проверяем доступность сайта..."
-        if curl -s -f https://lybra-bee.github.io/VERIFICATION.txt > /dev/null; then
-            echo "✅ Сайт доступен!"
-            echo "📋 Содержимое verification:"
-            curl -s https://lybra-bee.github.io/VERIFICATION.txt
-        else
-            echo "❌ Сайт не доступен"
-            echo "Проверьте настройки GitHub Pages:"
-            echo "https://github.com/lybra-bee/lybra-bee.github.io/settings/pages"
-        fi
-
-    - name: Check gallery
-      run: |
-        echo "Проверяем галерею..."
-        if curl -s -f https://lybra-bee.github.io/gallery/ > /dev/null; then
-            echo "✅ Страница галереи загружается"
-        else
-            echo "❌ Страница галереи не доступна"
-        fi
