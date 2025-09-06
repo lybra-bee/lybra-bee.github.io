@@ -2,92 +2,88 @@
 import os
 import requests
 import logging
-import base64
-import shutil
 import re
-from datetime import datetime, timezone
+import shutil
+import base64
 import time
+from datetime import datetime
+import textwrap
 
-# Логирование
+# --- Логирование ---
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S"
 )
 
-# Директории
-CONTENT_DIR = "content/posts"
-ASSETS_DIR = "assets/images/posts"
+# --- Пути ---
+POSTS_DIR = "content/posts"
+ASSETS_DIR = "static/images/posts"
 STATIC_DIR = "static/images/posts"
 
-# Ключи из ENV
+# --- Ключи ---
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 FUSIONBRAIN_API_KEY = os.getenv("FUSIONBRAIN_API_KEY")
 FUSION_SECRET_KEY = os.getenv("FUSION_SECRET_KEY")
 
-# Утилита для слага
+# --- Утилиты ---
 def slugify(text):
-    return re.sub(r'[^a-z0-9-]', '', text.lower().replace(" ", "-"))[:50]
+    return re.sub(r"[^a-zA-Zа-яА-Я0-9]+", "-", text.lower()).strip("-")
 
-# === Генерация статьи ===
+def save_post(title, content, image, model):
+    os.makedirs(POSTS_DIR, exist_ok=True)
+    slug = slugify(title) + "-" + datetime.utcnow().strftime("%Y%m%d%H%M%S")
+    filename = os.path.join(POSTS_DIR, f"{slug}.md")
+
+    front_matter = textwrap.dedent(f"""\
+    ---
+    title: "{title}"
+    date: {datetime.utcnow().isoformat()}
+    image: {image}
+    model: {model}
+    slug: {slug}
+    ---
+
+    {content}
+    """)
+
+    with open(filename, "w", encoding="utf-8") as f:
+        f.write(front_matter)
+
+    logging.info(f"✅ Статья сохранена: {filename}")
+    return slug
+
+# --- Генерация статьи ---
 def generate_article():
-    logging.info("📝 Генерация статьи...")
-
     prompt = (
         "Проанализируй последние тренды в искусственном интеллекте и высоких технологиях "
-        "и напиши статью на русском языке, объемом 400–600 слов. "
-        "В начале укажи заголовок в формате: 'Заголовок: ...'."
+        "и напиши статью на 400-600 слов на русском языке. Используй живой стиль."
     )
 
-    headers = {"Content-Type": "application/json"}
-    body = {
-        "model": "gpt-4o-mini",
-        "messages": [{"role": "user", "content": prompt}]
+    headers = {
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Content-Type": "application/json"
     }
 
-    # Пробуем OpenRouter
-    if OPENROUTER_API_KEY:
-        try:
-            r = requests.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers={**headers, "Authorization": f"Bearer {OPENROUTER_API_KEY}"},
-                json=body,
-                timeout=60
-            )
-            r.raise_for_status()
-            content = r.json()["choices"][0]["message"]["content"]
-            logging.info("✅ Статья получена через OpenRouter")
-            return content, "OpenRouter"
-        except Exception as e:
-            logging.warning(f"⚠️ OpenRouter не сработал: {e}")
+    payload = {
+        "model": "openai/gpt-4o-mini",
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.8
+    }
 
-    # Пробуем Groq
-    if GROQ_API_KEY:
-        try:
-            r = requests.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers={**headers, "Authorization": f"Bearer {GROQ_API_KEY}"},
-                json=body,
-                timeout=60
-            )
-            r.raise_for_status()
-            content = r.json()["choices"][0]["message"]["content"]
-            logging.info("✅ Статья получена через Groq")
-            return content, "Groq"
-        except Exception as e:
-            logging.warning(f"⚠️ Groq не сработал: {e}")
+    try:
+        r = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload, timeout=60)
+        r.raise_for_status()
+        data = r.json()
+        content = data["choices"][0]["message"]["content"]
+        logging.info("✅ Статья получена через OpenRouter")
+        return content
+    except Exception as e:
+        logging.error(f"❌ Ошибка OpenRouter: {e}")
+        return None
 
-    raise RuntimeError("❌ Не удалось сгенерировать статью")
-
-# === Извлечение заголовка ===
-def extract_title(text):
-    match = re.search(r"Заголовок:\s*(.+)", text)
-    if match:
-        return match.group(1).strip()
-    return "AI и технологии: свежий обзор"
-
-# === Генерация изображения через FusionBrain ===
+# --- Генерация изображения через FusionBrain ---
 def generate_image(title, slug):
     logging.info("🎨 Генерация изображения через FusionBrain...")
 
@@ -97,7 +93,7 @@ def generate_image(title, slug):
     }
 
     # 1. Получаем список моделей
-    models_url = "https://api-key.fusionbrain.ai/key/api/v1/models"
+    models_url = "https://api.fusionbrain.ai/v1/models"
     r = requests.get(models_url, headers=headers, timeout=30)
     r.raise_for_status()
     models = r.json()
@@ -105,11 +101,11 @@ def generate_image(title, slug):
         logging.error("❌ FusionBrain не вернул список моделей")
         return "/images/placeholder.jpg"
 
-    model_id = models[0]["id"]  # берём первую модель
+    model_id = models[0]["id"]
     logging.info(f"Используем модель ID: {model_id}")
 
     # 2. Запускаем задачу
-    run_url = "https://api-key.fusionbrain.ai/key/api/v1/text2image/run"
+    run_url = "https://api.fusionbrain.ai/v1/text2image/run"
     params = {
         "type": "GENERATE",
         "style": "DEFAULT",
@@ -134,8 +130,8 @@ def generate_image(title, slug):
         return "/images/placeholder.jpg"
 
     # 3. Ожидание результата
-    status_url = f"https://api-key.fusionbrain.ai/key/api/v1/text2image/status/{uuid}"
-    for i in range(20):  # до 60 секунд ожидания
+    status_url = f"https://api.fusionbrain.ai/v1/text2image/status/{uuid}"
+    for i in range(20):
         s = requests.get(status_url, headers=headers, timeout=30)
         s.raise_for_status()
         resp = s.json()
@@ -161,45 +157,21 @@ def generate_image(title, slug):
     logging.error("⚠️ FusionBrain не успел сгенерировать изображение")
     return "/images/placeholder.jpg"
 
-# === Сохранение статьи ===
-def save_article(title, content, model, image_url):
-    os.makedirs(CONTENT_DIR, exist_ok=True)
-    slug = slugify(title)
-
-    filename = os.path.join(
-        CONTENT_DIR, f"{datetime.now().strftime('%Y-%m-%d')}-{slug}.md"
-    )
-
-    with open(filename, "w", encoding="utf-8") as f:
-        f.write("---\n")
-        f.write(f'title: "{title}"\n')
-        f.write(f'date: {datetime.now(timezone.utc).isoformat()}\n')
-        f.write(f'model: {model}\n')
-        f.write(f'image: {image_url}\n')
-        f.write("---\n\n")
-        f.write(content)
-
-    logging.info(f"✅ Статья сохранена: {filename}")
-
-# === Очистка старых статей ===
-def cleanup_articles():
-    files = sorted(
-        [os.path.join(CONTENT_DIR, f) for f in os.listdir(CONTENT_DIR)],
-        key=os.path.getmtime,
-        reverse=True
-    )
-    for old in files[5:]:
-        os.remove(old)
-        logging.info(f"🗑 Удалена старая статья: {old}")
-
-# === Основной процесс ===
+# --- Основной процесс ---
 def main():
-    content, model = generate_article()
-    title = extract_title(content)
+    logging.info("📝 Генерация статьи...")
+    article = generate_article()
+    if not article:
+        logging.error("⚠️ Статья не сгенерирована")
+        return
+
+    # Заголовок = первая строка или первая фраза
+    title = article.strip().split("\n")[0][:80]
     slug = slugify(title)
+
     img_path = generate_image(title, slug)
-    save_article(title, content, model, img_path)
-    cleanup_articles()
+
+    save_post(title, article, img_path, "OpenRouter + FusionBrain")
 
 if __name__ == "__main__":
     main()
