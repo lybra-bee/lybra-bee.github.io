@@ -105,7 +105,7 @@ def save_image_bytes(image_data, title):
     filename = f"assets/images/posts/{slug}.png"
     with open(filename, "wb") as f:
         f.write(image_data)
-    # Возвращаем относительный путь для Hugo
+    logger.info(f"Изображение сохранено в assets: {filename}")
     return f"/images/posts/{slug}.png"
 
 def generate_placeholder_image(title):
@@ -130,6 +130,7 @@ def generate_placeholder_image(title):
     draw.text((x, y), title, fill='white', font=font)
     img.save(filename)
     
+    logger.info(f"Placeholder создан: {filename}")
     return f"/images/posts/{slug}.png"
 
 def create_static_placeholder():
@@ -173,32 +174,52 @@ def create_static_placeholder():
 def copy_images_to_static():
     """Копирует изображения из assets в static папку для Hugo"""
     try:
+        logger.info("Начинаем копирование изображений в static...")
+        
         # Создаем директории если не существуют
         os.makedirs("static/images/posts", exist_ok=True)
         
-        # Проверяем есть ли изображения для копирования
+        # Проверяем исходную директорию
         assets_dir = "assets/images/posts"
-        if os.path.exists(assets_dir) and os.listdir(assets_dir):
-            copied_count = 0
-            for img_file in os.listdir(assets_dir):
-                if img_file.endswith(('.png', '.jpg', '.jpeg')):
-                    src = os.path.join(assets_dir, img_file)
-                    dst = os.path.join("static/images/posts", img_file)
+        if not os.path.exists(assets_dir):
+            logger.warning(f"Директория {assets_dir} не существует!")
+            create_static_placeholder()
+            return
+            
+        image_files = [f for f in os.listdir(assets_dir) if f.endswith(('.png', '.jpg', '.jpeg'))]
+        
+        if not image_files:
+            logger.warning("Нет изображений в assets/images/posts/")
+            create_static_placeholder()
+            return
+            
+        # Копируем каждое изображение
+        copied_count = 0
+        for img_file in image_files:
+            try:
+                src = os.path.join(assets_dir, img_file)
+                dst = os.path.join("static/images/posts", img_file)
+                
+                # Копируем только если исходный файл существует
+                if os.path.exists(src):
                     shutil.copy2(src, dst)
                     copied_count += 1
-            
-            logger.info(f"Скопировано {copied_count} изображений в static/images/posts/")
-            
-            if copied_count == 0:
-                logger.warning("Нет изображений для копирования в static")
-                create_static_placeholder()
-                
-        else:
-            logger.warning("Директория assets/images/posts не существует или пуста")
+                    logger.info(f"Скопировано: {img_file}")
+                else:
+                    logger.warning(f"Файл не существует: {src}")
+                    
+            except Exception as e:
+                logger.error(f"Ошибка копирования {img_file}: {e}")
+        
+        logger.info(f"Успешно скопировано {copied_count} изображений")
+        
+        # Если ничего не скопировалось, создаем placeholder
+        if copied_count == 0:
+            logger.warning("Не удалось скопировать ни одного изображения")
             create_static_placeholder()
             
     except Exception as e:
-        logger.error(f"Ошибка копирования изображений: {e}")
+        logger.error(f"Критическая ошибка при копировании: {e}")
         create_static_placeholder()
 
 # ====== Генерация текста ======
@@ -325,38 +346,56 @@ def generate_frontmatter(title, content, model, image_path):
 
 def update_hugo_data():
     """Обновляет данные для Hugo"""
-    # Создаем данные для галереи
-    gallery_images = []
-    images_dir = "assets/images/posts"
-    
-    if os.path.exists(images_dir):
-        for img_file in os.listdir(images_dir):
-            if img_file.endswith(('.png', '.jpg', '.jpeg')):
-                # Получаем название из имени файла
-                image_name = img_file.split('.')[0].replace('-', ' ')
-                gallery_images.append({
-                    'src': f"/images/posts/{img_file}",
-                    'alt': image_name,
-                    'title': image_name.capitalize(),
-                    'filename': img_file
-                })
-        logger.info(f"Найдено {len(gallery_images)} изображений для галереи")
-    else:
-        logger.warning(f"Директория {images_dir} не существует")
-        # Создаем placeholder для галереи
-        gallery_images.append({
-            'src': '/images/placeholder.jpg',
-            'alt': 'Изображения скоро появятся',
-            'title': 'Галерея AI-изображений',
-            'filename': 'placeholder.jpg'
-        })
-    
-    # Сохраняем данные галереи
-    os.makedirs("data", exist_ok=True)
-    with open("data/gallery.yaml", "w", encoding="utf-8") as f:
-        yaml.dump(gallery_images, f, allow_unicode=True)
-    
-    logger.info(f"Данные галереи обновлены: {len(gallery_images)} изображений")
+    try:
+        logger.info("Обновление данных галереи...")
+        
+        # Создаем данные для галереи
+        gallery_images = []
+        images_dirs = ["assets/images/posts", "static/images/posts"]
+        
+        for images_dir in images_dirs:
+            if os.path.exists(images_dir):
+                image_files = [f for f in os.listdir(images_dir) if f.endswith(('.png', '.jpg', '.jpeg'))]
+                
+                for img_file in image_files:
+                    # Получаем название из имени файла
+                    image_name = img_file.split('.')[0].replace('-', ' ').replace('_', ' ')
+                    gallery_images.append({
+                        'src': f"/images/posts/{img_file}",
+                        'alt': image_name,
+                        'title': image_name.capitalize(),
+                        'filename': img_file
+                    })
+                
+                if gallery_images:
+                    logger.info(f"Найдено {len(gallery_images)} изображений в {images_dir}")
+                    break
+            else:
+                logger.warning(f"Директория {images_dir} не существует")
+        
+        # Если изображений нет, добавляем placeholder
+        if not gallery_images:
+            logger.warning("Нет изображений для галереи, добавляем placeholder")
+            gallery_images.append({
+                'src': '/images/placeholder.jpg',
+                'alt': 'Изображения скоро появятся',
+                'title': 'Галерея AI-изображений',
+                'filename': 'placeholder.jpg'
+            })
+        
+        # Сохраняем данные галереи
+        os.makedirs("data", exist_ok=True)
+        with open("data/gallery.yaml", "w", encoding="utf-8") as f:
+            yaml.dump(gallery_images, f, allow_unicode=True)
+        
+        # Также создаем JSON версию для надежности
+        with open("data/gallery.json", "w", encoding="utf-8") as f:
+            json.dump(gallery_images, f, ensure_ascii=False, indent=2)
+            
+        logger.info(f"✅ Данные галереи обновлены: {len(gallery_images)} изображений")
+            
+    except Exception as e:
+        logger.error(f"❌ Ошибка обновления данных галереи: {e}")
 
 def generate_content():
     try:
@@ -384,11 +423,11 @@ def generate_content():
         with open(filename, "w", encoding="utf-8") as f:
             f.write(generate_frontmatter(title, content, model, image_path))
         
-        # Обновляем данные Hugo
-        update_hugo_data()
-        
         # Копируем изображения в static папку
         copy_images_to_static()
+        
+        # Обновляем данные Hugo
+        update_hugo_data()
         
         logger.info(f"✅ Статья создана: {filename}")
         logger.info("✅ Изображения скопированы в static папку")
@@ -402,8 +441,8 @@ def generate_content():
         try:
             copy_images_to_static()
             update_hugo_data()
-        except:
-            pass
+        except Exception as inner_e:
+            logger.error(f"❌ Ошибка в fallback: {inner_e}")
         return None
 
 if __name__ == "__main__":
