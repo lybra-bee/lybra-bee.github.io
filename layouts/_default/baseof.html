@@ -3,90 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ .Title }}</title>
-    <link rel="stylesheet" href="/css/styles.css">
+    <title>{{ with .Title }}{{ . }}{{ else }}Мой сайт{{ end }}</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="/js/script.js" defer></script>
 </head>
 <body>
-    <!-- Шапка -->
-    <header>
-        <nav>
-            <ul>
-                <li><a href="/">Главная</a></li>
-                <li><a href="/articles/">Статьи</a></li>
-                <li><a href="/gallery/">Галерея</a></li>
-                <li><a href="/about/">Обо мне</a></li>
-            </ul>
-        </nav>
+    <header class="site-header">
+        <div class="container">
+            <h1 class="site-title">{{ with .Site.Params.name }}{{ . }}{{ else }}Мой сайт{{ end }}</h1>
+            <nav class="site-nav">
+                <a href="#articles">Статьи</a>
+                <a href="#gallery">Галерея</a>
+                <a href="#about">Обо мне</a>
+            </nav>
+        </div>
     </header>
 
-    <!-- Основной контент -->
-    <main>
-        {{ block "main" . }}
-        <!-- Главная страница -->
-        {{ if eq .Kind "home" }}
-        <section class="hero">
-            <h1>Добро пожаловать на мой сайт!</h1>
-            <p>Последняя статья:</p>
-            {{ $latest := first 1 (where .Site.RegularPages "Section" "posts") }}
-            {{ range $latest }}
-            <div class="carousel-item">
-                <a href="{{ .RelPermalink }}">
-                    {{ with .Params.image }}
-                    <img src="{{ . }}" alt="{{ $.Title }}">
-                    {{ end }}
-                    <h3>{{ .Title }}</h3>
-                </a>
-            </div>
-            {{ end }}
-        </section>
-        {{ end }}
-
-        <!-- Статьи -->
-        {{ if eq .Section "articles" }}
-        <section>
-            <h2>Статьи</h2>
-            <div class="carousel">
-                {{ range .Pages }}
-                <div class="carousel-item">
-                    <a href="{{ .RelPermalink }}">
-                        {{ with .Params.image }}
-                        <img src="{{ . }}" alt="{{ .Title }}">
-                        {{ end }}
-                        <h3>{{ .Title }}</h3>
-                    </a>
-                </div>
-                {{ end }}
-            </div>
-        </section>
-        {{ end }}
-
-        <!-- Галерея -->
-        {{ if eq .Section "gallery" }}
-        <section>
-            <h2>Галерея</h2>
-            <div class="carousel">
-                {{ range .Site.Data.gallery }}
-                <div class="carousel-item">
-                    <a href="{{ .src }}">
-                        <img src="{{ .src }}" alt="{{ .alt }}">
-                        <h3>{{ .title }}</h3>
-                    </a>
-                </div>
-                {{ end }}
-            </div>
-        </section>
-        {{ end }}
-
-        <!-- Обо мне -->
-        {{ if eq .Section "about" }}
-        <section class="about">
-            {{ .Content }}
-        </section>
-        {{ end }}
-
-        {{ end }}
+    <main class="site-main">
+        {{ block "main" . }}{{ end }}
     </main>
 
-    <script src="/js/scripts.js"></script>
+    <footer class="site-footer">
+        <div class="container">
+            &copy; {{ now.Format "2006" }} {{ with .Site.Params.name }}{{ . }}{{ else }}Мой сайт{{ end }}. Все права защищены.
+        </div>
+    </footer>
 </body>
 </html>
