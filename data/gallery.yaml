@@ -1,3 +1,6 @@
+- alt: '"Нейросети и высокие технологии: Революция в нашем будущем"'
+  src: /images/posts/neiroseti-i-vysokie-tekhnologii-revoliutsiia-v-nashem-budushchem.png
+  title: '"Нейросети и высокие технологии: Революция в нашем будущем"'
 - alt: '"Будущее AI: Как нейросети меняют наш мир"'
   src: /images/posts/budushchee-ai-kak-neiroseti-meniaiut-nash-mir.png
   title: '"Будущее AI: Как нейросети меняют наш мир"'
@@ -65,6 +68,3 @@
 - alt: Современный промышленный робот
   src: /assets/images/posts/robotics.png
   title: Робототехника
-- alt: AI картина
-  src: /assets/images/posts/generative-art.png
-  title: Генеративное искусство
