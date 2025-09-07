@@ -178,7 +178,9 @@ def save_article(title, text, model, slug, image_path):
     yaml_lines = ['---']
     for key, value in front_matter.items():
         if isinstance(value, list):
-            yaml_lines.append(f'{key}: [{", ".join([f\"{v}\" for v in value])}]')
+            # Исправлено: убрал обратный слеш из f-строки
+            items = ', '.join([f'"{v}"' for v in value])
+            yaml_lines.append(f'{key}: [{items}]')
         else:
             yaml_lines.append(f'{key}: "{value}"')
     yaml_lines.append('---')
