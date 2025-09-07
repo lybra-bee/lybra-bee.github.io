@@ -1,21 +1,58 @@
 {{ define "main" }}
 <section class="hero">
-  <h1>{{ .Site.Title }}</h1>
-  <p>Добро пожаловать на моё портфолио!</p>
+    <div class="container">
+        <h2>Последняя статья</h2>
+        {{ $last := first 1 (where .Site.RegularPages "Section" "posts") }}
+        {{ range $last }}
+            <article class="last-article">
+                <h3><a href="{{ .RelPermalink }}">{{ .Title }}</a></h3>
+                {{ with .Params.image }}
+                    <img src="{{ . | absURL }}" alt="{{ $.Title }}">
+                {{ end }}
+                <p>{{ .Summary }}</p>
+                <a href="{{ .RelPermalink }}" class="read-more">Читать далее</a>
+            </article>
+        {{ end }}
+    </div>
 </section>
 
-<section class="latest-article">
-  <h2>Последняя статья</h2>
-  {{ $latest := first 1 (where .Site.RegularPages "Section" "posts") }}
-  {{ range $latest }}
-  <article>
-    <h3><a href="{{ .RelPermalink }}">{{ .Title }}</a></h3>
-    {{ with .Params.image }}
-    <img src="{{ . }}" alt="{{ .Title }}">
-    {{ end }}
-    <p>{{ .Summary }}</p>
-    <a href="{{ .RelPermalink }}">Читать далее</a>
-  </article>
-  {{ end }}
+<section id="articles" class="section-articles">
+    <div class="container">
+        <h2>Все статьи</h2>
+        <div class="carousel">
+            {{ range .Site.RegularPages }}
+                {{ if eq .Section "posts" }}
+                    <div class="carousel-item">
+                        <h4><a href="{{ .RelPermalink }}">{{ .Title }}</a></h4>
+                        {{ with .Params.image }}
+                            <img src="{{ . | absURL }}" alt="{{ $.Title }}">
+                        {{ end }}
+                    </div>
+                {{ end }}
+            {{ end }}
+        </div>
+    </div>
+</section>
+
+<section id="gallery" class="section-gallery">
+    <div class="container">
+        <h2>Галерея</h2>
+        <div class="gallery-grid">
+            {{ range .Site.Data.gallery }}
+                <div class="gallery-item">
+                    <a href="{{ .src | absURL }}" target="_blank">
+                        <img src="{{ .src | absURL }}" alt="{{ .alt }}">
+                    </a>
+                </div>
+            {{ end }}
+        </div>
+    </div>
+</section>
+
+<section id="about" class="section-about">
+    <div class="container">
+        <h2>Обо мне</h2>
+        <p>{{ with .Site.Params.about }}{{ . }}{{ else }}Здесь вы можете рассказать о себе.{{ end }}</p>
+    </div>
 </section>
 {{ end }}
