@@ -1,26 +1,16 @@
 {{ define "main" }}
-<section class="gallery">
-    <h1>Галерея изображений</h1>
-    
-    {{ if .Site.Data.gallery }}
+<section class="section-gallery">
+  <div class="container">
+    <h2>Галерея</h2>
     <div class="gallery-grid">
-        {{ range .Site.Data.gallery }}
+      {{ range (site.Data.gallery) }}
         <div class="gallery-item">
-            <img src="{{ .src }}" alt="{{ .alt }}" title="{{ .title }}" loading="lazy" 
-                 onerror="this.src='/images/placeholder.jpg'">
-            <div class="gallery-caption">
-                <h3>{{ .title }}</h3>
-                <p>Изображение сгенерировано AI</p>
-            </div>
+          <a href="{{ .src | relURL }}" target="_blank">
+            <img src="{{ .src | relURL }}" alt="{{ .alt }}" style="max-width:200px;height:auto;">
+          </a>
         </div>
-        {{ end }}
+      {{ end }}
     </div>
-    {{ else }}
-    <div class="no-images">
-        <p>🚫 Изображения пока не сгенерированы</p>
-        <p>Следующая генерация: ежедневно в 6:00 UTC</p>
-        <img src="/images/placeholder.jpg" alt="Placeholder" style="max-width: 400px;">
-    </div>
-    {{ end }}
+  </div>
 </section>
 {{ end }}
