@@ -16,12 +16,12 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 # API ключи
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
-FUSION_API_KEY = os.environ.get("FUSIONBRAIN_API_KEY")
+FUSIONBRAIN_API_KEY = os.environ.get("FUSIONBRAIN_API_KEY")
 FUSION_SECRET_KEY = os.environ.get("FUSION_SECRET_KEY")
 BASE_URL = 'https://api-key.fusionbrain.ai/'
 
 AUTH_HEADERS = {
-    'X-Key': f'Key {FUSION_API_KEY}',
+    'X-Key': f'Key {FUSIONBRAIN_API_KEY}',
     'X-Secret': f'Secret {FUSION_SECRET_KEY}',
 }
 
