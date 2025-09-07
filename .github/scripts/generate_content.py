@@ -36,16 +36,16 @@ os.makedirs(STATIC_DIR, exist_ok=True)
 os.makedirs(os.path.dirname(PLACEHOLDER), exist_ok=True)
 
 def sanitize_title(title: str) -> str:
-    """Убираем переносы строк и умные кавычки, заменяем их на обычные"""
-    title = title.replace('\n', ' ').replace('«', '"').replace('»', '"').replace("“", '"').replace("”", '"')
+    """Убираем переносы строк и заменяем кавычки на стандартные"""
+    title = title.replace('\n', ' ')
+    title = title.replace('«', '"').replace('»', '"').replace('“', '"').replace('”', '"')
     title = title.replace("'", "’")  # одинарные кавычки в апостроф
     return title.strip()
 
 def generate_article():
-    header_prompt = "Проанализируй последние тренды в нейросетях и высоких технологиях и придумай привлекательный заголовок статьи"
+    header_prompt = "Проанализируй последние тренды в нейросетях и высоких технологиях и на их основе придумай привлекательный заголовок для статьи"
     headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}"}
 
-    # Заголовок
     try:
         logging.info("📝 Генерация заголовка через OpenRouter...")
         r = requests.post("https://openrouter.ai/api/v1/chat/completions",
@@ -69,7 +69,6 @@ def generate_article():
             logging.error(f"❌ Ошибка генерации заголовка: {e}")
             title = "Статья о последних трендах в ИИ"
 
-    # Статья
     content_prompt = f"Напиши статью 400-600 слов по заголовку: {title}"
     try:
         logging.info("📝 Генерация статьи через OpenRouter...")
@@ -96,10 +95,51 @@ def generate_article():
             logging.error(f"❌ Ошибка генерации статьи: {e}")
             return title, "Статья временно недоступна.", "None"
 
+def get_pipeline_id():
+    r = requests.get(BASE_URL + 'key/api/v1/pipelines', headers=AUTH_HEADERS)
+    r.raise_for_status()
+    return r.json()[0]['id']
+
 def generate_image(title, slug):
-    """Твоя существующая генерация изображения оставлена без изменений"""
-    # оставляем рабочую функцию генерации изображения здесь
-    return f"images/posts/{slug}.png"  # placeholder, можно заменить на реальную логику
+    try:
+        pipeline_id = get_pipeline_id()
+        params = {
+            "type": "GENERATE",
+            "numImages": 1,
+            "width": 1024,
+            "height": 1024,
+            "generateParams": {"query": title}
+        }
+        files = {
+            'pipeline_id': (None, pipeline_id),
+            'params': (None, json.dumps(params), 'application/json')
+        }
+        r = requests.post(BASE_URL + 'key/api/v1/pipeline/run', headers=AUTH_HEADERS, files=files)
+        r.raise_for_status()
+        uuid = r.json()['uuid']
+
+        for _ in range(20):
+            r_status = requests.get(BASE_URL + f'key/api/v1/pipeline/status/{uuid}', headers=AUTH_HEADERS)
+            r_status.raise_for_status()
+            data = r_status.json()
+            if data['status'] == 'DONE':
+                image_base64 = data['result']['files'][0]
+                break
+            time.sleep(3)
+        else:
+            logging.warning("❌ Изображение не сгенерировано за отведённое время")
+            return PLACEHOLDER
+
+        img_bytes = base64.b64decode(image_base64)
+        img_path = os.path.join(STATIC_DIR, f'{slug}.png')
+        with open(img_path, 'wb') as f:
+            f.write(img_bytes)
+
+        logging.info(f"✅ Изображение сохранено: {img_path}")
+        return f"images/posts/{slug}.png"
+    except Exception as e:
+        logging.error(f"❌ Ошибка генерации изображения: {e}")
+        return PLACEHOLDER
 
 def save_article(title, text, model, slug, image_path):
     filename = os.path.join(POSTS_DIR, f'{slug}.md')
@@ -134,7 +174,11 @@ def update_gallery(title, slug, image_path):
     logging.info(f"✅ Галерея обновлена: {GALLERY_FILE}")
 
 def cleanup_old_posts(keep=10):
-    posts = sorted(glob.glob(os.path.join(POSTS_DIR, "*.md")), key=os.path.getmtime, reverse=True)
+    posts = sorted(
+        glob.glob(os.path.join(POSTS_DIR, "*.md")),
+        key=os.path.getmtime,
+        reverse=True
+    )
     if len(posts) > keep:
         for old in posts[keep:]:
             logging.info(f"🗑 Удаляю старую статью: {old}")
