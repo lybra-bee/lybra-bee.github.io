@@ -1,32 +1,41 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ with .Title }}{{ . }}{{ else }}Мой сайт{{ end }}</title>
-    <link rel="stylesheet" href="/css/style.css">
-    <script src="/js/script.js" defer></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ .Title }}</title>
+  <link rel="stylesheet" href="{{ "css/style.css" | relURL }}">
 </head>
 <body>
-    <header class="site-header">
-        <div class="container">
-            <h1 class="site-title">{{ with .Site.Params.name }}{{ . }}{{ else }}Мой сайт{{ end }}</h1>
-            <nav class="site-nav">
-                <a href="#articles">Статьи</a>
-                <a href="#gallery">Галерея</a>
-                <a href="#about">Обо мне</a>
-            </nav>
-        </div>
-    </header>
+  <header class="container nav-header">
+    <a href="{{ "/" | relURL }}">Главная</a>
+    <a href="{{ "/articles/" | relURL }}">Статьи</a>
+    <a href="{{ "/gallery/" | relURL }}">Галерея</a>
+    <a href="{{ "/about/" | relURL }}">Обо мне</a>
+  </header>
 
-    <main class="site-main">
-        {{ block "main" . }}{{ end }}
-    </main>
+  {{/* Главная страница */}}
+  {{ if .IsHome }}
+  <section class="hero container">
+    {{ $last := first 1 (where .Site.RegularPages "Type" "posts") }}
+    {{ with index $last 0 }}
+    <div class="last-article">
+      <h1>{{ .Title }}</h1>
+      {{ if .Params.image }}
+      <img src="{{ .Params.image | relURL }}" alt="{{ .Title }}">
+      {{ end }}
+      <p>{{ .Summary }}</p>
+      <a href="{{ .RelPermalink }}" class="read-more">Читать полностью</a>
+    </div>
+    {{ end }}
+  </section>
+  {{ end }}
 
-    <footer class="site-footer">
-        <div class="container">
-            &copy; {{ now.Format "2006" }} {{ with .Site.Params.name }}{{ . }}{{ else }}Мой сайт{{ end }}. Все права защищены.
-        </div>
-    </footer>
+  {{/* Основной блок для всех страниц */}}
+  <main class="container">
+    {{ block "main" . }}{{ end }}
+  </main>
+
+  <script src="{{ "js/carousel.js" | relURL }}"></script>
 </body>
 </html>
