@@ -16,14 +16,6 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 # API ключи
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
-FUSIONBRAIN_API_KEY = os.environ.get("FUSIONBRAIN_API_KEY")
-FUSION_SECRET_KEY = os.environ.get("FUSION_SECRET_KEY")
-BASE_URL = 'https://api-key.fusionbrain.ai/'
-
-AUTH_HEADERS = {
-    'X-Key': f'Key {FUSIONBRAIN_API_KEY}',
-    'X-Secret': f'Secret {FUSION_SECRET_KEY}',
-}
 
 # Папки
 POSTS_DIR = 'content/posts'
@@ -31,10 +23,15 @@ STATIC_DIR = 'static/images/posts'
 GALLERY_FILE = 'data/gallery.yaml'
 PLACEHOLDER = 'static/images/placeholder.jpg'
 
+# SubNP API
+SUBNP_MODELS_URL = "https://subnp.com/api/free/models"
+SUBNP_GENERATE_URL = "https://subnp.com/api/free/generate"
+
 os.makedirs(POSTS_DIR, exist_ok=True)
 os.makedirs(STATIC_DIR, exist_ok=True)
 os.makedirs(os.path.dirname(PLACEHOLDER), exist_ok=True)
 os.makedirs(os.path.dirname(GALLERY_FILE), exist_ok=True)
+
 
 def safe_yaml_value(value):
     """Безопасное экранирование значений для YAML"""
@@ -43,8 +40,9 @@ def safe_yaml_value(value):
     value = str(value).replace('"', "'").replace(':', ' -').replace('\n', ' ').replace('\r', ' ')
     return value.strip()
 
+
 def generate_article():
-    header_prompt = "Проанализируй последние тренды в нейросетях и высоких технологиях и придумай привлекательный заголовок, не более восьми слов"
+    header_prompt = "Проанализируй последние тренды в нейросетях и высоких технологиях и на их основе придумай привлекательный заголовок, не более восьми слов, для статьи"
     
     try:
         logging.info("📝 Генерация заголовка через OpenRouter...")
@@ -97,71 +95,55 @@ def generate_article():
             logging.error(f"❌ Ошибка генерации статьи: {e}")
             return title, "Статья временно недоступна.", "None"
 
-def get_pipeline_id(retries=3, delay=2):
-    """Пробуем получить рабочий pipeline ID с повторной попыткой"""
-    for attempt in range(1, retries + 1):
-        try:
-            r = requests.get(BASE_URL + 'key/api/v1/pipelines', headers=AUTH_HEADERS)
-            r.raise_for_status()
-            pipelines = r.json()
-            if pipelines:
-                pipeline_id = pipelines[0]['id']
-                logging.info(f"✅ Найден pipeline ID: {pipeline_id}")
-                return pipeline_id
-            else:
-                logging.warning(f"⚠️ Pipelines не найдены, попытка {attempt}/{retries}")
-        except Exception as e:
-            logging.warning(f"⚠️ Ошибка получения pipeline ID, попытка {attempt}/{retries}: {e}")
-        time.sleep(delay)
-    logging.error("❌ Не удалось получить pipeline ID, используем PLACEHOLDER")
-    return None
+
+def generate_image_via_subnp(prompt, slug):
+    """Генерация изображения через бесплатный API SubNP"""
+    try:
+        r = requests.get(SUBNP_MODELS_URL, timeout=10)
+        r.raise_for_status()
+        models = r.json().get("models", [])
+        if not models:
+            raise ValueError("Нет доступных моделей SubNP")
+        model = models[0]["model"]
+        logging.info(f"[SubNP] Выбрана модель: {model}")
+    except Exception as e:
+        logging.error(f"[SubNP] Не удалось получить модели: {e}")
+        return PLACEHOLDER
+
+    try:
+        with requests.post(SUBNP_GENERATE_URL,
+                           json={"prompt": prompt, "model": model},
+                           stream=True, timeout=120) as resp:
+            resp.raise_for_status()
+            for line in resp.iter_lines():
+                if not line:
+                    continue
+                line = line.decode("utf-8")
+                if line.startswith("data: "):
+                    data = json.loads(line[6:])
+                    if data.get("status") == "complete" and data.get("imageUrl"):
+                        image_url = data["imageUrl"]
+                        logging.info(f"[SubNP] Изображение готово: {image_url}")
+                        img_data = requests.get(image_url).content
+                        fn = os.path.join(STATIC_DIR, f"{slug}.png")
+                        with open(fn, "wb") as f:
+                            f.write(img_data)
+                        logging.info(f"[SubNP] Сохранено в: {fn}")
+                        return f"/images/posts/{slug}.png"
+            logging.error("[SubNP] Не получили complete -> imageUrl")
+    except Exception as e:
+        logging.error(f"[SubNP] Ошибка генерации: {e}")
+
+    return PLACEHOLDER
+
 
 def generate_image(title, slug):
-    try:
-        pipeline_id = get_pipeline_id()
-        if not pipeline_id:
-            return PLACEHOLDER
+    return generate_image_via_subnp(title, slug)
 
-        params = {
-            "type": "GENERATE",
-            "numImages": 1,
-            "width": 1024,
-            "height": 1024,
-            "generateParams": {"query": title}
-        }
-        files = {
-            'pipeline_id': (None, pipeline_id),
-            'params': (None, json.dumps(params), 'application/json')
-        }
-
-        r = requests.post(BASE_URL + 'key/api/v1/pipeline/run', headers=AUTH_HEADERS, files=files)
-        r.raise_for_status()
-        uuid = r.json()['uuid']
-        logging.info(f"🖼 Генерация изображения запущена, UUID: {uuid}")
-
-        for _ in range(20):
-            r_status = requests.get(BASE_URL + f'key/api/v1/pipeline/status/{uuid}', headers=AUTH_HEADERS)
-            r_status.raise_for_status()
-            data = r_status.json()
-            if data.get('status') == 'DONE' and data.get('result', {}).get('files'):
-                image_base64 = data['result']['files'][0]
-                img_bytes = base64.b64decode(image_base64)
-                img_path = os.path.join(STATIC_DIR, f'{slug}.png')
-                with open(img_path, 'wb') as f:
-                    f.write(img_bytes)
-                logging.info(f"✅ Изображение сохранено: {img_path}")
-                return f"/images/posts/{slug}.png"
-            time.sleep(3)
-
-        logging.warning("⚠️ Изображение не сгенерировано за отведённое время, используем PLACEHOLDER")
-        return PLACEHOLDER
-
-    except Exception as e:
-        logging.error(f"❌ Ошибка генерации изображения: {e}")
-        return PLACEHOLDER
 
 def save_article(title, text, model, slug, image_path):
     filename = os.path.join(POSTS_DIR, f'{slug}.md')
+    
     front_matter = {
         'title': safe_yaml_value(title),
         'date': datetime.now().strftime("%Y-%m-%dT%H:%M:%S+03:00"),
@@ -171,7 +153,9 @@ def save_article(title, text, model, slug, image_path):
         'draft': False,
         'categories': ["Технологии"]
     }
+    
     yaml_content = yaml.safe_dump(front_matter, allow_unicode=True, default_flow_style=False, sort_keys=False)
+    
     content = f"""---
 {yaml_content}---
 
@@ -180,6 +164,7 @@ def save_article(title, text, model, slug, image_path):
     with open(filename, 'w', encoding='utf-8') as f:
         f.write(content)
     logging.info(f"✅ Статья сохранена: {filename}")
+
 
 def update_gallery(title, slug, image_path):
     gallery = []
@@ -205,6 +190,7 @@ def update_gallery(title, slug, image_path):
     except Exception as e:
         logging.error(f"❌ Ошибка сохранения галереи: {e}")
 
+
 def cleanup_old_posts(keep=10):
     try:
         posts = sorted(
@@ -219,6 +205,7 @@ def cleanup_old_posts(keep=10):
     except Exception as e:
         logging.error(f"❌ Ошибка очистки старых постов: {e}")
 
+
 def main():
     try:
         title, text, model = generate_article()
@@ -230,6 +217,7 @@ def main():
         logging.info("🎉 Генерация статьи завершена успешно!")
     except Exception as e:
         logging.error(f"❌ Критическая ошибка в main: {e}")
+
 
 if __name__ == "__main__":
     main()
