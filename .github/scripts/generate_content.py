@@ -36,11 +36,9 @@ os.makedirs(STATIC_DIR, exist_ok=True)
 os.makedirs(os.path.dirname(PLACEHOLDER), exist_ok=True)
 
 def generate_article():
-    # Сначала генерируем заголовок
-    header_prompt = "Проанализируй последние трендв в нейросетях и высоких технологиях и на их основе придумай привлекательный заголовок для статьи не более 8 слов"
+    header_prompt = "Проанализируй последние трендв в нейросетях и высоких технологиях и на их основе придумай привлекательный заголовок, не более восьми слов, для статьи"
     headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}"}
 
-    # OpenRouter заголовок
     try:
         logging.info("📝 Генерация заголовка через OpenRouter...")
         r = requests.post("https://openrouter.ai/api/v1/chat/completions",
@@ -51,7 +49,6 @@ def generate_article():
         logging.info("✅ Заголовок получен через OpenRouter")
     except Exception as e:
         logging.warning(f"⚠️ OpenRouter заголовок не сработал: {e}")
-        # Groq fallback
         try:
             logging.info("📝 Генерация заголовка через Groq...")
             headers_groq = {"Authorization": f"Bearer {GROQ_API_KEY}"}
@@ -65,9 +62,7 @@ def generate_article():
             logging.error(f"❌ Ошибка генерации заголовка: {e}")
             title = "Статья о последних трендах в ИИ"
 
-    # Теперь генерируем статью по заголовку
     content_prompt = f"Напиши статью 400-600 слов по заголовку: {title}"
-    # OpenRouter статья
     try:
         logging.info("📝 Генерация статьи через OpenRouter...")
         r = requests.post("https://openrouter.ai/api/v1/chat/completions",
@@ -79,7 +74,6 @@ def generate_article():
         return title, text, "OpenRouter GPT"
     except Exception as e:
         logging.warning(f"⚠️ OpenRouter статья не сработала: {e}")
-        # Groq fallback
         try:
             logging.info("📝 Генерация статьи через Groq...")
             headers_groq = {"Authorization": f"Bearer {GROQ_API_KEY}"}
@@ -142,12 +136,8 @@ def generate_image(title, slug):
 
 def save_article(title, text, model, slug, image_path):
     filename = os.path.join(POSTS_DIR, f'{slug}.md')
-    # Формат даты с временем и зоной
-   def save_article(title, text, model, slug, image_path):
-    filename = os.path.join(POSTS_DIR, f'{slug}.md')
-    # Формат даты с временем и зоной
+    # Дата в формате ISO 8601 и обёрнута в кавычки
     date = datetime.now().strftime("%Y-%m-%dT%H:%M:%S%z")
-    # Экранируем кавычки
     title_safe = title.replace('"', "'")
     model_safe = model.replace('"', "'")
 
@@ -162,11 +152,9 @@ draft: false
 
 {text}
 """
-
     with open(filename, 'w', encoding='utf-8') as f:
         f.write(content)
     logging.info(f"✅ Статья сохранена: {filename}")
-
 
 def update_gallery(title, slug, image_path):
     gallery = []
@@ -175,7 +163,7 @@ def update_gallery(title, slug, image_path):
             gallery = yaml.safe_load(f) or []
 
     gallery.insert(0, {"title": title, "alt": title, "src": f"/{image_path}"})
-    gallery = gallery[:20]  # максимум 20 изображений
+    gallery = gallery[:20]
 
     with open(GALLERY_FILE, 'w', encoding='utf-8') as f:
         yaml.safe_dump(gallery, f, allow_unicode=True)
