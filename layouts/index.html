@@ -1,22 +1,59 @@
 {{ define "main" }}
-<section class="hero">
-    <h1>Последняя AI-статья</h1>
-    {{ range first 1 (where .Site.RegularPages "Type" "posts") }}
-    <article class="featured-post">
-        {{ with .Params.image }}
-        <img src="{{ . }}" alt="{{ $.Title }}" class="featured-image">
-        {{ end }}
-        <div class="post-content">
-            <h2>{{ .Title }}</h2>
-            <p class="meta">Опубликовано: {{ .Date.Format "02.01.2006" }} • Модель: {{ .Params.model }}</p>
-            <div class="excerpt">
-                {{ .Summary }}
-            </div>
-            <a href="{{ .RelPermalink }}" class="read-more">Читать далее</a>
+<!-- Hero Section -->
+<section class="hero relative bg-cover bg-center h-screen flex items-center justify-center text-center text-white"
+         style="background-image: url('/images/bg-hero.jpg');">
+  <div class="bg-black bg-opacity-50 p-8 rounded-2xl">
+    <img src="/images/avatar.png" alt="Avatar" class="w-32 h-32 rounded-full mx-auto mb-4 shadow-lg border-4 border-white">
+    <h1 class="text-4xl md:text-6xl font-bold mb-2">Алексей — Инженер ИИ & Веб-дизайнер</h1>
+    <p class="text-lg md:text-xl mb-6">Создаю сайты, ботов и нейросети, которые работают за вас</p>
+    <div class="flex justify-center gap-4">
+      <a href="#gallery" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 rounded-xl text-white font-semibold shadow-md">Галерея</a>
+      <a href="#contacts" class="px-6 py-3 bg-white hover:bg-gray-200 rounded-xl text-gray-800 font-semibold shadow-md">Связаться</a>
+    </div>
+  </div>
+</section>
+
+<!-- About Section -->
+<section id="about" class="py-16 bg-gray-50 dark:bg-gray-800 text-center">
+  <div class="max-w-4xl mx-auto px-4">
+    <h2 class="text-3xl font-bold mb-6 text-gray-900 dark:text-white">Обо мне</h2>
+    <p class="text-lg text-gray-700 dark:text-gray-300 mb-8">
+      Я разрабатываю современные веб-сайты, создаю Telegram-ботов, 
+      работаю с нейросетями (ИИ, генерация видео, музыки и текста). 
+      Моя цель — автоматизировать процессы и создавать удобные цифровые продукты.
+    </p>
+  </div>
+</section>
+
+<!-- Gallery Section -->
+<section id="gallery" class="py-16 bg-white dark:bg-gray-900 text-center">
+  <div class="max-w-6xl mx-auto px-4">
+    <h2 class="text-3xl font-bold mb-10 text-gray-900 dark:text-white">Галерея</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
+      {{ $gallery := site.Data.gallery }}
+      {{ range $gallery.items }}
+      <div class="rounded-2xl overflow-hidden shadow hover:shadow-lg transition">
+        <img src="{{ .image }}" alt="{{ .title }}" class="w-full h-64 object-cover">
+        <div class="p-4 bg-gray-50 dark:bg-gray-800">
+          <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">{{ .title }}</h3>
+          <p class="text-gray-600 dark:text-gray-300">{{ .description }}</p>
         </div>
-    </article>
-    {{ else }}
-    <p>Статьи пока не сгенерированы. Проверьте позже!</p>
-    {{ end }}
+      </div>
+      {{ end }}
+    </div>
+  </div>
+</section>
+
+<!-- Contacts Section -->
+<section id="contacts" class="py-16 bg-gray-50 dark:bg-gray-800 text-center">
+  <div class="max-w-3xl mx-auto px-4">
+    <h2 class="text-3xl font-bold mb-6 text-gray-900 dark:text-white">Контакты</h2>
+    <p class="text-lg mb-6 text-gray-700 dark:text-gray-300">Готов к сотрудничеству и новым проектам. Свяжитесь со мной:</p>
+    <div class="flex justify-center gap-6">
+      <a href="https://t.me/Lybra777" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 rounded-xl text-white font-semibold shadow-md">Telegram</a>
+      <a href="https://github.com/Lybrabee" class="px-6 py-3 bg-gray-800 hover:bg-gray-900 rounded-xl text-white font-semibold shadow-md">GitHub</a>
+      <a href="mailto:youremail@example.com" class="px-6 py-3 bg-green-600 hover:bg-green-700 rounded-xl text-white font-semibold shadow-md">Email</a>
+    </div>
+  </div>
 </section>
 {{ end }}
