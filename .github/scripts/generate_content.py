@@ -37,7 +37,7 @@ os.makedirs(os.path.dirname(PLACEHOLDER), exist_ok=True)
 
 def generate_article():
     # Сначала генерируем заголовок
-    header_prompt = "Проанализируй последние трендв в нейросетях и высоких технологиях и на их основе придумай привлекательный заголовок для статьи"
+    header_prompt = "Проанализируй последние трендв в нейросетях и высоких технологиях и на их основе придумай привлекательный заголовок для статьи не более 8 слов"
     headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}"}
 
     # OpenRouter заголовок
