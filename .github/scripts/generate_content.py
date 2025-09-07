@@ -34,69 +34,64 @@ os.makedirs(POSTS_DIR, exist_ok=True)
 os.makedirs(ASSETS_DIR, exist_ok=True)
 os.makedirs(os.path.dirname(PLACEHOLDER), exist_ok=True)
 
-def generate_title():
-    prompt = "Проанализируй последние тренды в искусственном интеллекте и высоких технологиях и создай ёмкий заголовок для статьи."
+def generate_article():
+    # Сначала генерируем заголовок
+    header_prompt = "Напиши короткий, привлекательный заголовок статьи о последних трендах в искусственном интеллекте и высоких технологиях."
     headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}"}
 
-    # OpenRouter
+    # OpenRouter заголовок
     try:
         logging.info("📝 Генерация заголовка через OpenRouter...")
         r = requests.post("https://openrouter.ai/api/v1/chat/completions",
                           headers=headers,
-                          json={"model": "gpt-4o-mini", "messages":[{"role":"user","content":prompt}]})
+                          json={"model": "gpt-4o-mini", "messages":[{"role":"user","content":header_prompt}]})
         r.raise_for_status()
-        title = r.json()["choices"][0]["message"]["content"].strip().replace('"', '')
+        title = r.json()["choices"][0]["message"]["content"].strip()
         logging.info("✅ Заголовок получен через OpenRouter")
-        return title, "OpenRouter GPT"
     except Exception as e:
-        logging.warning(f"⚠️ OpenRouter не сработал: {e}")
+        logging.warning(f"⚠️ OpenRouter заголовок не сработал: {e}")
+        # Groq fallback
+        try:
+            logging.info("📝 Генерация заголовка через Groq...")
+            headers_groq = {"Authorization": f"Bearer {GROQ_API_KEY}"}
+            r = requests.post("https://api.groq.com/v1/chat/completions",
+                              headers=headers_groq,
+                              json={"model": "gpt-4o-mini", "messages":[{"role":"user","content":header_prompt}]})
+            r.raise_for_status()
+            title = r.json()["choices"][0]["message"]["content"].strip()
+            logging.info("✅ Заголовок получен через Groq")
+        except Exception as e:
+            logging.error(f"❌ Ошибка генерации заголовка: {e}")
+            title = "Статья о последних трендах в ИИ"
 
-    # Groq fallback
-    try:
-        logging.info("📝 Генерация заголовка через Groq...")
-        headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
-        r = requests.post("https://api.groq.com/v1/chat/completions",
-                          headers=headers,
-                          json={"model": "gpt-4o-mini", "messages":[{"role":"user","content":prompt}]})
-        r.raise_for_status()
-        title = r.json()["choices"][0]["message"]["content"].strip().replace('"', '')
-        logging.info("✅ Заголовок получен через Groq")
-        return title, "Groq GPT"
-    except Exception as e:
-        logging.error(f"❌ Ошибка генерации заголовка: {e}")
-        return "Новая статья", "None"
-
-def generate_article(title):
-    prompt = f"Напиши статью на 400-600 слов по заголовку: {title}"
-    headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}"}
-
-    # OpenRouter
+    # Теперь генерируем статью по заголовку
+    content_prompt = f"Напиши статью 400-600 слов по заголовку: {title}"
+    # OpenRouter статья
     try:
         logging.info("📝 Генерация статьи через OpenRouter...")
         r = requests.post("https://openrouter.ai/api/v1/chat/completions",
                           headers=headers,
-                          json={"model": "gpt-4o-mini", "messages":[{"role":"user","content":prompt}]})
+                          json={"model": "gpt-4o-mini", "messages":[{"role":"user","content":content_prompt}]})
         r.raise_for_status()
-        text = r.json()["choices"][0]["message"]["content"]
+        text = r.json()["choices"][0]["message"]["content"].strip()
         logging.info("✅ Статья получена через OpenRouter")
-        return text, "OpenRouter GPT"
+        return title, text, "OpenRouter GPT"
     except Exception as e:
-        logging.warning(f"⚠️ OpenRouter не сработал: {e}")
-
-    # Groq fallback
-    try:
-        logging.info("📝 Генерация статьи через Groq...")
-        headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
-        r = requests.post("https://api.groq.com/v1/chat/completions",
-                          headers=headers,
-                          json={"model": "gpt-4o-mini", "messages":[{"role":"user","content":prompt}]})
-        r.raise_for_status()
-        text = r.json()["choices"][0]["message"]["content"]
-        logging.info("✅ Статья получена через Groq")
-        return text, "Groq GPT"
-    except Exception as e:
-        logging.error(f"❌ Ошибка генерации статьи: {e}")
-        return "Статья временно недоступна.", "None"
+        logging.warning(f"⚠️ OpenRouter статья не сработала: {e}")
+        # Groq fallback
+        try:
+            logging.info("📝 Генерация статьи через Groq...")
+            headers_groq = {"Authorization": f"Bearer {GROQ_API_KEY}"}
+            r = requests.post("https://api.groq.com/v1/chat/completions",
+                              headers=headers_groq,
+                              json={"model": "gpt-4o-mini", "messages":[{"role":"user","content":content_prompt}]})
+            r.raise_for_status()
+            text = r.json()["choices"][0]["message"]["content"].strip()
+            logging.info("✅ Статья получена через Groq")
+            return title, text, "Groq GPT"
+        except Exception as e:
+            logging.error(f"❌ Ошибка генерации статьи: {e}")
+            return title, "Статья временно недоступна.", "None"
 
 def get_pipeline_id():
     r = requests.get(BASE_URL + 'key/api/v1/pipelines', headers=AUTH_HEADERS)
@@ -147,8 +142,11 @@ def generate_image(title, slug):
 def save_article(title, text, model, slug, image_path):
     filename = os.path.join(POSTS_DIR, f'{slug}.md')
     date = datetime.now().strftime("%Y-%m-%d")
+    # Экранируем кавычки
+    title_safe = title.replace('"', "'")
+    model_safe = model.replace('"', "'")
     with open(filename, 'w', encoding='utf-8') as f:
-        f.write(f"---\ntitle: {title}\ndate: {date}\nimage: /{image_path}\nmodel: {model}\ntags: [AI, Tech]\n---\n\n{text}")
+        f.write(f"---\ntitle: \"{title_safe}\"\ndate: {date}\nimage: \"/{image_path}\"\nmodel: \"{model_safe}\"\ntags: [AI, Tech]\n---\n\n{text}")
     logging.info(f"✅ Статья сохранена: {filename}")
 
 def update_gallery(title, slug, image_path):
@@ -165,11 +163,9 @@ def update_gallery(title, slug, image_path):
     logging.info(f"✅ Галерея обновлена: {GALLERY_FILE}")
 
 def main():
-    title, _ = generate_title()
+    title, text, model = generate_article()
     slug = slugify(title)
-    text, model = generate_article(title)
     image_path = generate_image(title, slug)
-
     save_article(title, text, model, slug, image_path)
     update_gallery(title, slug, image_path)
 
