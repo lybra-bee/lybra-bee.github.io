@@ -10,21 +10,15 @@ from datetime import datetime
 from slugify import slugify
 import yaml
 
-# -------------------------
 # Настройка логирования
-# -------------------------
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# -------------------------
 # API ключи
-# -------------------------
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 SUBNP_API_URL = "https://subnp.com/api/free/generate"
 
-# -------------------------
-# Папки и файлы
-# -------------------------
+# Папки
 POSTS_DIR = 'content/posts'
 STATIC_DIR = 'static/images/posts'
 GALLERY_FILE = 'data/gallery.yaml'
@@ -35,9 +29,6 @@ os.makedirs(STATIC_DIR, exist_ok=True)
 os.makedirs(os.path.dirname(PLACEHOLDER), exist_ok=True)
 os.makedirs(os.path.dirname(GALLERY_FILE), exist_ok=True)
 
-# -------------------------
-# Вспомогательные функции
-# -------------------------
 def safe_yaml_value(value):
     """Безопасное экранирование значений для YAML"""
     if not value:
@@ -45,13 +36,11 @@ def safe_yaml_value(value):
     value = str(value).replace('"', "'").replace(':', ' -').replace('\n', ' ').replace('\r', ' ')
     return value.strip()
 
-# -------------------------
-# Генерация заголовка и статьи
-# -------------------------
 def generate_article():
-    header_prompt = "Проанализируй последние тренды в нейросетях и высоких технологиях и придумай заголовок, не более 8 слов"
-    
-    # Заголовок
+    header_prompt = "Проанализируй последние тренды в нейросетях и высоких технологиях и придумай привлекательный заголовок, не более восьми слов"
+
+    # Генерация заголовка
+    title = None
     try:
         logging.info("📝 Генерация заголовка через OpenRouter...")
         headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}"}
@@ -76,8 +65,11 @@ def generate_article():
             logging.error(f"❌ Ошибка генерации заголовка: {e}")
             title = "Статья о последних трендах в ИИ"
 
-    # Статья
+    # Генерация статьи
     content_prompt = f"Напиши статью 400-600 слов по заголовку: {title}"
+    text = "Статья временно недоступна."
+    model = "None"
+
     try:
         logging.info("📝 Генерация статьи через OpenRouter...")
         headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}"}
@@ -87,7 +79,7 @@ def generate_article():
         r.raise_for_status()
         text = r.json()["choices"][0]["message"]["content"].strip()
         logging.info("✅ Статья получена через OpenRouter")
-        return title, text, "OpenRouter GPT"
+        model = "OpenRouter GPT"
     except Exception as e:
         logging.warning(f"⚠️ OpenRouter статья не сработала: {e}")
         try:
@@ -99,21 +91,26 @@ def generate_article():
             r.raise_for_status()
             text = r.json()["choices"][0]["message"]["content"].strip()
             logging.info("✅ Статья получена через Groq")
-            return title, text, "Groq GPT"
+            model = "Groq GPT"
         except Exception as e:
             logging.error(f"❌ Ошибка генерации статьи: {e}")
-            return title, "Статья временно недоступна.", "None"
 
-# -------------------------
-# Генерация изображения через SubNP
-# -------------------------
+    return title, text, model
+
 def generate_image(title, slug):
     try:
         logging.info("[SubNP] Запрос на генерацию изображения...")
         payload = {"prompt": title, "model": "turbo"}
-        r = requests.post(SUBNP_API_URL, json=payload)
-        r.raise_for_status()
-        data = r.json()
+        r = requests.post(SUBNP_API_URL, json=payload, timeout=30)
+
+        logging.info(f"[SubNP] Ответ сервера: {r.status_code} {r.text[:500]}")  # первые 500 символов
+
+        try:
+            data = r.json()
+        except json.JSONDecodeError:
+            logging.error("❌ SubNP вернул не JSON, используем PLACEHOLDER")
+            return PLACEHOLDER
+
         if 'imageUrl' in data:
             image_url = data['imageUrl']
             img_data = requests.get(image_url).content
@@ -125,16 +122,14 @@ def generate_image(title, slug):
         else:
             logging.warning("⚠️ Не получили imageUrl, используем PLACEHOLDER")
             return PLACEHOLDER
+
     except Exception as e:
         logging.error(f"❌ Ошибка генерации изображения: {e}")
         return PLACEHOLDER
 
-# -------------------------
-# Сохранение статьи
-# -------------------------
 def save_article(title, text, model, slug, image_path):
     filename = os.path.join(POSTS_DIR, f'{slug}.md')
-    
+
     front_matter = {
         'title': safe_yaml_value(title),
         'date': datetime.now().strftime("%Y-%m-%dT%H:%M:%S+03:00"),
@@ -144,8 +139,9 @@ def save_article(title, text, model, slug, image_path):
         'draft': False,
         'categories': ["Технологии"]
     }
-    
+
     yaml_content = yaml.safe_dump(front_matter, allow_unicode=True, default_flow_style=False, sort_keys=False)
+
     content = f"""---
 {yaml_content}---
 
@@ -155,9 +151,6 @@ def save_article(title, text, model, slug, image_path):
         f.write(content)
     logging.info(f"✅ Статья сохранена: {filename}")
 
-# -------------------------
-# Обновление галереи
-# -------------------------
 def update_gallery(title, slug, image_path):
     gallery = []
     if os.path.exists(GALLERY_FILE):
@@ -182,9 +175,6 @@ def update_gallery(title, slug, image_path):
     except Exception as e:
         logging.error(f"❌ Ошибка сохранения галереи: {e}")
 
-# -------------------------
-# Очистка старых постов
-# -------------------------
 def cleanup_old_posts(keep=10):
     try:
         posts = sorted(
@@ -199,9 +189,6 @@ def cleanup_old_posts(keep=10):
     except Exception as e:
         logging.error(f"❌ Ошибка очистки старых постов: {e}")
 
-# -------------------------
-# Основная функция
-# -------------------------
 def main():
     try:
         title, text, model = generate_article()
@@ -214,8 +201,5 @@ def main():
     except Exception as e:
         logging.error(f"❌ Критическая ошибка в main: {e}")
 
-# -------------------------
-# Запуск
-# -------------------------
 if __name__ == "__main__":
     main()
