@@ -1,3 +1,6 @@
+- alt: Будущее сегодня - Нейросети и высокие технологии
+  src: /static/images/placeholder.jpg
+  title: Будущее сегодня - Нейросети и высокие технологии
 - alt: Будущее технологий - Нейросети и их революция
   src: /static/images/placeholder.jpg
   title: Будущее технологий - Нейросети и их революция
@@ -61,6 +64,3 @@
 - alt: '"Нейросети и высокие технологии: Революция в нашем будущем"'
   src: /images/posts/neiroseti-i-vysokie-tekhnologii-revoliutsiia-v-nashem-budushchem.png
   title: '"Нейросети и высокие технологии: Революция в нашем будущем"'
-- alt: '"Будущее AI: Как нейросети меняют наш мир"'
-  src: /images/posts/budushchee-ai-kak-neiroseti-meniaiut-nash-mir.png
-  title: '"Будущее AI: Как нейросети меняют наш мир"'
