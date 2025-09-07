@@ -36,8 +36,7 @@ os.makedirs(STATIC_DIR, exist_ok=True)
 os.makedirs(os.path.dirname(PLACEHOLDER), exist_ok=True)
 
 def generate_article():
-    # Генерация заголовка
-    header_prompt = "Проанализируй последние трендв в нейросетях и высоких технологиях и на их основе придумай привлекательный заголовок для статьи, не более восьми слов"
+    header_prompt = "Проанализируй последние тренды в нейросетях и высоких технологиях и на их основе придумай привлекательный заголовок для статьи, не более восьми слов"
     headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}"}
 
     try:
@@ -63,7 +62,6 @@ def generate_article():
             logging.error(f"❌ Ошибка генерации заголовка: {e}")
             title = "Статья о последних трендах в ИИ"
 
-    # Генерация статьи по заголовку
     content_prompt = f"Напиши статью 400-600 слов по заголовку: {title}"
     try:
         logging.info("📝 Генерация статьи через OpenRouter...")
@@ -139,21 +137,21 @@ def generate_image(title, slug):
 def save_article(title, text, model, slug, image_path):
     filename = os.path.join(POSTS_DIR, f'{slug}.md')
     date = datetime.now().strftime("%Y-%m-%d")
-    title_safe = title.replace('"', "'")
-    model_safe = model.replace('"', "'")
-    # Корректный YAML
-    content = f"""---
-title: "{title_safe}"
-date: {date}
-image: "/{image_path}"
-model: "{model_safe}"
-tags: [AI, Tech]
----
+    
+    frontmatter = {
+        "title": title,
+        "date": date,
+        "image": f"/{image_path}",
+        "model": model,
+        "tags": ["AI", "Tech"]
+    }
 
-{text}
-"""
     with open(filename, 'w', encoding='utf-8') as f:
-        f.write(content)
+        f.write('---\n')
+        yaml.safe_dump(frontmatter, f, allow_unicode=True)
+        f.write('---\n\n')
+        f.write(text)
+    
     logging.info(f"✅ Статья сохранена: {filename}")
 
 def update_gallery(title, slug, image_path):
