@@ -34,52 +34,51 @@ PLACEHOLDER = 'static/images/placeholder.jpg'
 os.makedirs(POSTS_DIR, exist_ok=True)
 os.makedirs(STATIC_DIR, exist_ok=True)
 os.makedirs(os.path.dirname(PLACEHOLDER), exist_ok=True)
+os.makedirs(os.path.dirname(GALLERY_FILE), exist_ok=True)
 
-# --------------------------
-# Генерация статьи
-# --------------------------
+def safe_yaml_value(value):
+    """Безопасное экранирование значений для YAML"""
+    if not value:
+        return ""
+    value = str(value).replace('"', "'").replace(':', ' -').replace('\n', ' ').replace('\r', ' ')
+    return value.strip()
+
 def generate_article():
-    header_prompt = "Проанализируй последние тренды в нейросетях и высоких технологиях и придумай привлекательный заголовок из 6-8 слов для статьи"
-    headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}"}
-
-    # Заголовок через OpenRouter
+    header_prompt = "Проанализируй последние тренды в нейросетях и высоких технологиях и придумай заголовок (не более 8 слов)"
+    
+    # Заголовок
     try:
         logging.info("📝 Генерация заголовка через OpenRouter...")
-        r = requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers=headers,
-            json={"model": "gpt-4o-mini", "messages":[{"role":"user","content":header_prompt}]}
-        )
+        headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}"}
+        r = requests.post("https://openrouter.ai/api/v1/chat/completions",
+                          headers=headers,
+                          json={"model": "gpt-4o-mini", "messages":[{"role":"user","content":header_prompt}]})
         r.raise_for_status()
-        title = r.json()["choices"][0]["message"]["content"].strip()
+        title = r.json()["choices"][0]["message"]["content"].strip().strip('"')
         logging.info("✅ Заголовок получен через OpenRouter")
     except Exception as e:
         logging.warning(f"⚠️ OpenRouter заголовок не сработал: {e}")
-        # Groq fallback
         try:
             logging.info("📝 Генерация заголовка через Groq...")
             headers_groq = {"Authorization": f"Bearer {GROQ_API_KEY}"}
-            r = requests.post(
-                "https://api.groq.com/v1/chat/completions",
-                headers=headers_groq,
-                json={"model": "gpt-4o-mini", "messages":[{"role":"user","content":header_prompt}]}
-            )
+            r = requests.post("https://api.groq.com/v1/chat/completions",
+                              headers=headers_groq,
+                              json={"model": "gpt-4o-mini", "messages":[{"role":"user","content":header_prompt}]})
             r.raise_for_status()
-            title = r.json()["choices"][0]["message"]["content"].strip()
+            title = r.json()["choices"][0]["message"]["content"].strip().strip('"')
             logging.info("✅ Заголовок получен через Groq")
         except Exception as e:
             logging.error(f"❌ Ошибка генерации заголовка: {e}")
             title = "Статья о последних трендах в ИИ"
 
-    # Генерация текста статьи
+    # Контент
     content_prompt = f"Напиши статью 400-600 слов по заголовку: {title}"
     try:
         logging.info("📝 Генерация статьи через OpenRouter...")
-        r = requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers=headers,
-            json={"model": "gpt-4o-mini", "messages":[{"role":"user","content":content_prompt}]}
-        )
+        headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}"}
+        r = requests.post("https://openrouter.ai/api/v1/chat/completions",
+                          headers=headers,
+                          json={"model": "gpt-4o-mini", "messages":[{"role":"user","content":content_prompt}]})
         r.raise_for_status()
         text = r.json()["choices"][0]["message"]["content"].strip()
         logging.info("✅ Статья получена через OpenRouter")
@@ -89,11 +88,9 @@ def generate_article():
         try:
             logging.info("📝 Генерация статьи через Groq...")
             headers_groq = {"Authorization": f"Bearer {GROQ_API_KEY}"}
-            r = requests.post(
-                "https://api.groq.com/v1/chat/completions",
-                headers=headers_groq,
-                json={"model": "gpt-4o-mini", "messages":[{"role":"user","content":content_prompt}]}
-            )
+            r = requests.post("https://api.groq.com/v1/chat/completions",
+                              headers=headers_groq,
+                              json={"model": "gpt-4o-mini", "messages":[{"role":"user","content":content_prompt}]})
             r.raise_for_status()
             text = r.json()["choices"][0]["message"]["content"].strip()
             logging.info("✅ Статья получена через Groq")
@@ -102,17 +99,22 @@ def generate_article():
             logging.error(f"❌ Ошибка генерации статьи: {e}")
             return title, "Статья временно недоступна.", "None"
 
-# --------------------------
-# Генерация изображения (рабочая версия)
-# --------------------------
 def get_pipeline_id():
-    r = requests.get(BASE_URL + 'key/api/v1/pipelines', headers=AUTH_HEADERS)
-    r.raise_for_status()
-    return r.json()[0]['id']
+    try:
+        r = requests.get(BASE_URL + 'key/api/v1/pipelines', headers=AUTH_HEADERS)
+        r.raise_for_status()
+        return r.json()[0]['id']
+    except Exception as e:
+        logging.error(f"❌ Ошибка получения pipeline ID: {e}")
+        return None
 
 def generate_image(title, slug):
     try:
         pipeline_id = get_pipeline_id()
+        if not pipeline_id:
+            logging.warning("⚠️ Не удалось получить pipeline ID, используем PLACEHOLDER")
+            return PLACEHOLDER
+
         params = {
             "type": "GENERATE",
             "numImages": 1,
@@ -126,14 +128,19 @@ def generate_image(title, slug):
         }
         r = requests.post(BASE_URL + 'key/api/v1/pipeline/run', headers=AUTH_HEADERS, files=files)
         r.raise_for_status()
-        uuid = r.json()['uuid']
+        uuid = r.json().get('uuid')
+        if not uuid:
+            logging.warning("⚠️ UUID не получен, используем PLACEHOLDER")
+            return PLACEHOLDER
 
-        # Ждем готовности
         for _ in range(20):
             r_status = requests.get(BASE_URL + f'key/api/v1/pipeline/status/{uuid}', headers=AUTH_HEADERS)
+            if r_status.status_code == 404:
+                logging.warning("⚠️ Pipeline не найден, используем PLACEHOLDER")
+                return PLACEHOLDER
             r_status.raise_for_status()
             data = r_status.json()
-            if data['status'] == 'DONE':
+            if data.get('status') == 'DONE':
                 image_base64 = data['result']['files'][0]
                 break
             time.sleep(3)
@@ -145,77 +152,70 @@ def generate_image(title, slug):
         img_path = os.path.join(STATIC_DIR, f'{slug}.png')
         with open(img_path, 'wb') as f:
             f.write(img_bytes)
-        logging.info(f"✅ Изображение сохранено: {img_path}")
-        return f"images/posts/{slug}.png"
 
+        logging.info(f"✅ Изображение сохранено: {img_path}")
+        return f"/images/posts/{slug}.png"
     except Exception as e:
         logging.error(f"❌ Ошибка генерации изображения: {e}")
         return PLACEHOLDER
 
-# --------------------------
-# Сохранение статьи
-# --------------------------
 def save_article(title, text, model, slug, image_path):
     filename = os.path.join(POSTS_DIR, f'{slug}.md')
-    date = datetime.now().strftime("%Y-%m-%d")
-    title_safe = title.replace('"', "'")
-    model_safe = model.replace('"', "'")
-    content = f"""---
-title: "{title_safe}"
-date: "{date}"
-image: "/{image_path}"
-model: "{model_safe}"
-tags:
-  - AI
-  - Tech
----
-
-{text}
-"""
+    front_matter = {
+        'title': safe_yaml_value(title),
+        'date': datetime.now().strftime("%Y-%m-%dT%H:%M:%S+03:00"),
+        'image': image_path,
+        'model': safe_yaml_value(model),
+        'tags': ["AI", "Tech"],
+        'draft': False,
+        'categories': ["Технологии"]
+    }
+    yaml_content = yaml.safe_dump(front_matter, allow_unicode=True, default_flow_style=False, sort_keys=False)
+    content = f"---\n{yaml_content}---\n\n{text}"
     with open(filename, 'w', encoding='utf-8') as f:
         f.write(content)
     logging.info(f"✅ Статья сохранена: {filename}")
 
-# --------------------------
-# Обновление галереи
-# --------------------------
 def update_gallery(title, slug, image_path):
     gallery = []
     if os.path.exists(GALLERY_FILE):
-        with open(GALLERY_FILE, 'r', encoding='utf-8') as f:
-            gallery = yaml.safe_load(f) or []
+        try:
+            with open(GALLERY_FILE, 'r', encoding='utf-8') as f:
+                gallery = yaml.safe_load(f) or []
+        except Exception as e:
+            logging.error(f"❌ Ошибка чтения галереи: {e}")
+            gallery = []
 
-    gallery.insert(0, {"title": title, "alt": title, "src": f"/{image_path}"})
+    gallery.insert(0, {"title": safe_yaml_value(title), "alt": safe_yaml_value(title), "src": image_path})
     gallery = gallery[:20]
 
-    with open(GALLERY_FILE, 'w', encoding='utf-8') as f:
-        yaml.safe_dump(gallery, f, allow_unicode=True)
-    logging.info(f"✅ Галерея обновлена: {GALLERY_FILE}")
+    try:
+        with open(GALLERY_FILE, 'w', encoding='utf-8') as f:
+            yaml.safe_dump(gallery, f, allow_unicode=True, default_flow_style=False)
+        logging.info(f"✅ Галерея обновлена: {GALLERY_FILE}")
+    except Exception as e:
+        logging.error(f"❌ Ошибка сохранения галереи: {e}")
 
-# --------------------------
-# Удаление старых статей
-# --------------------------
 def cleanup_old_posts(keep=10):
-    posts = sorted(
-        glob.glob(os.path.join(POSTS_DIR, "*.md")),
-        key=os.path.getmtime,
-        reverse=True
-    )
-    if len(posts) > keep:
+    try:
+        posts = sorted(glob.glob(os.path.join(POSTS_DIR, "*.md")), key=os.path.getmtime, reverse=True)
         for old in posts[keep:]:
             logging.info(f"🗑 Удаляю старую статью: {old}")
             os.remove(old)
+    except Exception as e:
+        logging.error(f"❌ Ошибка очистки старых постов: {e}")
 
-# --------------------------
-# Основная функция
-# --------------------------
 def main():
-    title, text, model = generate_article()
-    slug = slugify(title)
-    image_path = generate_image(title, slug)
-    save_article(title, text, model, slug, image_path)
-    update_gallery(title, slug, image_path)
-    cleanup_old_posts(keep=10)
+    try:
+        title, text, model = generate_article()
+        slug = slugify(title)
+        image_path = generate_image(title, slug)
+        save_article(title, text, model, slug, image_path)
+        update_gallery(title, slug, image_path)
+        cleanup_old_posts(keep=10)
+        logging.info("🎉 Генерация статьи завершена успешно!")
+    except Exception as e:
+        logging.error(f"❌ Критическая ошибка в main: {e}")
 
 if __name__ == "__main__":
     main()
