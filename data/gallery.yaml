@@ -1,3 +1,6 @@
+- alt: '"Будущее AI: Как нейросети меняют наш мир"'
+  src: /images/posts/budushchee-ai-kak-neiroseti-meniaiut-nash-mir.png
+  title: '"Будущее AI: Как нейросети меняют наш мир"'
 - alt: '"Будущее технологий: нейросети меняют нашу реальность"'
   src: /images/posts/budushchee-tekhnologii-neiroseti-meniaiut-nashu-realnost.png
   title: '"Будущее технологий: нейросети меняют нашу реальность"'
@@ -65,6 +68,3 @@
 - alt: AI картина
   src: /assets/images/posts/generative-art.png
   title: Генеративное искусство
-- alt: Солнечная панель на спутнике
-  src: /assets/images/posts/space-tech.png
-  title: Космические технологии
