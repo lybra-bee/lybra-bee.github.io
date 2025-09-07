@@ -44,9 +44,8 @@ def safe_yaml_value(value):
     return value.strip()
 
 def generate_article():
-    header_prompt = "Проанализируй последние тренды в нейросетях и высоких технологиях и придумай заголовок (не более 8 слов)"
+    header_prompt = "Проанализируй последние тренды в нейросетях и высоких технологиях и придумай привлекательный заголовок, не более восьми слов"
     
-    # Заголовок
     try:
         logging.info("📝 Генерация заголовка через OpenRouter...")
         headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}"}
@@ -71,7 +70,6 @@ def generate_article():
             logging.error(f"❌ Ошибка генерации заголовка: {e}")
             title = "Статья о последних трендах в ИИ"
 
-    # Контент
     content_prompt = f"Напиши статью 400-600 слов по заголовку: {title}"
     try:
         logging.info("📝 Генерация статьи через OpenRouter...")
@@ -99,20 +97,29 @@ def generate_article():
             logging.error(f"❌ Ошибка генерации статьи: {e}")
             return title, "Статья временно недоступна.", "None"
 
-def get_pipeline_id():
-    try:
-        r = requests.get(BASE_URL + 'key/api/v1/pipelines', headers=AUTH_HEADERS)
-        r.raise_for_status()
-        return r.json()[0]['id']
-    except Exception as e:
-        logging.error(f"❌ Ошибка получения pipeline ID: {e}")
-        return None
+def get_pipeline_id(retries=3, delay=2):
+    """Пробуем получить рабочий pipeline ID с повторной попыткой"""
+    for attempt in range(1, retries + 1):
+        try:
+            r = requests.get(BASE_URL + 'key/api/v1/pipelines', headers=AUTH_HEADERS)
+            r.raise_for_status()
+            pipelines = r.json()
+            if pipelines:
+                pipeline_id = pipelines[0]['id']
+                logging.info(f"✅ Найден pipeline ID: {pipeline_id}")
+                return pipeline_id
+            else:
+                logging.warning(f"⚠️ Pipelines не найдены, попытка {attempt}/{retries}")
+        except Exception as e:
+            logging.warning(f"⚠️ Ошибка получения pipeline ID, попытка {attempt}/{retries}: {e}")
+        time.sleep(delay)
+    logging.error("❌ Не удалось получить pipeline ID, используем PLACEHOLDER")
+    return None
 
 def generate_image(title, slug):
     try:
         pipeline_id = get_pipeline_id()
         if not pipeline_id:
-            logging.warning("⚠️ Не удалось получить pipeline ID, используем PLACEHOLDER")
             return PLACEHOLDER
 
         params = {
@@ -126,35 +133,29 @@ def generate_image(title, slug):
             'pipeline_id': (None, pipeline_id),
             'params': (None, json.dumps(params), 'application/json')
         }
+
         r = requests.post(BASE_URL + 'key/api/v1/pipeline/run', headers=AUTH_HEADERS, files=files)
         r.raise_for_status()
-        uuid = r.json().get('uuid')
-        if not uuid:
-            logging.warning("⚠️ UUID не получен, используем PLACEHOLDER")
-            return PLACEHOLDER
+        uuid = r.json()['uuid']
+        logging.info(f"🖼 Генерация изображения запущена, UUID: {uuid}")
 
         for _ in range(20):
             r_status = requests.get(BASE_URL + f'key/api/v1/pipeline/status/{uuid}', headers=AUTH_HEADERS)
-            if r_status.status_code == 404:
-                logging.warning("⚠️ Pipeline не найден, используем PLACEHOLDER")
-                return PLACEHOLDER
             r_status.raise_for_status()
             data = r_status.json()
-            if data.get('status') == 'DONE':
+            if data.get('status') == 'DONE' and data.get('result', {}).get('files'):
                 image_base64 = data['result']['files'][0]
-                break
+                img_bytes = base64.b64decode(image_base64)
+                img_path = os.path.join(STATIC_DIR, f'{slug}.png')
+                with open(img_path, 'wb') as f:
+                    f.write(img_bytes)
+                logging.info(f"✅ Изображение сохранено: {img_path}")
+                return f"/images/posts/{slug}.png"
             time.sleep(3)
-        else:
-            logging.warning("❌ Изображение не сгенерировано за отведённое время")
-            return PLACEHOLDER
 
-        img_bytes = base64.b64decode(image_base64)
-        img_path = os.path.join(STATIC_DIR, f'{slug}.png')
-        with open(img_path, 'wb') as f:
-            f.write(img_bytes)
+        logging.warning("⚠️ Изображение не сгенерировано за отведённое время, используем PLACEHOLDER")
+        return PLACEHOLDER
 
-        logging.info(f"✅ Изображение сохранено: {img_path}")
-        return f"/images/posts/{slug}.png"
     except Exception as e:
         logging.error(f"❌ Ошибка генерации изображения: {e}")
         return PLACEHOLDER
@@ -164,14 +165,18 @@ def save_article(title, text, model, slug, image_path):
     front_matter = {
         'title': safe_yaml_value(title),
         'date': datetime.now().strftime("%Y-%m-%dT%H:%M:%S+03:00"),
-        'image': image_path,
+        'image': image_path if image_path.startswith('/') else f'/{image_path}',
         'model': safe_yaml_value(model),
         'tags': ["AI", "Tech"],
         'draft': False,
         'categories': ["Технологии"]
     }
     yaml_content = yaml.safe_dump(front_matter, allow_unicode=True, default_flow_style=False, sort_keys=False)
-    content = f"---\n{yaml_content}---\n\n{text}"
+    content = f"""---
+{yaml_content}---
+
+{text}
+"""
     with open(filename, 'w', encoding='utf-8') as f:
         f.write(content)
     logging.info(f"✅ Статья сохранена: {filename}")
@@ -186,7 +191,11 @@ def update_gallery(title, slug, image_path):
             logging.error(f"❌ Ошибка чтения галереи: {e}")
             gallery = []
 
-    gallery.insert(0, {"title": safe_yaml_value(title), "alt": safe_yaml_value(title), "src": image_path})
+    gallery.insert(0, {
+        "title": safe_yaml_value(title), 
+        "alt": safe_yaml_value(title), 
+        "src": image_path if image_path.startswith('/') else f'/{image_path}'
+    })
     gallery = gallery[:20]
 
     try:
@@ -198,10 +207,15 @@ def update_gallery(title, slug, image_path):
 
 def cleanup_old_posts(keep=10):
     try:
-        posts = sorted(glob.glob(os.path.join(POSTS_DIR, "*.md")), key=os.path.getmtime, reverse=True)
-        for old in posts[keep:]:
-            logging.info(f"🗑 Удаляю старую статью: {old}")
-            os.remove(old)
+        posts = sorted(
+            glob.glob(os.path.join(POSTS_DIR, "*.md")),
+            key=os.path.getmtime,
+            reverse=True
+        )
+        if len(posts) > keep:
+            for old in posts[keep:]:
+                logging.info(f"🗑 Удаляю старую статью: {old}")
+                os.remove(old)
     except Exception as e:
         logging.error(f"❌ Ошибка очистки старых постов: {e}")
 
