@@ -1,23 +1,23 @@
-- title: "Будущее технологий"
-  alt: "Робот и цифровая сеть"
-  src: "/assets/images/posts/future-tech.png"
-
-- title: "Искусственный интеллект"
-  alt: "Абстрактный AI"
-  src: "/assets/images/posts/ai-abstract.png"
-
-- title: "Виртуальная реальность"
-  alt: "VR-шлем в действии"
-  src: "/assets/images/posts/vr-experience.png"
-
-- title: "Робототехника"
-  alt: "Современный промышленный робот"
-  src: "/assets/images/posts/robotics.png"
-
-- title: "Генеративное искусство"
-  alt: "AI картина"
-  src: "/assets/images/posts/generative-art.png"
-
-- title: "Космические технологии"
-  alt: "Солнечная панель на спутнике"
-  src: "/assets/images/posts/space-tech.png"
+- alt: '"Будущее уже здесь: Топ-10 последних трендов в искусственном интеллекте и
+    высоких технологиях"'
+  src: /assets/images/posts/budushchee-uzhe-zdes-top-10-poslednikh-trendov-v-iskusstvennom-intellekte-i-vysokikh-tekhnologiiakh.png
+  title: '"Будущее уже здесь: Топ-10 последних трендов в искусственном интеллекте
+    и высоких технологиях"'
+- alt: Робот и цифровая сеть
+  src: /assets/images/posts/future-tech.png
+  title: Будущее технологий
+- alt: Абстрактный AI
+  src: /assets/images/posts/ai-abstract.png
+  title: Искусственный интеллект
+- alt: VR-шлем в действии
+  src: /assets/images/posts/vr-experience.png
+  title: Виртуальная реальность
+- alt: Современный промышленный робот
+  src: /assets/images/posts/robotics.png
+  title: Робототехника
+- alt: AI картина
+  src: /assets/images/posts/generative-art.png
+  title: Генеративное искусство
+- alt: Солнечная панель на спутнике
+  src: /assets/images/posts/space-tech.png
+  title: Космические технологии
