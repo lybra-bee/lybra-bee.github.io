@@ -46,41 +46,6 @@ def safe_yaml_value(value):
     value = ' '.join(value.split())
     return value.strip()
 
-def check_yaml_syntax(filename):
-    """Проверяет синтаксис YAML front matter"""
-    try:
-        with open(filename, 'r', encoding='utf-8') as f:
-            content = f.read()
-        
-        # Проверяем, что front matter правильно оформлен
-        if content.startswith('---\n'):
-            # Извлекаем YAML часть
-            parts = content.split('---\n', 2)
-            if len(parts) >= 3:
-                yaml_content = parts[1]
-                # Пробуем распарсить YAML
-                yaml.safe_load(yaml_content)
-                return True
-        return False
-    except Exception as e:
-        logging.error(f"❌ Ошибка в YAML синтаксисе: {e}")
-        return False
-
-def create_backup_article(title, text, slug):
-    """Создает статью с минимальным front matter"""
-    filename = os.path.join(POSTS_DIR, f'{slug}.md')
-    content = f"""---
-title: "{safe_yaml_value(title)}"
-date: {datetime.now().strftime("%Y-%m-%d")}
-draft: false
----
-
-{text}
-"""
-    with open(filename, 'w', encoding='utf-8') as f:
-        f.write(content)
-    logging.info(f"✅ Резервная статья сохранена: {filename}")
-
 def generate_article():
     header_prompt = "Проанализируй последние тренды в нейросетях и высоких технологиях и на их основе придумай привлекательный заголовок, не более восьми слов, для статьи"
     
@@ -92,7 +57,7 @@ def generate_article():
                           json={"model": "gpt-4o-mini", "messages":[{"role":"user","content":header_prompt}]})
         r.raise_for_status()
         title = r.json()["choices"][0]["message"]["content"].strip().strip('"')
-        logging.info("✅ Заголовок получен через OpenRouter")
+        logging.info(f"✅ Заголовок получен: {title}")
     except Exception as e:
         logging.warning(f"⚠️ OpenRouter заголовок не сработал: {e}")
         try:
@@ -103,7 +68,7 @@ def generate_article():
                               json={"model": "gpt-4o-mini", "messages":[{"role":"user","content":header_prompt}]})
             r.raise_for_status()
             title = r.json()["choices"][0]["message"]["content"].strip().strip('"')
-            logging.info("✅ Заголовок получен через Groq")
+            logging.info(f"✅ Заголовок получен: {title}")
         except Exception as e:
             logging.error(f"❌ Ошибка генерации заголовка: {e}")
             title = "Статья о последних трендах в ИИ"
@@ -193,34 +158,44 @@ def save_article(title, text, model, slug, image_path):
     filename = os.path.join(POSTS_DIR, f'{slug}.md')
     
     # Убедимся, что image_path правильный
-    if not image_path.startswith('/'):
+    if image_path == PLACEHOLDER:
+        image_path = "/images/placeholder.jpg"
+    elif not image_path.startswith('/'):
         image_path = f'/{image_path}'
     
-    # Простой и надежный YAML front matter
-    content = f"""---
-title: "{safe_yaml_value(title)}"
-date: {datetime.now().strftime("%Y-%m-%dT%H:%M:%S+03:00")}
-image: "{image_path}"
-model: "{safe_yaml_value(model)}"
-tags: ["AI", "Tech"]
-draft: false
-categories: ["Технологии"]
----
-
-{text}
-"""
+    # Создаем простой и надежный YAML front matter
+    front_matter = {
+        'title': safe_yaml_value(title),
+        'date': datetime.now().isoformat(),
+        'image': image_path,
+        'model': safe_yaml_value(model),
+        'tags': ['AI', 'Tech'],
+        'draft': 'false',
+        'categories': ['Технологии']
+    }
+    
+    # Генерируем YAML вручную для полного контроля
+    yaml_lines = ['---']
+    for key, value in front_matter.items():
+        if isinstance(value, list):
+            yaml_lines.append(f'{key}: [{", ".join([f\"{v}\" for v in value])}]')
+        else:
+            yaml_lines.append(f'{key}: "{value}"')
+    yaml_lines.append('---')
+    
+    yaml_content = '\n'.join(yaml_lines)
+    content = f"{yaml_content}\n\n{text}"
+    
     with open(filename, 'w', encoding='utf-8') as f:
         f.write(content)
     
-    # Проверяем синтаксис
-    if check_yaml_syntax(filename):
-        logging.info(f"✅ Статья сохранена: {filename}")
-        return True
-    else:
-        logging.error(f"❌ Ошибка в YAML синтаксисе файла: {filename}")
-        # Создаем запасной вариант
-        create_backup_article(title, text, slug)
-        return False
+    # Проверяем содержимое файла
+    with open(filename, 'r', encoding='utf-8') as f:
+        content_check = f.read()
+        logging.info(f"📄 Содержимое файла (первые 200 символов): {content_check[:200]}")
+    
+    logging.info(f"✅ Статья сохранена: {filename}")
+    return True
 
 def update_gallery(title, slug, image_path):
     gallery = []
@@ -233,7 +208,9 @@ def update_gallery(title, slug, image_path):
             gallery = []
 
     # Убедимся, что image_path правильный
-    if not image_path.startswith('/'):
+    if image_path == PLACEHOLDER:
+        image_path = "/images/placeholder.jpg"
+    elif not image_path.startswith('/'):
         image_path = f'/{image_path}'
 
     gallery.insert(0, {
@@ -268,15 +245,16 @@ def main():
     try:
         title, text, model = generate_article()
         slug = slugify(title)
-        image_path = generate_image(title, slug)
+        logging.info(f"📝 Слаг: {slug}")
         
-        # Сохраняем статью и проверяем успешность
-        if save_article(title, text, model, slug, image_path):
-            update_gallery(title, slug, image_path)
-            cleanup_old_posts(keep=10)
-            logging.info("🎉 Генерация статьи завершена успешно!")
-        else:
-            logging.warning("⚠️ Статья сохранена в резервном формате")
+        image_path = generate_image(title, slug)
+        logging.info(f"🖼 Путь к изображению: {image_path}")
+        
+        # Сохраняем статью
+        save_article(title, text, model, slug, image_path)
+        update_gallery(title, slug, image_path)
+        cleanup_old_posts(keep=10)
+        logging.info("🎉 Генерация статьи завершена успешно!")
             
     except Exception as e:
         logging.error(f"❌ Критическая ошибка в main: {e}")
