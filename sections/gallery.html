@@ -1,0 +1,13 @@
+{{ define "main" }}
+<h2>Галерея</h2>
+<div class="carousel">
+  {{ $images := readDir "static/images/gallery" }}
+  {{ range $images }}
+  <div class="carousel-item">
+    <a href="/images/gallery/{{ .Name }}" target="_blank">
+      <img src="/images/gallery/{{ .Name }}" alt="{{ .Name }}">
+    </a>
+  </div>
+  {{ end }}
+</div>
+{{ end }}
