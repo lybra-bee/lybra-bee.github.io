@@ -1,17 +1,24 @@
 {{ define "main" }}
 <section class="hero">
-    <div class="container">
-        {{ $last := first 1 (where .Site.RegularPages "Section" "posts") }}
-        {{ range $last }}
-            <article class="last-article">
-                <h2><a href="{{ .RelPermalink }}">{{ .Title }}</a></h2>
-                {{ with .Params.image }}
-                    <img src="{{ . | relURL }}" alt="{{ .Title }}">
-                {{ end }}
-                <p>{{ .Summary }}</p>
-                <a href="{{ .RelPermalink }}" class="read-more">Читать далее</a>
-            </article>
+  <div class="container">
+    <nav class="nav-header">
+      <a href="/">Главная</a>
+      <a href="/articles/">Статьи</a>
+      <a href="/gallery/">Галерея</a>
+      <a href="/about/">Обо мне</a>
+    </nav>
+
+    {{ $last := first 1 (where .Site.RegularPages "Section" "posts") }}
+    {{ range $last }}
+      <article class="last-article">
+        <h1><a href="{{ .RelPermalink }}">{{ .Title }}</a></h1>
+        {{ with .Params.image }}
+          <img src="{{ . | relURL }}" alt="{{ .Title }}" style="max-width:100%;height:auto;">
         {{ end }}
-    </div>
+        <p>{{ .Summary }}</p>
+        <a href="{{ .RelPermalink }}" class="read-more">Читать далее</a>
+      </article>
+    {{ end }}
+  </div>
 </section>
 {{ end }}
