@@ -10,13 +10,12 @@ from datetime import datetime
 from slugify import slugify
 import yaml
 
-# Настройка логирования
+# Логирование
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # API ключи
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
-SUBNP_BASE_URL = "https://subnp.com"  # возвращаем оригинальный URL
 
 # Папки
 POSTS_DIR = 'content/posts'
@@ -35,10 +34,9 @@ def safe_yaml_value(value):
     value = str(value).replace('"', "'").replace(':', ' -').replace('\n', ' ').replace('\r', ' ')
     return value.strip()
 
+# --------- Генерация статьи ---------
 def generate_article():
     header_prompt = "Проанализируй последние тренды в нейросетях и высоких технологиях и придумай привлекательный заголовок, не более восьми слов"
-    
-    # Генерация заголовка
     try:
         logging.info("📝 Генерация заголовка через OpenRouter...")
         headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}"}
@@ -63,7 +61,6 @@ def generate_article():
             logging.error(f"❌ Ошибка генерации заголовка: {e}")
             title = "Статья о последних трендах в ИИ"
 
-    # Генерация текста
     content_prompt = f"Напиши статью 400-600 слов по заголовку: {title}"
     try:
         logging.info("📝 Генерация статьи через OpenRouter...")
@@ -91,65 +88,53 @@ def generate_article():
             logging.error(f"❌ Ошибка генерации статьи: {e}")
             return title, "Статья временно недоступна.", "None"
 
+# --------- Генерация изображения через SubNP ---------
+SUBNP_BASE_URL = "https://t2i.mcpcore.xyz"
+
+def get_subnp_models():
+    try:
+        r = requests.get(f"{SUBNP_BASE_URL}/api/free/models")
+        r.raise_for_status()
+        data = r.json()
+        if data.get("success") and data.get("models"):
+            return data["models"]
+    except Exception as e:
+        logging.error(f"❌ Ошибка получения моделей SubNP: {e}")
+    return []
+
 def generate_image(title, slug):
     try:
-        logging.info("[SubNP] Запрос на генерацию изображения...")
-        payload = {"prompt": title, "model": "turbo"}
-        
-        # Используем оригинальный эндпоинт
-        response = requests.post(f"{SUBNP_BASE_URL}/api/free/generate", 
-                               headers={"Content-Type": "application/json"}, 
-                               json=payload,
-                               timeout=120)
-        response.raise_for_status()
-        
-        # Пробуем разные варианты обработки ответа
-        try:
-            # Вариант 1: Ответ может быть JSON объектом
-            data = response.json()
-            if data.get('status') == 'complete' and data.get('imageUrl'):
-                image_url = data['imageUrl']
-                logging.info(f"[SubNP] Генерация завершена: {image_url}")
-            else:
-                logging.warning("❌ SubNP вернул неожиданный JSON формат")
-                return PLACEHOLDER
-                
-        except json.JSONDecodeError:
-            # Вариант 2: Ответ может быть потоковым SSE
-            logging.info("[SubNP] Обрабатываем потоковый ответ...")
-            image_url = None
-            for line in response.text.strip().split('\n'):
-                if line.startswith('data: '):
-                    try:
-                        data = json.loads(line[6:])
-                        if data.get('status') == 'complete' and data.get('imageUrl'):
-                            image_url = data['imageUrl']
-                            break
-                    except:
-                        continue
-            
-            if not image_url:
-                logging.warning("❌ SubNP не вернул imageUrl в потоке")
-                return PLACEHOLDER
+        models = get_subnp_models()
+        if not models:
+            logging.warning("❌ Не удалось получить модели SubNP, используем PLACEHOLDER")
+            return PLACEHOLDER
+        model_name = models[0]["model"]  # берём первую доступную модель
 
-        # Скачиваем изображение
-        img_data = requests.get(image_url, timeout=30).content
+        logging.info(f"📝 [SubNP] Запрос на генерацию изображения с моделью {model_name}...")
+        payload = {"prompt": title, "model": model_name}
+        r = requests.post(f"{SUBNP_BASE_URL}/api/free/generate-image", json=payload, timeout=30)
+        if r.status_code != 200:
+            logging.warning(f"❌ SubNP вернул статус {r.status_code}, используем PLACEHOLDER")
+            return PLACEHOLDER
+
+        resp_data = r.json()
+        image_url = resp_data.get("imageUrl")
+        if not image_url:
+            logging.warning("❌ SubNP не вернул imageUrl, используем PLACEHOLDER")
+            return PLACEHOLDER
+
+        img_data = requests.get(image_url).content
         img_path = os.path.join(STATIC_DIR, f"{slug}.png")
         with open(img_path, 'wb') as f:
             f.write(img_data)
         logging.info(f"✅ Изображение сохранено: {img_path}")
         return f"/images/posts/{slug}.png"
 
-    except requests.exceptions.Timeout:
-        logging.error("❌ Таймаут при генерации изображения")
-        return PLACEHOLDER
-    except requests.exceptions.RequestException as e:
-        logging.error(f"❌ Ошибка сети при генерации изображения: {e}")
-        return PLACEHOLDER
     except Exception as e:
-        logging.error(f"❌ Неожиданная ошибка при генерации изображения: {e}")
+        logging.error(f"❌ Ошибка генерации изображения SubNP: {e}")
         return PLACEHOLDER
 
+# --------- Сохранение статьи ---------
 def save_article(title, text, model, slug, image_path):
     filename = os.path.join(POSTS_DIR, f'{slug}.md')
     front_matter = {
@@ -162,15 +147,12 @@ def save_article(title, text, model, slug, image_path):
         'categories': ["Технологии"]
     }
     yaml_content = yaml.safe_dump(front_matter, allow_unicode=True, default_flow_style=False, sort_keys=False)
-    content = f"""---
-{yaml_content}---
-
-{text}
-"""
+    content = f"---\n{yaml_content}---\n\n{text}"
     with open(filename, 'w', encoding='utf-8') as f:
         f.write(content)
     logging.info(f"✅ Статья сохранена: {filename}")
 
+# --------- Обновление галереи ---------
 def update_gallery(title, slug, image_path):
     gallery = []
     if os.path.exists(GALLERY_FILE):
@@ -195,20 +177,19 @@ def update_gallery(title, slug, image_path):
     except Exception as e:
         logging.error(f"❌ Ошибка сохранения галереи: {e}")
 
+# --------- Очистка старых постов ---------
 def cleanup_old_posts(keep=10):
     try:
-        posts = sorted(
-            glob.glob(os.path.join(POSTS_DIR, "*.md")),
-            key=os.path.getmtime,
-            reverse=True
-        )
-        if len(posts) > keep:
-            for old in posts[keep:]:
-                logging.info(f"🗑 Удаляю старую статью: {old}")
-                os.remove(old)
+        posts = sorted(glob.glob(os.path.join(POSTS_DIR, "*.md")),
+                       key=os.path.getmtime,
+                       reverse=True)
+        for old in posts[keep:]:
+            logging.info(f"🗑 Удаляю старую статью: {old}")
+            os.remove(old)
     except Exception as e:
         logging.error(f"❌ Ошибка очистки старых постов: {e}")
 
+# --------- Main ---------
 def main():
     try:
         title, text, model = generate_article()
