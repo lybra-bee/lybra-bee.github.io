@@ -1,3 +1,8 @@
+- alt: '«Будущее уже здесь: как нейросети и высокие технологии трансформируют наши
+    жизни»'
+  src: /images/posts/budushchee-uzhe-zdes-kak-neiroseti-i-vysokie-tekhnologii-transformiruiut-nashi-zhizni.png
+  title: '«Будущее уже здесь: как нейросети и высокие технологии трансформируют наши
+    жизни»'
 - alt: '"Нейросети и высокие технологии: Революция в нашем будущем"'
   src: /images/posts/neiroseti-i-vysokie-tekhnologii-revoliutsiia-v-nashem-budushchem.png
   title: '"Нейросети и высокие технологии: Революция в нашем будущем"'
@@ -65,6 +70,3 @@
 - alt: VR-шлем в действии
   src: /assets/images/posts/vr-experience.png
   title: Виртуальная реальность
-- alt: Современный промышленный робот
-  src: /assets/images/posts/robotics.png
-  title: Робототехника
