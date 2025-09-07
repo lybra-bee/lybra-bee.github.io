@@ -1,0 +1,15 @@
+{{ define "main" }}
+<h2>Все статьи</h2>
+<div class="carousel">
+  {{ range .Site.RegularPages }}
+  <div class="carousel-item">
+    <a href="{{ .RelPermalink }}">
+      {{ with .Params.image }}
+      <img src="{{ . }}" alt="{{ .Title }}">
+      {{ end }}
+      <h3>{{ .Title }}</h3>
+    </a>
+  </div>
+  {{ end }}
+</div>
+{{ end }}
