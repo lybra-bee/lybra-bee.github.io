@@ -27,19 +27,23 @@ jobs:
         python -m pip install --upgrade pip
         pip install requests python-slugify pyyaml
 
+    - name: Create necessary directories
+      run: |
+        mkdir -p content/posts
+        mkdir -p assets/images/posts
+        mkdir -p data
+
     - name: Generate article and image
       run: python .github/scripts/generate_content.py
       env:
         OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-        FUSIONBRAIN_API_KEY: ${{ secrets.FUSIONBRAIN_API_KEY }}
-        FUSION_SECRET_KEY: ${{ secrets.FUSION_SECRET_KEY }}
 
     - name: Commit generated content to main
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
-        git add content/posts assets/images/posts data/gallery.yaml
+        git add content/posts/ assets/images/posts/ data/gallery.yaml
         git commit -m "📝 Сгенерирована новая статья и изображение [CI]" || echo "No changes to commit"
         git push
 
