@@ -1,3 +1,6 @@
+- title: Будущее наступает - нейросети и новые технологии
+  alt: Будущее наступает - нейросети и новые технологии
+  src: static/images/placeholder.jpg
 - alt: Будущее уже здесь - нейросети и технологии 2023
   src: /static/images/placeholder.jpg
   title: Будущее уже здесь - нейросети и технологии 2023
@@ -61,6 +64,3 @@
 - alt: '"Новые горизонты: нейросети меняют нашу реальность"'
   src: /images/posts/novye-gorizonty-neiroseti-meniaiut-nashu-realnost.png
   title: '"Новые горизонты: нейросети меняют нашу реальность"'
-- alt: '"Будущее уже наступило: Как нейросети и высокие технологии меняют наш мир"'
-  src: /images/posts/budushchee-uzhe-nastupilo-kak-neiroseti-i-vysokie-tekhnologii-meniaiut-nash-mir.png
-  title: '"Будущее уже наступило: Как нейросети и высокие технологии меняют наш мир"'
