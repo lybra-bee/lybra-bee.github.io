@@ -35,15 +35,9 @@ os.makedirs(POSTS_DIR, exist_ok=True)
 os.makedirs(STATIC_DIR, exist_ok=True)
 os.makedirs(os.path.dirname(PLACEHOLDER), exist_ok=True)
 
-def sanitize_title(title: str) -> str:
-    """Убираем переносы строк и заменяем кавычки на стандартные"""
-    title = title.replace('\n', ' ')
-    title = title.replace('«', '"').replace('»', '"').replace('“', '"').replace('”', '"')
-    title = title.replace("'", "’")  # одинарные кавычки в апостроф
-    return title.strip()
-
 def generate_article():
-    header_prompt = "Проанализируй последние тренды в нейросетях и высоких технологиях и на их основе придумай привлекательный заголовок для статьи"
+    # Заголовок
+    header_prompt = "Проанализируй последние тренды в нейросетях и высоких технологиях и придумай короткий привлекательный заголовок из 6-8 слов"
     headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}"}
 
     try:
@@ -52,7 +46,7 @@ def generate_article():
                           headers=headers,
                           json={"model": "gpt-4o-mini", "messages":[{"role":"user","content":header_prompt}]})
         r.raise_for_status()
-        title = sanitize_title(r.json()["choices"][0]["message"]["content"])
+        title = r.json()["choices"][0]["message"]["content"].strip()
         logging.info("✅ Заголовок получен через OpenRouter")
     except Exception as e:
         logging.warning(f"⚠️ OpenRouter заголовок не сработал: {e}")
@@ -63,12 +57,13 @@ def generate_article():
                               headers=headers_groq,
                               json={"model": "gpt-4o-mini", "messages":[{"role":"user","content":header_prompt}]})
             r.raise_for_status()
-            title = sanitize_title(r.json()["choices"][0]["message"]["content"])
+            title = r.json()["choices"][0]["message"]["content"].strip()
             logging.info("✅ Заголовок получен через Groq")
         except Exception as e:
             logging.error(f"❌ Ошибка генерации заголовка: {e}")
             title = "Статья о последних трендах в ИИ"
 
+    # Статья
     content_prompt = f"Напиши статью 400-600 слов по заголовку: {title}"
     try:
         logging.info("📝 Генерация статьи через OpenRouter...")
@@ -127,7 +122,7 @@ def generate_image(title, slug):
                 break
             time.sleep(3)
         else:
-            logging.warning("❌ Изображение не сгенерировано за отведённое время")
+            logging.warning("❌ Изображение не сгенерировано")
             return PLACEHOLDER
 
         img_bytes = base64.b64decode(image_base64)
@@ -144,11 +139,13 @@ def generate_image(title, slug):
 def save_article(title, text, model, slug, image_path):
     filename = os.path.join(POSTS_DIR, f'{slug}.md')
     date = datetime.now().strftime("%Y-%m-%d")
+    safe_title = title.replace('\n', ' ').replace('"', "'")
+    safe_model = model.replace('\n', ' ').replace('"', "'")
     content = f"""---
-title: "{title}"
-date: {date}
+title: "{safe_title}"
+date: "{date}"
 image: "/{image_path}"
-model: "{model}"
+model: "{safe_model}"
 tags:
   - AI
   - Tech
