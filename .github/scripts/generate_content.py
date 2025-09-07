@@ -6,6 +6,7 @@ import time
 import base64
 import logging
 import glob
+import re
 from datetime import datetime
 from slugify import slugify
 import yaml
@@ -16,14 +17,12 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 # API ключи из environment variables
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
-FUSIONBRAIN_API_KEY = os.environ.get("FUSIONBRAIN_API_KEY")
-FUSION_SECRET_KEY = os.environ.get("FUSION_SECRET_KEY")
 
 # Папки (соответствуют вашей структуре Hugo)
 POSTS_DIR = 'content/posts'
-STATIC_DIR = 'assets/images/posts'  # Изменено на assets для Hugo
+STATIC_DIR = 'assets/images/posts'
 GALLERY_FILE = 'data/gallery.yaml'
-PLACEHOLDER = 'assets/images/placeholder.jpg'  # Изменено на assets
+PLACEHOLDER = 'assets/images/placeholder.jpg'
 
 os.makedirs(POSTS_DIR, exist_ok=True)
 os.makedirs(STATIC_DIR, exist_ok=True)
@@ -92,128 +91,158 @@ def generate_article():
             logging.error(f"❌ Ошибка генерации статьи: {e}")
             return title, "Статья временно недоступна.", "None"
 
-def generate_image_with_fusionbrain(title, slug):
-    """Генерация изображения через FusionBrain API"""
+def generate_image_with_free_api(title, slug):
+    """Бесплатные API для генерации изображений"""
+    
+    # 1. Попробуем Hugging Face API
     try:
-        if not FUSIONBRAIN_API_KEY or not FUSION_SECRET_KEY:
-            logging.warning("❌ Ключи FusionBrain не настроены")
-            return None
-            
-        logging.info("🎨 Генерация изображения через FusionBrain...")
+        logging.info("🎨 Пробуем Hugging Face API...")
         
-        # 1. Получаем ID модели
-        models_url = "https://api.fusionbrain.ai/web/api/v1/models"
-        models_response = requests.get(models_url)
-        models_data = models_response.json()
-        
-        if not models_data or 'id' not in models_data[0]:
-            logging.warning("❌ Не удалось получить модели FusionBrain")
-            return None
-            
-        model_id = models_data[0]['id']
-        
-        # 2. Генерируем изображение
-        generate_url = f"https://api.fusionbrain.ai/web/api/v1/text2image/run?model_id={model_id}"
-        
-        headers = {
-            "X-Key": f"Key {FUSIONBRAIN_API_KEY}",
-            "X-Secret": f"Secret {FUSION_SECRET_KEY}",
-            "Content-Type": "application/json"
-        }
+        api_url = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2-1"
         
         payload = {
-            "type": "GENERATE",
-            "style": "UHD",
-            "width": 1024,
-            "height": 1024,
-            "num_images": 1,
-            "generateParams": {
-                "query": f"digital art, high quality, {title}"
-            }
+            "inputs": f"digital art, high quality, professional, {title}",
         }
         
-        response = requests.post(generate_url, headers=headers, json=payload)
-        response.raise_for_status()
+        response = requests.post(api_url, json=payload, timeout=120)
         
-        generate_data = response.json()
-        uuid = generate_data.get('uuid')
+        if response.status_code == 200:
+            img_path = os.path.join(STATIC_DIR, f"{slug}.png")
+            with open(img_path, 'wb') as f:
+                f.write(response.content)
+            logging.info(f"✅ Изображение Hugging Face сохранено: {img_path}")
+            return f"/images/posts/{slug}.png"
+            
+    except Exception as e:
+        logging.warning(f"⚠️ Hugging Face не сработал: {e}")
+    
+    # 2. Попробуем другой публичный API
+    try:
+        logging.info("🎨 Пробуем публичный AI API...")
         
-        if not uuid:
-            logging.warning("❌ Не получили UUID для генерации")
-            return None
+        api_url = "https://api.vyro.ai/v1/imagine/api/generations"
         
-        # 3. Ждем завершения генерации
-        max_attempts = 30
-        for attempt in range(max_attempts):
-            time.sleep(2)
-            
-            check_url = f"https://api.fusionbrain.ai/web/api/v1/text2image/status/{uuid}"
-            status_response = requests.get(check_url, headers=headers)
-            status_data = status_response.json()
-            
-            if status_data.get('status') == 'DONE':
-                images = status_data.get('images', [])
-                if images:
-                    # Декодируем base64 изображение
-                    image_data = base64.b64decode(images[0])
-                    img_path = os.path.join(STATIC_DIR, f"{slug}.png")
-                    
-                    with open(img_path, 'wb') as f:
-                        f.write(image_data)
-                    
-                    logging.info(f"✅ Изображение FusionBrain сохранено: {img_path}")
-                    return f"/images/posts/{slug}.png"
-            
-            elif status_data.get('status') == 'FAIL':
-                logging.warning("❌ Ошибка генерации FusionBrain")
-                break
+        payload = {
+            "prompt": f"digital art, high quality, {title}",
+            "style": "realistic",
+            "ratio": "1:1"
+        }
+        
+        response = requests.post(api_url, json=payload, timeout=60)
+        
+        if response.status_code == 200:
+            data = response.json()
+            if data.get('image_url'):
+                img_data = requests.get(data['image_url'], timeout=30).content
+                img_path = os.path.join(STATIC_DIR, f"{slug}.png")
                 
-        logging.warning("❌ Таймаут генерации FusionBrain")
-        return None
+                with open(img_path, 'wb') as f:
+                    f.write(img_data)
+                
+                logging.info(f"✅ Изображение публичного API сохранено: {img_path}")
+                return f"/images/posts/{slug}.png"
+                
+    except Exception as e:
+        logging.warning(f"⚠️ Публичный API не сработал: {e}")
+    
+    return None
+
+def generate_ai_image(title, slug):
+    """Генерация изображения с помощью AI"""
+    try:
+        logging.info("🎨 Генерация AI изображения...")
+        
+        # Пробуем бесплатные API
+        image_path = generate_image_with_free_api(title, slug)
+        if image_path:
+            return image_path
+            
+        # Если API не сработали, создаем качественное SVG
+        return generate_quality_svg_image(title, slug)
         
     except Exception as e:
-        logging.error(f"❌ Ошибка FusionBrain: {e}")
-        return None
+        logging.error(f"❌ Ошибка генерации AI изображения: {e}")
+        return generate_quality_svg_image(title, slug)
 
-def generate_simple_image(title, slug):
-    """Создает простое текстовое изображение"""
+def generate_quality_svg_image(title, slug):
+    """Создает качественное SVG изображение"""
     try:
-        logging.info("🖼️ Создание простого текстового изображения...")
+        logging.info("🖼️ Создание качественного SVG изображения...")
         
-        # Создаем SVG изображение с текстом
         img_path = os.path.join(STATIC_DIR, f"{slug}.svg")
         safe_title = title.replace('"', '&quot;').replace('&', '&amp;')
         
-        svg_content = f'''<svg width="1024" height="1024" xmlns="http://www.w3.org/2000/svg">
-            <rect width="100%" height="100%" fill="#2D2D3C"/>
-            <text x="512" y="512" font-family="Arial, sans-serif" font-size="40" fill="white" 
-                  text-anchor="middle" dominant-baseline="middle">
-                {safe_title}
+        # Разбиваем текст на строки
+        words = safe_title.split()
+        lines = []
+        current_line = []
+        
+        for word in words:
+            test_line = ' '.join(current_line + [word])
+            if len(test_line) <= 25:
+                current_line.append(word)
+            else:
+                lines.append(' '.join(current_line))
+                current_line = [word]
+        
+        if current_line:
+            lines.append(' '.join(current_line))
+        
+        # Создаем красивое SVG с градиентом
+        svg_content = f'''<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+            <defs>
+                <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#667eea" />
+                    <stop offset="100%" stop-color="#764ba2" />
+                </linearGradient>
+                <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur in="SourceAlpha" stdDeviation="20" result="blur"/>
+                    <feOffset in="blur" dx="10" dy="10" result="offsetBlur"/>
+                    <feFlood flood-color="#000000" flood-opacity="0.5" result="offsetColor"/>
+                    <feComposite in="offsetColor" in2="offsetBlur" operator="in" result="offsetBlur"/>
+                    <feBlend in="SourceGraphic" in2="offsetBlur" mode="normal"/>
+                </filter>
+            </defs>
+            
+            <rect width="1200" height="630" fill="url(#gradient)" />
+            
+            <!-- Декоративные элементы -->
+            <circle cx="100" cy="100" r="50" fill="white" opacity="0.1" />
+            <circle cx="1100" cy="500" r="80" fill="white" opacity="0.1" />
+            <circle cx="300" cy="400" r="40" fill="white" opacity="0.1" />
+            
+            <!-- Основной текст -->
+            <g font-family="Arial, sans-serif" fill="white" text-anchor="middle">
+                {"".join(f'<text x="600" y="{250 + i*60}" font-size="36" font-weight="bold" filter="url(#shadow)">{line}</text>' 
+                         for i, line in enumerate(lines))}
+            </g>
+            
+            <!-- Подпись -->
+            <text x="600" y="580" font-family="Arial, sans-serif" font-size="20" fill="white" opacity="0.8" text-anchor="middle">
+                AI Generated Content • {datetime.now().strftime("%d.%m.%Y")}
             </text>
-            <text x="20" y="1004" font-family="Arial, sans-serif" font-size="20" fill="#C8C8C8">
-                Generated by AI
-            </text>
+            
+            <!-- Иконка AI -->
+            <g transform="translate(50, 550)" font-family="Arial, sans-serif" font-size="16" fill="white">
+                <rect x="0" y="0" width="30" height="30" rx="5" fill="white" opacity="0.2" />
+                <text x="15" y="20" text-anchor="middle" font-weight="bold">AI</text>
+            </g>
         </svg>'''
         
         with open(img_path, 'w', encoding='utf-8') as f:
             f.write(svg_content)
         
-        logging.info(f"✅ SVG изображение создано: {img_path}")
+        logging.info(f"✅ Качественное SVG изображение создано: {img_path}")
         return f"/images/posts/{slug}.svg"
         
     except Exception as e:
         logging.error(f"❌ Ошибка создания SVG изображения: {e}")
-        return None
+        return PLACEHOLDER
 
 def generate_image(title, slug):
     """Основная функция генерации изображения"""
-    # Пробуем FusionBrain сначала
-    image_path = generate_image_with_fusionbrain(title, slug)
-    if image_path:
-        return image_path
-    
-    # Fallback: простое SVG изображение
-    image_path = generate_simple_image(title, slug)
+    # Пробуем AI генерацию
+    image_path = generate_ai_image(title, slug)
     if image_path:
         return image_path
     
