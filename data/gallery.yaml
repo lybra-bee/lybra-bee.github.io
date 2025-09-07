@@ -1,3 +1,6 @@
+- alt: Будущее без кода - нейросети меняют разработки
+  src: static/images/placeholder.jpg
+  title: Будущее без кода - нейросети меняют разработки
 - alt: '"Будущее технологий: Нейросети, которые изменят мир"'
   src: /static/images/placeholder.jpg
   title: '"Будущее технологий: Нейросети, которые изменят мир"'
@@ -63,8 +66,3 @@
   src: /images/posts/iskusstvennyi-intellekt-i-vysokie-tekhnologii-obnovlennoe-budushchee-ot-avtonomnykh-sistem-do-eticheskoi-otvetstvennosti.png
   title: '«Искусственный интеллект и высокие технологии: Обновленное будущее — от
     автономных систем до этической ответственности»'
-- alt: '"Будущее уже здесь: Тренды в искусственном интеллекте и высоких технологиях,
-    которые изменят наш мир"'
-  src: /assets/images/posts/budushchee-uzhe-zdes-trendy-v-iskusstvennom-intellekte-i-vysokikh-tekhnologiiakh-kotorye-izmeniat-nash-mir.png
-  title: '"Будущее уже здесь: Тренды в искусственном интеллекте и высоких технологиях,
-    которые изменят наш мир"'
