@@ -5,6 +5,7 @@ import requests
 import time
 import base64
 import logging
+import glob
 from datetime import datetime
 from slugify import slugify
 import yaml
@@ -26,17 +27,17 @@ AUTH_HEADERS = {
 
 # Папки
 POSTS_DIR = 'content/posts'
-ASSETS_DIR = 'static/images/posts'
+STATIC_DIR = 'static/images/posts'
 GALLERY_FILE = 'data/gallery.yaml'
 PLACEHOLDER = 'static/images/placeholder.jpg'
 
 os.makedirs(POSTS_DIR, exist_ok=True)
-os.makedirs(ASSETS_DIR, exist_ok=True)
+os.makedirs(STATIC_DIR, exist_ok=True)
 os.makedirs(os.path.dirname(PLACEHOLDER), exist_ok=True)
 
 def generate_article():
     # Сначала генерируем заголовок
-    header_prompt = "Напиши короткий, привлекательный заголовок статьи о последних трендах в искусственном интеллекте и высоких технологиях."
+    header_prompt = "Проанализируй последние трендв в нейросетях и высоких технологиях и на их основе придумай привлекательный заголовок для статьи"
     headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}"}
 
     # OpenRouter заголовок
@@ -129,7 +130,7 @@ def generate_image(title, slug):
             return PLACEHOLDER
 
         img_bytes = base64.b64decode(image_base64)
-        img_path = os.path.join(ASSETS_DIR, f'{slug}.png')
+        img_path = os.path.join(STATIC_DIR, f'{slug}.png')
         with open(img_path, 'wb') as f:
             f.write(img_bytes)
 
@@ -145,8 +146,18 @@ def save_article(title, text, model, slug, image_path):
     # Экранируем кавычки
     title_safe = title.replace('"', "'")
     model_safe = model.replace('"', "'")
+    content = f"""---
+title: "{title_safe}"
+date: {date}
+image: "/{image_path}"
+model: "{model_safe}"
+tags: [AI, Tech]
+---
+
+{text}
+"""
     with open(filename, 'w', encoding='utf-8') as f:
-        f.write(f"---\ntitle: \"{title_safe}\"\ndate: {date}\nimage: \"/{image_path}\"\nmodel: \"{model_safe}\"\ntags: [AI, Tech]\n---\n\n{text}")
+        f.write(content)
     logging.info(f"✅ Статья сохранена: {filename}")
 
 def update_gallery(title, slug, image_path):
@@ -162,12 +173,24 @@ def update_gallery(title, slug, image_path):
         yaml.safe_dump(gallery, f, allow_unicode=True)
     logging.info(f"✅ Галерея обновлена: {GALLERY_FILE}")
 
+def cleanup_old_posts(keep=10):
+    posts = sorted(
+        glob.glob(os.path.join(POSTS_DIR, "*.md")),
+        key=os.path.getmtime,
+        reverse=True
+    )
+    if len(posts) > keep:
+        for old in posts[keep:]:
+            logging.info(f"🗑 Удаляю старую статью: {old}")
+            os.remove(old)
+
 def main():
     title, text, model = generate_article()
     slug = slugify(title)
     image_path = generate_image(title, slug)
     save_article(title, text, model, slug, image_path)
     update_gallery(title, slug, image_path)
+    cleanup_old_posts(keep=10)
 
 if __name__ == "__main__":
     main()
