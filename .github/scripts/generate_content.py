@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 # API ключи
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
-SUBNP_BASE_URL = "https://subnp.com/api/free/generate"  # бесплатный SubNP
+SUBNP_BASE_URL = "https://t2i.mcpcore.xyz"  # новый базовый URL
 
 # Папки
 POSTS_DIR = 'content/posts'
@@ -34,6 +34,49 @@ def safe_yaml_value(value):
         return ""
     value = str(value).replace('"', "'").replace(':', ' -').replace('\n', ' ').replace('\r', ' ')
     return value.strip()
+
+def get_available_models():
+    """Получить список доступных моделей для генерации изображений"""
+    try:
+        logging.info("🔄 Получение списка доступных моделей...")
+        response = requests.get(f"{SUBNP_BASE_URL}/api/free/models", timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        
+        if data.get('success') and 'models' in data:
+            models = [model['model'] for model in data['models']]
+            logging.info(f"✅ Доступные модели: {', '.join(models)}")
+            return models
+        else:
+            logging.warning("⚠️ Не удалось получить список моделей")
+            return ['turbo']  # fallback модель
+            
+    except Exception as e:
+        logging.warning(f"⚠️ Ошибка получения моделей: {e}")
+        return ['turbo']  # fallback модель
+
+def get_api_stats():
+    """Получить статистику использования API"""
+    try:
+        logging.info("📊 Проверка статистики API...")
+        response = requests.get(f"{SUBNP_BASE_URL}/api/free/stats", timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        
+        logging.info(f"📈 Статистика API: {data.get('totalRequests', 0)} запросов, "
+                    f"успешность: {data.get('successRate', 0)}%, "
+                    f"последний час: {data.get('lastHourRequests', 0)}")
+        
+        # Проверяем, не перегружен ли API
+        last_hour_requests = data.get('lastHourRequests', 0)
+        if last_hour_requests > 100:  # Если больше 100 запросов в час
+            logging.warning("⚠️ API может быть перегружен")
+            return False
+        return True
+        
+    except Exception as e:
+        logging.warning(f"⚠️ Ошибка получения статистики API: {e}")
+        return True  # Продолжаем работу даже если статистика недоступна
 
 def generate_article():
     header_prompt = "Проанализируй последние тренды в нейросетях и высоких технологиях и придумай привлекательный заголовок, не более восьми слов"
@@ -93,25 +136,57 @@ def generate_article():
 
 def generate_image(title, slug):
     try:
-        logging.info("[SubNP] Запрос на генерацию изображения...")
-        payload = {"prompt": title, "model": "turbo"}
-        r = requests.post(SUBNP_BASE_URL, headers={"Content-Type": "application/json"}, json=payload)
-        r.raise_for_status()
-        text_stream = r.text.strip().split("\n")
+        # Проверяем доступность API
+        if not get_api_stats():
+            logging.warning("⚠️ API может быть перегружен, используем заглушку")
+            return PLACEHOLDER
+        
+        # Получаем доступные модели
+        available_models = get_available_models()
+        selected_model = available_models[0] if available_models else 'turbo'
+        
+        logging.info(f"[SubNP] Запрос на генерацию изображения с моделью '{selected_model}'...")
+        payload = {"prompt": title, "model": selected_model}
+        
+        # Отправляем запрос с потоковой передачей
+        response = requests.post(f"{SUBNP_BASE_URL}/api/free/generate", 
+                               headers={"Content-Type": "application/json"}, 
+                               json=payload, 
+                               stream=True,
+                               timeout=120)
+        response.raise_for_status()
+        
         image_url = None
-        for line in text_stream:
-            if not line.startswith("data: "):
-                continue
-            try:
-                data = json.loads(line[6:])
-                if data.get("status") == "complete" and "imageUrl" in data:
-                    image_url = data["imageUrl"]
-                    break
-            except Exception:
-                continue
+        # Обрабатываем потоковые данные
+        for line in response.iter_lines(decode_unicode=True):
+            if line and line.startswith('data: '):
+                try:
+                    data = json.loads(line[6:])  # Убираем 'data: ' и парсим JSON
+                    
+                    if data.get('status') == 'processing':
+                        progress = data.get('message', '')
+                        if progress:
+                            logging.info(f"[SubNP] Прогресс: {progress}")
+                    
+                    elif data.get('status') == 'complete' and data.get('imageUrl'):
+                        image_url = data['imageUrl']
+                        logging.info(f"[SubNP] Генерация завершена: {image_url}")
+                        break
+                    
+                    elif data.get('status') == 'error':
+                        error_msg = data.get('message', 'Неизвестная ошибка')
+                        logging.error(f"[SubNP] Ошибка: {error_msg}")
+                        break
+                        
+                except json.JSONDecodeError as e:
+                    logging.warning(f"[SubNP] Ошибка парсинга JSON: {e}, строка: {line}")
+                    continue
+                except Exception as e:
+                    logging.warning(f"[SubNP] Ошибка обработки данных: {e}")
+                    continue
 
         if not image_url:
-            logging.warning("❌ SubNP вернул не complete -> imageUrl, используем PLACEHOLDER")
+            logging.warning("❌ SubNP не вернул imageUrl, используем PLACEHOLDER")
             return PLACEHOLDER
 
         # Скачиваем изображение
@@ -122,8 +197,14 @@ def generate_image(title, slug):
         logging.info(f"✅ Изображение сохранено: {img_path}")
         return f"/images/posts/{slug}.png"
 
+    except requests.exceptions.Timeout:
+        logging.error("❌ Таймаут при генерации изображения")
+        return PLACEHOLDER
+    except requests.exceptions.RequestException as e:
+        logging.error(f"❌ Ошибка сети при генерации изображения: {e}")
+        return PLACEHOLDER
     except Exception as e:
-        logging.error(f"❌ Ошибка генерации изображения: {e}")
+        logging.error(f"❌ Неожиданная ошибка при генерации изображения: {e}")
         return PLACEHOLDER
 
 def save_article(title, text, model, slug, image_path):
