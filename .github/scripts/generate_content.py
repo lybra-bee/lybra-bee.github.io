@@ -26,50 +26,50 @@ AUTH_HEADERS = {
 
 # Папки
 POSTS_DIR = 'content/posts'
-STATIC_DIR = 'static/images/posts'
+STATIC_IMAGES_DIR = 'static/images/posts'
 GALLERY_FILE = 'data/gallery.yaml'
 PLACEHOLDER = 'static/images/placeholder.jpg'
 
 os.makedirs(POSTS_DIR, exist_ok=True)
-os.makedirs(STATIC_DIR, exist_ok=True)
+os.makedirs(STATIC_IMAGES_DIR, exist_ok=True)
 os.makedirs(os.path.dirname(PLACEHOLDER), exist_ok=True)
 
 def generate_title():
-    prompt = "Составь короткий привлекательный заголовок для статьи о последних трендах в искусственном интеллекте и высоких технологиях."
-    # OpenRouter
+    prompt = "Придумай короткий, яркий заголовок (5–12 слов) для статьи о новых трендах в искусственном интеллекте и высоких технологиях."
+    headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}"}
+
     try:
-        headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}"}
         logging.info("📝 Генерация заголовка через OpenRouter...")
         r = requests.post("https://openrouter.ai/api/v1/chat/completions",
                           headers=headers,
                           json={"model": "gpt-4o-mini", "messages":[{"role":"user","content":prompt}]})
         r.raise_for_status()
-        title = r.json()["choices"][0]["message"]["content"].strip()
-        logging.info(f"✅ Заголовок получен через OpenRouter: {title}")
+        title = r.json()["choices"][0]["message"]["content"].strip().strip('"')
+        logging.info(f"✅ Заголовок получен: {title}")
         return title
     except Exception as e:
-        logging.warning(f"⚠️ OpenRouter не сработал: {e}")
+        logging.warning(f"⚠️ OpenRouter не сработал для заголовка: {e}")
 
-    # Groq fallback
     try:
-        headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
         logging.info("📝 Генерация заголовка через Groq...")
+        headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
         r = requests.post("https://api.groq.com/openai/v1/chat/completions",
                           headers=headers,
                           json={"model": "gpt-4o-mini", "messages":[{"role":"user","content":prompt}]})
         r.raise_for_status()
-        title = r.json()["choices"][0]["message"]["content"].strip()
+        title = r.json()["choices"][0]["message"]["content"].strip().strip('"')
         logging.info(f"✅ Заголовок получен через Groq: {title}")
         return title
     except Exception as e:
         logging.error(f"❌ Ошибка генерации заголовка: {e}")
-        return "Последние тренды в ИИ и технологиях"
+        return "Новые тренды в искусственном интеллекте"
 
 def generate_article(title):
-    prompt = f"Напиши статью на 400-600 слов по заголовку: {title}"
+    prompt = f"Напиши статью на 400-600 слов по теме: {title}."
+    headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}"}
+
     # OpenRouter
     try:
-        headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}"}
         logging.info("📝 Генерация статьи через OpenRouter...")
         r = requests.post("https://openrouter.ai/api/v1/chat/completions",
                           headers=headers,
@@ -83,9 +83,9 @@ def generate_article(title):
 
     # Groq fallback
     try:
-        headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
         logging.info("📝 Генерация статьи через Groq...")
-        r = requests.post("https://api.groq.com/v1/chat/completions",
+        headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
+        r = requests.post("https://api.groq.com/openai/v1/chat/completions",
                           headers=headers,
                           json={"model": "gpt-4o-mini", "messages":[{"role":"user","content":prompt}]})
         r.raise_for_status()
@@ -132,8 +132,7 @@ def generate_image(title, slug):
             return PLACEHOLDER
 
         img_bytes = base64.b64decode(image_base64)
-        img_path = os.path.join(STATIC_DIR, f'{slug}.png')
-        os.makedirs(os.path.dirname(img_path), exist_ok=True)
+        img_path = os.path.join(STATIC_IMAGES_DIR, f'{slug}.png')
         with open(img_path, 'wb') as f:
             f.write(img_bytes)
 
@@ -141,15 +140,23 @@ def generate_image(title, slug):
         return f"images/posts/{slug}.png"
     except Exception as e:
         logging.error(f"❌ Ошибка генерации изображения: {e}")
-        return PLACEHOLDER
+        return "images/placeholder.jpg"
 
 def save_article(title, text, model, slug, image_path):
     filename = os.path.join(POSTS_DIR, f'{slug}.md')
     date = datetime.now().strftime("%Y-%m-%d")
-    # Убираем двойные кавычки из заголовка в YAML
-    title_yaml = title.replace('"', "'")
     with open(filename, 'w', encoding='utf-8') as f:
-        f.write(f"---\ntitle: '{title_yaml}'\ndate: {date}\nimage: '/{image_path}'\nmodel: {model}\ntags: [AI, Tech]\n---\n\n{text}")
+        f.write(
+f"""---
+title: "{title}"
+date: {date}
+image: "/{image_path}"
+model: {model}
+tags: [AI, Tech]
+---
+
+{text}"""
+        )
     logging.info(f"✅ Статья сохранена: {filename}")
 
 def update_gallery(title, slug, image_path):
