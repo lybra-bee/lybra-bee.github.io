@@ -1,59 +1,55 @@
-{{ define "main" }}
-<!-- Hero Section -->
-<section class="hero relative bg-cover bg-center h-screen flex items-center justify-center text-center text-white"
-         style="background-image: url('/images/bg-hero.jpg');">
-  <div class="bg-black bg-opacity-50 p-8 rounded-2xl">
-    <img src="/images/avatar.png" alt="Avatar" class="w-32 h-32 rounded-full mx-auto mb-4 shadow-lg border-4 border-white">
-    <h1 class="text-4xl md:text-6xl font-bold mb-2">Алексей — Инженер ИИ & Веб-дизайнер</h1>
-    <p class="text-lg md:text-xl mb-6">Создаю сайты, ботов и нейросети, которые работают за вас</p>
-    <div class="flex justify-center gap-4">
-      <a href="#gallery" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 rounded-xl text-white font-semibold shadow-md">Галерея</a>
-      <a href="#contacts" class="px-6 py-3 bg-white hover:bg-gray-200 rounded-xl text-gray-800 font-semibold shadow-md">Связаться</a>
-    </div>
-  </div>
-</section>
+<!DOCTYPE html>
+<html lang="ru" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ .Site.Title }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // Переключатель темы
+    function toggleTheme() {
+      document.documentElement.classList.toggle('dark');
+      localStorage.theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+    }
+    // При загрузке страницы
+    if (localStorage.theme === 'dark' || (!('theme' in localStorage) &&
+        window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
+  </script>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen flex flex-col">
 
-<!-- About Section -->
-<section id="about" class="py-16 bg-gray-50 dark:bg-gray-800 text-center">
-  <div class="max-w-4xl mx-auto px-4">
-    <h2 class="text-3xl font-bold mb-6 text-gray-900 dark:text-white">Обо мне</h2>
-    <p class="text-lg text-gray-700 dark:text-gray-300 mb-8">
-      Я разрабатываю современные веб-сайты, создаю Telegram-ботов, 
-      работаю с нейросетями (ИИ, генерация видео, музыки и текста). 
-      Моя цель — автоматизировать процессы и создавать удобные цифровые продукты.
-    </p>
-  </div>
-</section>
+  <!-- Шапка -->
+  <header class="w-full px-6 py-4 flex justify-between items-center bg-white/80 dark:bg-gray-800/80 shadow-md backdrop-blur sticky top-0 z-50">
+    <h1 class="text-2xl font-bold">{{ .Site.Title }}</h1>
+    <button onclick="toggleTheme()" class="px-3 py-1 rounded-xl bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600">
+      🌙 / ☀️
+    </button>
+  </header>
 
-<!-- Gallery Section -->
-<section id="gallery" class="py-16 bg-white dark:bg-gray-900 text-center">
-  <div class="max-w-6xl mx-auto px-4">
-    <h2 class="text-3xl font-bold mb-10 text-gray-900 dark:text-white">Галерея</h2>
-    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
+  <!-- Галерея -->
+  <main class="flex-1 container mx-auto px-6 py-12">
+    <h2 class="text-3xl font-semibold mb-8 text-center">Галерея</h2>
+    <div class="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
       {{ $gallery := site.Data.gallery }}
-      {{ range $gallery.items }}
-      <div class="rounded-2xl overflow-hidden shadow hover:shadow-lg transition">
-        <img src="{{ .image }}" alt="{{ .title }}" class="w-full h-64 object-cover">
-        <div class="p-4 bg-gray-50 dark:bg-gray-800">
-          <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">{{ .title }}</h3>
-          <p class="text-gray-600 dark:text-gray-300">{{ .description }}</p>
+      {{ range $gallery }}
+      <div class="rounded-2xl overflow-hidden shadow hover:scale-105 transform transition">
+        <img src="{{ .src }}" alt="{{ .alt }}" class="w-full h-56 object-cover">
+        <div class="p-3 bg-white dark:bg-gray-800">
+          <p class="text-sm font-medium">{{ .title }}</p>
         </div>
       </div>
       {{ end }}
     </div>
-  </div>
-</section>
+  </main>
 
-<!-- Contacts Section -->
-<section id="contacts" class="py-16 bg-gray-50 dark:bg-gray-800 text-center">
-  <div class="max-w-3xl mx-auto px-4">
-    <h2 class="text-3xl font-bold mb-6 text-gray-900 dark:text-white">Контакты</h2>
-    <p class="text-lg mb-6 text-gray-700 dark:text-gray-300">Готов к сотрудничеству и новым проектам. Свяжитесь со мной:</p>
-    <div class="flex justify-center gap-6">
-      <a href="https://t.me/Lybra777" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 rounded-xl text-white font-semibold shadow-md">Telegram</a>
-      <a href="https://github.com/Lybrabee" class="px-6 py-3 bg-gray-800 hover:bg-gray-900 rounded-xl text-white font-semibold shadow-md">GitHub</a>
-      <a href="mailto:youremail@example.com" class="px-6 py-3 bg-green-600 hover:bg-green-700 rounded-xl text-white font-semibold shadow-md">Email</a>
-    </div>
-  </div>
-</section>
-{{ end }}
+  <!-- Подвал -->
+  <footer class="text-center py-6 text-sm text-gray-600 dark:text-gray-400">
+    © {{ now.Format "2006" }} {{ .Site.Author.name }} · Сделано с ❤️ и Hugo
+  </footer>
+
+</body>
+</html>
