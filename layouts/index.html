@@ -1,55 +1,21 @@
-<!DOCTYPE html>
-<html lang="ru" class="scroll-smooth">
-<head>
-  <meta charset="UTF-8">
-  <title>{{ .Site.Title }}</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    // Переключатель темы
-    function toggleTheme() {
-      document.documentElement.classList.toggle('dark');
-      localStorage.theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
-    }
-    // При загрузке страницы
-    if (localStorage.theme === 'dark' || (!('theme' in localStorage) &&
-        window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
-  </script>
-</head>
-<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen flex flex-col">
+{{ define "main" }}
+<section class="hero">
+  <h1>{{ .Site.Title }}</h1>
+  <p>Добро пожаловать на моё портфолио!</p>
+</section>
 
-  <!-- Шапка -->
-  <header class="w-full px-6 py-4 flex justify-between items-center bg-white/80 dark:bg-gray-800/80 shadow-md backdrop-blur sticky top-0 z-50">
-    <h1 class="text-2xl font-bold">{{ .Site.Title }}</h1>
-    <button onclick="toggleTheme()" class="px-3 py-1 rounded-xl bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600">
-      🌙 / ☀️
-    </button>
-  </header>
-
-  <!-- Галерея -->
-  <main class="flex-1 container mx-auto px-6 py-12">
-    <h2 class="text-3xl font-semibold mb-8 text-center">Галерея</h2>
-    <div class="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-      {{ $gallery := site.Data.gallery }}
-      {{ range $gallery }}
-      <div class="rounded-2xl overflow-hidden shadow hover:scale-105 transform transition">
-        <img src="{{ .src }}" alt="{{ .alt }}" class="w-full h-56 object-cover">
-        <div class="p-3 bg-white dark:bg-gray-800">
-          <p class="text-sm font-medium">{{ .title }}</p>
-        </div>
-      </div>
-      {{ end }}
-    </div>
-  </main>
-
-  <!-- Подвал -->
-  <footer class="text-center py-6 text-sm text-gray-600 dark:text-gray-400">
-    © {{ now.Format "2006" }} {{ .Site.Author.name }} · Сделано с ❤️ и Hugo
-  </footer>
-
-</body>
-</html>
+<section class="latest-article">
+  <h2>Последняя статья</h2>
+  {{ $latest := first 1 (where .Site.RegularPages "Section" "posts") }}
+  {{ range $latest }}
+  <article>
+    <h3><a href="{{ .RelPermalink }}">{{ .Title }}</a></h3>
+    {{ with .Params.image }}
+    <img src="{{ . }}" alt="{{ .Title }}">
+    {{ end }}
+    <p>{{ .Summary }}</p>
+    <a href="{{ .RelPermalink }}">Читать далее</a>
+  </article>
+  {{ end }}
+</section>
+{{ end }}
