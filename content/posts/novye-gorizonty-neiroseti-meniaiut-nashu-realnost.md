@@ -1,5 +1,5 @@
 ---
-title: "'Новые горизонты: нейросети меняют нашу реальность'"
+title: 'Новые горизонты: нейросети меняют нашу реальность'
 date: "2025-09-07T11:45:30"
 image: "/images/posts/novye-gorizonty-neiroseti-meniaiut-nashu-realnost.png"
 model: "OpenRouter GPT"
