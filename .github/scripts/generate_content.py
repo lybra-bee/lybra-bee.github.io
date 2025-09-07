@@ -89,4 +89,89 @@ def generate_article(title):
         headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
         r = requests.post("https://api.groq.com/v1/chat/completions",
                           headers=headers,
-                          json={"model": "g
+                          json={"model": "gpt-4o-mini", "messages":[{"role":"user","content":prompt}]})
+        r.raise_for_status()
+        text = r.json()["choices"][0]["message"]["content"]
+        logging.info("✅ Статья получена через Groq")
+        return text, "Groq GPT"
+    except Exception as e:
+        logging.error(f"❌ Ошибка генерации статьи: {e}")
+        return "Статья временно недоступна.", "None"
+
+def get_pipeline_id():
+    r = requests.get(BASE_URL + 'key/api/v1/pipelines', headers=AUTH_HEADERS)
+    r.raise_for_status()
+    return r.json()[0]['id']
+
+def generate_image(title, slug):
+    try:
+        pipeline_id = get_pipeline_id()
+        params = {
+            "type": "GENERATE",
+            "numImages": 1,
+            "width": 1024,
+            "height": 1024,
+            "generateParams": {"query": title}
+        }
+        files = {
+            'pipeline_id': (None, pipeline_id),
+            'params': (None, json.dumps(params), 'application/json')
+        }
+        r = requests.post(BASE_URL + 'key/api/v1/pipeline/run', headers=AUTH_HEADERS, files=files)
+        r.raise_for_status()
+        uuid = r.json()['uuid']
+
+        for _ in range(20):
+            r_status = requests.get(BASE_URL + f'key/api/v1/pipeline/status/{uuid}', headers=AUTH_HEADERS)
+            r_status.raise_for_status()
+            data = r_status.json()
+            if data['status'] == 'DONE':
+                image_base64 = data['result']['files'][0]
+                break
+            time.sleep(3)
+        else:
+            logging.warning("❌ Изображение не сгенерировано за отведённое время")
+            return PLACEHOLDER
+
+        img_bytes = base64.b64decode(image_base64)
+        img_path = os.path.join(ASSETS_DIR, f'{slug}.png')
+        with open(img_path, 'wb') as f:
+            f.write(img_bytes)
+
+        logging.info(f"✅ Изображение сохранено: {img_path}")
+        return f"images/posts/{slug}.png"
+    except Exception as e:
+        logging.error(f"❌ Ошибка генерации изображения: {e}")
+        return PLACEHOLDER
+
+def save_article(title, text, model, slug, image_path):
+    filename = os.path.join(POSTS_DIR, f'{slug}.md')
+    date = datetime.now().strftime("%Y-%m-%d")
+    with open(filename, 'w', encoding='utf-8') as f:
+        f.write(f"---\ntitle: {title}\ndate: {date}\nimage: /{image_path}\nmodel: {model}\ntags: [AI, Tech]\n---\n\n{text}")
+    logging.info(f"✅ Статья сохранена: {filename}")
+
+def update_gallery(title, slug, image_path):
+    gallery = []
+    if os.path.exists(GALLERY_FILE):
+        with open(GALLERY_FILE, 'r', encoding='utf-8') as f:
+            gallery = yaml.safe_load(f) or []
+
+    gallery.insert(0, {"title": title, "alt": title, "src": f"/{image_path}"})
+    gallery = gallery[:20]  # максимум 20 изображений
+
+    with open(GALLERY_FILE, 'w', encoding='utf-8') as f:
+        yaml.safe_dump(gallery, f, allow_unicode=True)
+    logging.info(f"✅ Галерея обновлена: {GALLERY_FILE}")
+
+def main():
+    title, _ = generate_title()
+    slug = slugify(title)
+    text, model = generate_article(title)
+    image_path = generate_image(title, slug)
+
+    save_article(title, text, model, slug, image_path)
+    update_gallery(title, slug, image_path)
+
+if __name__ == "__main__":
+    main()
