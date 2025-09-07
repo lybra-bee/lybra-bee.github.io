@@ -36,10 +36,10 @@ os.makedirs(STATIC_DIR, exist_ok=True)
 os.makedirs(os.path.dirname(PLACEHOLDER), exist_ok=True)
 
 def generate_article():
-    # Заголовок
-    header_prompt = "Проанализируй последние тренды в нейросетях и высоких технологиях и придумай короткий привлекательный заголовок из 6-8 слов"
+    header_prompt = "Проанализируй последние тренды в нейросетях и высоких технологиях и придумай привлекательный заголовок статьи"
     headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}"}
 
+    # Генерация заголовка
     try:
         logging.info("📝 Генерация заголовка через OpenRouter...")
         r = requests.post("https://openrouter.ai/api/v1/chat/completions",
@@ -50,6 +50,7 @@ def generate_article():
         logging.info("✅ Заголовок получен через OpenRouter")
     except Exception as e:
         logging.warning(f"⚠️ OpenRouter заголовок не сработал: {e}")
+        # fallback Groq
         try:
             logging.info("📝 Генерация заголовка через Groq...")
             headers_groq = {"Authorization": f"Bearer {GROQ_API_KEY}"}
@@ -63,7 +64,7 @@ def generate_article():
             logging.error(f"❌ Ошибка генерации заголовка: {e}")
             title = "Статья о последних трендах в ИИ"
 
-    # Статья
+    # Генерация статьи
     content_prompt = f"Напиши статью 400-600 слов по заголовку: {title}"
     try:
         logging.info("📝 Генерация статьи через OpenRouter...")
@@ -122,7 +123,7 @@ def generate_image(title, slug):
                 break
             time.sleep(3)
         else:
-            logging.warning("❌ Изображение не сгенерировано")
+            logging.warning("❌ Изображение не сгенерировано за отведённое время")
             return PLACEHOLDER
 
         img_bytes = base64.b64decode(image_base64)
@@ -139,16 +140,14 @@ def generate_image(title, slug):
 def save_article(title, text, model, slug, image_path):
     filename = os.path.join(POSTS_DIR, f'{slug}.md')
     date = datetime.now().strftime("%Y-%m-%d")
-    safe_title = title.replace('\n', ' ').replace('"', "'")
-    safe_model = model.replace('\n', ' ').replace('"', "'")
+    title_safe = title.replace('"', "'")
+    model_safe = model.replace('"', "'")
     content = f"""---
-title: "{safe_title}"
-date: "{date}"
+title: "{title_safe}"
+date: '{date}'
 image: "/{image_path}"
-model: "{safe_model}"
-tags:
-  - AI
-  - Tech
+model: "{model_safe}"
+tags: [AI, Tech]
 ---
 
 {text}
@@ -164,7 +163,7 @@ def update_gallery(title, slug, image_path):
             gallery = yaml.safe_load(f) or []
 
     gallery.insert(0, {"title": title, "alt": title, "src": f"/{image_path}"})
-    gallery = gallery[:20]
+    gallery = gallery[:20]  # максимум 20 изображений
 
     with open(GALLERY_FILE, 'w', encoding='utf-8') as f:
         yaml.safe_dump(gallery, f, allow_unicode=True)
