@@ -13,7 +13,7 @@
       <article class="last-article">
         <h1><a href="{{ .RelPermalink }}">{{ .Title }}</a></h1>
         {{ with .Params.image }}
-          <img src="{{ . | relURL }}" alt="{{ .Title }}" style="max-width:100%;height:auto;">
+          <img src="{{ . | relURL }}" alt="{{ $.Params.title }}" style="max-width:100%;height:auto;">
         {{ end }}
         <p>{{ .Summary }}</p>
         <a href="{{ .RelPermalink }}" class="read-more">Читать далее</a>
@@ -22,3 +22,4 @@
   </div>
 </section>
 {{ end }}
+
