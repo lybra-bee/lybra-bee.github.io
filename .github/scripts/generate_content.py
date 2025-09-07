@@ -6,6 +6,7 @@ import time
 import base64
 import logging
 import glob
+import re
 from datetime import datetime
 from slugify import slugify
 import yaml
@@ -13,15 +14,15 @@ import yaml
 # Настройка логирования
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# API ключи
+# API ключи из environment variables
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 
-# Папки
+# Папки для Hugo (правильные пути)
 POSTS_DIR = 'content/posts'
-STATIC_DIR = 'static/images/posts'
+STATIC_DIR = 'static/images/posts'  # Исправлено на static для Hugo
 GALLERY_FILE = 'data/gallery.yaml'
-PLACEHOLDER = 'static/images/placeholder.jpg'
+PLACEHOLDER = 'static/images/placeholder.jpg'  # Исправлено на static
 
 os.makedirs(POSTS_DIR, exist_ok=True)
 os.makedirs(STATIC_DIR, exist_ok=True)
@@ -29,16 +30,15 @@ os.makedirs(os.path.dirname(PLACEHOLDER), exist_ok=True)
 os.makedirs(os.path.dirname(GALLERY_FILE), exist_ok=True)
 
 def safe_yaml_value(value):
-    """Безопасное экранирование значений для YAML"""
     if not value:
         return ""
     value = str(value).replace('"', "'").replace(':', ' -').replace('\n', ' ').replace('\r', ' ')
     return value.strip()
 
-# -------------------- Генерация статьи --------------------
 def generate_article():
     header_prompt = "Проанализируй последние тренды в нейросетях и высоких технологиях и придумай привлекательный заголовок, не более восьми слов"
     
+    # Генерация заголовка
     try:
         logging.info("📝 Генерация заголовка через OpenRouter...")
         headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}"}
@@ -63,6 +63,7 @@ def generate_article():
             logging.error(f"❌ Ошибка генерации заголовка: {e}")
             title = "Статья о последних трендах в ИИ"
 
+    # Генерация текста
     content_prompt = f"Напиши статью 400-600 слов по заголовку: {title}"
     try:
         logging.info("📝 Генерация статьи через OpenRouter...")
@@ -90,72 +91,191 @@ def generate_article():
             logging.error(f"❌ Ошибка генерации статьи: {e}")
             return title, "Статья временно недоступна.", "None"
 
-# -------------------- Генерация изображения (перебор API) --------------------
+def generate_image_with_free_api(title, slug):
+    """Бесплатные API для генерации изображений"""
+    
+    # 1. Попробуем Hugging Face API
+    try:
+        logging.info("🎨 Пробуем Hugging Face API...")
+        
+        api_url = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2-1"
+        
+        payload = {
+            "inputs": f"digital art, high quality, professional, {title}",
+        }
+        
+        response = requests.post(api_url, json=payload, timeout=120)
+        
+        if response.status_code == 200:
+            img_path = os.path.join(STATIC_DIR, f"{slug}.png")
+            with open(img_path, 'wb') as f:
+                f.write(response.content)
+            logging.info(f"✅ Изображение Hugging Face сохранено: {img_path}")
+            return f"/images/posts/{slug}.png"  # Путь для Hugo
+            
+    except Exception as e:
+        logging.warning(f"⚠️ Hugging Face не сработал: {e}")
+    
+    # 2. Попробуем другой публичный API
+    try:
+        logging.info("🎨 Пробуем публичный AI API...")
+        
+        api_url = "https://api.vyro.ai/v1/imagine/api/generations"
+        
+        payload = {
+            "prompt": f"digital art, high quality, {title}",
+            "style": "realistic",
+            "ratio": "1:1"
+        }
+        
+        response = requests.post(api_url, json=payload, timeout=60)
+        
+        if response.status_code == 200:
+            data = response.json()
+            if data.get('image_url'):
+                img_data = requests.get(data['image_url'], timeout=30).content
+                img_path = os.path.join(STATIC_DIR, f"{slug}.png")
+                
+                with open(img_path, 'wb') as f:
+                    f.write(img_data)
+                
+                logging.info(f"✅ Изображение публичного API сохранено: {img_path}")
+                return f"/images/posts/{slug}.png"  # Путь для Hugo
+                
+    except Exception as e:
+        logging.warning(f"⚠️ Публичный API не сработал: {e}")
+    
+    return None
+
+def generate_ai_image(title, slug):
+    """Генерация изображения с помощью AI"""
+    try:
+        logging.info("🎨 Генерация AI изображения...")
+        
+        # Пробуем бесплатные API
+        image_path = generate_image_with_free_api(title, slug)
+        if image_path:
+            return image_path
+            
+        # Если API не сработали, создаем качественное SVG
+        return generate_quality_svg_image(title, slug)
+        
+    except Exception as e:
+        logging.error(f"❌ Ошибка генерации AI изображения: {e}")
+        return generate_quality_svg_image(title, slug)
+
+def generate_quality_svg_image(title, slug):
+    """Создает качественное SVG изображение"""
+    try:
+        logging.info("🖼️ Создание качественного SVG изображения...")
+        
+        img_path = os.path.join(STATIC_DIR, f"{slug}.svg")
+        safe_title = title.replace('"', '&quot;').replace('&', '&amp;')
+        
+        # Разбиваем текст на строки
+        words = safe_title.split()
+        lines = []
+        current_line = []
+        
+        for word in words:
+            test_line = ' '.join(current_line + [word])
+            if len(test_line) <= 25:
+                current_line.append(word)
+            else:
+                lines.append(' '.join(current_line))
+                current_line = [word]
+        
+        if current_line:
+            lines.append(' '.join(current_line))
+        
+        # Создаем красивое SVG с градиентом
+        svg_content = f'''<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+            <defs>
+                <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#667eea" />
+                    <stop offset="100%" stop-color="#764ba2" />
+                </linearGradient>
+                <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur in="SourceAlpha" stdDeviation="20" result="blur"/>
+                    <feOffset in="blur" dx="10" dy="10" result="offsetBlur"/>
+                    <feFlood flood-color="#000000" flood-opacity="0.5" result="offsetColor"/>
+                    <feComposite in="offsetColor" in2="offsetBlur" operator="in" result="offsetBlur"/>
+                    <feBlend in="SourceGraphic" in2="offsetBlur" mode="normal"/>
+                </filter>
+            </defs>
+            
+            <rect width="1200" height="630" fill="url(#gradient)" />
+            
+            <!-- Декоративные элементы -->
+            <circle cx="100" cy="100" r="50" fill="white" opacity="0.1" />
+            <circle cx="1100" cy="500" r="80" fill="white" opacity="0.1" />
+            <circle cx="300" cy="400" r="40" fill="white" opacity="0.1" />
+            
+            <!-- Основной текст -->
+            <g font-family="Arial, sans-serif" fill="white" text-anchor="middle">
+                {"".join(f'<text x="600" y="{250 + i*60}" font-size="36" font-weight="bold" filter="url(#shadow)">{line}</text>' 
+                         for i, line in enumerate(lines))}
+            </g>
+            
+            <!-- Подпись -->
+            <text x="600" y="580" font-family="Arial, sans-serif" font-size="20" fill="white" opacity="0.8" text-anchor="middle">
+                AI Generated Content • {datetime.now().strftime("%d.%m.%Y")}
+            </text>
+            
+            <!-- Иконка AI -->
+            <g transform="translate(50, 550)" font-family="Arial, sans-serif" font-size="16" fill="white">
+                <rect x="0" y="0" width="30" height="30" rx="5" fill="white" opacity="0.2" />
+                <text x="15" y="20" text-anchor="middle" font-weight="bold">AI</text>
+            </g>
+        </svg>'''
+        
+        with open(img_path, 'w', encoding='utf-8') as f:
+            f.write(svg_content)
+        
+        logging.info(f"✅ Качественное SVG изображение создано: {img_path}")
+        return f"/images/posts/{slug}.svg"  # Путь для Hugo
+        
+    except Exception as e:
+        logging.error(f"❌ Ошибка создания SVG изображения: {e}")
+        return PLACEHOLDER
+
 def generate_image(title, slug):
-    apis = [
-        {"name": "Pollinations", "url": f"https://api.pollinations.ai/prompt/{title}", "method": "GET"},
-        {"name": "DeepAI", "url": "https://api.deepai.org/api/text2img", "method": "POST",
-         "headers": {"api-key": ""}, "data": lambda t: {"text": t}},
-        {"name": "Clipdrop", "url": "https://clipdrop-api.co/text-to-image/v1", "method": "POST",
-         "headers": {"x-api-key": ""}, "files": lambda t: {"prompt": t}},
-        # Можно добавить новые API сюда
-    ]
-
-    for api in apis:
-        try:
-            logging.info(f"🖼 [Image] Пробуем API: {api['name']}")
-            if api['method'] == "GET":
-                r = requests.get(api['url'])
-            else:
-                r = requests.post(api['url'], headers=api.get("headers", {}), data=api.get("data", lambda t: {})(title), files=api.get("files", None) and api["files"](title))
-            r.raise_for_status()
-
-            if api['name'] == "Pollinations":
-                with open(os.path.join(STATIC_DIR, f'{slug}.png'), 'wb') as f:
-                    f.write(r.content)
-                logging.info(f"✅ Изображение сохранено через {api['name']}")
-                return f"/images/posts/{slug}.png"
-            else:
-                # Для API с JSON-ответом
-                resp_json = r.json()
-                # Попробуем получить URL изображения
-                image_url = resp_json.get("output_url") or resp_json.get("imageUrl")
-                if image_url:
-                    img_data = requests.get(image_url).content
-                    img_path = os.path.join(STATIC_DIR, f'{slug}.png')
-                    with open(img_path, 'wb') as f:
-                        f.write(img_data)
-                    logging.info(f"✅ Изображение сохранено через {api['name']}")
-                    return f"/images/posts/{slug}.png"
-        except Exception as e:
-            logging.warning(f"⚠️ {api['name']} не сработал: {e}")
-
-    logging.warning("❌ Все API не сработали, используем PLACEHOLDER")
+    """Основная функция генерации изображения"""
+    # Пробуем AI генерацию
+    image_path = generate_ai_image(title, slug)
+    if image_path:
+        return image_path
+    
+    # Если все не сработало - заглушка
+    logging.warning("❌ Все методы генерации изображений не сработали")
     return PLACEHOLDER
 
-# -------------------- Сохранение статьи --------------------
 def save_article(title, text, model, slug, image_path):
     filename = os.path.join(POSTS_DIR, f'{slug}.md')
+    
+    # Front matter для Hugo
     front_matter = {
         'title': safe_yaml_value(title),
         'date': datetime.now().strftime("%Y-%m-%dT%H:%M:%S+03:00"),
-        'image': image_path if image_path.startswith('/') else f'/{image_path}',
-        'model': safe_yaml_value(model),
-        'tags': ["AI", "Tech"],
+        'image': image_path,
         'draft': False,
-        'categories': ["Технологии"]
+        'tags': ["AI", "Tech", "Нейросети"],
+        'categories': ["Технологии"],
+        'author': "AI Generator",
+        'description': safe_yaml_value(text[:150] + "..." if len(text) > 150 else text)
     }
+    
     yaml_content = yaml.safe_dump(front_matter, allow_unicode=True, default_flow_style=False, sort_keys=False)
     content = f"""---
 {yaml_content}---
 
 {text}
 """
+    
     with open(filename, 'w', encoding='utf-8') as f:
         f.write(content)
     logging.info(f"✅ Статья сохранена: {filename}")
 
-# -------------------- Обновление галереи --------------------
 def update_gallery(title, slug, image_path):
     gallery = []
     if os.path.exists(GALLERY_FILE):
@@ -169,8 +289,12 @@ def update_gallery(title, slug, image_path):
     gallery.insert(0, {
         "title": safe_yaml_value(title), 
         "alt": safe_yaml_value(title), 
-        "src": image_path if image_path.startswith('/') else f'/{image_path}'
+        "src": image_path,
+        "date": datetime.now().strftime("%Y-%m-%d"),
+        "tags": ["AI", "Tech"]
     })
+    
+    # Ограничиваем галерею 20 последними изображениями
     gallery = gallery[:20]
 
     try:
@@ -180,7 +304,6 @@ def update_gallery(title, slug, image_path):
     except Exception as e:
         logging.error(f"❌ Ошибка сохранения галереи: {e}")
 
-# -------------------- Очистка старых статей --------------------
 def cleanup_old_posts(keep=10):
     try:
         posts = sorted(
@@ -190,23 +313,41 @@ def cleanup_old_posts(keep=10):
         )
         if len(posts) > keep:
             for old in posts[keep:]:
+                # Также удаляем соответствующие изображения
+                slug = os.path.splitext(os.path.basename(old))[0]
+                image_path = os.path.join(STATIC_DIR, f"{slug}.png")
+                image_svg_path = os.path.join(STATIC_DIR, f"{slug}.svg")
+                
                 logging.info(f"🗑 Удаляю старую статью: {old}")
                 os.remove(old)
+                
+                # Удаляем изображения если существуют
+                for img_path in [image_path, image_svg_path]:
+                    if os.path.exists(img_path):
+                        os.remove(img_path)
+                        logging.info(f"🗑 Удаляю старое изображение: {img_path}")
+                        
     except Exception as e:
         logging.error(f"❌ Ошибка очистки старых постов: {e}")
 
-# -------------------- Главная функция --------------------
 def main():
     try:
+        logging.info("🚀 Запуск генерации статьи...")
         title, text, model = generate_article()
         slug = slugify(title)
+        logging.info(f"📄 Сгенерирована статья: {title}")
+        
         image_path = generate_image(title, slug)
+        logging.info(f"🖼️ Сгенерировано изображение: {image_path}")
+        
         save_article(title, text, model, slug, image_path)
         update_gallery(title, slug, image_path)
         cleanup_old_posts(keep=10)
-        logging.info("🎉 Генерация статьи завершена успешно!")
+        
+        logging.info("🎉 Генерация завершена успешно!")
+        
     except Exception as e:
-        logging.error(f"❌ Критическая ошибка в main: {e}")
+        logging.error(f"❌ Критическая ошибка: {e}")
 
 if __name__ == "__main__":
     main()
