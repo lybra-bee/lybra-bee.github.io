@@ -142,20 +142,24 @@ def generate_image(title, slug):
 
 def save_article(title, text, model, slug, image_path):
     filename = os.path.join(POSTS_DIR, f'{slug}.md')
-    date = datetime.now().strftime("%Y-%m-%d")
+    # Формат даты с временем и зоной
+    date = datetime.now().strftime("%Y-%m-%dT%H:%M:%S%z")
     # Экранируем кавычки
     title_safe = title.replace('"', "'")
     model_safe = model.replace('"', "'")
+
     content = f"""---
 title: "{title_safe}"
-date: {date}
+date: "{date}"
 image: "/{image_path}"
 model: "{model_safe}"
-tags: [AI, Tech]
+tags: ["AI", "Tech"]
+draft: false
 ---
 
 {text}
 """
+
     with open(filename, 'w', encoding='utf-8') as f:
         f.write(content)
     logging.info(f"✅ Статья сохранена: {filename}")
