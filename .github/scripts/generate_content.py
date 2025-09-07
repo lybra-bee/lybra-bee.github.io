@@ -36,7 +36,7 @@ os.makedirs(STATIC_DIR, exist_ok=True)
 os.makedirs(os.path.dirname(PLACEHOLDER), exist_ok=True)
 
 def generate_article():
-    header_prompt = "Проанализируй последние тренды в нейросетях и высоких технологиях и на их основе придумай привлекательный заголовок для статьи, не более восьми слов"
+    header_prompt = "Проанализируй последние тренды в нейросетях и высоких технологиях и на их основе придумай привлекательный заголовок 6-8 слов для статьи"
     headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}"}
 
     try:
@@ -137,21 +137,23 @@ def generate_image(title, slug):
 def save_article(title, text, model, slug, image_path):
     filename = os.path.join(POSTS_DIR, f'{slug}.md')
     date = datetime.now().strftime("%Y-%m-%d")
-    
+    title_safe = title.replace('"', '\\"')
+    model_safe = model.replace('"', '\\"')
+
     frontmatter = {
-        "title": title,
+        "title": title_safe,
         "date": date,
         "image": f"/{image_path}",
-        "model": model,
+        "model": model_safe,
         "tags": ["AI", "Tech"]
     }
 
     with open(filename, 'w', encoding='utf-8') as f:
         f.write('---\n')
-        yaml.safe_dump(frontmatter, f, allow_unicode=True)
+        yaml.dump(frontmatter, f, allow_unicode=True, default_flow_style=False)
         f.write('---\n\n')
         f.write(text)
-    
+
     logging.info(f"✅ Статья сохранена: {filename}")
 
 def update_gallery(title, slug, image_path):
