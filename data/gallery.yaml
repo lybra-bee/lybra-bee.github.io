@@ -1,3 +1,10 @@
+- alt: Будущее технологий - нейросети меняют нашу реальность
+  date: '2025-09-07'
+  src: /images/posts/budushchee-tekhnologii-neiroseti-meniaiut-nashu-realnost.svg
+  tags:
+  - AI
+  - Tech
+  title: Будущее технологий - нейросети меняют нашу реальность
 - alt: Будущее технологий - ИИ, устойчивость, и новые горизонты
   date: '2025-09-07'
   src: /images/posts/budushchee-tekhnologii-ii-ustoichivost-i-novye-gorizonty.svg
@@ -59,6 +66,3 @@
 - alt: '"Нейросети и технологии: Будущее, которое мы создаем вместе"'
   src: /static/images/placeholder.jpg
   title: '"Нейросети и технологии: Будущее, которое мы создаем вместе"'
-- alt: '"Нейросети: Революция в высоких технологиях будущего"'
-  src: /images/posts/neiroseti-revoliutsiia-v-vysokikh-tekhnologiiakh-budushchego.png
-  title: '"Нейросети: Революция в высоких технологиях будущего"'
