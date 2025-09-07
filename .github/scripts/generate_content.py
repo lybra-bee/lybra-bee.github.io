@@ -40,9 +40,46 @@ def safe_yaml_value(value):
     """Безопасное экранирование значений для YAML"""
     if not value:
         return ""
-    # Экранируем проблемные символы и убираем переносы строк
-    value = str(value).replace('"', "'").replace(':', ' -').replace('\n', ' ').replace('\r', ' ')
+    # Экранируем кавычки и убираем переносы строк
+    value = str(value).replace('"', "'").replace('\n', ' ').replace('\r', ' ')
+    # Убираем лишние пробелы
+    value = ' '.join(value.split())
     return value.strip()
+
+def check_yaml_syntax(filename):
+    """Проверяет синтаксис YAML front matter"""
+    try:
+        with open(filename, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # Проверяем, что front matter правильно оформлен
+        if content.startswith('---\n'):
+            # Извлекаем YAML часть
+            parts = content.split('---\n', 2)
+            if len(parts) >= 3:
+                yaml_content = parts[1]
+                # Пробуем распарсить YAML
+                yaml.safe_load(yaml_content)
+                return True
+        return False
+    except Exception as e:
+        logging.error(f"❌ Ошибка в YAML синтаксисе: {e}")
+        return False
+
+def create_backup_article(title, text, slug):
+    """Создает статью с минимальным front matter"""
+    filename = os.path.join(POSTS_DIR, f'{slug}.md')
+    content = f"""---
+title: "{safe_yaml_value(title)}"
+date: {datetime.now().strftime("%Y-%m-%d")}
+draft: false
+---
+
+{text}
+"""
+    with open(filename, 'w', encoding='utf-8') as f:
+        f.write(content)
+    logging.info(f"✅ Резервная статья сохранена: {filename}")
 
 def generate_article():
     header_prompt = "Проанализируй последние тренды в нейросетях и высоких технологиях и на их основе придумай привлекательный заголовок, не более восьми слов, для статьи"
@@ -155,28 +192,35 @@ def generate_image(title, slug):
 def save_article(title, text, model, slug, image_path):
     filename = os.path.join(POSTS_DIR, f'{slug}.md')
     
-    # Подготовка данных для front matter
-    front_matter = {
-        'title': safe_yaml_value(title),
-        'date': datetime.now().strftime("%Y-%m-%dT%H:%M:%S+03:00"),
-        'image': image_path if image_path.startswith('/') else f'/{image_path}',
-        'model': safe_yaml_value(model),
-        'tags': ["AI", "Tech"],
-        'draft': False,
-        'categories': ["Технологии"]
-    }
+    # Убедимся, что image_path правильный
+    if not image_path.startswith('/'):
+        image_path = f'/{image_path}'
     
-    # Генерация YAML front matter
-    yaml_content = yaml.safe_dump(front_matter, allow_unicode=True, default_flow_style=False, sort_keys=False)
-    
+    # Простой и надежный YAML front matter
     content = f"""---
-{yaml_content}---
+title: "{safe_yaml_value(title)}"
+date: {datetime.now().strftime("%Y-%m-%dT%H:%M:%S+03:00")}
+image: "{image_path}"
+model: "{safe_yaml_value(model)}"
+tags: ["AI", "Tech"]
+draft: false
+categories: ["Технологии"]
+---
 
 {text}
 """
     with open(filename, 'w', encoding='utf-8') as f:
         f.write(content)
-    logging.info(f"✅ Статья сохранена: {filename}")
+    
+    # Проверяем синтаксис
+    if check_yaml_syntax(filename):
+        logging.info(f"✅ Статья сохранена: {filename}")
+        return True
+    else:
+        logging.error(f"❌ Ошибка в YAML синтаксисе файла: {filename}")
+        # Создаем запасной вариант
+        create_backup_article(title, text, slug)
+        return False
 
 def update_gallery(title, slug, image_path):
     gallery = []
@@ -188,10 +232,14 @@ def update_gallery(title, slug, image_path):
             logging.error(f"❌ Ошибка чтения галереи: {e}")
             gallery = []
 
+    # Убедимся, что image_path правильный
+    if not image_path.startswith('/'):
+        image_path = f'/{image_path}'
+
     gallery.insert(0, {
         "title": safe_yaml_value(title), 
         "alt": safe_yaml_value(title), 
-        "src": image_path if image_path.startswith('/') else f'/{image_path}'
+        "src": image_path
     })
     gallery = gallery[:20]
 
@@ -221,10 +269,15 @@ def main():
         title, text, model = generate_article()
         slug = slugify(title)
         image_path = generate_image(title, slug)
-        save_article(title, text, model, slug, image_path)
-        update_gallery(title, slug, image_path)
-        cleanup_old_posts(keep=10)
-        logging.info("🎉 Генерация статьи завершена успешно!")
+        
+        # Сохраняем статью и проверяем успешность
+        if save_article(title, text, model, slug, image_path):
+            update_gallery(title, slug, image_path)
+            cleanup_old_posts(keep=10)
+            logging.info("🎉 Генерация статьи завершена успешно!")
+        else:
+            logging.warning("⚠️ Статья сохранена в резервном формате")
+            
     except Exception as e:
         logging.error(f"❌ Критическая ошибка в main: {e}")
 
