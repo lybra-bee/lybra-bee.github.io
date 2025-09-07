@@ -36,14 +36,17 @@ os.makedirs(STATIC_DIR, exist_ok=True)
 os.makedirs(os.path.dirname(PLACEHOLDER), exist_ok=True)
 
 def generate_article():
-    header_prompt = "Проанализируй последние тренды в нейросетях и высоких технологиях и на их основе придумай привлекательный заголовок 6-8 слов для статьи"
+    # Сначала заголовок
+    header_prompt = "Проанализируй последние тренды в нейросетях и высоких технологиях и придумай привлекательный заголовок для статьи"
     headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}"}
 
     try:
         logging.info("📝 Генерация заголовка через OpenRouter...")
-        r = requests.post("https://openrouter.ai/api/v1/chat/completions",
-                          headers=headers,
-                          json={"model": "gpt-4o-mini", "messages":[{"role":"user","content":header_prompt}]})
+        r = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers=headers,
+            json={"model": "gpt-4o-mini", "messages":[{"role":"user","content":header_prompt}]}
+        )
         r.raise_for_status()
         title = r.json()["choices"][0]["message"]["content"].strip()
         logging.info("✅ Заголовок получен через OpenRouter")
@@ -52,9 +55,11 @@ def generate_article():
         try:
             logging.info("📝 Генерация заголовка через Groq...")
             headers_groq = {"Authorization": f"Bearer {GROQ_API_KEY}"}
-            r = requests.post("https://api.groq.com/v1/chat/completions",
-                              headers=headers_groq,
-                              json={"model": "gpt-4o-mini", "messages":[{"role":"user","content":header_prompt}]})
+            r = requests.post(
+                "https://api.groq.com/v1/chat/completions",
+                headers=headers_groq,
+                json={"model": "gpt-4o-mini", "messages":[{"role":"user","content":header_prompt}]}
+            )
             r.raise_for_status()
             title = r.json()["choices"][0]["message"]["content"].strip()
             logging.info("✅ Заголовок получен через Groq")
@@ -62,12 +67,15 @@ def generate_article():
             logging.error(f"❌ Ошибка генерации заголовка: {e}")
             title = "Статья о последних трендах в ИИ"
 
+    # Статья
     content_prompt = f"Напиши статью 400-600 слов по заголовку: {title}"
     try:
         logging.info("📝 Генерация статьи через OpenRouter...")
-        r = requests.post("https://openrouter.ai/api/v1/chat/completions",
-                          headers=headers,
-                          json={"model": "gpt-4o-mini", "messages":[{"role":"user","content":content_prompt}]})
+        r = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers=headers,
+            json={"model": "gpt-4o-mini", "messages":[{"role":"user","content":content_prompt}]}
+        )
         r.raise_for_status()
         text = r.json()["choices"][0]["message"]["content"].strip()
         logging.info("✅ Статья получена через OpenRouter")
@@ -77,9 +85,11 @@ def generate_article():
         try:
             logging.info("📝 Генерация статьи через Groq...")
             headers_groq = {"Authorization": f"Bearer {GROQ_API_KEY}"}
-            r = requests.post("https://api.groq.com/v1/chat/completions",
-                              headers=headers_groq,
-                              json={"model": "gpt-4o-mini", "messages":[{"role":"user","content":content_prompt}]})
+            r = requests.post(
+                "https://api.groq.com/v1/chat/completions",
+                headers=headers_groq,
+                json={"model": "gpt-4o-mini", "messages":[{"role":"user","content":content_prompt}]}
+            )
             r.raise_for_status()
             text = r.json()["choices"][0]["message"]["content"].strip()
             logging.info("✅ Статья получена через Groq")
@@ -137,22 +147,20 @@ def generate_image(title, slug):
 def save_article(title, text, model, slug, image_path):
     filename = os.path.join(POSTS_DIR, f'{slug}.md')
     date = datetime.now().strftime("%Y-%m-%d")
-    title_safe = title.replace('"', '\\"')
-    model_safe = model.replace('"', '\\"')
-
+    
     frontmatter = {
-        "title": title_safe,
+        "title": title,
         "date": date,
         "image": f"/{image_path}",
-        "model": model_safe,
+        "model": model,
         "tags": ["AI", "Tech"]
     }
 
     with open(filename, 'w', encoding='utf-8') as f:
         f.write('---\n')
-        yaml.dump(frontmatter, f, allow_unicode=True, default_flow_style=False)
+        yaml.safe_dump(frontmatter, f, allow_unicode=True, default_flow_style=False)
         f.write('---\n\n')
-        f.write(text)
+        f.write(text.strip() + "\n")
 
     logging.info(f"✅ Статья сохранена: {filename}")
 
@@ -163,7 +171,7 @@ def update_gallery(title, slug, image_path):
             gallery = yaml.safe_load(f) or []
 
     gallery.insert(0, {"title": title, "alt": title, "src": f"/{image_path}"})
-    gallery = gallery[:20]
+    gallery = gallery[:20]  # максимум 20 изображений
 
     with open(GALLERY_FILE, 'w', encoding='utf-8') as f:
         yaml.safe_dump(gallery, f, allow_unicode=True)
