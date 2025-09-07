@@ -1,18 +1,27 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ if .IsHome }}{{ .Site.Title }}{{ else }}{{ .Title }} | {{ .Site.Title }}{{ end }}</title>
-    <link rel="stylesheet" href="/css/main.css">
+  <meta charset="UTF-8">
+  <title>{{ .Site.Title }}</title>
+  <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
-    {{ partial "header.html" . }}
-    
-    <main class="container">
-        {{ block "main" . }}{{ end }}
-    </main>
-
-    {{ partial "footer.html" . }}
+<header>
+  <nav>
+    <ul>
+      <li><a href="/">Главная</a></li>
+      <li><a href="/articles/">Статьи</a></li>
+      <li><a href="/gallery/">Галерея</a></li>
+      <li><a href="/about/">Обо мне</a></li>
+    </ul>
+  </nav>
+</header>
+<main>
+  {{ block "main" . }}{{ end }}
+</main>
+<footer>
+  <p>&copy; {{ now.Format "2006" }} Алексей</p>
+</footer>
+<script src="/js/scripts.js"></script>
 </body>
 </html>
