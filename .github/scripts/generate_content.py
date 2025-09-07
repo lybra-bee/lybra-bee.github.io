@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 # API ключи
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
-SUBNP_API_URL = "https://subnp.com/api/free/generate"
+SUBNP_BASE_URL = "https://subnp.com/api/free/generate"  # бесплатный SubNP
 
 # Папки
 POSTS_DIR = 'content/posts'
@@ -30,7 +30,6 @@ os.makedirs(os.path.dirname(PLACEHOLDER), exist_ok=True)
 os.makedirs(os.path.dirname(GALLERY_FILE), exist_ok=True)
 
 def safe_yaml_value(value):
-    """Безопасное экранирование значений для YAML"""
     if not value:
         return ""
     value = str(value).replace('"', "'").replace(':', ' -').replace('\n', ' ').replace('\r', ' ')
@@ -38,9 +37,8 @@ def safe_yaml_value(value):
 
 def generate_article():
     header_prompt = "Проанализируй последние тренды в нейросетях и высоких технологиях и придумай привлекательный заголовок, не более восьми слов"
-
+    
     # Генерация заголовка
-    title = None
     try:
         logging.info("📝 Генерация заголовка через OpenRouter...")
         headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}"}
@@ -65,11 +63,8 @@ def generate_article():
             logging.error(f"❌ Ошибка генерации заголовка: {e}")
             title = "Статья о последних трендах в ИИ"
 
-    # Генерация статьи
+    # Генерация текста
     content_prompt = f"Напиши статью 400-600 слов по заголовку: {title}"
-    text = "Статья временно недоступна."
-    model = "None"
-
     try:
         logging.info("📝 Генерация статьи через OpenRouter...")
         headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}"}
@@ -79,7 +74,7 @@ def generate_article():
         r.raise_for_status()
         text = r.json()["choices"][0]["message"]["content"].strip()
         logging.info("✅ Статья получена через OpenRouter")
-        model = "OpenRouter GPT"
+        return title, text, "OpenRouter GPT"
     except Exception as e:
         logging.warning(f"⚠️ OpenRouter статья не сработала: {e}")
         try:
@@ -91,37 +86,41 @@ def generate_article():
             r.raise_for_status()
             text = r.json()["choices"][0]["message"]["content"].strip()
             logging.info("✅ Статья получена через Groq")
-            model = "Groq GPT"
+            return title, text, "Groq GPT"
         except Exception as e:
             logging.error(f"❌ Ошибка генерации статьи: {e}")
-
-    return title, text, model
+            return title, "Статья временно недоступна.", "None"
 
 def generate_image(title, slug):
     try:
         logging.info("[SubNP] Запрос на генерацию изображения...")
         payload = {"prompt": title, "model": "turbo"}
-        r = requests.post(SUBNP_API_URL, json=payload, timeout=30)
+        r = requests.post(SUBNP_BASE_URL, headers={"Content-Type": "application/json"}, json=payload)
+        r.raise_for_status()
+        text_stream = r.text.strip().split("\n")
+        image_url = None
+        for line in text_stream:
+            if not line.startswith("data: "):
+                continue
+            try:
+                data = json.loads(line[6:])
+                if data.get("status") == "complete" and "imageUrl" in data:
+                    image_url = data["imageUrl"]
+                    break
+            except Exception:
+                continue
 
-        logging.info(f"[SubNP] Ответ сервера: {r.status_code} {r.text[:500]}")  # первые 500 символов
-
-        try:
-            data = r.json()
-        except json.JSONDecodeError:
-            logging.error("❌ SubNP вернул не JSON, используем PLACEHOLDER")
+        if not image_url:
+            logging.warning("❌ SubNP вернул не complete -> imageUrl, используем PLACEHOLDER")
             return PLACEHOLDER
 
-        if 'imageUrl' in data:
-            image_url = data['imageUrl']
-            img_data = requests.get(image_url).content
-            img_path = os.path.join(STATIC_DIR, f'{slug}.png')
-            with open(img_path, 'wb') as f:
-                f.write(img_data)
-            logging.info(f"✅ Изображение сохранено: {img_path}")
-            return f"/images/posts/{slug}.png"
-        else:
-            logging.warning("⚠️ Не получили imageUrl, используем PLACEHOLDER")
-            return PLACEHOLDER
+        # Скачиваем изображение
+        img_data = requests.get(image_url).content
+        img_path = os.path.join(STATIC_DIR, f"{slug}.png")
+        with open(img_path, 'wb') as f:
+            f.write(img_data)
+        logging.info(f"✅ Изображение сохранено: {img_path}")
+        return f"/images/posts/{slug}.png"
 
     except Exception as e:
         logging.error(f"❌ Ошибка генерации изображения: {e}")
@@ -129,7 +128,6 @@ def generate_image(title, slug):
 
 def save_article(title, text, model, slug, image_path):
     filename = os.path.join(POSTS_DIR, f'{slug}.md')
-
     front_matter = {
         'title': safe_yaml_value(title),
         'date': datetime.now().strftime("%Y-%m-%dT%H:%M:%S+03:00"),
@@ -139,9 +137,7 @@ def save_article(title, text, model, slug, image_path):
         'draft': False,
         'categories': ["Технологии"]
     }
-
     yaml_content = yaml.safe_dump(front_matter, allow_unicode=True, default_flow_style=False, sort_keys=False)
-
     content = f"""---
 {yaml_content}---
 
@@ -162,8 +158,8 @@ def update_gallery(title, slug, image_path):
             gallery = []
 
     gallery.insert(0, {
-        "title": safe_yaml_value(title),
-        "alt": safe_yaml_value(title),
+        "title": safe_yaml_value(title), 
+        "alt": safe_yaml_value(title), 
         "src": image_path if image_path.startswith('/') else f'/{image_path}'
     })
     gallery = gallery[:20]
