@@ -29,7 +29,8 @@
     <section class="py-16">
         <div class="max-w-6xl mx-auto px-4">
             <h2 class="text-3xl font-bold text-center mb-12">📝 Последняя статья</h2>
-            {{ $latest := (where .Site.RegularPages "Type" "posts" | first 1) }}
+            {{ $latest := where site.RegularPages "Section" "posts" | first 1 }}
+            {{ if $latest }}
             {{ range $latest }}
             <div class="bg-white rounded-2xl shadow-xl overflow-hidden cursor-pointer" onclick="window.location.href='{{ .Permalink }}'">
                 <img src="{{ .Params.image }}" alt="{{ .Title }}" class="w-full h-64 object-cover">
@@ -55,6 +56,7 @@
                     </div>
                 </div>
             </div>
+            {{ end }}
             {{ else }}
             <div class="text-center py-12">
                 <p class="text-gray-600 text-xl">Статьи пока отсутствуют. Первая статья появится после запуска генерации.</p>
