@@ -1,17 +1,36 @@
-{{ define "main" }}
-<section class="section-articles">
-  <div class="container">
-    <h2>Все статьи</h2>
-    <div class="carousel">
-      {{ range .Pages }}
-        <div class="carousel-item">
-          <h4><a href="{{ .RelPermalink }}">{{ .Title }}</a></h4>
-          {{ with .Params.image }}
-            <img src="{{ . | relURL }}" alt="{{ .Title }}" style="max-width:200px;height:auto;">
-          {{ end }}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Статьи - {{ .Site.Title }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    {{ partial "header.html" . }}
+
+    <main class="max-w-6xl mx-auto px-4 py-12">
+        <h1 class="text-4xl font-bold text-center mb-12">📚 Все статьи</h1>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {{ range .Pages }}
+            <article class="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition">
+                <img src="{{ .Params.image }}" alt="{{ .Title }}" class="w-full h-48 object-cover">
+                <div class="p-6">
+                    <h2 class="text-xl font-bold mb-3">{{ .Title }}</h2>
+                    <p class="text-gray-600 mb-4">{{ .Description }}</p>
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm text-gray-500">{{ .Date.Format "2006-01-02" }}</span>
+                        <a href="{{ .Permalink }}" class="text-blue-600 hover:text-blue-800 font-semibold">
+                            Читать →
+                        </a>
+                    </div>
+                </div>
+            </article>
+            {{ end }}
         </div>
-      {{ end }}
-    </div>
-  </div>
-</section>
-{{ end }}
+    </main>
+
+    {{ partial "footer.html" . }}
+</body>
+</html>
