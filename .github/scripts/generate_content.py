@@ -49,6 +49,7 @@ def generate_with_cloudflare(prompt):
             "max_tokens": 1000
         }
         
+        # Примерный endpoint Cloudflare AI (нужно уточнить актуальный)
         response = requests.post(
             "https://api.cloudflare.com/client/v4/accounts/.../ai/run/@cf/meta/llama-2-7b-chat-int8",
             headers=headers,
@@ -105,9 +106,9 @@ def generate_article():
             
     except Exception as e:
         logging.error(f"❌ Ошибка генерации: {e}")
-        return "Новые тренды в искусственном интеллекте 2024", 
-               "Искусственный интеллект продолжает revolutionizing различные отрасли. Вот основные тренды...", 
-               "Fallback"
+        # Исправленная строка без ошибки форматирования
+        fallback_text = "Искусственный интеллект продолжает revolutionizing различные отрасли. Вот основные тренды..."
+        return "Новые тренды в искусственном интеллекте 2024", fallback_text, "Fallback"
 
 def generate_image(title, slug):
     try:
