@@ -12,15 +12,17 @@
     <main class="max-w-7xl mx-auto px-4 py-12">
         <h1 class="text-4xl font-bold text-center mb-12">📚 Все статьи</h1>
         
-        {{ $articles := where .Site.RegularPages "Section" "posts" }}
+        {{ $articles := where .Site.RegularPages "Type" "posts" }}
         {{ if $articles }}
-        <div class="grid grid-cols-1 md:grid-cols 2 lg:grid-cols-3 gap-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {{ range $articles }}
             <article class="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition cursor-pointer" onclick="window.location.href='{{ .Permalink }}'">
+                {{ if .Params.image }}
                 <img src="{{ .Params.image }}" alt="{{ .Title }}" class="w-full h-48 object-cover">
+                {{ end }}
                 <div class="p-6">
                     <h2 class="text-xl font-bold mb-3">{{ .Title }}</h2>
-                    <p class="text-gray-600 mb-4">{{ .Description }}</p>
+                    <p class="text-gray-600 mb-4">{{ .Description | default .Summary | truncate 120 }}</p>
                     <div class="flex items-center justify-between">
                         <span class="text-sm text-gray-500">{{ .Date.Format "2006-01-02" }}</span>
                         <span class="text-blue-600 font-semibold">Читать →</span>
