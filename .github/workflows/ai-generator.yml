@@ -33,8 +33,11 @@ jobs:
         mkdir -p static/images/posts
         mkdir -p data
         mkdir -p layouts/partials
+        mkdir -p layouts/articles
+        mkdir -p layouts/gallery
+        mkdir -p layouts/about
 
-    - name: Create basic config.toml
+    - name: Create config.toml
       run: |
         cat > config.toml << 'EOF'
         baseURL = "https://${{ github.repository_owner }}.github.io/"
@@ -64,13 +67,13 @@ jobs:
             name = "Обо мне"
             url = "/about/"
             weight = 4
+
+        [outputs]
+          home = ["HTML", "RSS"]
         EOF
 
     - name: Create layout files
       run: |
-        # Создаем partials директорию
-        mkdir -p layouts/partials
-
         # Header partial
         cat > layouts/partials/header.html << 'EOF'
         <nav class="bg-white shadow-sm sticky top-0 z-50">
@@ -80,9 +83,10 @@ jobs:
                         <a href="/">🎨 AI Портфолио</a>
                     </div>
                     <div class="hidden md:flex space-x-8">
-                        {{ range .Site.Menus.main }}
-                        <a href="{{ .URL }}" class="text-gray-700 hover:text-blue-600 transition">{{ .Name }}</a>
-                        {{ end }}
+                        <a href="/" class="text-gray-700 hover:text-blue-600 transition">Главная</a>
+                        <a href="/articles/" class="text-gray-700 hover:text-blue-600 transition">Статьи</a>
+                        <a href="/gallery/" class="text-gray-700 hover:text-blue-600 transition">Галерея</a>
+                        <a href="/about/" class="text-gray-700 hover:text-blue-600 transition">Обо мне</a>
                     </div>
                 </div>
             </div>
@@ -102,7 +106,7 @@ jobs:
         </footer>
         EOF
 
-        # Main layout
+        # Main index layout
         cat > layouts/index.html << 'EOF'
         <!DOCTYPE html>
         <html lang="ru">
@@ -111,7 +115,6 @@ jobs:
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>{{ .Site.Title }}</title>
             <script src="https://cdn.tailwindcss.com"></script>
-            <link href="https://cdn.jsdelivr.net/npm/swiper@8/swiper-bundle.min.css" rel="stylesheet">
         </head>
         <body class="bg-gray-50 min-h-screen">
             {{ partial "header.html" . }}
@@ -122,8 +125,8 @@ jobs:
                     <h1 class="text-4xl md:text-6xl font-bold mb-6">🤖 AI Портфолио</h1>
                     <p class="text-xl md:text-2xl mb-8">Статьи и изображения, сгенерированные искусственным интеллектом</p>
                     <div class="flex justify-center space-x-4">
-                        <a href="#latest-article" class="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition">
-                            📖 Последняя статья
+                        <a href="/articles/" class="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition">
+                            📖 Все статьи
                         </a>
                         <a href="/gallery/" class="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-blue-600 transition">
                             🎨 Галерея
@@ -133,12 +136,12 @@ jobs:
             </section>
 
             <!-- Latest Article -->
-            <section id="latest-article" class="py-16">
+            <section class="py-16">
                 <div class="max-w-6xl mx-auto px-4">
                     <h2 class="text-3xl font-bold text-center mb-12">📝 Последняя статья</h2>
                     {{ $latest := (where .Site.RegularPages "Type" "posts" | first 1) }}
                     {{ range $latest }}
-                    <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
+                    <div class="bg-white rounded-2xl shadow-xl overflow-hidden cursor-pointer" onclick="window.location.href='{{ .Permalink }}'">
                         <img src="{{ .Params.image }}" alt="{{ .Title }}" class="w-full h-64 object-cover">
                         <div class="p-8">
                             <div class="flex items-center mb-4">
@@ -156,9 +159,9 @@ jobs:
                                     </span>
                                     {{ end }}
                                 </div>
-                                <a href="{{ .Permalink }}" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition">
+                                <span class="bg-blue-600 text-white px-6 py-2 rounded-lg">
                                     Читать статью →
-                                </a>
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -166,84 +169,219 @@ jobs:
                 </div>
             </section>
 
-            <!-- Articles Preview -->
-            <section class="py-16 bg-gray-100">
-                <div class="max-w-7xl mx-auto px-4">
-                    <h2 class="text-3xl font-bold text-center mb-12">📚 Последние статьи</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {{ $articles := (where .Site.RegularPages "Type" "posts" | after 1 | first 3) }}
-                        {{ range $articles }}
-                        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
-                            <img src="{{ .Params.image }}" alt="{{ .Title }}" class="w-full h-48 object-cover">
-                            <div class="p-6">
-                                <h3 class="text-lg font-bold mb-2">{{ .Title }}</h3>
-                                <p class="text-sm text-gray-600 mb-4">{{ .Description | truncate 100 }}</p>
-                                <div class="flex items-center justify-between">
-                                    <span class="text-xs text-gray-500">{{ .Date.Format "2006-01-02" }}</span>
-                                    <a href="{{ .Permalink }}" class="text-blue-600 hover:text-blue-800 text-sm font-semibold">
-                                        Читать →
-                                    </a>
+            {{ partial "footer.html" . }}
+        </body>
+        </html>
+        EOF
+
+        # Articles list layout
+        cat > layouts/articles/list.html << 'EOF'
+        <!DOCTYPE html>
+        <html lang="ru">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Статьи - {{ .Site.Title }}</title>
+            <script src="https://cdn.tailwindcss.com"></script>
+            <link href="https://cdn.jsdelivr.net/npm/swiper@8/swiper-bundle.min.css" rel="stylesheet">
+            <style>
+                .swiper { padding: 50px 0; }
+                .article-card {
+                    transition: transform 0.3s ease, box-shadow 0.3s ease;
+                    cursor: pointer;
+                }
+                .article-card:hover {
+                    transform: translateY(-5px);
+                    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+                }
+            </style>
+        </head>
+        <body class="bg-gray-50 min-h-screen">
+            {{ partial "header.html" . }}
+
+            <main class="max-w-7xl mx-auto px-4 py-12">
+                <h1 class="text-4xl font-bold text-center mb-12">📚 Все статьи</h1>
+                
+                <div class="swiper articles-swiper">
+                    <div class="swiper-wrapper">
+                        {{ range .Pages }}
+                        <div class="swiper-slide">
+                            <div class="article-card bg-white rounded-xl shadow-lg overflow-hidden h-full" onclick="window.location.href='{{ .Permalink }}'">
+                                <img src="{{ .Params.image }}" alt="{{ .Title }}" class="w-full h-48 object-cover">
+                                <div class="p-6">
+                                    <h2 class="text-xl font-bold mb-3">{{ .Title }}</h2>
+                                    <p class="text-gray-600 mb-4">{{ .Description }}</p>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-sm text-gray-500">{{ .Date.Format "2006-01-02" }}</span>
+                                        <span class="text-blue-600 font-semibold">Читать →</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                         {{ end }}
                     </div>
-                    <div class="text-center mt-8">
-                        <a href="/articles/" class="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition">
-                            Все статьи
-                        </a>
-                    </div>
+                    <div class="swiper-pagination mt-8"></div>
+                    <div class="swiper-button-next"></div>
+                    <div class="swiper-button-prev"></div>
                 </div>
-            </section>
-
-            <!-- Gallery Preview -->
-            <section class="py-16">
-                <div class="max-w-7xl mx-auto px-4">
-                    <h2 class="text-3xl font-bold text-center mb-12">🖼️ Галерея изображений</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {{ $gallery := where .Site.Data.gallery "" "" | first 3 }}
-                        {{ range $gallery }}
-                        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
-                            <img src="{{ .src }}" alt="{{ .alt }}" class="w-full h-64 object-cover">
-                            <div class="p-4">
-                                <h3 class="font-semibold mb-2">{{ .title | truncate 50 }}</h3>
-                                <p class="text-sm text-gray-600">{{ .date }}</p>
-                            </div>
-                        </div>
-                        {{ end }}
-                    </div>
-                    <div class="text-center mt-8">
-                        <a href="/gallery/" class="bg-gray-800 text-white px-8 py-3 rounded-lg hover:bg-gray-900 transition">
-                            Вся галерея
-                        </a>
-                    </div>
-                </div>
-            </section>
-
-            <!-- About Preview -->
-            <section class="py-16 bg-gray-100">
-                <div class="max-w-4xl mx-auto px-4 text-center">
-                    <h2 class="text-3xl font-bold mb-8">👋 Обо мне</h2>
-                    <p class="text-xl text-gray-700 mb-8">
-                        Я - AI энтузиаст, создающий контент с помощью современных технологий искусственного интеллекта. 
-                        Мои работы включают статьи и изображения, сгенерированные нейросетями.
-                    </p>
-                    <a href="/about/" class="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition">
-                        Узнать больше
-                    </a>
-                </div>
-            </section>
+            </main>
 
             {{ partial "footer.html" . }}
 
             <script src="https://cdn.jsdelivr.net/npm/swiper@8/swiper-bundle.min.js"></script>
+            <script>
+                new Swiper('.articles-swiper', {
+                    slidesPerView: 1,
+                    spaceBetween: 30,
+                    pagination: { el: '.swiper-pagination', clickable: true },
+                    navigation: { nextEl: '.swiper-button-next', prevEl: '.swiper-button-prev' },
+                    breakpoints: {
+                        640: { slidesPerView: 2 },
+                        1024: { slidesPerView: 3 },
+                        1280: { slidesPerView: 4 }
+                    }
+                });
+            </script>
         </body>
         </html>
         EOF
 
-        # Create content pages
-        mkdir -p content
+        # Gallery layout
+        cat > layouts/gallery/list.html << 'EOF'
+        <!DOCTYPE html>
+        <html lang="ru">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Галерея - {{ .Site.Title }}</title>
+            <script src="https://cdn.tailwindcss.com"></script>
+            <link href="https://cdn.jsdelivr.net/npm/swiper@8/swiper-bundle.min.css" rel="stylesheet">
+            <style>
+                .gallery-item { cursor: pointer; transition: transform 0.3s ease; }
+                .gallery-item:hover { transform: scale(1.05); }
+                .modal {
+                    display: none;
+                    position: fixed;
+                    z-index: 1000;
+                    left: 0; top: 0;
+                    width: 100%; height: 100%;
+                    background-color: rgba(0,0,0,0.9);
+                }
+                .modal-content {
+                    margin: auto;
+                    display: block;
+                    max-width: 90%;
+                    max-height: 90%;
+                }
+                .close {
+                    position: absolute;
+                    top: 20px; right: 35px;
+                    color: white;
+                    font-size: 40px;
+                    font-weight: bold;
+                    cursor: pointer;
+                }
+            </style>
+        </head>
+        <body class="bg-gray-50 min-h-screen">
+            {{ partial "header.html" . }}
 
+            <main class="max-w-7xl mx-auto px-4 py-12">
+                <h1 class="text-4xl font-bold text-center mb-12">🖼️ Галерея изображений</h1>
+                
+                <div class="swiper gallery-swiper">
+                    <div class="swiper-wrapper">
+                        {{ range .Site.Data.gallery }}
+                        <div class="swiper-slide">
+                            <div class="gallery-item bg-white rounded-lg shadow-md overflow-hidden" onclick="openModal('{{ .src }}', '{{ .title }}')">
+                                <img src="{{ .src }}" alt="{{ .alt }}" class="w-full h-64 object-cover">
+                                <div class="p-4">
+                                    <h3 class="font-semibold mb-2">{{ .title }}</h3>
+                                    <p class="text-sm text-gray-600">{{ .date }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        {{ end }}
+                    </div>
+                    <div class="swiper-pagination mt-8"></div>
+                    <div class="swiper-button-next"></div>
+                    <div class="swiper-button-prev"></div>
+                </div>
+            </main>
+
+            <!-- Modal -->
+            <div id="imageModal" class="modal">
+                <span class="close" onclick="closeModal()">&times;</span>
+                <img class="modal-content" id="modalImage">
+                <div id="modalCaption" class="text-white text-center mt-4 text-xl"></div>
+            </div>
+
+            {{ partial "footer.html" . }}
+
+            <script src="https://cdn.jsdelivr.net/npm/swiper@8/swiper-bundle.min.js"></script>
+            <script>
+                new Swiper('.gallery-swiper', {
+                    slidesPerView: 1,
+                    spaceBetween: 30,
+                    pagination: { el: '.swiper-pagination', clickable: true },
+                    navigation: { nextEl: '.swiper-button-next', prevEl: '.swiper-button-prev' },
+                    breakpoints: {
+                        640: { slidesPerView: 2 },
+                        1024: { slidesPerView: 3 },
+                        1280: { slidesPerView: 4 }
+                    }
+                });
+
+                function openModal(src, title) {
+                    document.getElementById('modalImage').src = src;
+                    document.getElementById('modalCaption').innerHTML = title;
+                    document.getElementById('imageModal').style.display = 'block';
+                }
+                function closeModal() {
+                    document.getElementById('imageModal').style.display = 'none';
+                }
+                document.getElementById('imageModal').onclick = function(e) {
+                    if (e.target === document.getElementById('imageModal')) {
+                        closeModal();
+                    }
+                }
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape') closeModal();
+                });
+            </script>
+        </body>
+        </html>
+        EOF
+
+        # About layout
+        cat > layouts/about/single.html << 'EOF'
+        <!DOCTYPE html>
+        <html lang="ru">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Обо мне - {{ .Site.Title }}</title>
+            <script src="https://cdn.tailwindcss.com"></script>
+        </head>
+        <body class="bg-gray-50 min-h-screen">
+            {{ partial "header.html" . }}
+
+            <main class="max-w-4xl mx-auto px-4 py-12">
+                <div class="bg-white rounded-2xl shadow-xl p-8">
+                    <h1 class="text-4xl font-bold text-center mb-8">👋 Обо мне</h1>
+                    <div class="prose prose-lg max-w-none">
+                        {{ .Content }}
+                    </div>
+                </div>
+            </main>
+
+            {{ partial "footer.html" . }}
+        </body>
+        </html>
+        EOF
+
+    - name: Create content pages
+      run: |
         # About page
         cat > content/about.md << 'EOF'
         ---
@@ -305,7 +443,7 @@ jobs:
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
-        git add content/posts/ static/images/posts/ data/gallery.yaml config.toml layouts/ content/about.md content/articles.md content/gallery.md
+        git add .
         git commit -m "🤖 Auto-generated content [CI]" || echo "No changes to commit"
         git push
 
