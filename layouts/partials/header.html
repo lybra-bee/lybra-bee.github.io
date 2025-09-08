@@ -1,12 +1,14 @@
-<header class="flex justify-between items-center p-6 bg-gray-100 dark:bg-gray-900">
-  <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Алексей AI</h1>
-  <div class="flex items-center gap-4">
-    <a href="#about" class="text-gray-800 dark:text-gray-200 hover:underline">Обо мне</a>
-    <a href="#gallery" class="text-gray-800 dark:text-gray-200 hover:underline">Галерея</a>
-    <a href="#contacts" class="text-gray-800 dark:text-gray-200 hover:underline">Контакты</a>
-    <button id="theme-toggle" class="p-2 bg-gray-300 dark:bg-gray-700 rounded-lg text-gray-800 dark:text-gray-200">
-      🌙 / ☀️
-    </button>
-  </div>
-  <script src="/js/theme-toggle.js"></script>
-</header>
+<nav class="bg-white shadow-sm sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between items-center h-16">
+            <div class="text-xl font-bold text-gray-800">
+                <a href="/">🎨 AI Портфолио</a>
+            </div>
+            <div class="hidden md:flex space-x-8">
+                {{ range .Site.Menus.main }}
+                <a href="{{ .URL }}" class="text-gray-700 hover:text-blue-600 transition">{{ .Name }}</a>
+                {{ end }}
+            </div>
+        </div>
+    </div>
+</nav>
