@@ -16,8 +16,8 @@
             <h1 class="text-4xl md:text-6xl font-bold mb-6">🤖 AI Портфолио</h1>
             <p class="text-xl md:text-2xl mb-8">Статьи и изображения, сгенерированные искусственным интеллектом</p>
             <div class="flex justify-center space-x-4">
-                <a href="#latest-article" class="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition">
-                    📖 Последняя статья
+                <a href="/articles/" class="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition">
+                    📖 Все статьи
                 </a>
                 <a href="/gallery/" class="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-blue-600 transition">
                     🎨 Галерея
@@ -27,12 +27,12 @@
     </section>
 
     <!-- Latest Article -->
-    <section id="latest-article" class="py-16">
+    <section class="py-16">
         <div class="max-w-6xl mx-auto px-4">
             <h2 class="text-3xl font-bold text-center mb-12">📝 Последняя статья</h2>
             {{ $latest := (where .Site.RegularPages "Type" "posts" | first 1) }}
             {{ range $latest }}
-            <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
+            <div class="bg-white rounded-2xl shadow-xl overflow-hidden cursor-pointer" onclick="window.location.href='{{ .Permalink }}'">
                 <img src="{{ .Params.image }}" alt="{{ .Title }}" class="w-full h-64 object-cover">
                 <div class="p-8">
                     <div class="flex items-center mb-4">
@@ -50,9 +50,9 @@
                             </span>
                             {{ end }}
                         </div>
-                        <a href="{{ .Permalink }}" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition">
+                        <span class="bg-blue-600 text-white px-6 py-2 rounded-lg">
                             Читать статью →
-                        </a>
+                        </span>
                     </div>
                 </div>
             </div>
@@ -60,76 +60,6 @@
         </div>
     </section>
 
-    <!-- Articles Preview -->
-    <section class="py-16 bg-gray-100">
-        <div class="max-w-7xl mx-auto px-4">
-            <h2 class="text-3xl font-bold text-center mb-12">📚 Последние статьи</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {{ $articles := (where .Site.RegularPages "Type" "posts" | after 1 | first 3) }}
-                {{ range $articles }}
-                <div class="bg-white rounded-xl shadow-lg overflow-hidden">
-                    <img src="{{ .Params.image }}" alt="{{ .Title }}" class="w-full h-48 object-cover">
-                    <div class="p-6">
-                        <h3 class="text-lg font-bold mb-2">{{ .Title }}</h3>
-                        <p class="text-sm text-gray-600 mb-4">{{ .Description | truncate 100 }}</p>
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs text-gray-500">{{ .Date.Format "2006-01-02" }}</span>
-                            <a href="{{ .Permalink }}" class="text-blue-600 hover:text-blue-800 text-sm font-semibold">
-                                Читать →
-                            </a>
-                        </div>
-                    </div>
-                </div>
-                {{ end }}
-            </div>
-            <div class="text-center mt-8">
-                <a href="/articles/" class="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition">
-                    Все статьи
-                </a>
-            </div>
-        </div>
-    </section>
-
-    <!-- Gallery Preview -->
-    <section class="py-16">
-        <div class="max-w-7xl mx-auto px-4">
-            <h2 class="text-3xl font-bold text-center mb-12">🖼️ Галерея изображений</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {{ $gallery := where .Site.Data.gallery "" "" | first 3 }}
-                {{ range $gallery }}
-                <div class="bg-white rounded-xl shadow-lg overflow-hidden">
-                    <img src="{{ .src }}" alt="{{ .alt }}" class="w-full h-64 object-cover">
-                    <div class="p-4">
-                        <h3 class="font-semibold mb-2">{{ .title | truncate 50 }}</h3>
-                        <p class="text-sm text-gray-600">{{ .date }}</p>
-                    </div>
-                </div>
-                {{ end }}
-            </div>
-            <div class="text-center mt-8">
-                <a href="/gallery/" class="bg-gray-800 text-white px-8 py-3 rounded-lg hover:bg-gray-900 transition">
-                    Вся галерея
-                </a>
-            </div>
-        </div>
-    </section>
-
-    <!-- About Preview -->
-    <section class="py-16 bg-gray-100">
-        <div class="max-w-4xl mx-auto px-4 text-center">
-            <h2 class="text-3xl font-bold mb-8">👋 Обо мне</h2>
-            <p class="text-xl text-gray-700 mb-8">
-                Я - AI энтузиаст, создающий контент с помощью современных технологий искусственного интеллекта. 
-                Мои работы включают статьи и изображения, сгенерированные нейросетями.
-            </p>
-            <a href="/about/" class="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition">
-                Узнать больше
-            </a>
-        </div>
-    </section>
-
     {{ partial "footer.html" . }}
-
-    <script src="https://cdn.jsdelivr.net/npm/swiper@8/swiper-bundle.min.js"></script>
 </body>
 </html>
