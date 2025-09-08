@@ -1,10 +1,10 @@
-baseURL = "https://yourusername.github.io/"
+baseURL = "https://lybra-bee.github.io/"
 languageCode = "ru-ru"
 title = "AI Портфолио"
 
 [params]
 description = "Портфолио сгенерированных AI статей и изображений"
-  
+
 [menu]
   [[menu.main]]
     name = "Главная"

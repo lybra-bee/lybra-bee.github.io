@@ -1,3 +1,10 @@
+- alt: Будущее технологий - нейросети в каждой сфере жизни
+  date: '2025-09-08'
+  src: /images/posts/budushchee-tekhnologii-neiroseti-v-kazhdoi-sfere-zhizni.svg
+  tags:
+  - AI
+  - Tech
+  title: Будущее технологий - нейросети в каждой сфере жизни
 - alt: Будущее технологий - нейросети на страже инноваций
   date: '2025-09-08'
   src: /images/posts/budushchee-tekhnologii-neiroseti-na-strazhe-innovatsii.svg
@@ -75,6 +82,3 @@
 - alt: Будущее наступает - нейросети и новые технологии
   src: static/images/placeholder.jpg
   title: Будущее наступает - нейросети и новые технологии
-- alt: Будущее уже здесь - нейросети и технологии 2023
-  src: /static/images/placeholder.jpg
-  title: Будущее уже здесь - нейросети и технологии 2023

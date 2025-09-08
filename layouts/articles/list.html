@@ -7,10 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/swiper@8/swiper-bundle.min.css" rel="stylesheet">
     <style>
-        .swiper {
-            width: 100%;
-            padding: 50px 0;
-        }
+        .swiper { padding: 50px 0; }
         .article-card {
             transition: transform 0.3s ease, box-shadow 0.3s ease;
             cursor: pointer;
@@ -38,9 +35,7 @@
                             <p class="text-gray-600 mb-4">{{ .Description }}</p>
                             <div class="flex items-center justify-between">
                                 <span class="text-sm text-gray-500">{{ .Date.Format "2006-01-02" }}</span>
-                                <span class="text-blue-600 font-semibold">
-                                    Читать →
-                                </span>
+                                <span class="text-blue-600 font-semibold">Читать →</span>
                             </div>
                         </div>
                     </div>
@@ -60,14 +55,8 @@
         new Swiper('.articles-swiper', {
             slidesPerView: 1,
             spaceBetween: 30,
-            pagination: {
-                el: '.swiper-pagination',
-                clickable: true,
-            },
-            navigation: {
-                nextEl: '.swiper-button-next',
-                prevEl: '.swiper-button-prev',
-            },
+            pagination: { el: '.swiper-pagination', clickable: true },
+            navigation: { nextEl: '.swiper-button-next', prevEl: '.swiper-button-prev' },
             breakpoints: {
                 640: { slidesPerView: 2 },
                 1024: { slidesPerView: 3 },
