@@ -24,9 +24,11 @@
     <main class="max-w-7xl mx-auto px-4 py-12">
         <h1 class="text-4xl font-bold text-center mb-12">📚 Все статьи</h1>
         
+        {{ $articles := where .Site.RegularPages "Type" "posts" }}
+        {{ if $articles }}
         <div class="swiper articles-swiper">
             <div class="swiper-wrapper">
-                {{ range .Pages }}
+                {{ range $articles }}
                 <div class="swiper-slide">
                     <div class="article-card bg-white rounded-xl shadow-lg overflow-hidden h-full" onclick="window.location.href='{{ .Permalink }}'">
                         <img src="{{ .Params.image }}" alt="{{ .Title }}" class="w-full h-48 object-cover">
@@ -46,12 +48,18 @@
             <div class="swiper-button-next"></div>
             <div class="swiper-button-prev"></div>
         </div>
+        {{ else }}
+        <div class="text-center py-12">
+            <p class="text-gray-600 text-xl">Статьи пока отсутствуют. Первая статья появится после запуска генерации.</p>
+        </div>
+        {{ end }}
     </main>
 
     {{ partial "footer.html" . }}
 
     <script src="https://cdn.jsdelivr.net/npm/swiper@8/swiper-bundle.min.js"></script>
     <script>
+        {{ if $articles }}
         new Swiper('.articles-swiper', {
             slidesPerView: 1,
             spaceBetween: 30,
@@ -63,6 +71,7 @@
                 1280: { slidesPerView: 4 }
             }
         });
+        {{ end }}
     </script>
 </body>
 </html>
