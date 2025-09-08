@@ -5,33 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Галерея - {{ .Site.Title }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdn.jsdelivr.net/npm/swiper@8/swiper-bundle.min.css" rel="stylesheet">
-    <style>
-        .gallery-item { cursor: pointer; transition: transform 0.3s ease; }
-        .gallery-item:hover { transform: scale(1.05); }
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0; top: 0;
-            width: 100%; height: 100%;
-            background-color: rgba(0,0,0,0.9);
-        }
-        .modal-content {
-            margin: auto;
-            display: block;
-            max-width: 90%;
-            max-height: 90%;
-        }
-        .close {
-            position: absolute;
-            top: 20px; right: 35px;
-            color: white;
-            font-size: 40px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-    </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
     {{ partial "header.html" . }}
@@ -39,25 +12,18 @@
     <main class="max-w-7xl mx-auto px-4 py-12">
         <h1 class="text-4xl font-bold text-center mb-12">🖼️ Галерея изображений</h1>
         
-        {{ $gallery := site.Data.gallery }}
+        {{ $gallery := .Site.Data.gallery }}
         {{ if $gallery }}
-        <div class="swiper gallery-swiper">
-            <div class="swiper-wrapper">
-                {{ range $gallery }}
-                <div class="swiper-slide">
-                    <div class="gallery-item bg-white rounded-lg shadow-md overflow-hidden" onclick="openModal('{{ .src }}', '{{ .title }}')">
-                        <img src="{{ .src }}" alt="{{ .alt }}" class="w-full h-64 object-cover">
-                        <div class="p-4">
-                            <h3 class="font-semibold mb-2">{{ .title }}</h3>
-                            <p class="text-sm text-gray-600">{{ .date }}</p>
-                        </div>
-                    </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {{ range $gallery }}
+            <div class="bg-white rounded-lg shadow-md overflow-hidden group">
+                <img src="{{ .src }}" alt="{{ .alt }}" class="w-full h-64 object-cover group-hover:scale-105 transition duration-300">
+                <div class="p-4">
+                    <h3 class="font-semibold mb-2">{{ .title }}</h3>
+                    <p class="text-sm text-gray-600">{{ .date }}</p>
                 </div>
-                {{ end }}
             </div>
-            <div class="swiper-pagination mt-8"></div>
-            <div class="swiper-button-next"></div>
-            <div class="swiper-button-prev"></div>
+            {{ end }}
         </div>
         {{ else }}
         <div class="text-center py-12">
@@ -66,47 +32,6 @@
         {{ end }}
     </main>
 
-    <!-- Modal -->
-    <div id="imageModal" class="modal">
-        <span class="close" onclick="closeModal()">&times;</span>
-        <img class="modal-content" id="modalImage">
-        <div id="modalCaption" class="text-white text-center mt-4 text-xl"></div>
-    </div>
-
     {{ partial "footer.html" . }}
-
-    <script src="https://cdn.jsdelivr.net/npm/swiper@8/swiper-bundle.min.js"></script>
-    <script>
-        {{ if $gallery }}
-        new Swiper('.gallery-swiper', {
-            slidesPerView: 1,
-            spaceBetween: 30,
-            pagination: { el: '.swiper-pagination', clickable: true },
-            navigation: { nextEl: '.swiper-button-next', prevEl: '.swiper-button-prev' },
-            breakpoints: {
-                640: { slidesPerView: 2 },
-                1024: { slidesPerView: 3 },
-                1280: { slidesPerView: 4 }
-            }
-        });
-        {{ end }}
-
-        function openModal(src, title) {
-            document.getElementById('modalImage').src = src;
-            document.getElementById('modalCaption').innerHTML = title;
-            document.getElementById('imageModal').style.display = 'block';
-        }
-        function closeModal() {
-            document.getElementById('imageModal').style.display = 'none';
-        }
-        document.getElementById('imageModal').onclick = function(e) {
-            if (e.target === document.getElementById('imageModal')) {
-                closeModal();
-            }
-        }
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') closeModal();
-        });
-    </script>
 </body>
 </html>
