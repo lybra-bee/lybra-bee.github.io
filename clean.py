@@ -2,7 +2,7 @@ import os
 import shutil
 
 # Путь к корню репозитория
-repo_path = "/path/to/your/repo"  # <-- замени на свой путь
+repo_path = "/home/user/lybra-bee.github.io"  # <-- замени на свой путь
 
 # Список явных лишних файлов/папок (относительно repo_path)
 remove_paths = [
