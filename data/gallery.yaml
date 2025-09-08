@@ -1,3 +1,10 @@
+- alt: Искусственный интеллект - тренды, меняющие наше будущее
+  date: '2025-09-08'
+  src: /images/posts/iskusstvennyi-intellekt-trendy-meniaiushchie-nashe-budushchee.svg
+  tags:
+  - AI
+  - Tech
+  title: Искусственный интеллект - тренды, меняющие наше будущее
 - alt: Будущее уже здесь - главные тренды ИИ 2023
   date: '2025-09-08'
   src: /images/posts/budushchee-uzhe-zdes-glavnye-trendy-ii-2023.svg
@@ -95,6 +102,3 @@
 - alt: Будущее нейросетей - инновации, безопасность и устойчивость
   src: /static/images/placeholder.jpg
   title: Будущее нейросетей - инновации, безопасность и устойчивость
-- alt: Будущее уже здесь - нейросети меняют мир
-  src: /static/images/placeholder.jpg
-  title: Будущее уже здесь - нейросети меняют мир
