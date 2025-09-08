@@ -1,3 +1,10 @@
+- alt: Будущее технологий - нейросети меняют наш мир!
+  date: '2025-09-08'
+  src: /images/posts/budushchee-tekhnologii-neiroseti-meniaiut-nash-mir.svg
+  tags:
+  - AI
+  - Tech
+  title: Будущее технологий - нейросети меняют наш мир!
 - alt: Будущее технологий - нейросети в каждой сфере жизни
   date: '2025-09-08'
   src: /images/posts/budushchee-tekhnologii-neiroseti-v-kazhdoi-sfere-zhizni.svg
@@ -79,6 +86,3 @@
 - alt: Нейросети - Новый Рубеж ИИ для Бизнеса и Жизни
   src: /static/images/placeholder.jpg
   title: Нейросети - Новый Рубеж ИИ для Бизнеса и Жизни
-- alt: Будущее наступает - нейросети и новые технологии
-  src: static/images/placeholder.jpg
-  title: Будущее наступает - нейросети и новые технологии
