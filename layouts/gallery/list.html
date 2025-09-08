@@ -9,25 +9,71 @@
 <body class="bg-gray-50 min-h-screen">
     {{ partial "header.html" . }}
 
-    <main class="max-w-7xl mx-auto px-4 py-12">
+    <main class="max-w-5xl mx-auto px-4 py-12">
         <h1 class="text-4xl font-bold text-center mb-12">🖼️ Галерея изображений</h1>
-        
-        {{ $gallery := .Site.Data.gallery }}
-        {{ if $gallery }}
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {{ range $gallery }}
-            <div class="bg-white rounded-lg shadow-md overflow-hidden group">
-                <img src="{{ .src }}" alt="{{ .alt }}" class="w-full h-64 object-cover group-hover:scale-105 transition duration-300">
-                <div class="p-4">
-                    <h3 class="font-semibold mb-2">{{ .title }}</h3>
-                    <p class="text-sm text-gray-600">{{ .date }}</p>
+
+        {{ $images := readDir "static/images/posts" }}
+        {{ if $images }}
+        <div class="relative overflow-hidden">
+            <div id="carousel" class="flex transition-transform duration-500">
+                {{ range $index, $img := $images }}
+                {{ $filename := $img.Name }}
+                {{ $title := replace $filename "-" " " | replaceRE `\.[^.]+$` "" }}
+                <div class="min-w-full flex-shrink-0 p-2">
+                    <img src="/images/posts/{{ $filename }}" alt="{{ $title }}" 
+                         class="cursor-pointer rounded-lg shadow-md object-cover w-full h-80"
+                         onclick="openModal('/images/posts/{{ $filename }}', '{{ $title }}')">
+                    <h3 class="mt-2 text-center font-semibold">{{ $title }}</h3>
                 </div>
+                {{ end }}
             </div>
-            {{ end }}
+
+            <!-- Кнопки навигации -->
+            <button onclick="prev()" class="absolute left-0 top-1/2 -translate-y-1/2 bg-gray-700 bg-opacity-50 text-white px-3 py-2 rounded-r">‹</button>
+            <button onclick="next()" class="absolute right-0 top-1/2 -translate-y-1/2 bg-gray-700 bg-opacity-50 text-white px-3 py-2 rounded-l">›</button>
         </div>
+
+        <!-- Модальное окно -->
+        <div id="modal" class="fixed inset-0 bg-black bg-opacity-70 hidden justify-center items-center z-50" onclick="closeModal()">
+            <div class="relative">
+                <img id="modal-img" src="" alt="" class="max-h-[90vh] max-w-[90vw] rounded-lg shadow-lg">
+                <p id="modal-title" class="text-white text-center mt-2"></p>
+            </div>
+        </div>
+
+        <script>
+            let currentIndex = 0;
+            const carousel = document.getElementById('carousel');
+            const totalItems = carousel.children.length;
+
+            function showCarousel() {
+                carousel.style.transform = `translateX(-${currentIndex * 100}%)`;
+            }
+
+            function next() {
+                currentIndex = (currentIndex + 1) % totalItems;
+                showCarousel();
+            }
+
+            function prev() {
+                currentIndex = (currentIndex - 1 + totalItems) % totalItems;
+                showCarousel();
+            }
+
+            function openModal(src, title) {
+                document.getElementById('modal-img').src = src;
+                document.getElementById('modal-title').innerText = title;
+                document.getElementById('modal').classList.remove('hidden');
+            }
+
+            function closeModal() {
+                document.getElementById('modal').classList.add('hidden');
+            }
+        </script>
+
         {{ else }}
         <div class="text-center py-12">
-            <p class="text-gray-600 text-xl">Галерея пуста. Новые изображения появятся после генерации статей.</p>
+            <p class="text-gray-600 text-xl">Галерея пуста. Добавьте изображения в <code>static/images/posts/</code></p>
         </div>
         {{ end }}
     </main>
