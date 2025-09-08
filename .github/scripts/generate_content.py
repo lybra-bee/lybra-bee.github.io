@@ -29,42 +29,29 @@ def safe_yaml_value(value):
     if not value: return ""
     return str(value).replace('"', "'").replace(':', ' -').replace('\n', ' ').replace('\r', ' ').strip()
 
-def generate_with_cloudflare(prompt):
-    """Генерация через Cloudflare AI"""
+def generate_with_openrouter(prompt):
+    """Генерация через OpenRouter"""
     try:
-        if not CLOUDFLARE_API_KEY:
+        if not OPENROUTER_API_KEY:
             return None
             
-        logging.info("☁️ Пробуем Cloudflare AI...")
-        headers = {
-            "Authorization": f"Bearer {CLOUDFLARE_API_KEY}",
-            "Content-Type": "application/json"
-        }
-        
-        payload = {
-            "messages": [
-                {"role": "system", "content": "You are a helpful assistant that creates content in Russian."},
-                {"role": "user", "content": prompt}
-            ],
-            "max_tokens": 1000
-        }
-        
-        # Примерный endpoint Cloudflare AI (нужно уточнить актуальный)
-        response = requests.post(
-            "https://api.cloudflare.com/client/v4/accounts/.../ai/run/@cf/meta/llama-2-7b-chat-int8",
+        logging.info("🌐 Используем OpenRouter...")
+        headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}"}
+        r = requests.post("https://openrouter.ai/api/v1/chat/completions",
             headers=headers,
-            json=payload,
+            json={
+                "model": "gpt-4o-mini", 
+                "messages":[{"role":"user","content":prompt}],
+                "max_tokens": 1000
+            },
             timeout=30
         )
-        
-        if response.status_code == 200:
-            result = response.json()
-            return result.get('result', {}).get('response')
+        r.raise_for_status()
+        return r.json()["choices"][0]["message"]["content"].strip().strip('"')
             
     except Exception as e:
-        logging.warning(f"⚠️ Cloudflare AI не сработал: {e}")
-    
-    return None
+        logging.warning(f"⚠️ OpenRouter не сработал: {e}")
+        return None
 
 def generate_article():
     header_prompt = "Придумай интересный заголовок о последних трендах в искусственном интеллекте и технологиях (не более 7 слов)"
@@ -72,43 +59,32 @@ def generate_article():
     try:
         logging.info("📝 Генерация заголовка...")
         
-        # Пробуем Cloudflare first
-        title = generate_with_cloudflare(header_prompt)
-        if title:
-            logging.info("✅ Заголовок от Cloudflare AI")
-        else:
-            # Fallback to OpenRouter
-            headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}"}
-            r = requests.post("https://openrouter.ai/api/v1/chat/completions",
-                headers=headers,
-                json={"model": "gpt-4o-mini", "messages":[{"role":"user","content":header_prompt}]})
-            r.raise_for_status()
-            title = r.json()["choices"][0]["message"]["content"].strip().strip('"')
-            logging.info("✅ Заголовок от OpenRouter")
+        # Генерация заголовка
+        title = generate_with_openrouter(header_prompt)
+        if not title:
+            title = "Новые тренды в искусственном интеллекте 2024"
+        logging.info(f"✅ Заголовок: {title}")
         
         # Генерация текста
-        content_prompt = f"Напиши подробную статью на русском языке 500-600 слов по заголовку: {title}"
-        
+        content_prompt = f"Напиши подробную статью на русском языке 500-600 слов по заголовку: {title}. Сделай текст информативным и интересным."
         logging.info("📝 Генерация статьи...")
-        text = generate_with_cloudflare(content_prompt)
-        if text:
-            logging.info("✅ Статья от Cloudflare AI")
-            return title, text, "Cloudflare AI"
-        else:
-            # Fallback
-            r = requests.post("https://openrouter.ai/api/v1/chat/completions",
-                headers=headers,
-                json={"model": "gpt-4o-mini", "messages":[{"role":"user","content":content_prompt}]})
-            r.raise_for_status()
-            text = r.json()["choices"][0]["message"]["content"].strip()
-            logging.info("✅ Статья от OpenRouter")
-            return title, text, "OpenRouter GPT"
+        
+        text = generate_with_openrouter(content_prompt)
+        if not text:
+            text = f"""Искусственный интеллект продолжает революционизировать различные отрасли. В 2024 году мы наблюдаем несколько ключевых трендов:
+
+1. **Генеративный AI** - модели типа GPT стали доступны широкой публике
+2. **Мультимодальность** - AI работает с текстом, изображениями и аудио одновременно
+3. **Этический AI** - повышенное внимание к безопасности и этике
+
+Эти технологии меняют нашу повседневную жизнь и бизнес-процессы."""
+        
+        return title, text, "AI Generator"
             
     except Exception as e:
         logging.error(f"❌ Ошибка генерации: {e}")
-        # Исправленная строка без ошибки форматирования
-        fallback_text = "Искусственный интеллект продолжает revolutionizing различные отрасли. Вот основные тренды..."
-        return "Новые тренды в искусственном интеллекте 2024", fallback_text, "Fallback"
+        fallback_text = "Искусственный интеллект продолжает развиваться быстрыми темпами. Новые технологии появляются каждый день, меняя наше представление о возможном."
+        return "Развитие искусственного интеллекта", fallback_text, "Fallback"
 
 def generate_image(title, slug):
     try:
@@ -116,6 +92,7 @@ def generate_image(title, slug):
         img_path = os.path.join(STATIC_DIR, f"{slug}.svg")
         
         # Создаем SVG с градиентом
+        safe_title = title.replace('"', '').replace("'", "")
         svg_content = f'''<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
             <defs>
                 <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -125,7 +102,7 @@ def generate_image(title, slug):
             </defs>
             <rect width="100%" height="100%" fill="url(#grad)"/>
             <text x="600" y="300" font-family="Arial" font-size="48" fill="white" text-anchor="middle" font-weight="bold">
-                {title}
+                {safe_title}
             </text>
             <text x="600" y="380" font-family="Arial" font-size="24" fill="rgba(255,255,255,0.8)" text-anchor="middle">
                 AI Generated Content
@@ -150,7 +127,8 @@ def update_gallery(title, slug, image_path):
             try:
                 with open(GALLERY_FILE, 'r', encoding='utf-8') as f:
                     gallery = yaml.safe_load(f) or []
-            except:
+            except Exception as e:
+                logging.warning(f"⚠️ Ошибка чтения галереи, создаем новую: {e}")
                 gallery = []
 
         # Правильный путь для изображения
@@ -191,6 +169,7 @@ def save_article(title, text, model, slug, image_path):
             'tags': ["AI", "Tech", "Нейросети"],
             'categories': ["Технологии"],
             'author': "AI Generator",
+            'type': "posts",
             'description': safe_yaml_value(text[:150] + "..." if len(text) > 150 else text)
         }
         
