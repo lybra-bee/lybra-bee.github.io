@@ -39,7 +39,7 @@
     <main class="max-w-7xl mx-auto px-4 py-12">
         <h1 class="text-4xl font-bold text-center mb-12">🖼️ Галерея изображений</h1>
         
-        {{ $gallery := .Site.Data.gallery }}
+        {{ $gallery := site.Data.gallery }}
         {{ if $gallery }}
         <div class="swiper gallery-swiper">
             <div class="swiper-wrapper">
