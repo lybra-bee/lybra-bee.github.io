@@ -11,25 +11,23 @@
 
     <main class="max-w-7xl mx-auto px-4 py-12">
         <h1 class="text-4xl font-bold text-center mb-12">🖼️ Галерея изображений</h1>
-
-        {{ $images := readDir "static/images/posts" }}
-        {{ if $images }}
+        
+        {{ $gallery := .Site.Data.gallery }}
+        {{ if $gallery }}
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {{ range $images }}
-            {{ $filename := .Name }}
-            {{ $title := replace $filename "-" " " | replaceRE `\.[^.]+$` "" }}
+            {{ range $gallery }}
             <div class="bg-white rounded-lg shadow-md overflow-hidden group">
-                <img src="/images/posts/{{ $filename }}" alt="{{ $title }}" class="w-full h-64 object-cover group-hover:scale-105 transition duration-300">
+                <img src="{{ .src }}" alt="{{ .alt }}" class="w-full h-64 object-cover group-hover:scale-105 transition duration-300">
                 <div class="p-4">
-                    <h3 class="font-semibold mb-2">{{ $title }}</h3>
-                    <p class="text-sm text-gray-600">—</p>
+                    <h3 class="font-semibold mb-2">{{ .title }}</h3>
+                    <p class="text-sm text-gray-600">{{ .date }}</p>
                 </div>
             </div>
             {{ end }}
         </div>
         {{ else }}
         <div class="text-center py-12">
-            <p class="text-gray-600 text-xl">Галерея пуста. Добавьте изображения в static/images/posts/</p>
+            <p class="text-gray-600 text-xl">Галерея пуста. Новые изображения появятся после генерации статей.</p>
         </div>
         {{ end }}
     </main>
@@ -37,4 +35,3 @@
     {{ partial "footer.html" . }}
 </body>
 </html>
-
