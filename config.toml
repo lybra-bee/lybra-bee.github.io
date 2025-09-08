@@ -2,6 +2,7 @@ baseURL = "https://yourusername.github.io/"
 languageCode = "ru-ru"
 title = "AI Портфолио"
 theme = "hugo-portfolio"
+defaultContentLanguage = "ru"
 
 [params]
 description = "Портфолио сгенерированных AI статей и изображений"
