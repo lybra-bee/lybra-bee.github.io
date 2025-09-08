@@ -1,3 +1,10 @@
+- alt: Будущее за искусственным интеллектом - Как ИИ меняет наш мир
+  date: '2025-09-08'
+  src: /images/posts/budushchee-za-iskusstvennym-intellektom-kak-ii-meniaet-nash-mir.svg
+  tags:
+  - AI
+  - Tech
+  title: Будущее за искусственным интеллектом - Как ИИ меняет наш мир
 - alt: Будущее технологий - Нейросети формируют новый мир
   date: '2025-09-08'
   src: /images/posts/budushchee-tekhnologii-neiroseti-formiruiut-novyi-mir.svg
@@ -87,6 +94,3 @@
 - alt: Будущее технологий - Нейросети изменяют наш мир
   src: /static/images/placeholder.jpg
   title: Будущее технологий - Нейросети изменяют наш мир
-- alt: Нейросети и высокие технологии - будущее уже здесь!
-  src: /static/images/placeholder.jpg
-  title: Нейросети и высокие технологии - будущее уже здесь!

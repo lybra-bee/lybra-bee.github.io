@@ -14,7 +14,7 @@
         
         {{ $articles := where .Site.RegularPages "Section" "posts" }}
         {{ if $articles }}
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div class="grid grid-cols-1 md:grid-cols 2 lg:grid-cols-3 gap-8">
             {{ range $articles }}
             <article class="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition cursor-pointer" onclick="window.location.href='{{ .Permalink }}'">
                 <img src="{{ .Params.image }}" alt="{{ .Title }}" class="w-full h-48 object-cover">
