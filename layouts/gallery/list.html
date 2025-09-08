@@ -1,16 +1,38 @@
-{{ define "main" }}
-<section class="section-gallery">
-  <div class="container">
-    <h2>Галерея</h2>
-    <div class="gallery-grid">
-      {{ range (site.Data.gallery) }}
-        <div class="gallery-item">
-          <a href="{{ .src | relURL }}" target="_blank">
-            <img src="{{ .src | relURL }}" alt="{{ .alt }}" style="max-width:200px;height:auto;">
-          </a>
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Галерея - {{ .Site.Title }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    {{ partial "header.html" . }}
+
+    <main class="max-w-7xl mx-auto px-4 py-12">
+        <h1 class="text-4xl font-bold text-center mb-12">🖼️ Галерея изображений</h1>
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {{ range .Site.Data.gallery }}
+            <div class="bg-white rounded-lg shadow-md overflow-hidden group">
+                <img src="{{ .src }}" alt="{{ .alt }}" 
+                     class="w-full h-64 object-cover group-hover:scale-105 transition duration-300">
+                <div class="p-4">
+                    <h3 class="font-semibold mb-2 text-lg">{{ .title }}</h3>
+                    <p class="text-sm text-gray-600">{{ .date }}</p>
+                    <div class="mt-2">
+                        {{ range .tags }}
+                        <span class="inline-block bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded mr-1">
+                            {{ . }}
+                        </span>
+                        {{ end }}
+                    </div>
+                </div>
+            </div>
+            {{ end }}
         </div>
-      {{ end }}
-    </div>
-  </div>
-</section>
-{{ end }}
+    </main>
+
+    {{ partial "footer.html" . }}
+</body>
+</html>
