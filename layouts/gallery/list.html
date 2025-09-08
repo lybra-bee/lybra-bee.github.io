@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Галерея - {{ .Site.Title }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FsLightbox CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/fslightbox@3.2.0/index.js"></script>
 </head>
 <body class="bg-gray-50 min-h-screen">
     {{ partial "header.html" . }}
@@ -17,7 +19,9 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {{ range $gallery }}
             <div class="bg-white rounded-lg shadow-md overflow-hidden group">
-                <img src="{{ .src }}" alt="{{ .alt }}" class="w-full h-64 object-cover group-hover:scale-105 transition duration-300">
+                <a href="{{ .src }}" data-fslightbox="gallery" data-type="image">
+                    <img src="{{ .src }}" alt="{{ .alt }}" class="w-full h-64 object-cover group-hover:scale-105 transition duration-300">
+                </a>
                 <div class="p-4">
                     <h3 class="font-semibold mb-2">{{ .title }}</h3>
                     <p class="text-sm text-gray-600">{{ .date }}</p>
@@ -33,5 +37,13 @@
     </main>
 
     {{ partial "footer.html" . }}
+
+    <!-- Инициализация FsLightbox -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const lightbox = new FsLightbox();
+            lightbox.init();
+        });
+    </script>
 </body>
 </html>
