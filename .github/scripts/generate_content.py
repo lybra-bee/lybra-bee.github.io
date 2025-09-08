@@ -18,11 +18,11 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 
-# Папки для Hugo (правильные пути)
+# Папки для Hugo
 POSTS_DIR = 'content/posts'
-STATIC_DIR = 'static/images/posts'  # Исправлено на static для Hugo
+STATIC_DIR = 'static/images/posts'
 GALLERY_FILE = 'data/gallery.yaml'
-PLACEHOLDER = 'static/images/placeholder.jpg'  # Исправлено на static
+PLACEHOLDER = 'static/images/placeholder.jpg'
 
 os.makedirs(POSTS_DIR, exist_ok=True)
 os.makedirs(STATIC_DIR, exist_ok=True)
@@ -111,39 +111,10 @@ def generate_image_with_free_api(title, slug):
             with open(img_path, 'wb') as f:
                 f.write(response.content)
             logging.info(f"✅ Изображение Hugging Face сохранено: {img_path}")
-            return f"/images/posts/{slug}.png"  # Путь для Hugo
+            return f"/images/posts/{slug}.png"
             
     except Exception as e:
         logging.warning(f"⚠️ Hugging Face не сработал: {e}")
-    
-    # 2. Попробуем другой публичный API
-    try:
-        logging.info("🎨 Пробуем публичный AI API...")
-        
-        api_url = "https://api.vyro.ai/v1/imagine/api/generations"
-        
-        payload = {
-            "prompt": f"digital art, high quality, {title}",
-            "style": "realistic",
-            "ratio": "1:1"
-        }
-        
-        response = requests.post(api_url, json=payload, timeout=60)
-        
-        if response.status_code == 200:
-            data = response.json()
-            if data.get('image_url'):
-                img_data = requests.get(data['image_url'], timeout=30).content
-                img_path = os.path.join(STATIC_DIR, f"{slug}.png")
-                
-                with open(img_path, 'wb') as f:
-                    f.write(img_data)
-                
-                logging.info(f"✅ Изображение публичного API сохранено: {img_path}")
-                return f"/images/posts/{slug}.png"  # Путь для Hugo
-                
-    except Exception as e:
-        logging.warning(f"⚠️ Публичный API не сработал: {e}")
     
     return None
 
@@ -195,13 +166,6 @@ def generate_quality_svg_image(title, slug):
                     <stop offset="0%" stop-color="#667eea" />
                     <stop offset="100%" stop-color="#764ba2" />
                 </linearGradient>
-                <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
-                    <feGaussianBlur in="SourceAlpha" stdDeviation="20" result="blur"/>
-                    <feOffset in="blur" dx="10" dy="10" result="offsetBlur"/>
-                    <feFlood flood-color="#000000" flood-opacity="0.5" result="offsetColor"/>
-                    <feComposite in="offsetColor" in2="offsetBlur" operator="in" result="offsetBlur"/>
-                    <feBlend in="SourceGraphic" in2="offsetBlur" mode="normal"/>
-                </filter>
             </defs>
             
             <rect width="1200" height="630" fill="url(#gradient)" />
@@ -213,7 +177,7 @@ def generate_quality_svg_image(title, slug):
             
             <!-- Основной текст -->
             <g font-family="Arial, sans-serif" fill="white" text-anchor="middle">
-                {"".join(f'<text x="600" y="{250 + i*60}" font-size="36" font-weight="bold" filter="url(#shadow)">{line}</text>' 
+                {"".join(f'<text x="600" y="{250 + i*60}" font-size="36" font-weight="bold">{line}</text>' 
                          for i, line in enumerate(lines))}
             </g>
             
@@ -233,7 +197,7 @@ def generate_quality_svg_image(title, slug):
             f.write(svg_content)
         
         logging.info(f"✅ Качественное SVG изображение создано: {img_path}")
-        return f"/images/posts/{slug}.svg"  # Путь для Hugo
+        return f"/images/posts/{slug}.svg"
         
     except Exception as e:
         logging.error(f"❌ Ошибка создания SVG изображения: {e}")
@@ -250,6 +214,41 @@ def generate_image(title, slug):
     logging.warning("❌ Все методы генерации изображений не сработали")
     return PLACEHOLDER
 
+def update_gallery(title, slug, image_path):
+    """Обновляет галерею с правильными путями"""
+    gallery = []
+    if os.path.exists(GALLERY_FILE):
+        try:
+            with open(GALLERY_FILE, 'r', encoding='utf-8') as f:
+                gallery = yaml.safe_load(f) or []
+        except Exception as e:
+            logging.error(f"❌ Ошибка чтения галереи: {e}")
+            gallery = []
+
+    # Убедимся, что путь правильный
+    if image_path.startswith('/'):
+        image_src = image_path
+    else:
+        image_src = f"/{image_path}"
+
+    gallery.insert(0, {
+        "title": safe_yaml_value(title), 
+        "alt": safe_yaml_value(title), 
+        "src": image_src,
+        "date": datetime.now().strftime("%Y-%m-%d"),
+        "tags": ["AI", "Tech"]
+    })
+    
+    # Ограничиваем галерею 20 последними изображениями
+    gallery = gallery[:20]
+
+    try:
+        with open(GALLERY_FILE, 'w', encoding='utf-8') as f:
+            yaml.safe_dump(gallery, f, allow_unicode=True, default_flow_style=False)
+        logging.info(f"✅ Галерея обновлена: {GALLERY_FILE}")
+    except Exception as e:
+        logging.error(f"❌ Ошибка сохранения галереи: {e}")
+
 def save_article(title, text, model, slug, image_path):
     filename = os.path.join(POSTS_DIR, f'{slug}.md')
     
@@ -257,7 +256,7 @@ def save_article(title, text, model, slug, image_path):
     front_matter = {
         'title': safe_yaml_value(title),
         'date': datetime.now().strftime("%Y-%m-%dT%H:%M:%S+03:00"),
-        'image': image_path,
+        'image': image_path if image_path.startswith('/') else f'/{image_path}',
         'draft': False,
         'tags': ["AI", "Tech", "Нейросети"],
         'categories': ["Технологии"],
@@ -275,34 +274,6 @@ def save_article(title, text, model, slug, image_path):
     with open(filename, 'w', encoding='utf-8') as f:
         f.write(content)
     logging.info(f"✅ Статья сохранена: {filename}")
-
-def update_gallery(title, slug, image_path):
-    gallery = []
-    if os.path.exists(GALLERY_FILE):
-        try:
-            with open(GALLERY_FILE, 'r', encoding='utf-8') as f:
-                gallery = yaml.safe_load(f) or []
-        except Exception as e:
-            logging.error(f"❌ Ошибка чтения галереи: {e}")
-            gallery = []
-
-    gallery.insert(0, {
-        "title": safe_yaml_value(title), 
-        "alt": safe_yaml_value(title), 
-        "src": image_path,
-        "date": datetime.now().strftime("%Y-%m-%d"),
-        "tags": ["AI", "Tech"]
-    })
-    
-    # Ограничиваем галерею 20 последними изображениями
-    gallery = gallery[:20]
-
-    try:
-        with open(GALLERY_FILE, 'w', encoding='utf-8') as f:
-            yaml.safe_dump(gallery, f, allow_unicode=True, default_flow_style=False)
-        logging.info(f"✅ Галерея обновлена: {GALLERY_FILE}")
-    except Exception as e:
-        logging.error(f"❌ Ошибка сохранения галереи: {e}")
 
 def cleanup_old_posts(keep=10):
     try:
