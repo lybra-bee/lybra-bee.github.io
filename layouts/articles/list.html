@@ -5,18 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Статьи - {{ .Site.Title }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdn.jsdelivr.net/npm/swiper@8/swiper-bundle.min.css" rel="stylesheet">
-    <style>
-        .swiper { padding: 50px 0; }
-        .article-card {
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            cursor: pointer;
-        }
-        .article-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-        }
-    </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
     {{ partial "header.html" . }}
@@ -24,29 +12,22 @@
     <main class="max-w-7xl mx-auto px-4 py-12">
         <h1 class="text-4xl font-bold text-center mb-12">📚 Все статьи</h1>
         
-        {{ $articles := where site.RegularPages "Section" "posts" }}
+        {{ $articles := where .Site.RegularPages "Section" "posts" }}
         {{ if $articles }}
-        <div class="swiper articles-swiper">
-            <div class="swiper-wrapper">
-                {{ range $articles }}
-                <div class="swiper-slide">
-                    <div class="article-card bg-white rounded-xl shadow-lg overflow-hidden h-full" onclick="window.location.href='{{ .Permalink }}'">
-                        <img src="{{ .Params.image }}" alt="{{ .Title }}" class="w-full h-48 object-cover">
-                        <div class="p-6">
-                            <h2 class="text-xl font-bold mb-3">{{ .Title }}</h2>
-                            <p class="text-gray-600 mb-4">{{ .Description }}</p>
-                            <div class="flex items-center justify-between">
-                                <span class="text-sm text-gray-500">{{ .Date.Format "2006-01-02" }}</span>
-                                <span class="text-blue-600 font-semibold">Читать →</span>
-                            </div>
-                        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {{ range $articles }}
+            <article class="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition cursor-pointer" onclick="window.location.href='{{ .Permalink }}'">
+                <img src="{{ .Params.image }}" alt="{{ .Title }}" class="w-full h-48 object-cover">
+                <div class="p-6">
+                    <h2 class="text-xl font-bold mb-3">{{ .Title }}</h2>
+                    <p class="text-gray-600 mb-4">{{ .Description }}</p>
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm text-gray-500">{{ .Date.Format "2006-01-02" }}</span>
+                        <span class="text-blue-600 font-semibold">Читать →</span>
                     </div>
                 </div>
-                {{ end }}
-            </div>
-            <div class="swiper-pagination mt-8"></div>
-            <div class="swiper-button-next"></div>
-            <div class="swiper-button-prev"></div>
+            </article>
+            {{ end }}
         </div>
         {{ else }}
         <div class="text-center py-12">
@@ -56,22 +37,5 @@
     </main>
 
     {{ partial "footer.html" . }}
-
-    <script src="https://cdn.jsdelivr.net/npm/swiper@8/swiper-bundle.min.js"></script>
-    <script>
-        {{ if $articles }}
-        new Swiper('.articles-swiper', {
-            slidesPerView: 1,
-            spaceBetween: 30,
-            pagination: { el: '.swiper-pagination', clickable: true },
-            navigation: { nextEl: '.swiper-button-next', prevEl: '.swiper-button-prev' },
-            breakpoints: {
-                640: { slidesPerView: 2 },
-                1024: { slidesPerView: 3 },
-                1280: { slidesPerView: 4 }
-            }
-        });
-        {{ end }}
-    </script>
 </body>
 </html>
