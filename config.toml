@@ -1,63 +1,27 @@
-baseURL = "https://yourusername.github.io/"
+baseURL = "https://lybra-bee.github.io/"
 languageCode = "ru-ru"
 title = "AI Портфолио"
-theme = "hugo-portfolio"
-defaultContentLanguage = "ru"
 
 [params]
 description = "Портфолио сгенерированных AI статей и изображений"
-author = "AI Content Generator"
-  
-# Настройки главной
-heroTitle = "Добро пожаловать в AI Портфолио"
-heroSubtitle = "Статьи и изображения, сгенерированные искусственным интеллектом"
-  
-# Социальные сети
-[[params.socialIcons]]
-name = "github"
-url = "https://github.com/yourusername"
 
-[[params.socialIcons]]
-name = "twitter"
-url = "https://twitter.com/yourusername"
-
-[markup]
-  [markup.goldmark]
-    [markup.goldmark.renderer]
-      unsafe = true
-
-[outputs]
-  home = ["HTML", "RSS"]
-
-enableEmoji = true
-
-[languages]
-  [languages.ru]
-    weight = 1
-    languageName = "Русский"
-    title = "AI Портфолио"
-    
 [menu]
   [[menu.main]]
-    identifier = "home"
     name = "Главная"
     url = "/"
     weight = 1
 
   [[menu.main]]
-    identifier = "articles"
     name = "Статьи"
     url = "/articles/"
     weight = 2
 
   [[menu.main]]
-    identifier = "gallery"
     name = "Галерея"
     url = "/gallery/"
     weight = 3
 
   [[menu.main]]
-    identifier = "about"
     name = "Обо мне"
     url = "/about/"
     weight = 4
