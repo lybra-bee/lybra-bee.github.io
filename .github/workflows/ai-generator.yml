@@ -1,133 +1,168 @@
-#!/usr/bin/env python3
-import os
-import json
-import requests
-import time
-import logging
-import glob
-from datetime import datetime
-from slugify import slugify
-import yaml
+name: Generate and Deploy Hugo Site
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * *'
 
-OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
-POSTS_DIR = 'content/posts'
-STATIC_DIR = 'static/images/posts'
-GALLERY_FILE = 'data/gallery.yaml'
-PLACEHOLDER = 'static/images/placeholder.jpg'
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
-os.makedirs(POSTS_DIR, exist_ok=True)
-os.makedirs(STATIC_DIR, exist_ok=True)
-os.makedirs(os.path.dirname(PLACEHOLDER), exist_ok=True)
-os.makedirs(os.path.dirname(GALLERY_FILE), exist_ok=True)
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
 
-def safe_yaml_value(value):
-    if not value: return ""
-    return str(value).replace('"', "'").replace(':', ' -').replace('\n', ' ').replace('\r', ' ').strip()
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install requests python-slugify pyyaml
 
-def generate_article():
-    try:
-        logging.info("📝 Генерация заголовка...")
-        headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}"}
-        r = requests.post("https://openrouter.ai/api/v1/chat/completions",
-            headers=headers,
-            json={"model": "gpt-4o-mini", "messages":[{"role":"user","content":"Придумай заголовок о технологиях ИИ"}]})
-        r.raise_for_status()
-        title = r.json()["choices"][0]["message"]["content"].strip().strip('"')
-        logging.info(f"✅ Заголовок: {title}")
-        
-        logging.info("📝 Генерация статьи...")
-        r = requests.post("https://openrouter.ai/api/v1/chat/completions",
-            headers=headers,
-            json={"model": "gpt-4o-mini", "messages":[{"role":"user","content":f"Напиши статью 400 слов: {title}"}]})
-        r.raise_for_status()
-        text = r.json()["choices"][0]["message"]["content"].strip()
-        return title, text, "OpenRouter GPT"
-        
-    except Exception as e:
-        logging.error(f"❌ Ошибка: {e}")
-        return "Новая статья об ИИ", "Содержание статьи...", "Fallback"
+    - name: Create necessary directories
+      run: |
+        mkdir -p content/posts
+        mkdir -p static/images/posts
+        mkdir -p data
+        mkdir -p layouts/partials
+        mkdir -p layouts/articles
+        mkdir -p layouts/gallery
+        mkdir -p layouts/about
+        mkdir -p layouts/_default
 
-def generate_image(title, slug):
-    try:
-        logging.info("🖼️ Создание изображения...")
-        img_path = os.path.join(STATIC_DIR, f"{slug}.svg")
-        
-        svg_content = f'''<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
-            <rect width="100%" height="100%" fill="#667eea"/>
-            <text x="600" y="315" font-family="Arial" font-size="48" fill="white" text-anchor="middle">{title}</text>
-        </svg>'''
-        
-        with open(img_path, 'w', encoding='utf-8') as f:
-            f.write(svg_content)
-        
-        return f"/images/posts/{slug}.svg"
-        
-    except Exception as e:
-        logging.error(f"❌ Ошибка изображения: {e}")
-        return PLACEHOLDER
+    - name: Create config.toml
+      run: |
+        cat > config.toml << 'EOF'
+        baseURL = "https://${{ github.repository_owner }}.github.io/"
+        languageCode = "ru-ru"
+        title = "AI Портфолио"
 
-def update_gallery(title, slug, image_path):
-    gallery = []
-    if os.path.exists(GALLERY_FILE):
-        try:
-            with open(GALLERY_FILE, 'r', encoding='utf-8') as f:
-                gallery = yaml.safe_load(f) or []
-        except:
-            gallery = []
+        [params]
+        description = "Портфолио сгенерированных AI статей и изображений"
 
-    gallery.insert(0, {
-        "title": safe_yaml_value(title), 
-        "alt": safe_yaml_value(title), 
-        "src": image_path,
-        "date": datetime.now().strftime("%Y-%m-%d"),
-        "tags": ["AI", "Tech"]
-    })
-    gallery = gallery[:20]
+        [menu]
+          [[menu.main]]
+            name = "Главная"
+            url = "/"
+            weight = 1
 
-    try:
-        with open(GALLERY_FILE, 'w', encoding='utf-8') as f:
-            yaml.safe_dump(gallery, f, allow_unicode=True, default_flow_style=False)
-    except Exception as e:
-        logging.error(f"❌ Ошибка галереи: {e}")
+          [[menu.main]]
+            name = "Статьи"
+            url = "/articles/"
+            weight = 2
 
-def save_article(title, text, model, slug, image_path):
-    filename = os.path.join(POSTS_DIR, f'{slug}.md')
-    
-    front_matter = {
-        'title': safe_yaml_value(title),
-        'date': datetime.now().strftime("%Y-%m-%dT%H:%M:%S+03:00"),
-        'image': image_path,
-        'draft': False,
-        'tags': ["AI", "Tech"],
-        'categories': ["Технологии"]
-    }
-    
-    yaml_content = yaml.safe_dump(front_matter, allow_unicode=True, default_flow_style=False, sort_keys=False)
-    content = f"""---
-{yaml_content}---
+          [[menu.main]]
+            name = "Галерея"
+            url = "/gallery/"
+            weight = 3
 
-{text}
-"""
-    
-    with open(filename, 'w', encoding='utf-8') as f:
-        f.write(content)
+          [[menu.main]]
+            name = "Обо мне"
+            url = "/about/"
+            weight = 4
 
-def main():
-    try:
-        logging.info("🚀 Запуск генерации...")
-        title, text, model = generate_article()
-        slug = slugify(title)
-        image_path = generate_image(title, slug)
-        save_article(title, text, model, slug, image_path)
-        update_gallery(title, slug, image_path)
-        logging.info("🎉 Генерация завершена!")
-        
-    except Exception as e:
-        logging.error(f"❌ Критическая ошибка: {e}")
+        [outputs]
+          home = ["HTML", "RSS"]
+        EOF
 
-if __name__ == "__main__":
-    main()
+    - name: Create basic layout files
+      run: |
+        # Create minimal layout files first
+        cat > layouts/partials/header.html << 'EOF'
+        <nav class="bg-white shadow-sm sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center h-16">
+                    <div class="text-xl font-bold text-gray-800">
+                        <a href="/">🎨 AI Портфолио</a>
+                    </div>
+                    <div class="hidden md:flex space-x-8">
+                        <a href="/" class="text-gray-700 hover:text-blue-600 transition">Главная</a>
+                        <a href="/articles/" class="text-gray-700 hover:text-blue-600 transition">Статьи</a>
+                        <a href="/gallery/" class="text-gray-700 hover:text-blue-600 transition">Галерея</a>
+                        <a href="/about/" class="text-gray-700 hover:text-blue-600 transition">Обо мне</a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+        EOF
+
+        cat > layouts/partials/footer.html << 'EOF'
+        <footer class="bg-gray-800 text-white py-12">
+            <div class="max-w-7xl mx-auto px-4 text-center">
+                <p class="text-lg mb-4">🎨 AI Портфолио</p>
+                <p class="text-gray-400">Сгенерировано с помощью AI технологий</p>
+                <div class="mt-6">
+                    <p class="text-sm text-gray-500">© 2024 Все права защищены</p>
+                </div>
+            </div>
+        </footer>
+        EOF
+
+    - name: Generate article and image
+      run: python .github/scripts/generate_content.py
+      env:
+        OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+
+    - name: Create content pages
+      run: |
+        cat > content/about.md << 'EOF'
+        ---
+        title: "Обо мне"
+        date: 2024-01-01
+        draft: false
+        ---
+
+        ## 👋 Привет! Я AI энтузиаст
+
+        Я создаю контент с помощью современных технологий искусственного интеллекта.
+        EOF
+
+        cat > content/articles.md << 'EOF'
+        ---
+        title: "Все статьи"
+        ---
+        EOF
+
+        cat > content/gallery.md << 'EOF'
+        ---
+        title: "Галерея изображений"
+        ---
+        EOF
+
+    - name: Commit generated content
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add .
+        git commit -m "🤖 Auto-generated content [CI]" || echo "No changes to commit"
+        git push
+
+    - name: Setup Hugo
+      uses: peaceiris/actions-hugo@v2
+      with:
+        hugo-version: '0.120.4'
+        extended: true
+
+    - name: Build Hugo site
+      run: hugo --minify --logLevel info
+
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_branch: gh-pages
+        publish_dir: ./public
+        force_orphan: true
+        keep_files: false
+        enable_jekyll: false
+        user_name: 'github-actions[bot]'
+        user_email: 'github-actions[bot]@users.noreply.github.com'
