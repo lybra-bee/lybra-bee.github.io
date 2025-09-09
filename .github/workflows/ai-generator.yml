@@ -28,7 +28,7 @@ jobs:
           CLOUDFLARE_API_KEY: ${{ secrets.CLOUDFLARE_API_KEY }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          python3 generate_content.py
+          python3 .github/scripts/generate_content.py
 
       - name: 📝 Коммит и пуш изменений
         run: |
