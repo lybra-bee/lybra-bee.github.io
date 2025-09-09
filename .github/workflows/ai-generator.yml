@@ -3,7 +3,7 @@ name: Generate and Deploy Hugo Site
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 6 * * *'
+    - cron: '0 6 * * *'  # ежедневно в 06:00 UTC
 
 jobs:
   generate:
@@ -12,55 +12,58 @@ jobs:
       contents: write
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
-    - name: Setup Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
 
-    - name: Install Python dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install python-slugify pyyaml
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests python-slugify pyyaml
 
-    - name: Create necessary directories
-      run: |
-        mkdir -p content/posts
-        mkdir -p static/images/posts
-        mkdir -p data
+      - name: Ensure script exists
+        run: |
+          mkdir -p .github/scripts
+          # если вы вставили скрипт вручную, этот шаг можно убрать
 
-    - name: Run content generation
-      run: python .github/scripts/generate_content.py
+      - name: Run generation script
+        run: python .github/scripts/generate_content.py
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
 
-    - name: Commit generated content
-      run: |
-        git config user.name "github-actions[bot]"
-        git config user.email "github-actions[bot]@users.noreply.github.com"
-        git add content/posts data/gallery.yaml
-        git commit -m "🤖 Авто-генерация статьи и обновление галереи [CI]" || echo "No changes to commit"
-        git push
+      - name: Commit generated content
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add content/posts static/images/posts data/gallery.yaml data/gallery.json || true
+          git commit -m "🤖 Автоматическая генерация статьи и обновление галереи [CI]" || echo "No changes to commit"
+          git push origin HEAD:main || echo "Push failed (check permissions)"
 
-    - name: Setup Hugo
-      uses: peaceiris/actions-hugo@v2
-      with:
-        hugo-version: '0.120.4'
-        extended: true
+      - name: Setup Hugo
+        uses: peaceiris/actions-hugo@v2
+        with:
+          hugo-version: '0.120.4'
+          extended: true
 
-    - name: Build Hugo site
-      run: hugo --minify --logLevel info
+      - name: Build Hugo site
+        run: hugo --minify --logLevel info
 
-    - name: Deploy to GitHub Pages
-      uses: peaceiris/actions-gh-pages@v3
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_branch: gh-pages
-        publish_dir: ./public
-        force_orphan: true
-        keep_files: false
-        enable_jekyll: false
-        user_name: 'github-actions[bot]'
-        user_email: 'github-actions[bot]@users.noreply.github.com'
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: ./public
+          force_orphan: true
+          keep_files: false
+          enable_jekyll: false
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
