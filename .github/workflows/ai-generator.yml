@@ -407,6 +407,10 @@ jobs:
         git commit -m "🤖 Auto-generated content [CI]" || echo "No changes to commit"
         git push
 
+    - name: Copy images for gallery
+      run: python3 copy_images.py
+
+
     - name: Setup Hugo
       uses: peaceiris/actions-hugo@v2
       with:
