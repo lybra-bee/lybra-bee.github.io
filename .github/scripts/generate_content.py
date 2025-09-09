@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 import os
+import yaml
 import glob
 import logging
 from datetime import datetime
 from slugify import slugify
-import yaml
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -19,22 +19,32 @@ os.makedirs(os.path.dirname(GALLERY_FILE), exist_ok=True)
 
 def safe_yaml_value(value):
     if not value: return ""
-    return str(value).replace('"', "'").replace(':', ' -').replace('\n', ' ').replace('\r', ' ').strip()
+    return str(value).replace('"', "'").replace(':', ' -').replace('\n', ' ').strip()
 
 def generate_article():
-    """Генерация заголовка и текста (стабильная версия)"""
-    title = f"Искусственный интеллект {datetime.now().year}: Тренды, меняющие мир"
-    text = f"""Искусственный интеллект продолжает революционизировать различные отрасли. В {datetime.now().year} году мы наблюдаем несколько ключевых трендов:
+    """Генерация заголовка и текста статьи (заглушка)"""
+    try:
+        # Заголовок с текущим годом
+        current_year = datetime.now().year
+        title = f"Искусственный интеллект {current_year}: Тренды, меняющие мир"
+        logging.info(f"📄 Сгенерирована статья: {title}")
+        
+        text = f"""Искусственный интеллект продолжает стремительно развиваться. В {current_year} году ключевые направления:
 
-1. Генеративный AI - модели типа GPT стали доступны широкой публике.
-2. Мультимодальность - AI работает с текстом, изображениями и аудио одновременно.
-3. Этический AI - повышенное внимание к безопасности и этике.
+1. Генеративный AI — новые модели для творчества
+2. Мультимодальные системы — текст, изображение, аудио
+3. Этический AI — безопасность и ответственность
 
-Эти технологии меняют нашу повседневную жизнь и бизнес-процессы."""
-    return title, text, "AI Generator"
+Эти технологии изменяют бизнес и повседневную жизнь человека."""
+        
+        return title, text, "AI Generator"
+
+    except Exception as e:
+        logging.error(f"❌ Ошибка генерации статьи: {e}")
+        return "Искусственный интеллект", "Текст временно недоступен", "Fallback"
 
 def generate_image(title, slug):
-    """Создание SVG-заглушки для статьи"""
+    """Создание SVG-заглушки"""
     try:
         img_path = os.path.join(STATIC_DIR, f"{slug}.svg")
         safe_title = title.replace('"', '').replace("'", "")
@@ -55,29 +65,29 @@ AI Generated Content
 </svg>'''
         with open(img_path, 'w', encoding='utf-8') as f:
             f.write(svg_content)
-        logging.info(f"✅ Изображение создано: {img_path}")
+        logging.info(f"🖼️ SVG-заглушка создана: {img_path}")
         return f"/images/posts/{slug}.svg"
     except Exception as e:
         logging.error(f"❌ Ошибка создания изображения: {e}")
         return PLACEHOLDER
 
 def update_gallery():
-    """Обновляет галерею по всем изображениям в STATIC_DIR"""
+    """Собираем все изображения из static/images/posts/ для галереи"""
     try:
+        images = sorted(glob.glob(os.path.join(STATIC_DIR, '*.*')), key=os.path.getmtime, reverse=True)
         gallery = []
-        files = sorted(glob.glob(os.path.join(STATIC_DIR, "*.*")), key=os.path.getmtime, reverse=True)
-        for f in files:
-            name = os.path.splitext(os.path.basename(f))[0]
+        for img_path in images:
+            filename = os.path.basename(img_path)
+            title = os.path.splitext(filename)[0]
             gallery.append({
-                "title": name,
-                "alt": name,
-                "src": f"/images/posts/{os.path.basename(f)}",
+                "title": title,
+                "alt": title,
+                "src": f"/images/posts/{filename}",
                 "date": datetime.now().strftime("%Y-%m-%d"),
                 "tags": ["AI", "Tech"]
             })
-        # Ограничиваем 20 элементами
+        # Ограничим до 20 изображений
         gallery = gallery[:20]
-
         with open(GALLERY_FILE, 'w', encoding='utf-8') as f:
             yaml.safe_dump(gallery, f, allow_unicode=True, default_flow_style=False)
         logging.info(f"✅ Галерея обновлена: {len(gallery)} изображений")
@@ -85,13 +95,14 @@ def update_gallery():
         logging.error(f"❌ Ошибка обновления галереи: {e}")
 
 def save_article(title, text, model, slug, image_path):
-    """Сохраняет статью с frontmatter"""
+    """Сохраняем статью с frontmatter"""
     try:
         filename = os.path.join(POSTS_DIR, f'{slug}.md')
+        image_url = image_path if image_path.startswith('/') else f"/{image_path}"
         front_matter = {
             'title': safe_yaml_value(title),
             'date': datetime.now().strftime("%Y-%m-%dT%H:%M:%S+03:00"),
-            'image': image_path,
+            'image': image_url,
             'draft': False,
             'tags': ["AI", "Tech", "Нейросети"],
             'categories': ["Технологии"],
@@ -112,7 +123,7 @@ def save_article(title, text, model, slug, image_path):
         logging.error(f"❌ Ошибка сохранения статьи: {e}")
 
 def cleanup_old_posts(keep=5):
-    """Очистка старых статей, изображения оставляем"""
+    """Удаляем старые статьи, изображения оставляем для галереи"""
     try:
         posts = sorted(glob.glob(os.path.join(POSTS_DIR, "*.md")), key=os.path.getmtime, reverse=True)
         if len(posts) > keep:
@@ -125,20 +136,12 @@ def cleanup_old_posts(keep=5):
 def main():
     try:
         logging.info("🚀 Запуск генерации контента...")
-
         title, text, model = generate_article()
         slug = slugify(title)
-        logging.info(f"📄 Сгенерирована статья: {title}")
-
         image_path = generate_image(title, slug)
-        logging.info(f"🖼️ Сгенерировано изображение: {image_path}")
-
         save_article(title, text, model, slug, image_path)
-
-        update_gallery()
-
         cleanup_old_posts(keep=5)
-
+        update_gallery()
         logging.info("🎉 Генерация завершена успешно!")
     except Exception as e:
         logging.error(f"❌ Критическая ошибка: {e}")
