@@ -1,3 +1,10 @@
+- alt: Искусственный интеллект 2025 - Революция технологий уже здесь!
+  date: '2025-09-09'
+  src: /static/images/placeholder.jpg
+  tags:
+  - AI
+  - Tech
+  title: Искусственный интеллект 2025 - Революция технологий уже здесь!
 - alt: Искусственный интеллект 2025 - Тренды, меняющие мир
   date: '2025-09-09'
   src: /static/images/placeholder.jpg
@@ -123,10 +130,3 @@
 - alt: Нейросети и технологии - Будущее в эпоху искусственного интеллекта
   src: /static/images/placeholder.jpg
   title: Нейросети и технологии - Будущее в эпоху искусственного интеллекта
-- alt: Будущее технологий - нейросети трансформируют наш мир
-  date: '2025-09-07'
-  src: /images/posts/budushchee-tekhnologii-neiroseti-transformiruiut-nash-mir.svg
-  tags:
-  - AI
-  - Tech
-  title: Будущее технологий - нейросети трансформируют наш мир
