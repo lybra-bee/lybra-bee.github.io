@@ -1,3 +1,10 @@
+- alt: Искусственный интеллект - Тренды, меняющие наше будущее
+  date: '2025-09-09'
+  src: /images/posts/iskusstvennyi-intellekt-trendy-meniaiushchie-nashe-budushchee.svg
+  tags:
+  - AI
+  - Tech
+  title: Искусственный интеллект - Тренды, меняющие наше будущее
 - alt: Будущее технологий - Искусственный интеллект в действии
   date: '2025-09-09'
   src: /images/posts/budushchee-tekhnologii-iskusstvennyi-intellekt-v-deistvii.svg
@@ -111,6 +118,3 @@
 - alt: Нейросети 2023 - Будущее высоких технологий уже здесь!
   src: /static/images/placeholder.jpg
   title: Нейросети 2023 - Будущее высоких технологий уже здесь!
-- alt: Искусственный интеллект - Революция в технологиях 2024 года
-  src: /static/images/placeholder.jpg
-  title: Искусственный интеллект - Революция в технологиях 2024 года
