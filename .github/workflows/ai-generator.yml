@@ -3,7 +3,7 @@ name: Generate and Deploy Hugo Site
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 6 * * *'
+    - cron: '0 6 * * *'  # ежедневно в 06:00
 
 jobs:
   generate:
@@ -38,67 +38,20 @@ jobs:
         mkdir -p layouts/about
         mkdir -p layouts/_default
 
-    - name: Create config.toml
-      run: |
-        cat > config.toml << 'EOF'
-        baseURL = "https://${{ github.repository_owner }}.github.io/"
-        languageCode = "ru-ru"
-        title = "AI Портфолио"
-        [params]
-        description = "Портфолио сгенерированных AI статей и изображений"
-        [menu]
-          [[menu.main]]
-            name = "Главная"
-            url = "/"
-            weight = 1
-          [[menu.main]]
-            name = "Статьи"
-            url = "/articles/"
-            weight = 2
-          [[menu.main]]
-            name = "Галерея"
-            url = "/gallery/"
-            weight = 3
-          [[menu.main]]
-            name = "Обо мне"
-            url = "/about/"
-            weight = 4
-        [outputs]
-          home = ["HTML", "RSS"]
-        EOF
-
-    - name: Create layout files
-      run: |
-        # Твой полный код по созданию header, footer, index, gallery и т.д.
-        # (оставляем как есть, чтобы галерея, статьи и About работали)
-        echo "Layout files created"
-
-    - name: Create content pages
-      run: |
-        # About, articles и gallery markdown
-        echo "Content pages created"
-
     - name: Generate article and image
       run: python .github/scripts/generate_content.py
       env:
         OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-        GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         CLOUDFLARE_API_KEY: ${{ secrets.CLOUDFLARE_API_KEY }}
         CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        CLOUDFLARE_IMAGE_ENDPOINT: ${{ secrets.CLOUDFLARE_IMAGE_ENDPOINT }}
 
     - name: Commit generated content
       run: |
-        git config --global user.name "github-actions[bot]"
-        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
         git add .
-        git commit -m "🤖 Авто-генерация статьи и изображений [CI]" || echo "No changes to commit"
-        git push origin HEAD:main
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Copy images for gallery
-      run: python3 copy_images.py
+        git commit -m "🤖 Автоматическая генерация статьи и изображений [CI]" || echo "No changes to commit"
+        git push
 
     - name: Setup Hugo
       uses: peaceiris/actions-hugo@v2
