@@ -1,26 +1,86 @@
 [
   {
+    "src": "/images/posts/budushchee-tekhnologii-ii-i-innovatsii-na-perednem-plane.svg",
+    "alt": "Budushchee Tekhnologii Ii I Innovatsii Na Perednem Plane",
+    "title": "Budushchee Tekhnologii Ii I Innovatsii Na Perednem Plane",
+    "date": "2025-09-09"
+  },
+  {
     "src": "/images/posts/глубокое-обучение-в-анализ-данных.png",
-    "alt": "AI generated image: Глубокое Обучение В Анализ Данных",
+    "alt": "Глубокое Обучение В Анализ Данных",
     "title": "Глубокое Обучение В Анализ Данных",
-    "filename": "глубокое-обучение-в-анализ-данных.png"
-  },
-  {
-    "src": "/images/posts/machine-learning-в-web-development.png",
-    "alt": "AI generated image: Machine Learning В Web Development",
-    "title": "Machine Learning В Web Development",
-    "filename": "machine-learning-в-web-development.png"
-  },
-  {
-    "src": "/images/posts/deep-learning-в-mobile-applications.png",
-    "alt": "AI generated image: Deep Learning В Mobile Applications",
-    "title": "Deep Learning В Mobile Applications",
-    "filename": "deep-learning-в-mobile-applications.png"
+    "date": "2025-09-09"
   },
   {
     "src": "/images/posts/глубокое-обучение-в-кибербезопасность.png",
-    "alt": "AI generated image: Глубокое Обучение В Кибербезопасность",
+    "alt": "Глубокое Обучение В Кибербезопасность",
     "title": "Глубокое Обучение В Кибербезопасность",
-    "filename": "глубокое-обучение-в-кибербезопасность.png"
+    "date": "2025-09-09"
+  },
+  {
+    "src": "/images/posts/trendy-v-iskusstvennom-intellekte-i-vysokikh-tekhnologiiakh-v.jpg",
+    "alt": "Trendy V Iskusstvennom Intellekte I Vysokikh Tekhnologiiakh V",
+    "title": "Trendy V Iskusstvennom Intellekte I Vysokikh Tekhnologiiakh V",
+    "date": "2025-09-09"
+  },
+  {
+    "src": "/images/posts/machine-learning-в-web-development.png",
+    "alt": "Machine Learning В Web Development",
+    "title": "Machine Learning В Web Development",
+    "date": "2025-09-09"
+  },
+  {
+    "src": "/images/posts/deep-learning-в-mobile-applications.png",
+    "alt": "Deep Learning В Mobile Applications",
+    "title": "Deep Learning В Mobile Applications",
+    "date": "2025-09-09"
+  },
+  {
+    "src": "/images/posts/budushchee-uzhe-zdes-trendy-v-iskusstvennom-intellekte-i-vysokikh-tekhnologiiakh-kotorye-izmeniat-nash-mir.png",
+    "alt": "Budushchee Uzhe Zdes Trendy V Iskusstvennom Intellekte I Vysokikh Tekhnologiiakh Kotorye Izmeniat Nash Mir",
+    "title": "Budushchee Uzhe Zdes Trendy V Iskusstvennom Intellekte I Vysokikh Tekhnologiiakh Kotorye Izmeniat Nash Mir",
+    "date": "2025-09-09"
+  },
+  {
+    "src": "/images/posts/budushchee-uzhe-zdes-top-10-poslednikh-trendov-v-iskusstvennom-intellekte-i-vysokikh-tekhnologiiakh.png",
+    "alt": "Budushchee Uzhe Zdes Top 10 Poslednikh Trendov V Iskusstvennom Intellekte I Vysokikh Tekhnologiiakh",
+    "title": "Budushchee Uzhe Zdes Top 10 Poslednikh Trendov V Iskusstvennom Intellekte I Vysokikh Tekhnologiiakh",
+    "date": "2025-09-09"
+  },
+  {
+    "src": "/images/posts/budushchee-uzhe-zdes-poslednie-trendy-v-iskusstvennom-intellekte-i-vysokikh-tekhnologiiakh.png",
+    "alt": "Budushchee Uzhe Zdes Poslednie Trendy V Iskusstvennom Intellekte I Vysokikh Tekhnologiiakh",
+    "title": "Budushchee Uzhe Zdes Poslednie Trendy V Iskusstvennom Intellekte I Vysokikh Tekhnologiiakh",
+    "date": "2025-09-09"
+  },
+  {
+    "src": "/images/posts/budushchee-uzhe-zdes-kak-novye-trendy-v-iskusstvennom-intellekte-i-vysokikh-tekhnologiiakh-formiruiut-nashu-realnost.png",
+    "alt": "Budushchee Uzhe Zdes Kak Novye Trendy V Iskusstvennom Intellekte I Vysokikh Tekhnologiiakh Formiruiut Nashu Realnost",
+    "title": "Budushchee Uzhe Zdes Kak Novye Trendy V Iskusstvennom Intellekte I Vysokikh Tekhnologiiakh Formiruiut Nashu Realnost",
+    "date": "2025-09-09"
+  },
+  {
+    "src": "/images/posts/budushchee-uzhe-zdes-glavnye-trendy-v-iskusstvennom-intellekte-i-vysokikh-tekhnologiiakh-2023-goda.png",
+    "alt": "Budushchee Uzhe Zdes Glavnye Trendy V Iskusstvennom Intellekte I Vysokikh Tekhnologiiakh 2023 Goda",
+    "title": "Budushchee Uzhe Zdes Glavnye Trendy V Iskusstvennom Intellekte I Vysokikh Tekhnologiiakh 2023 Goda",
+    "date": "2025-09-09"
+  },
+  {
+    "src": "/images/posts/budushchee-tekhnologii-samye-goriachie-trendy-v-ii-2024-goda.png",
+    "alt": "Budushchee Tekhnologii Samye Goriachie Trendy V Ii 2024 Goda",
+    "title": "Budushchee Tekhnologii Samye Goriachie Trendy V Ii 2024 Goda",
+    "date": "2025-09-09"
+  },
+  {
+    "src": "/images/posts/budushchee-tekhnologii-iskusstvennyi-intellekt-v-deistvii.svg",
+    "alt": "Budushchee Tekhnologii Iskusstvennyi Intellekt V Deistvii",
+    "title": "Budushchee Tekhnologii Iskusstvennyi Intellekt V Deistvii",
+    "date": "2025-09-09"
+  },
+  {
+    "src": "/images/posts/budushchee-tekhnologii-neiroseti-meniaiut-nashu-realnost.svg",
+    "alt": "Budushchee Tekhnologii Neiroseti Meniaiut Nashu Realnost",
+    "title": "Budushchee Tekhnologii Neiroseti Meniaiut Nashu Realnost",
+    "date": "2025-09-09"
   }
 ]
