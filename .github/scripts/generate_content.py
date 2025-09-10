@@ -1,128 +1,98 @@
 #!/usr/bin/env python3
 import os
 import json
-import requests
-import random
-from datetime import datetime
-import shutil
 import yaml
 import logging
+import requests
+import base64
+import shutil
+from datetime import datetime
 from slugify import slugify
 
-# Настройка логирования
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
-# Пути
-POSTS_DIR = "content/posts"
-IMAGES_DIR = "static/images/posts"
+# ====== Настройки ======
+STATIC_IMAGES_DIR = "static/images/posts"
+ASSETS_GALLERY_DIR = "assets/gallery"
 GALLERY_YAML = "data/gallery.yaml"
-GALLERY_JSON = "data/gallery.json"
+POSTS_DIR = "content/posts"
 
-# Количество последних статей, которые оставляем
-KEEP_LAST_N = 5
+os.makedirs(STATIC_IMAGES_DIR, exist_ok=True)
+os.makedirs(ASSETS_GALLERY_DIR, exist_ok=True)
+os.makedirs(POSTS_DIR, exist_ok=True)
+os.makedirs(os.path.dirname(GALLERY_YAML), exist_ok=True)
 
-# Примеры тегов
-TAGS = ["ai", "tech", "нейросети"]
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-# Заглушка для изображений
-PLACEHOLDER_IMAGE = "static/images/placeholder.jpg"
+# ====== Функции ======
 
-# ------------------------
-# Утилиты
-# ------------------------
+def generate_title():
+    """Генерация заголовка статьи через OpenRouter API"""
+    prompt = "Придумай интересный заголовок для статьи об искусственном интеллекте, нейросетях, высоких технологиях, их применении в медицине, строительстве, обучении, бизнесе и создании нейросетевых проектов."
+    response = requests.post(
+        "https://api.openrouter.ai/v1/generate",
+        headers={"Authorization": f"Bearer {os.environ.get('OPENROUTER_API_KEY')}"},
+        json={"prompt": prompt, "max_tokens": 20}
+    )
+    title = response.json().get("text", "Новая статья").strip()
+    logging.info(f"Заголовок: {title}")
+    return title
 
-def save_article(title, text):
-    slug = slugify(title)
-    filename = os.path.join(POSTS_DIR, f"{slug}.md")
-    logging.info(f"💾 Сохраняем статью в {filename}")
-    
-    # Экранируем кавычки и убираем переносы строк
-    safe_title = title.replace('"', '\\"').replace('\n', ' ').strip()
-    
-    with open(filename, "w", encoding="utf-8") as f:
-        f.write(
-            f"---\n"
-            f"title: \"{safe_title}\"\n"
-            f"date: '{datetime.now().strftime('%Y-%m-%d')}'\n"
-            f"slug: {slug}\n"
-            f"tags: {json.dumps(TAGS)}\n"
-            f"---\n\n"
-            f"{text}\n"
-        )
+def generate_text(title):
+    """Генерация текста статьи через OpenRouter API"""
+    prompt = f"Напиши подробную, уникальную статью по заголовку: {title}"
+    response = requests.post(
+        "https://api.openrouter.ai/v1/generate",
+        headers={"Authorization": f"Bearer {os.environ.get('OPENROUTER_API_KEY')}"},
+        json={"prompt": prompt, "max_tokens": 800}
+    )
+    text = response.json().get("text", "Статья пока пуста").strip()
+    return text
+
+def generate_image(title):
+    """Генерация изображения (пример с заглушкой)"""
+    prompt = f"{title}, digital art, high quality"
+    # Здесь подставьте вызов реального API генерации изображений
+    image_base64 = "iVBORw0KGgoAAAANSUhEUgAAAJYAAACWCAYAAAB34vZJAAA..."  # пример
+    filename = slugify(title) + ".png"
+    filepath = os.path.join(STATIC_IMAGES_DIR, filename)
+    with open(filepath, "wb") as f:
+        f.write(base64.b64decode(image_base64))
+    logging.info(f"Сгенерировано изображение: {filepath}")
     return filename
 
-def update_gallery():
-    """Создаём галерею на основе всех изображений в static/images/posts"""
-    gallery_items = []
-    for filename in sorted(os.listdir(IMAGES_DIR)):
-        if not filename.lower().endswith((".jpg", ".jpeg", ".png", ".svg")):
-            continue
-        title = os.path.splitext(filename)[0].replace("-", " ").capitalize()
-        gallery_items.append({
-            "src": f"/images/posts/{filename}",
-            "title": title,
-            "alt": title,
-            "date": datetime.now().strftime("%Y-%m-%d")
-        })
-    
-    # Сохраняем YAML
+def update_gallery_from_assets():
+    """Сканируем static/images/posts, копируем новые файлы в assets/gallery и обновляем gallery.yaml"""
+    gallery = []
+    if os.path.exists(GALLERY_YAML):
+        with open(GALLERY_YAML, "r", encoding="utf-8") as f:
+            gallery = yaml.safe_load(f) or []
+
+    existing_files = {item['src'] for item in gallery}
+
+    for filename in os.listdir(STATIC_IMAGES_DIR):
+        if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.svg', '.gif')):
+            src_path = os.path.join(STATIC_IMAGES_DIR, filename)
+            dest_path = os.path.join(ASSETS_GALLERY_DIR, filename)
+            if not os.path.exists(dest_path):
+                shutil.copy2(src_path, dest_path)
+                logging.info(f"Копия изображения создана: {dest_path}")
+
+            src_web = f"/images/posts/{filename}"
+            if src_web not in existing_files:
+                gallery.append({
+                    "src": src_web,
+                    "title": filename.replace("-", " ").replace(".png", "").replace(".jpg", "").title(),
+                    "alt": filename.replace("-", " ").replace(".png", "").replace(".jpg", "").title(),
+                    "date": datetime.now().strftime("%Y-%m-%d")
+                })
+
     with open(GALLERY_YAML, "w", encoding="utf-8") as f:
-        yaml.safe_dump(gallery_items, f, allow_unicode=True)
-    
-    # Сохраняем JSON
-    with open(GALLERY_JSON, "w", encoding="utf-8") as f:
-        json.dump(gallery_items, f, ensure_ascii=False, indent=2)
+        yaml.dump(gallery, f, allow_unicode=True)
+    logging.info(f"Галерея обновлена: {len(gallery)} элементов")
 
-    logging.info(f"🖼 Галерея обновлена: {len(gallery_items)} элементов")
-
-def cleanup_old_articles():
-    """Удаляем старые статьи, оставляем только последние KEEP_LAST_N"""
-    posts = sorted(
-        [f for f in os.listdir(POSTS_DIR) if f.endswith(".md")],
-        key=lambda x: os.path.getmtime(os.path.join(POSTS_DIR, x)),
-        reverse=True
-    )
-    to_delete = posts[KEEP_LAST_N:]
-    for f in to_delete:
-        os.remove(os.path.join(POSTS_DIR, f))
-        logging.info(f"🗑 Удалена старая статья: {f}")
-
-# ------------------------
-# Генерация статьи
-# ------------------------
-
-def generate_article():
-    """
-    Заглушка генерации текста.
-    Здесь можно интегрировать OpenRouter, Groq или любую модель ИИ.
-    """
-    # Пример заголовка — разнообразный, с применением ИИ в разных сферах
-    examples = [
-        "Применение искусственного интеллекта в медицине: как ИИ помогает врачам",
-        "Создание чат-бота на основе нейросети: пошаговое руководство",
-        "Нейросети в строительстве: автоматизация проектирования зданий",
-        "Генерация изображений для образовательных материалов с помощью ИИ",
-        "Обучение модели машинного обучения на реальных данных",
-        "ИИ в финансах: прогнозирование рынка и оценка рисков"
-    ]
-    title = random.choice(examples)
-    text = f"Это статья с заголовком «{title}». Здесь будет содержаться полный текст статьи, с описанием применения технологий и примерами."
-    
-    return title, text
-
-def main():
-    os.makedirs(POSTS_DIR, exist_ok=True)
-    os.makedirs(IMAGES_DIR, exist_ok=True)
-    
-    # 1. Очистка старых статей
-    cleanup_old_articles()
-    
-    # 2. Генерация новой статьи
-    title, text = generate_article()
-    save_article(title, text)
-    
-    # 3. Обновление галереи
-    update_gallery()
-
-if __name__ == "__main__":
-    main()
+def save_article(title, text, img_filename):
+    """Сохраняем статью в content/posts"""
+    slug = slugify(title)
+    post_file = os.path.join(POSTS_DIR, f"{slug}.md")
+    front_matter = f"""---
+title: "{title}"
+date: "{date
