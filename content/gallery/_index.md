@@ -1,4 +1,5 @@
 ---
 title: "Галерея"
-layout: "gallery"
+date: 2025-09-10
+draft: false
 ---
