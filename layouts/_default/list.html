@@ -18,17 +18,13 @@
       {{ end }}
     </div>
 
-    <!-- Навигация и пагинация -->
     <div class="swiper-button-next"></div>
     <div class="swiper-button-prev"></div>
     <div class="swiper-pagination"></div>
   </div>
 </section>
 
-<!-- Swiper CSS -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
-
-<!-- Swiper JS -->
 <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 
 <script>
@@ -37,6 +33,11 @@ document.addEventListener('DOMContentLoaded', () => {
     slidesPerView: 3,
     spaceBetween: 20,
     loop: true,
+    autoplay: {
+      delay: 3000,
+      disableOnInteraction: false,
+    },
+    speed: 1000,
     pagination: {
       el: '.swiper-pagination',
       clickable: true
