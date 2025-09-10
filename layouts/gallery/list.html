@@ -1,69 +1,15 @@
-{{ partial "gallery-carousel.html" . }}
 {{ define "main" }}
-<section class="gallery">
-  <h1>Галерея</h1>
-
-  {{ $gallery := site.Data.gallery }}
-  {{ if $gallery }}
-    <div class="swiper gallery-swiper">
-      <div class="swiper-wrapper">
-        {{ range $item := $gallery }}
-          <div class="swiper-slide">
-            <a href="{{ .src }}" target="_blank" rel="noopener">
-              <img src="{{ .src }}" alt="{{ .alt }}" loading="lazy" />
-            </a>
-            <div class="gallery-caption">{{ .title }}</div>
-          </div>
-        {{ end }}
-      </div>
-
-      <div class="swiper-button-next"></div>
-      <div class="swiper-button-prev"></div>
-      <div class="swiper-pagination"></div>
+<h1>Галерея</h1>
+<div class="carousel" id="gallery-carousel">
+  <button class="carousel-btn prev">&#10094;</button>
+  <div class="carousel-track">
+    {{ range site.Data.gallery }}
+    <div class="carousel-item">
+      <img src="{{ .src | relURL }}" alt="{{ .alt }}">
+      <p>{{ .title | truncate 30 }}</p>
     </div>
-  {{ else }}
-    <p>Галерея пока пуста.</p>
-  {{ end }}
-</section>
-
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
-<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
-
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-  new Swiper('.gallery-swiper', {
-    slidesPerView: 4,
-    spaceBetween: 20,
-    loop: true,
-    autoplay: {
-      delay: 3000,
-      disableOnInteraction: false,
-    },
-    speed: 1000,
-    grabCursor: true,
-    pagination: { el: '.gallery .swiper-pagination', clickable: true },
-    navigation: { nextEl: '.gallery .swiper-button-next', prevEl: '.gallery .swiper-button-prev' },
-    breakpoints: {
-      1200: { slidesPerView: 4 },
-      992: { slidesPerView: 3 },
-      768: { slidesPerView: 2 },
-      480: { slidesPerView: 1 }
-    }
-  });
-});
-</script>
-
-<style>
-.gallery img {
-  width: 100%;
-  height: 220px;
-  object-fit: cover;
-  border-radius: 10px;
-}
-.gallery-caption {
-  text-align: center;
-  font-size: 0.85rem;
-  padding: 0.4rem;
-}
-</style>
+    {{ end }}
+  </div>
+  <button class="carousel-btn next">&#10095;</button>
+</div>
 {{ end }}
