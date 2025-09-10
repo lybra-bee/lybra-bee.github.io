@@ -5,7 +5,7 @@
     <article>
       <h2><a href="{{ .RelPermalink }}">{{ .Title }}</a></h2>
       {{ with .Params.image }}
-        <img src="{{ . | relURL }}" alt="{{ .Title }}" class="thumb">
+        <img src="{{ . | relURL }}" alt="{{ $.Title }}" class="thumb">
       {{ end }}
       <p>{{ .Summary }}</p>
       <a href="{{ .RelPermalink }}">Читать полностью →</a>
@@ -13,11 +13,3 @@
   {{ else }}
     <p>Пока нет статей.</p>
   {{ end }}
-
-  <nav class="main-menu">
-    <a href="/">Главная</a> |
-    <a href="/posts/">Статьи</a> |
-    <a href="/gallery/">Галерея</a> |
-    <a href="/about/">Обо мне</a>
-  </nav>
-{{ end }}
