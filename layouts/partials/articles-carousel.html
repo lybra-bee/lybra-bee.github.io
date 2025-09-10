@@ -4,10 +4,14 @@
     {{ range .Pages }}
     <div class="carousel-item">
       <a href="{{ .RelPermalink }}">
-        <img src="{{ .Params.image }}" alt="{{ .Title }}" style="width:100%; border-radius:10px;">
+        {{ with .Params.image }}
+          <img src="{{ . | relURL }}" alt="{{ $.Title }}" style="width:300px; height:200px; object-fit:cover; border-radius:10px;">
+        {{ end }}
         <h3>{{ .Title }}</h3>
       </a>
-      <p>{{ .Params.description }}</p>
+      {{ with .Params.description }}
+      <p>{{ . | truncate 100 }}</p>
+      {{ end }}
     </div>
     {{ end }}
   </div>
