@@ -1,21 +1,20 @@
 {{ define "main" }}
   <h1>Галерея</h1>
-  {{ $files := readDir "static/images/posts" }}
-  {{ if $files }}
-    <div class="gallery">
-      {{ range $files }}
-        {{ if not .IsDir }}
-          <a href="{{ (printf "/images/posts/%s" .Name) | relURL }}" target="_blank">
-            <img src="{{ (printf "/images/posts/%s" .Name) | relURL }}" alt="{{ .Name }}" class="thumb">
-          </a>
-        {{ end }}
+
+  {{ $images := resources.Match "images/posts/*.{jpg,jpeg,png,gif,svg}" }}
+  {{ if $images }}
+    <div class="gallery" style="display:flex;flex-wrap:wrap;gap:10px;">
+      {{ range $images }}
+        <a href="{{ .RelPermalink }}" target="_blank" style="display:inline-block;">
+          <img src="{{ .RelPermalink }}" alt="{{ .Name }}" style="width:200px;height:auto;object-fit:cover;" class="thumb">
+        </a>
       {{ end }}
     </div>
   {{ else }}
     <p>Изображений пока нет.</p>
   {{ end }}
 
-  <nav class="main-menu">
+  <nav class="main-menu" style="margin-top:20px;">
     <a href="/">Главная</a> |
     <a href="/posts/">Статьи</a> |
     <a href="/gallery/">Галерея</a> |
