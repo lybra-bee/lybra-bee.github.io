@@ -1,18 +1,21 @@
 {{ define "main" }}
-  <h1>{{ .Title }}</h1>
+  <h1>Все статьи</h1>
   <div class="post-list">
-    {{ range .Paginator.Pages }}
+    {{ range where .Site.RegularPages "Section" "posts" }}
       <article>
         <h2><a href="{{ .RelPermalink }}">{{ .Title }}</a></h2>
         {{ with .Params.image }}
-          <a href="{{ .RelPermalink }}">
-            <img src="{{ . | relURL }}" alt="{{ $.Title }}" class="thumb">
-          </a>
+          <img src="{{ . | relURL }}" alt="{{ .Title }}" class="thumb">
         {{ end }}
         <p>{{ .Summary }}</p>
         <a href="{{ .RelPermalink }}">Читать →</a>
       </article>
     {{ end }}
   </div>
-  {{ template "_internal/pagination.html" . }}
+  <nav class="main-menu">
+    <a href="/">Главная</a> |
+    <a href="/posts/">Статьи</a> |
+    <a href="/gallery/">Галерея</a> |
+    <a href="/about/">Обо мне</a>
+  </nav>
 {{ end }}
