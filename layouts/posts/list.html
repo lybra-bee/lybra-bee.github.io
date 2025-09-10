@@ -1,22 +1,63 @@
 {{ define "main" }}
-<section class="posts-list">
-    <h1>Все статьи</h1>
-    <div class="posts-grid">
-        {{ range first 5 (where .Site.RegularPages "Type" "posts") }}
-        <article class="post-card">
-            {{ with .Params.image }}
-            <img src="{{ . }}" alt="{{ $.Title }}">
-            {{ end }}
-            <div class="card-content">
-                <h2>{{ .Title }}</h2>
-                <p class="meta">{{ .Date.Format "02.01.2006" }} • {{ .Params.model }}</p>
-                <p class="excerpt">{{ .Summary | truncate 100 }}</p>
-                <a href="{{ .RelPermalink }}" class="read-more">Читать</a>
-            </div>
-        </article>
-        {{ else }}
-        <p>Статьи пока не сгенерированы.</p>
-        {{ end }}
+<section class="articles-carousel">
+  <h1>Статьи</h1>
+  <div class="carousel-container">
+    <div class="carousel-track">
+      {{ range .Pages }}
+      <div class="carousel-item">
+        <a href="{{ .RelPermalink }}">
+          <img src="{{ .Params.image }}" alt="{{ .Title }}">
+          <div class="carousel-caption">
+            <h3>{{ .Title }}</h3>
+            <p>{{ .Params.description }}</p>
+          </div>
+        </a>
+      </div>
+      {{ end }}
     </div>
+  </div>
 </section>
+
+<style>
+.carousel-container {
+  overflow: hidden;
+  position: relative;
+}
+.carousel-track {
+  display: flex;
+  transition: transform 0.5s ease;
+}
+.carousel-item {
+  min-width: 300px;
+  margin-right: 20px;
+  flex-shrink: 0;
+}
+.carousel-item img {
+  width: 100%;
+  display: block;
+  border-radius: 8px;
+}
+.carousel-caption {
+  text-align: center;
+  margin-top: 5px;
+}
+</style>
+
+<script>
+const track = document.querySelector('.carousel-track');
+let position = 0;
+const speed = 1; // px per frame
+const fps = 60;
+
+function animate() {
+  position -= speed;
+  if (Math.abs(position) >= track.scrollWidth - track.offsetWidth) {
+    position = 0;
+  }
+  track.style.transform = `translateX(${position}px)`;
+  requestAnimationFrame(animate);
+}
+
+if(track) animate();
+</script>
 {{ end }}
