@@ -1,41 +1,70 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Статьи - {{ .Site.Title }}</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-50 min-h-screen">
-    {{ partial "header.html" . }}
+{{ define "main" }}
+<section class="articles">
+  <h1>Статьи</h1>
 
-    <main class="max-w-7xl mx-auto px-4 py-12">
-        <h1 class="text-4xl font-bold text-center mb-12">📚 Все статьи</h1>
-        
-        {{ $articles := where .Site.RegularPages "Section" "posts" }}
-        {{ if $articles }}
-        <div class="grid grid-cols-1 md:grid-cols 2 lg:grid-cols-3 gap-8">
-            {{ range $articles }}
-            <article class="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition cursor-pointer" onclick="window.location.href='{{ .Permalink }}'">
-                <img src="{{ .Params.image }}" alt="{{ .Title }}" class="w-full h-48 object-cover">
-                <div class="p-6">
-                    <h2 class="text-xl font-bold mb-3">{{ .Title }}</h2>
-                    <p class="text-gray-600 mb-4">{{ .Description }}</p>
-                    <div class="flex items-center justify-between">
-                        <span class="text-sm text-gray-500">{{ .Date.Format "2006-01-02" }}</span>
-                        <span class="text-blue-600 font-semibold">Читать →</span>
-                    </div>
-                </div>
-            </article>
+  <div class="swiper articles-swiper">
+    <div class="swiper-wrapper">
+      {{ range .Pages }}
+        <div class="swiper-slide">
+          <article class="article-card">
+            {{ with .Params.image }}
+              <img src="{{ . }}" alt="{{ $.Title }}" loading="lazy" />
             {{ end }}
+            <h2><a href="{{ .RelPermalink }}">{{ .Title }}</a></h2>
+            <p>{{ .Summary }}</p>
+            <time datetime="{{ .Date }}">{{ .Date.Format "2006-01-02" }}</time>
+          </article>
         </div>
-        {{ else }}
-        <div class="text-center py-12">
-            <p class="text-gray-600 text-xl">Статьи пока отсутствуют. Первая статья появится после запуска генерации.</p>
-        </div>
-        {{ end }}
-    </main>
+      {{ end }}
+    </div>
 
-    {{ partial "footer.html" . }}
-</body>
-</html>
+    <div class="swiper-button-next"></div>
+    <div class="swiper-button-prev"></div>
+    <div class="swiper-pagination"></div>
+  </div>
+</section>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  new Swiper('.articles-swiper', {
+    slidesPerView: 3,
+    spaceBetween: 25,
+    loop: true,
+    autoplay: {
+      delay: 2500,
+      disableOnInteraction: false,
+    },
+    speed: 1200,
+    grabCursor: true,
+    pagination: { el: '.swiper-pagination', clickable: true },
+    navigation: { nextEl: '.swiper-button-next', prevEl: '.swiper-button-prev' },
+    breakpoints: {
+      1200: { slidesPerView: 3 },
+      992: { slidesPerView: 2 },
+      576: { slidesPerView: 1 }
+    }
+  });
+});
+</script>
+
+<style>
+.article-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 1rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  text-align: center;
+  transition: transform 0.3s;
+}
+.article-card:hover { transform: translateY(-5px); }
+.article-card img {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+</style>
+{{ end }}
