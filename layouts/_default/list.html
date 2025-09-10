@@ -18,33 +18,40 @@
       {{ end }}
     </div>
 
-    <!-- Навигация -->
+    <!-- Навигация и пагинация -->
     <div class="swiper-button-next"></div>
     <div class="swiper-button-prev"></div>
     <div class="swiper-pagination"></div>
   </div>
 </section>
 
-<!-- Swiper инициализация -->
+<!-- Swiper CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+
+<!-- Swiper JS -->
+<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+
 <script>
+document.addEventListener('DOMContentLoaded', () => {
   new Swiper('.articles-swiper', {
     slidesPerView: 3,
     spaceBetween: 20,
     loop: true,
     pagination: {
       el: '.swiper-pagination',
-      clickable: true,
+      clickable: true
     },
     navigation: {
       nextEl: '.swiper-button-next',
-      prevEl: '.swiper-button-prev',
+      prevEl: '.swiper-button-prev'
     },
     breakpoints: {
       1024: { slidesPerView: 3 },
       768: { slidesPerView: 2 },
-      480: { slidesPerView: 1 },
+      480: { slidesPerView: 1 }
     }
   });
+});
 </script>
 
 <style>
@@ -56,7 +63,7 @@
   text-align: center;
 }
 .article-card img {
-  max-width: 100%;
+  width: 100%;
   height: 160px;
   object-fit: cover;
   border-radius: 6px;
