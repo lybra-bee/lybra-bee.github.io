@@ -2,16 +2,107 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>{{ if .Title }}{{ .Title }} | {{ end }}{{ .Site.Title }}</title>
+  <title>{{ block "title" . }}{{ .Title }}{{ end }}</title>
   <link rel="stylesheet" href="{{ "css/style.css" | relURL }}">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    .carousel {
+      position: relative;
+      overflow: hidden;
+      width: 100%;
+      margin: 20px 0;
+    }
+
+    .carousel-track {
+      display: flex;
+      transition: transform 0.5s ease;
+      gap: 10px;
+    }
+
+    .carousel-item {
+      flex: 0 0 auto;
+      width: 250px;
+      border-radius: 10px;
+      background: #f9f9f9;
+    }
+
+    .carousel-item img {
+      width: 100%;
+      height: 150px;
+      object-fit: cover;
+      border-radius: 10px;
+    }
+
+    .carousel-btn {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(0,0,0,0.4);
+      color: #fff;
+      border: none;
+      padding: 10px;
+      cursor: pointer;
+      z-index: 2;
+    }
+
+    .carousel-btn.prev { left: 0; }
+    .carousel-btn.next { right: 0; }
+  </style>
 </head>
 <body>
-  {{ partial "header.html" . }}
-  <main class="container">
+  <header>
+    <nav>
+      <a href="{{ "/" | relURL }}">Главная</a> |
+      <a href="{{ "/articles/" | relURL }}">Статьи</a> |
+      <a href="{{ "/gallery/" | relURL }}">Галерея</a>
+    </nav>
+  </header>
+
+  <main>
     {{ block "main" . }}{{ end }}
   </main>
-  {{ partial "footer.html" . }}
-  <script src="{{ "js/carousel.js" | relURL }}"></script>
+
+  <footer>
+    <p>© 2025 Alexey AI</p>
+  </footer>
+
+  <script>
+    function initCarousel(id, interval = 3000) {
+      const carousel = document.getElementById(id);
+      if(!carousel) return;
+      const track = carousel.querySelector('.carousel-track');
+      const items = carousel.querySelectorAll('.carousel-item');
+      const prevBtn = carousel.querySelector('.prev');
+      const nextBtn = carousel.querySelector('.next');
+      let index = 0;
+
+      function update() {
+        const width = items[0].offsetWidth + 10;
+        track.style.transform = `translateX(${-index * width}px)`;
+      }
+
+      nextBtn.addEventListener('click', () => {
+        index = (index + 1) % items.length;
+        update();
+      });
+
+      prevBtn.addEventListener('click', () => {
+        index = (index - 1 + items.length) % items.length;
+        update();
+      });
+
+      setInterval(() => {
+        index = (index + 1) % items.length;
+        update();
+      }, interval);
+
+      window.addEventListener('resize', update);
+      update();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initCarousel('articles-carousel', 4000);
+      initCarousel('gallery-carousel', 4000);
+    });
+  </script>
 </body>
 </html>
