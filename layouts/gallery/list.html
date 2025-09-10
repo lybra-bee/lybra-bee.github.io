@@ -3,7 +3,7 @@
   <h1>Галерея</h1>
 
   {{ $gallery := site.Data.gallery }}
-  {{ if and $gallery (gt (len $gallery) 0) }}
+  {{ if $gallery }}
     <div class="swiper gallery-swiper">
       <div class="swiper-wrapper">
         {{ range $item := $gallery }}
@@ -11,14 +11,11 @@
             <a href="{{ .src }}" target="_blank" rel="noopener">
               <img src="{{ .src }}" alt="{{ .alt }}" loading="lazy" />
             </a>
-            <div class="gallery-caption">
-              <h3>{{ .title }}</h3>
-            </div>
+            <div class="gallery-caption">{{ .title }}</div>
           </div>
         {{ end }}
       </div>
 
-      <!-- Навигация -->
       <div class="swiper-button-next"></div>
       <div class="swiper-button-prev"></div>
       <div class="swiper-pagination"></div>
@@ -28,26 +25,31 @@
   {{ end }}
 </section>
 
-<!-- Swiper инициализация -->
+<!-- Swiper CSS & JS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+
 <script>
+document.addEventListener('DOMContentLoaded', () => {
   new Swiper('.gallery-swiper', {
     slidesPerView: 4,
     spaceBetween: 15,
     loop: true,
     pagination: {
       el: '.gallery .swiper-pagination',
-      clickable: true,
+      clickable: true
     },
     navigation: {
       nextEl: '.gallery .swiper-button-next',
-      prevEl: '.gallery .swiper-button-prev',
+      prevEl: '.gallery .swiper-button-prev'
     },
     breakpoints: {
       1024: { slidesPerView: 3 },
       768: { slidesPerView: 2 },
-      480: { slidesPerView: 1 },
+      480: { slidesPerView: 1 }
     }
   });
+});
 </script>
 
 <style>
