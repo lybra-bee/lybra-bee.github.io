@@ -22,3 +22,42 @@
 .article-card img{height:180px;width:100%;object-fit:cover;border-radius:8px;margin-bottom:.8rem}
 .post{max-width:900px;margin:2rem auto;padding:1rem}
 @media(max-width:800px){.hero{min-height:45vh}.nav-menu{display:none}}
+.carousel {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+}
+
+.carousel-track {
+  display: flex;
+  transition: transform 0.5s ease-in-out;
+  gap: 1rem;
+}
+
+.carousel-item {
+  min-width: 300px;
+  flex-shrink: 0;
+  background: #f8f8f8;
+  border-radius: 10px;
+  padding: 1rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.carousel-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0,0,0,0.5);
+  color: #fff;
+  border: none;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  z-index: 10;
+  border-radius: 5px;
+}
+
+.carousel-btn.prev { left: 0.5rem; }
+.carousel-btn.next { right: 0.5rem; }
+
+@media (max-width: 768px) { .carousel-item { min-width: 250px; } }
+@media (max-width: 480px) { .carousel-item { min-width: 200px; } }
