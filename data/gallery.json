@@ -1,9 +1,9 @@
 [
   {
-    "alt": "Ii dlia diagnostiki raka proryvy v meditsine",
+    "alt": "Obuchenie ii na dannykh s sensorov transporta",
     "date": "2025-09-10",
-    "src": "/images/posts/ii-dlia-diagnostiki-raka-proryvy-v-meditsine.jpg",
-    "title": "Ii dlia diagnostiki raka proryvy v meditsine"
+    "src": "/images/posts/obuchenie-ii-na-dannykh-s-sensorov-transporta.jpg",
+    "title": "Obuchenie ii na dannykh s sensorov transporta"
   },
   {
     "alt": "Глубокое обучение в анализ данных",
@@ -36,16 +36,16 @@
     "title": "Deep learning в mobile applications"
   },
   {
-    "alt": "Budushchee uzhe zdes trendy v iskusstvennom intellekte i vysokikh tekhnologiiakh kotorye izmeniat nash mir",
-    "date": "2025-09-10",
-    "src": "/images/posts/budushchee-uzhe-zdes-trendy-v-iskusstvennom-intellekte-i-vysokikh-tekhnologiiakh-kotorye-izmeniat-nash-mir.png",
-    "title": "Budushchee uzhe zdes trendy v iskusstvennom intellekte i vysokikh tekhnologiiakh kotorye izmeniat nash mir"
-  },
-  {
     "alt": "Iskusstvennyi intellekt trendy meniaiushchie mir v 2025",
     "date": "2025-09-10",
     "src": "/images/posts/iskusstvennyi-intellekt-trendy-meniaiushchie-mir-v-2025.jpg",
     "title": "Iskusstvennyi intellekt trendy meniaiushchie mir v 2025"
+  },
+  {
+    "alt": "Budushchee uzhe zdes trendy v iskusstvennom intellekte i vysokikh tekhnologiiakh kotorye izmeniat nash mir",
+    "date": "2025-09-10",
+    "src": "/images/posts/budushchee-uzhe-zdes-trendy-v-iskusstvennom-intellekte-i-vysokikh-tekhnologiiakh-kotorye-izmeniat-nash-mir.png",
+    "title": "Budushchee uzhe zdes trendy v iskusstvennom intellekte i vysokikh tekhnologiiakh kotorye izmeniat nash mir"
   },
   {
     "alt": "Budushchee uzhe zdes top 10 poslednikh trendov v iskusstvennom intellekte i vysokikh tekhnologiiakh",
@@ -90,18 +90,6 @@
     "title": "Budushchee tekhnologii iskusstvennyi intellekt v deistvii"
   },
   {
-    "alt": "Budushchee segodnia trendy v ii i tekhnologiiakh",
-    "date": "2025-09-10",
-    "src": "/images/posts/budushchee-segodnia-trendy-v-ii-i-tekhnologiiakh.svg",
-    "title": "Budushchee segodnia trendy v ii i tekhnologiiakh"
-  },
-  {
-    "alt": "Budushchee tekhnologii ai i innovatsii bez granits",
-    "date": "2025-09-10",
-    "src": "/images/posts/budushchee-tekhnologii-ai-i-innovatsii-bez-granits.svg",
-    "title": "Budushchee tekhnologii ai i innovatsii bez granits"
-  },
-  {
     "alt": "Budushchee tekhnologii ii i innovatsii na perednem plane",
     "date": "2025-09-10",
     "src": "/images/posts/budushchee-tekhnologii-ii-i-innovatsii-na-perednem-plane.svg",
@@ -118,5 +106,17 @@
     "date": "2025-09-10",
     "src": "/images/posts/budushchee-tekhnologii-neiroseti-meniaiut-nashu-realnost.svg",
     "title": "Budushchee tekhnologii neiroseti meniaiut nashu realnost"
+  },
+  {
+    "alt": "Budushchee segodnia trendy v ii i tekhnologiiakh",
+    "date": "2025-09-10",
+    "src": "/images/posts/budushchee-segodnia-trendy-v-ii-i-tekhnologiiakh.svg",
+    "title": "Budushchee segodnia trendy v ii i tekhnologiiakh"
+  },
+  {
+    "alt": "Budushchee tekhnologii ai i innovatsii bez granits",
+    "date": "2025-09-10",
+    "src": "/images/posts/budushchee-tekhnologii-ai-i-innovatsii-bez-granits.svg",
+    "title": "Budushchee tekhnologii ai i innovatsii bez granits"
   }
 ]
