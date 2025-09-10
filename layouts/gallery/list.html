@@ -1,11 +1,20 @@
 {{ define "main" }}
   <h1>Галерея</h1>
   <div class="gallery">
-    {{ $images := readDir "static/images/posts" }}
-    {{ range $images }}
-      <a href="{{ (printf "/images/posts/%s" .Name) | relURL }}" target="_blank">
-        <img src="{{ (printf "/images/posts/%s" .Name) | relURL }}" alt="{{ .Name }}" class="thumb">
-      </a>
+    {{ $files := readDir "static/images/posts" }}
+    {{ range $files }}
+      {{ if not .IsDir }}
+        <a href="{{ (printf "/images/posts/%s" .Name) | relURL }}" target="_blank">
+          <img src="{{ (printf "/images/posts/%s" .Name) | relURL }}" alt="{{ .Name }}" class="thumb">
+        </a>
+      {{ end }}
     {{ end }}
   </div>
+
+  <nav class="main-menu">
+    <a href="/">Главная</a> |
+    <a href="/posts/">Статьи</a> |
+    <a href="/gallery/">Галерея</a> |
+    <a href="/about/">Обо мне</a>
+  </nav>
 {{ end }}
