@@ -1,23 +1,23 @@
 {{ define "main" }}
-  <h1>Галерея</h1>
+<h1>Галерея</h1>
 
-  {{ $gallery := site.Data.gallery }}
-  {{ if $gallery }}
-    <div class="gallery" style="display:flex;flex-wrap:wrap;gap:10px;">
-      {{ range $gallery }}
-        <a href="{{ .src | relURL }}" target="_blank" style="display:inline-block;">
-          <img src="{{ .src | relURL }}" alt="{{ .title }}" style="width:200px;height:auto;object-fit:cover;" class="thumb">
-        </a>
-      {{ end }}
-    </div>
-  {{ else }}
-    <p>Изображений пока нет.</p>
-  {{ end }}
+{{ $gallery := site.Data.gallery }}
+{{ if $gallery }}
+  <div class="gallery" style="display:flex;flex-wrap:wrap;gap:10px;">
+    {{ range $gallery }}
+      <a href="{{ .src | relURL }}" target="_blank" style="display:inline-block;">
+        <img src="{{ .src | relURL }}" alt="{{ .alt }}" title="{{ .title }}" style="width:200px;height:auto;object-fit:cover;">
+      </a>
+    {{ end }}
+  </div>
+{{ else }}
+  <p>Изображений пока нет.</p>
+{{ end }}
 
-  <nav class="main-menu" style="margin-top:20px;">
-    <a href="/">Главная</a> |
-    <a href="/posts/">Статьи</a> |
-    <a href="/gallery/">Галерея</a> |
-    <a href="/about/">Обо мне</a>
-  </nav>
+<nav class="main-menu" style="margin-top:20px;">
+  <a href="/">Главная</a> |
+  <a href="/posts/">Статьи</a> |
+  <a href="/gallery/">Галерея</a> |
+  <a href="/about/">Обо мне</a>
+</nav>
 {{ end }}
