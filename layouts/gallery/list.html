@@ -1,38 +1,37 @@
 {{ define "main" }}
-<section class="gallery">
+<section class="gallery-section">
   <h1>Галерея</h1>
   <div class="gallery-grid">
-    {{ $galleryDir := "gallery" }}
-    {{ $images := readDir (printf "static/%s" $galleryDir) }}
+    {{ $images := readDir "assets/gallery" }}
     {{ range $images }}
-      {{ if or (strings.HasSuffix .Name ".jpg") (strings.HasSuffix .Name ".jpeg") (strings.HasSuffix .Name ".png") (strings.HasSuffix .Name ".gif") (strings.HasSuffix .Name ".svg") }}
-        <div class="gallery-item">
-          <img src="{{ printf "/%s/%s" $galleryDir .Name | relURL }}" alt="{{ .Name }}">
-        </div>
-      {{ end }}
+      {{ $img := resources.Get (printf "gallery/%s" .Name) }}
+      <div class="gallery-item">
+        <img src="{{ $img.RelPermalink }}" alt="{{ .Name }}" />
+        <p>{{ .Name }}</p>
+      </div>
     {{ end }}
   </div>
 </section>
 
 <style>
-.gallery {
+.gallery-section {
+  max-width: 1200px;
+  margin: 0 auto;
   padding: 2rem;
-  text-align: center;
 }
 .gallery-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 1rem;
+  gap: 1.5rem;
+}
+.gallery-item {
+  text-align: center;
 }
 .gallery-item img {
-  max-width: 100%;
+  width: 100%;
   height: auto;
-  border-radius: 8px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-  transition: transform 0.2s ease-in-out;
-}
-.gallery-item img:hover {
-  transform: scale(1.05);
+  border-radius: 10px;
+  object-fit: cover;
 }
 </style>
 {{ end }}
