@@ -1,8 +1,8 @@
 {{ define "main" }}
 <section class="posts-carousel-section">
-  <h1>Статьи</h1>
+  <h1>Все статьи</h1>
 
-  {{ $pages := .Pages.ByDate.Reverse }}
+  {{ $pages := .RegularPages.ByDate.Reverse }}
   {{ if gt (len $pages) 0 }}
   <div class="posts-carousel" id="posts-carousel">
     {{ range $page := $pages }}
@@ -35,7 +35,7 @@
 .posts-carousel {
   display: flex;
   overflow-x: auto;
-  scroll-behavior: smooth;
+  scroll-snap-type: x mandatory;
   gap: 1rem;
   padding-bottom: 1rem;
 }
@@ -44,6 +44,7 @@
 }
 .carousel-item {
   flex: 0 0 300px;
+  scroll-snap-align: start;
   border: 1px solid #ddd;
   border-radius: 8px;
   overflow: hidden;
