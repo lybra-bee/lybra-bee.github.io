@@ -3,8 +3,10 @@
 """
 generate_content.py
 Генерирует заголовок и статью (OpenRouter -> Groq fallback),
+создаёт SVG-заглушку при необходимости,
 обновляет data/gallery.yaml и data/gallery.json,
-удаляет старые .md статьи (оставляет KEEP_POSTS), изображения не трогает.
+удаляет старые .md статьи (оставляет KEEP_POSTS),
+не трогает существующие изображения.
 """
 
 import os
@@ -27,9 +29,10 @@ STATIC_IMAGES_DIR = "static/images/posts"
 DATA_DIR = "data"
 GALLERY_YAML = os.path.join(DATA_DIR, "gallery.yaml")
 GALLERY_JSON = os.path.join(DATA_DIR, "gallery.json")
+PLACEHOLDER = "static/images/placeholder.jpg"
 KEEP_POSTS = 10  # сколько последних статей сохранять
 
-# API ключи (передаются в workflow / secrets)
+# API ключи
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 
@@ -37,6 +40,7 @@ GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 os.makedirs(POSTS_DIR, exist_ok=True)
 os.makedirs(STATIC_IMAGES_DIR, exist_ok=True)
 os.makedirs(DATA_DIR, exist_ok=True)
+os.makedirs(os.path.dirname(PLACEHOLDER), exist_ok=True)
 
 # --- Helpers ---
 def safe_yaml_value(v):
@@ -72,13 +76,10 @@ def generate_with_openrouter_chat(prompt, max_tokens=800, model="gpt-4o-mini"):
     try:
         r = requests.post(url, headers=headers, json=payload, timeout=60)
         r.raise_for_status()
-        r.encoding = "utf-8"
         data = r.json()
         text = try_extract_openrouter_response(data)
         if text:
             return text.strip()
-        if isinstance(data, dict) and "message" in data:
-            return str(data["message"])
     except Exception as e:
         logging.warning(f"⚠️ OpenRouter(chat) failed: {e}")
     return None
@@ -92,7 +93,6 @@ def generate_with_openrouter_completions(prompt, max_tokens=1200, model="gpt-4o-
     try:
         r = requests.post(url, headers=headers, json=payload, timeout=60)
         r.raise_for_status()
-        r.encoding = "utf-8"
         data = r.json()
         if isinstance(data, dict):
             if "output" in data and isinstance(data["output"], list) and data["output"]:
@@ -123,7 +123,6 @@ def generate_with_groq_chat(prompt, max_tokens=1200, model="gpt-4o-mini"):
             payload = {"model": model, "messages": [{"role": "user", "content": prompt}], "max_tokens": max_tokens}
             r = requests.post(url, headers=headers, json=payload, timeout=60)
             r.raise_for_status()
-            r.encoding = "utf-8"
             data = r.json()
             if isinstance(data, dict):
                 if "choices" in data and data["choices"]:
@@ -146,14 +145,13 @@ def generate_with_groq_chat(prompt, max_tokens=1200, model="gpt-4o-mini"):
 
 # --- High level generators ---
 def generate_title(year):
-    prompt = f"""
-Проанализируй современные направления и достижения в искусственном интеллекте и высоких технологиях. 
-Составь короткий (5–9 слов), ёмкий заголовок на русском, который будет интересен для блога. 
-Заголовок должен отражать конкретное применение технологий, кейс, новинку, урок или исследование, 
-например: «Применение ИИ в медицине», «Как построить генеративную модель», «ИИ в строительстве», 
-«Новые модели нейросетей для музыки». Избегай слов «тренды», «новости» и общих фраз. 
-Заголовок должен быть разнообразным и уникальным, актуальным для {year} года.
-"""
+    prompt = (
+        f"Проанализируй ключевые события и применения искусственного интеллекта "
+        f"и высоких технологий за {year} год и придумай короткий, ёмкий заголовок "
+        f"на русском языке. Тематика может включать: AI в медицине, строительстве, "
+        f"образовании, новые технологии, разновидности моделей генерации, практические "
+        f"уроки по нейросетям. Заголовок должен быть разнообразным и уникальным."
+    )
     logging.info("📝 Генерация заголовка (OpenRouter -> Groq)...")
     text = generate_with_openrouter_chat(prompt, max_tokens=70)
     if text:
@@ -168,10 +166,10 @@ def generate_title(year):
         logging.info("✅ Заголовок через Groq")
         return text.strip().strip('"')
     logging.warning("⚠️ Не удалось получить заголовок от API — использовать локальный заголовок")
-    return f"Применение ИИ и технологий {year}"
+    return f"AI и технологии {year}"
 
 def generate_article_text(title, year):
-    prompt = f"Напиши статью на русском языке по заголовку: «{title}». Объём 400-600 слов. Сделай информативно и связно, раздели текст на введение, несколько разделов с подзаголовками и заключение."
+    prompt = f"Напиши статью на русском языке по заголовку: «{title}». Объём 400-600 слов. Включи введение, несколько разделов с подзаголовками и заключение."
     logging.info("📝 Генерация текста статьи (OpenRouter -> Groq)...")
     text = generate_with_openrouter_chat(prompt, max_tokens=1100)
     if text:
@@ -187,94 +185,64 @@ def generate_article_text(title, year):
         return text
     logging.warning("⚠️ Все генераторы не сработали — использую локальный fallback")
     return (
-        f"## Введение\n\nИскусственный интеллект в {year} году продолжает активно развиваться. "
+        f"## Введение\n\nИскусственный интеллект в {year} году активно развивается. "
         "Ниже — сводка основных направлений.\n\n"
-        "## Основные применения\n\n- Генеративные модели развиваются и становятся доступнее.\n"
+        "## Основные направления\n\n- Генеративные модели развиваются.\n"
         "- Мультимодальные системы интегрируют текст, изображение и звук.\n"
-        "- Применение ИИ в различных отраслях расширяется.\n\n"
-        "## Заключение\n\nТехнологии продолжают трансформировать отрасли и повседневную жизнь."
+        "- Внимание к этике и безопасности растёт.\n\n"
+        "## Заключение\n\nAI и технологии продолжают изменять мир."
     )
 
-# --- Save article (front matter YAML) ---
-def save_article(title, text, model_name, slug):
-    fm = {
-        "title": safe_yaml_value(title),
-        "date": datetime.now().astimezone().isoformat(),
-        "draft": False,
-        "image": "",  # изображения уже есть в static, не создаём svg
-        "model": safe_yaml_value(model_name),
-        "tags": ["AI", "Tech"],
-        "categories": ["Технологии"],
-        "author": "AI Generator",
-        "description": safe_yaml_value(text[:200] + ("..." if len(text) > 200 else "")),
-    }
+def save_article(title, text):
+    slug = slugify(title)
     filename = os.path.join(POSTS_DIR, f"{slug}.md")
-    yaml_block = yaml.safe_dump(fm, allow_unicode=True, default_flow_style=False, sort_keys=False)
-    content = f"---\n{yaml_block}---\n\n{text}\n"
-    try:
-        with open(filename, "w", encoding="utf-8") as f:
-            f.write(content)
-        logging.info(f"✅ Article saved: {filename}")
-        return filename
-    except Exception as e:
-        logging.error(f"❌ Error saving article: {e}")
-        raise
+    logging.info(f"💾 Сохраняем статью в {filename}")
+    with open(filename, "w", encoding="utf-8") as f:
+        f.write(f"---\ntitle: {title}\ndate: '{datetime.now().strftime('%Y-%m-%d')}'\nslug: {slug}\n---\n\n{text}\n")
+    return filename
 
-# --- Gallery generation from static/images/posts/ ---
-def rebuild_gallery_from_static(limit=200):
-    logging.info("🗂️ Rebuilding gallery from static/images/posts/ ...")
-    patterns = ["*.png", "*.jpg", "*.jpeg", "*.svg", "*.webp", "*.gif"]
-    files = []
-    for p in patterns:
-        files.extend(glob.glob(os.path.join(STATIC_IMAGES_DIR, p)))
-    files = sorted(files, key=os.path.getmtime, reverse=True)
+# --- Gallery generation ---
+def collect_gallery_images():
     images = []
-    for fpath in files[:limit]:
-        fname = os.path.basename(fpath)
-        title = os.path.splitext(fname)[0].replace("-", " ").replace("_", " ").title()
-        item = {
-            "src": f"/images/posts/{fname}",
-            "alt": title,
-            "title": title,
-            "date": datetime.fromtimestamp(os.path.getmtime(fpath)).strftime("%Y-%m-%d")
-        }
-        images.append(item)
-    try:
-        with open(GALLERY_YAML, "w", encoding="utf-8") as yf:
-            yaml.safe_dump(images, yf, allow_unicode=True, default_flow_style=False)
-        with open(GALLERY_JSON, "w", encoding="utf-8") as jf:
-            json.dump(images, jf, ensure_ascii=False, indent=2)
-        logging.info(f"✅ Gallery rebuilt: {len(images)} items ({GALLERY_YAML}, {GALLERY_JSON})")
-    except Exception as e:
-        logging.error(f"❌ Error writing gallery files: {e}")
+    for ext in ("*.jpg", "*.jpeg", "*.png", "*.gif", "*.svg", "*.webp"):
+        images.extend(glob.glob(os.path.join(STATIC_IMAGES_DIR, ext)))
+    images = sorted(images)
+    gallery = []
+    for img in images:
+        filename = os.path.basename(img)
+        gallery.append({
+            "src": f"/images/posts/{filename}",
+            "alt": os.path.splitext(filename)[0].replace("-", " ").capitalize(),
+            "title": os.path.splitext(filename)[0].replace("-", " ").capitalize(),
+            "date": datetime.now().strftime("%Y-%m-%d")
+        })
+    return gallery
 
-# --- Cleanup old posts (keep only KEEP_POSTS newest) ---
-def cleanup_old_posts(keep=KEEP_POSTS):
-    try:
-        md_files = glob.glob(os.path.join(POSTS_DIR, "*.md"))
-        md_files = sorted(md_files, key=os.path.getmtime, reverse=True)
-        if len(md_files) <= keep:
-            logging.info("🧾 Нет старых статей для удаления")
-            return
-        for old in md_files[keep:]:
-            try:
-                os.remove(old)
-                logging.info(f"🗑️ Removed old article: {old}")
-            except Exception as e:
-                logging.warning(f"⚠️ Не удалось удалить {old}: {e}")
-    except Exception as e:
-        logging.error(f"❌ Cleanup posts failed: {e}")
+def save_gallery(gallery):
+    logging.info("💾 Обновляем data/gallery.yaml и data/gallery.json")
+    with open(GALLERY_YAML, "w", encoding="utf-8") as f:
+        yaml.safe_dump(gallery, f, allow_unicode=True)
+    with open(GALLERY_JSON, "w", encoding="utf-8") as f:
+        json.dump(gallery, f, ensure_ascii=False, indent=2)
+
+# --- Cleanup old posts ---
+def cleanup_old_posts():
+    files = sorted(glob.glob(os.path.join(POSTS_DIR, "*.md")), key=os.path.getmtime, reverse=True)
+    old = files[KEEP_POSTS:]
+    for f in old:
+        logging.info(f"🗑️ Удаляем старую статью {f}")
+        os.remove(f)
 
 # --- Main ---
 def main():
     year = datetime.now().year
-    cleanup_old_posts()
-    rebuild_gallery_from_static()
     title = generate_title(year)
-    slug = slugify(title)
-    article_text = generate_article_text(title, year)
-    save_article(title, article_text, model_name="AI Generator", slug=slug)
-    logging.info("🎉 Content generation complete.")
+    text = generate_article_text(title, year)
+    save_article(title, text)
+    gallery = collect_gallery_images()
+    save_gallery(gallery)
+    cleanup_old_posts()
+    logging.info("✅ Генерация контента завершена.")
 
 if __name__ == "__main__":
     main()
