@@ -1,0 +1,15 @@
+<div class="carousel">
+  <button class="carousel-btn prev">&#10094;</button>
+  <div class="carousel-track">
+    {{ range .Pages }}
+    <div class="carousel-item">
+      <a href="{{ .RelPermalink }}">
+        <img src="{{ .Params.image }}" alt="{{ .Title }}" style="width:100%; border-radius:10px;">
+        <h3>{{ .Title }}</h3>
+      </a>
+      <p>{{ .Params.description }}</p>
+    </div>
+    {{ end }}
+  </div>
+  <button class="carousel-btn next">&#10095;</button>
+</div>
