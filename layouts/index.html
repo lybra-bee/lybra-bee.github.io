@@ -1,7 +1,7 @@
 {{ define "main" }}
   <h1>Последняя статья</h1>
   {{ $latest := first 1 (where .Site.RegularPages "Section" "posts") }}
-  {{ range $latest }}
+  {{ with index $latest 0 }}
     <article>
       <h2><a href="{{ .RelPermalink }}">{{ .Title }}</a></h2>
       {{ with .Params.image }}
@@ -10,6 +10,8 @@
       <p>{{ .Summary }}</p>
       <a href="{{ .RelPermalink }}">Читать полностью →</a>
     </article>
+  {{ else }}
+    <p>Пока нет статей.</p>
   {{ end }}
 
   <nav class="main-menu">
