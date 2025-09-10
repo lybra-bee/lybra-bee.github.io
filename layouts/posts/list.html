@@ -21,16 +21,18 @@
 <style>
 .carousel-container {
   overflow: hidden;
+  width: 100%;
   position: relative;
 }
 .carousel-track {
   display: flex;
-  transition: transform 0.5s ease;
+  flex-wrap: nowrap;
+  transition: transform 0.5s linear;
 }
 .carousel-item {
-  min-width: 300px;
+  flex: 0 0 auto;
+  width: 300px;
   margin-right: 20px;
-  flex-shrink: 0;
 }
 .carousel-item img {
   width: 100%;
@@ -39,25 +41,28 @@
 }
 .carousel-caption {
   text-align: center;
+  font-size: 0.9rem;
   margin-top: 5px;
 }
 </style>
 
 <script>
-const track = document.querySelector('.carousel-track');
-let position = 0;
-const speed = 1; // px per frame
-const fps = 60;
+document.addEventListener("DOMContentLoaded", function() {
+  const track = document.querySelector('.carousel-track');
+  let position = 0;
+  const speed = 1; // px per frame
+  const fps = 60;
 
-function animate() {
-  position -= speed;
-  if (Math.abs(position) >= track.scrollWidth - track.offsetWidth) {
-    position = 0;
+  function animate() {
+    position -= speed;
+    if (Math.abs(position) >= track.scrollWidth - track.offsetWidth) {
+      position = 0;
+    }
+    track.style.transform = `translateX(${position}px)`;
+    requestAnimationFrame(animate);
   }
-  track.style.transform = `translateX(${position}px)`;
-  requestAnimationFrame(animate);
-}
 
-if(track) animate();
+  if(track) animate();
+});
 </script>
 {{ end }}
