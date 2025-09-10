@@ -1,13 +1,21 @@
 {{ define "main" }}
   <h1>Последняя статья</h1>
-  {{ $latest := first 1 (where .Site.RegularPages "Type" "posts") }}
+  {{ $latest := first 1 (where .Site.RegularPages "Section" "posts") }}
   {{ range $latest }}
     <article>
       <h2><a href="{{ .RelPermalink }}">{{ .Title }}</a></h2>
       {{ with .Params.image }}
-        <img src="{{ . | relURL }}" alt="{{ $.Title }}">
+        <img src="{{ . | relURL }}" alt="{{ .Title }}" class="thumb">
       {{ end }}
-      <div>{{ .Content }}</div>
+      <p>{{ .Summary }}</p>
+      <a href="{{ .RelPermalink }}">Читать полностью →</a>
     </article>
   {{ end }}
+
+  <nav class="main-menu">
+    <a href="/">Главная</a> |
+    <a href="/posts/">Статьи</a> |
+    <a href="/gallery/">Галерея</a> |
+    <a href="/about/">Обо мне</a>
+  </nav>
 {{ end }}
