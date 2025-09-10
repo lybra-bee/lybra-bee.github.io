@@ -1,68 +1,47 @@
 {{ define "main" }}
-<section class="articles-carousel">
+<section class="posts-carousel-section">
   <h1>Статьи</h1>
-  <div class="carousel-container">
-    <div class="carousel-track">
-      {{ range .Pages }}
-      <div class="carousel-item">
-        <a href="{{ .RelPermalink }}">
-          <img src="{{ .Params.image }}" alt="{{ .Title }}">
-          <div class="carousel-caption">
-            <h3>{{ .Title }}</h3>
-            <p>{{ .Params.description }}</p>
-          </div>
-        </a>
-      </div>
-      {{ end }}
+
+  {{ $pages := .Pages.ByDate.Reverse }}
+  {{ if $pages }}
+  <div class="posts-carousel" id="posts-carousel">
+    {{ range $pages }}
+    <div class="carousel-item">
+      <a href="{{ .RelPermalink }}">
+        {{ with .Params.image }}
+        <img src="{{ . }}" alt="{{ .Title }}" />
+        {{ end }}
+        <div class="carousel-caption">
+          <h3>{{ .Title }}</h3>
+          <p>{{ .Date.Format "2006-01-02" }}</p>
+        </div>
+      </a>
     </div>
+    {{ end }}
   </div>
+  {{ else }}
+  <p>Статей пока нет.</p>
+  {{ end }}
 </section>
 
 <style>
-.carousel-container {
-  overflow: hidden;
-  width: 100%;
-  position: relative;
-}
-.carousel-track {
-  display: flex;
-  flex-wrap: nowrap;
-  transition: transform 0.5s linear;
-}
-.carousel-item {
-  flex: 0 0 auto;
-  width: 300px;
-  margin-right: 20px;
-}
-.carousel-item img {
-  width: 100%;
-  display: block;
-  border-radius: 8px;
-}
-.carousel-caption {
-  text-align: center;
-  font-size: 0.9rem;
-  margin-top: 5px;
-}
+.posts-carousel-section { max-width: 1200px; margin: auto; padding: 2rem; }
+.posts-carousel { display: flex; overflow-x: auto; scroll-behavior: smooth; gap: 1rem; }
+.posts-carousel::-webkit-scrollbar { display: none; }
+.carousel-item { flex: 0 0 300px; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: #fff; }
+.carousel-item img { width: 100%; height: 180px; object-fit: cover; display: block; }
+.carousel-caption { padding: 0.5rem; text-align: center; }
 </style>
 
 <script>
-document.addEventListener("DOMContentLoaded", function() {
-  const track = document.querySelector('.carousel-track');
-  let position = 0;
-  const speed = 1; // px per frame
-  const fps = 60;
-
-  function animate() {
-    position -= speed;
-    if (Math.abs(position) >= track.scrollWidth - track.offsetWidth) {
-      position = 0;
-    }
-    track.style.transform = `translateX(${position}px)`;
-    requestAnimationFrame(animate);
-  }
-
-  if(track) animate();
-});
+const carousel = document.getElementById('posts-carousel');
+let scrollAmount = 0;
+function autoScroll() {
+  if (!carousel) return;
+  scrollAmount += 1;
+  if (scrollAmount >= carousel.scrollWidth - carousel.clientWidth) scrollAmount = 0;
+  carousel.scrollTo({ left: scrollAmount, behavior: 'smooth' });
+}
+setInterval(autoScroll, 50);
 </script>
 {{ end }}
