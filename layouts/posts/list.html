@@ -3,17 +3,19 @@
   <h1>Статьи</h1>
 
   {{ $pages := .Pages.ByDate.Reverse }}
-  {{ if $pages }}
+  {{ if gt (len $pages) 0 }}
   <div class="posts-carousel" id="posts-carousel">
-    {{ range $pages }}
+    {{ range $page := $pages }}
     <div class="carousel-item">
-      <a href="{{ .RelPermalink }}">
-        {{ with .Params.image }}
-        <img src="{{ . }}" alt="{{ .Title }}" />
+      <a href="{{ $page.RelPermalink }}">
+        {{ with $page.Params.image }}
+        <img src="{{ . }}" alt="{{ $page.Title }}" />
+        {{ else }}
+        <div class="no-image">Без изображения</div>
         {{ end }}
         <div class="carousel-caption">
-          <h3>{{ .Title }}</h3>
-          <p>{{ .Date.Format "2006-01-02" }}</p>
+          <h3>{{ $page.Title }}</h3>
+          <p>{{ $page.Date.Format "2006-01-02" }}</p>
         </div>
       </a>
     </div>
@@ -25,12 +27,52 @@
 </section>
 
 <style>
-.posts-carousel-section { max-width: 1200px; margin: auto; padding: 2rem; }
-.posts-carousel { display: flex; overflow-x: auto; scroll-behavior: smooth; gap: 1rem; }
-.posts-carousel::-webkit-scrollbar { display: none; }
-.carousel-item { flex: 0 0 300px; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: #fff; }
-.carousel-item img { width: 100%; height: 180px; object-fit: cover; display: block; }
-.carousel-caption { padding: 0.5rem; text-align: center; }
+.posts-carousel-section {
+  max-width: 1200px;
+  margin: auto;
+  padding: 2rem;
+}
+.posts-carousel {
+  display: flex;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  gap: 1rem;
+  padding-bottom: 1rem;
+}
+.posts-carousel::-webkit-scrollbar {
+  display: none;
+}
+.carousel-item {
+  flex: 0 0 300px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+  transition: transform 0.3s ease;
+}
+.carousel-item:hover {
+  transform: scale(1.05);
+}
+.carousel-item img {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  display: block;
+}
+.carousel-caption {
+  padding: 0.5rem;
+  text-align: center;
+}
+.no-image {
+  width: 100%;
+  height: 180px;
+  background: #ccc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  font-style: italic;
+}
 </style>
 
 <script>
