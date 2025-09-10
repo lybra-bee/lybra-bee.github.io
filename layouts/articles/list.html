@@ -5,50 +5,53 @@
   <button class="carousel-btn prev">&#10094;</button>
   <div class="carousel-track">
     {{ $posts := site.GetPage "section" "posts" }}
-    {{ range $posts.Pages.ByDate.Reverse }}
-    <div class="carousel-item">
-      <a href="{{ .RelPermalink }}">
-        {{ with .Params.image }}
-          <img src="{{ . | relURL }}" alt="{{ .Title }}">
-        {{ end }}
-        <h3>{{ .Title }}</h3>
-        {{ with .Params.description }}
-          <p>{{ . | truncate 100 }}</p>
-        {{ end }}
-      </a>
-    </div>
+    {{ if $posts }}
+      {{ range $posts.Pages.ByDate.Reverse }}
+      <div class="carousel-item">
+        <a href="{{ .RelPermalink }}">
+          {{ with .Params.image }}
+            <img src="{{ . | relURL }}" alt="{{ $.Title }}">
+          {{ end }}
+          <h3>{{ .Title }}</h3>
+          {{ with .Params.description }}
+            <p>{{ . | truncate 100 }}</p>
+          {{ end }}
+        </a>
+      </div>
+      {{ end }}
+    {{ else }}
+      <p>Статей пока нет.</p>
     {{ end }}
   </div>
   <button class="carousel-btn next">&#10095;</button>
 </div>
 
 <script>
-  const track = document.querySelector('#articles-carousel .carousel-track');
-  const items = track.children;
-  const nextBtn = document.querySelector('#articles-carousel .next');
-  const prevBtn = document.querySelector('#articles-carousel .prev');
-  let index = 0;
+const track = document.querySelector('#articles-carousel .carousel-track');
+const items = track.children;
+const nextBtn = document.querySelector('#articles-carousel .next');
+const prevBtn = document.querySelector('#articles-carousel .prev');
+let index = 0;
 
-  function updateCarousel() {
-    const width = items[0].offsetWidth + 20;
-    track.style.transform = `translateX(-${index * width}px)`;
-  }
+function updateCarousel() {
+  const width = items[0].offsetWidth + 20;
+  track.style.transform = `translateX(-${index * width}px)`;
+}
 
-  nextBtn.addEventListener('click', () => {
-    index = (index + 1) % items.length;
-    updateCarousel();
-  });
+nextBtn.addEventListener('click', () => {
+  index = (index + 1) % items.length;
+  updateCarousel();
+});
 
-  prevBtn.addEventListener('click', () => {
-    index = (index - 1 + items.length) % items.length;
-    updateCarousel();
-  });
+prevBtn.addEventListener('click', () => {
+  index = (index - 1 + items.length) % items.length;
+  updateCarousel();
+});
 
-  // Автопрокрутка каждые 4 секунды
-  setInterval(() => {
-    index = (index + 1) % items.length;
-    updateCarousel();
-  }, 4000);
+setInterval(() => {
+  index = (index + 1) % items.length;
+  updateCarousel();
+}, 4000);
 </script>
 
 <style>
