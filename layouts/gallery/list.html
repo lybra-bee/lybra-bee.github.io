@@ -1,15 +1,13 @@
 {{ define "main" }}
   <h1>Галерея</h1>
 
-  {{ $files := readDir "static/images/posts" }}
-  {{ if $files }}
+  {{ $gallery := site.Data.gallery }}
+  {{ if $gallery }}
     <div class="gallery" style="display:flex;flex-wrap:wrap;gap:10px;">
-      {{ range $files }}
-        {{ if not .IsDir }}
-          <a href="{{ "/images/posts/" | relURL }}{{ .Name }}" target="_blank" style="display:inline-block;">
-            <img src="{{ "/images/posts/" | relURL }}{{ .Name }}" alt="{{ .Name }}" style="width:200px;height:auto;object-fit:cover;" class="thumb">
-          </a>
-        {{ end }}
+      {{ range $gallery }}
+        <a href="{{ .src | relURL }}" target="_blank" style="display:inline-block;">
+          <img src="{{ .src | relURL }}" alt="{{ .title }}" style="width:200px;height:auto;object-fit:cover;" class="thumb">
+        </a>
       {{ end }}
     </div>
   {{ else }}
