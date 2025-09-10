@@ -2,40 +2,15 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{ .Title }}</title>
+  <title>{{ if .Title }}{{ .Title }} | {{ end }}{{ .Site.Title }}</title>
   <link rel="stylesheet" href="{{ "css/style.css" | relURL }}">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 <body>
-  <header class="container nav-header">
-    <a href="{{ "/" | relURL }}">Главная</a>
-    <a href="{{ "/articles/" | relURL }}">Статьи</a>
-    <a href="{{ "/gallery/" | relURL }}">Галерея</a>
-    <a href="{{ "/about/" | relURL }}">Обо мне</a>
-  </header>
-
-  {{/* Главная страница */}}
-  {{ if .IsHome }}
-  <section class="hero container">
-    {{ $last := first 1 (where .Site.RegularPages "Type" "posts") }}
-    {{ with index $last 0 }}
-    <div class="last-article">
-      <h1>{{ .Title }}</h1>
-      {{ if .Params.image }}
-      <img src="{{ .Params.image | relURL }}" alt="{{ .Title }}">
-      {{ end }}
-      <p>{{ .Summary }}</p>
-      <a href="{{ .RelPermalink }}" class="read-more">Читать полностью</a>
-    </div>
-    {{ end }}
-  </section>
-  {{ end }}
-
-  {{/* Основной блок для всех страниц */}}
+  {{ partial "header.html" . }}
   <main class="container">
     {{ block "main" . }}{{ end }}
   </main>
-
-  <script src="{{ "js/carousel.js" | relURL }}"></script>
+  {{ partial "footer.html" . }}
 </body>
 </html>
