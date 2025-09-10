@@ -2,7 +2,7 @@
   <article>
     <h1>{{ .Title }}</h1>
     {{ with .Params.image }}
-      <img src="{{ . | relURL }}" alt="{{ .Title }}" class="thumb">
+      <img src="{{ . | relURL }}" alt="{{ $.Title }}" class="thumb">
     {{ end }}
     <div class="content">
       {{ .Content }}
