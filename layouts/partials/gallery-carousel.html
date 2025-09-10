@@ -3,8 +3,8 @@
   <div class="carousel-track">
     {{ range site.Data.gallery }}
     <div class="carousel-item">
-      <img src="{{ .src }}" alt="{{ .alt }}" style="width:100%; border-radius:10px;">
-      <p>{{ .title }}</p>
+      <img src="{{ .src | relURL }}" alt="{{ .alt }}" style="width:200px; height:150px; object-fit:cover; border-radius:10px;">
+      <p>{{ .title | truncate 30 }}</p>
     </div>
     {{ end }}
   </div>
