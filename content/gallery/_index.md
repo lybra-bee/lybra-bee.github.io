@@ -1,0 +1,4 @@
+---
+title: "Галерея"
+layout: "gallery"
+---
