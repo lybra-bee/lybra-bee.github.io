@@ -1,27 +1,65 @@
 {{ define "main" }}
-  <h1>Все статьи</h1>
-  {{ $posts := where .Site.RegularPages "Section" "posts" }}
-  {{ if $posts }}
-    <div class="post-list">
-      {{ range $posts }}
-        <article>
-          <h2><a href="{{ .RelPermalink }}">{{ .Title }}</a></h2>
-          {{ with .Params.image }}
-            <img src="{{ . | relURL }}" alt="{{ $.Title }}" class="thumb">
-          {{ end }}
-          <p>{{ .Summary }}</p>
-          <a href="{{ .RelPermalink }}">Читать →</a>
-        </article>
+<section class="articles">
+  <h1>Статьи</h1>
+
+  <div class="swiper articles-swiper">
+    <div class="swiper-wrapper">
+      {{ range .Pages }}
+        <div class="swiper-slide">
+          <article class="article-card">
+            {{ with .Params.image }}
+              <img src="{{ . }}" alt="{{ $.Title }}" loading="lazy" />
+            {{ end }}
+            <h2><a href="{{ .RelPermalink }}">{{ .Title }}</a></h2>
+            <p>{{ .Summary }}</p>
+            <time datetime="{{ .Date }}">{{ .Date.Format "2006-01-02" }}</time>
+          </article>
+        </div>
       {{ end }}
     </div>
-  {{ else }}
-    <p>Статей пока нет.</p>
-  {{ end }}
 
-  <nav class="main-menu">
-    <a href="/">Главная</a> |
-    <a href="/posts/">Статьи</a> |
-    <a href="/gallery/">Галерея</a> |
-    <a href="/about/">Обо мне</a>
-  </nav>
+    <!-- Навигация -->
+    <div class="swiper-button-next"></div>
+    <div class="swiper-button-prev"></div>
+    <div class="swiper-pagination"></div>
+  </div>
+</section>
+
+<!-- Swiper инициализация -->
+<script>
+  new Swiper('.articles-swiper', {
+    slidesPerView: 3,
+    spaceBetween: 20,
+    loop: true,
+    pagination: {
+      el: '.swiper-pagination',
+      clickable: true,
+    },
+    navigation: {
+      nextEl: '.swiper-button-next',
+      prevEl: '.swiper-button-prev',
+    },
+    breakpoints: {
+      1024: { slidesPerView: 3 },
+      768: { slidesPerView: 2 },
+      480: { slidesPerView: 1 },
+    }
+  });
+</script>
+
+<style>
+.article-card {
+  background: #fff;
+  border-radius: 10px;
+  padding: 1rem;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  text-align: center;
+}
+.article-card img {
+  max-width: 100%;
+  height: 160px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+</style>
 {{ end }}
