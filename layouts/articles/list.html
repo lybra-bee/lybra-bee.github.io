@@ -1,70 +1,22 @@
 {{ define "main" }}
-<section class="articles">
-  <h1>Статьи</h1>
-
-  <div class="swiper articles-swiper">
-    <div class="swiper-wrapper">
-      {{ range .Pages }}
-        <div class="swiper-slide">
-          <article class="article-card">
-            {{ with .Params.image }}
-              <img src="{{ . }}" alt="{{ $.Title }}" loading="lazy" />
-            {{ end }}
-            <h2><a href="{{ .RelPermalink }}">{{ .Title }}</a></h2>
-            <p>{{ .Summary }}</p>
-            <time datetime="{{ .Date }}">{{ .Date.Format "2006-01-02" }}</time>
-          </article>
-        </div>
-      {{ end }}
+<h1>Статьи</h1>
+<div class="carousel" id="articles-carousel">
+  <button class="carousel-btn prev">&#10094;</button>
+  <div class="carousel-track">
+    {{ range .Pages }}
+    <div class="carousel-item">
+      <a href="{{ .RelPermalink }}">
+        {{ with .Params.image }}
+          <img src="{{ . | relURL }}" alt="{{ $.Title }}">
+        {{ end }}
+        <h3>{{ .Title }}</h3>
+        {{ with .Params.description }}
+          <p>{{ . | truncate 100 }}</p>
+        {{ end }}
+      </a>
     </div>
-
-    <div class="swiper-button-next"></div>
-    <div class="swiper-button-prev"></div>
-    <div class="swiper-pagination"></div>
+    {{ end }}
   </div>
-</section>
-
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
-<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
-
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-  new Swiper('.articles-swiper', {
-    slidesPerView: 3,
-    spaceBetween: 25,
-    loop: true,
-    autoplay: {
-      delay: 2500,
-      disableOnInteraction: false,
-    },
-    speed: 1200,
-    grabCursor: true,
-    pagination: { el: '.swiper-pagination', clickable: true },
-    navigation: { nextEl: '.swiper-button-next', prevEl: '.swiper-button-prev' },
-    breakpoints: {
-      1200: { slidesPerView: 3 },
-      992: { slidesPerView: 2 },
-      576: { slidesPerView: 1 }
-    }
-  });
-});
-</script>
-
-<style>
-.article-card {
-  background: #fff;
-  border-radius: 12px;
-  padding: 1rem;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-  text-align: center;
-  transition: transform 0.3s;
-}
-.article-card:hover { transform: translateY(-5px); }
-.article-card img {
-  width: 100%;
-  height: 180px;
-  object-fit: cover;
-  border-radius: 8px;
-}
-</style>
+  <button class="carousel-btn next">&#10095;</button>
+</div>
 {{ end }}
