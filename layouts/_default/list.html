@@ -7,7 +7,7 @@
         <article>
           <h2><a href="{{ .RelPermalink }}">{{ .Title }}</a></h2>
           {{ with .Params.image }}
-            <img src="{{ . | relURL }}" alt="{{ .Title }}" class="thumb">
+            <img src="{{ . | relURL }}" alt="{{ $.Title }}" class="thumb">
           {{ end }}
           <p>{{ .Summary }}</p>
           <a href="{{ .RelPermalink }}">Читать →</a>
