@@ -1,0 +1,18 @@
+{{ define "main" }}
+  <h1>{{ .Title }}</h1>
+  <div class="post-list">
+    {{ range .Paginator.Pages }}
+      <article>
+        <h2><a href="{{ .RelPermalink }}">{{ .Title }}</a></h2>
+        {{ with .Params.image }}
+          <a href="{{ .RelPermalink }}">
+            <img src="{{ . | relURL }}" alt="{{ $.Title }}" class="thumb">
+          </a>
+        {{ end }}
+        <p>{{ .Summary }}</p>
+        <a href="{{ .RelPermalink }}">Читать →</a>
+      </article>
+    {{ end }}
+  </div>
+  {{ template "_internal/pagination.html" . }}
+{{ end }}
