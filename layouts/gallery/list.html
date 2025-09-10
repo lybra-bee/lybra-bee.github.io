@@ -1,1 +1,70 @@
-[сюда вставь весь код из блока выше]
+{{ define "main" }}
+<section class="gallery">
+  <h1>Галерея</h1>
+
+  {{ $gallery := site.Data.gallery }}
+
+  {{ if and $gallery (gt (len $gallery) 0) }}
+    <div class="gallery-grid">
+      {{ range $i, $item := $gallery }}
+        <div class="gallery-item">
+          <a href="{{ .src }}" target="_blank" rel="noopener noreferrer">
+            <img src="{{ .src }}" alt="{{ with .alt }}{{ . }}{{ else }}{{ .title }}{{ end }}" loading="lazy" />
+          </a>
+          <div class="gallery-caption">
+            <h3>{{ .title }}</h3>
+            {{ with .date }}
+              <time datetime="{{ . }}">{{ . }}</time>
+            {{ end }}
+          </div>
+        </div>
+      {{ end }}
+    </div>
+  {{ else }}
+    <p>Галерея пока пуста.</p>
+  {{ end }}
+</section>
+
+<style>
+.gallery {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+.gallery-item {
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+  transition: transform .15s;
+}
+.gallery-item:hover {
+  transform: translateY(-4px);
+}
+.gallery-item img {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  display: block;
+}
+.gallery-caption {
+  padding: 0.5rem;
+  text-align: center;
+}
+.gallery-caption h3 {
+  margin: 0.25rem 0;
+  font-size: 0.95rem;
+}
+.gallery-caption time {
+  display: block;
+  font-size: 0.78rem;
+  color: #666;
+}
+</style>
+{{ end }}
