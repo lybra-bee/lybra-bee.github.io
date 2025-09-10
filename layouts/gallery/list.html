@@ -2,11 +2,12 @@
 <section class="gallery">
   <h1>Галерея</h1>
   <div class="gallery-grid">
-    {{ $images := readDir "static/images/posts" }}
+    {{ $galleryDir := "gallery" }}
+    {{ $images := readDir (printf "static/%s" $galleryDir) }}
     {{ range $images }}
-      {{ if or (strings.HasSuffix .Name ".jpg") (strings.HasSuffix .Name ".png") (strings.HasSuffix .Name ".jpeg") (strings.HasSuffix .Name ".svg") }}
+      {{ if or (strings.HasSuffix .Name ".jpg") (strings.HasSuffix .Name ".jpeg") (strings.HasSuffix .Name ".png") (strings.HasSuffix .Name ".gif") (strings.HasSuffix .Name ".svg") }}
         <div class="gallery-item">
-          <img src="/images/posts/{{ .Name }}" alt="{{ .Name }}" loading="lazy" />
+          <img src="{{ printf "/%s/%s" $galleryDir .Name | relURL }}" alt="{{ .Name }}">
         </div>
       {{ end }}
     {{ end }}
@@ -14,17 +15,21 @@
 </section>
 
 <style>
+.gallery {
+  padding: 2rem;
+  text-align: center;
+}
 .gallery-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 20px;
+  gap: 1rem;
 }
 .gallery-item img {
-  width: 100%;
+  max-width: 100%;
   height: auto;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-  transition: transform 0.3s;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  transition: transform 0.2s ease-in-out;
 }
 .gallery-item img:hover {
   transform: scale(1.05);
