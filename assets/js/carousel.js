@@ -1,39 +1,16 @@
-document.addEventListener('DOMContentLoaded', () => {
-  const carousels = document.querySelectorAll('.carousel');
-
+document.addEventListener("DOMContentLoaded", function() {
+  const carousels = document.querySelectorAll(".carousel");
   carousels.forEach(carousel => {
-    const track = carousel.querySelector('.carousel-track');
-    const items = carousel.querySelectorAll('.carousel-item');
     let index = 0;
-    let interval;
+    const items = carousel.querySelectorAll(".carousel-item");
+    if(items.length === 0) return;
+    items.forEach(item => item.style.display = "none");
+    items[index].style.display = "block";
 
-    const moveTo = (i) => {
-      const width = items[0].offsetWidth + parseInt(getComputedStyle(items[0]).marginRight);
-      track.style.transform = `translateX(-${i * width}px)`;
-    }
-
-    const next = () => {
+    setInterval(() => {
+      items[index].style.display = "none";
       index = (index + 1) % items.length;
-      moveTo(index);
-    }
-
-    const prev = () => {
-      index = (index - 1 + items.length) % items.length;
-      moveTo(index);
-    }
-
-    const startAuto = () => interval = setInterval(next, 3000);
-    const stopAuto = () => clearInterval(interval);
-
-    carousel.addEventListener('mouseenter', stopAuto);
-    carousel.addEventListener('mouseleave', startAuto);
-
-    const btnNext = carousel.querySelector('.carousel-btn.next');
-    const btnPrev = carousel.querySelector('.carousel-btn.prev');
-
-    if (btnNext) btnNext.addEventListener('click', next);
-    if (btnPrev) btnPrev.addEventListener('click', prev);
-
-    startAuto();
+      items[index].style.display = "block";
+    }, 3000);
   });
 });
