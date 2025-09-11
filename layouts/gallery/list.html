@@ -1,15 +1,62 @@
 {{ define "main" }}
-<h1>Галерея</h1>
-<div class="swiper-container">
-  <div class="swiper-wrapper">
-    {{ range site.Data.gallery }}
-      <div class="swiper-slide">
-        <img src="{{ .src }}" alt="{{ .alt }}">
-        <p>{{ .title }}</p>
-      </div>
+<section class="gallery-carousel">
+  <h1>Галерея</h1>
+  <div class="carousel-container" id="galleryCarousel">
+    {{ $gallery := site.Data.gallery }}
+    {{ if $gallery }}
+      {{ range $item := $gallery }}
+        <div class="carousel-item">
+          <img src="{{ $item.src }}" alt="{{ $item.alt }}">
+          <p>{{ $item.title }}</p>
+        </div>
+      {{ end }}
     {{ end }}
   </div>
-  <div class="swiper-button-next"></div>
-  <div class="swiper-button-prev"></div>
-</div>
+  <button class="carousel-prev" onclick="scrollCarousel('galleryCarousel', -1)">&#10094;</button>
+  <button class="carousel-next" onclick="scrollCarousel('galleryCarousel', 1)">&#10095;</button>
+</section>
+
+<style>
+.carousel-container {
+  display: flex;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  gap: 1rem;
+  padding: 1rem 0;
+}
+.carousel-item {
+  flex: 0 0 300px;
+  text-align: center;
+}
+.carousel-item img {
+  width: 100%;
+  border-radius: 4px;
+}
+.carousel-prev, .carousel-next {
+  background: rgba(0,0,0,0.5);
+  color: #fff;
+  border: none;
+  font-size: 2rem;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  z-index: 10;
+}
+.carousel-prev { left: 10px; }
+.carousel-next { right: 10px; }
+</style>
+
+<script>
+function scrollCarousel(id, direction) {
+  const container = document.getElementById(id);
+  container.scrollBy({ left: direction * 320, behavior: 'smooth' });
+}
+
+// Автопрокрутка
+setInterval(() => {
+  const container = document.getElementById('galleryCarousel');
+  if(container) container.scrollBy({ left: 320, behavior: 'smooth' });
+}, 5000);
+</script>
 {{ end }}
