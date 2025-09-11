@@ -1,23 +1,28 @@
 {{ define "main" }}
-<main class="posts-list">
-  {{ range .Pages }}
-    <article class="post-preview">
-      {{ with .Params.image }}
-        <a href="{{ .Permalink }}">
-          <img src="{{ . }}" alt="{{ $.Title }}" class="post-thumbnail"/>
-        </a>
-      {{ end }}
-      
-      <h2 class="post-title">
-        <a href="{{ .Permalink }}">{{ .Title }}</a>
-      </h2>
-      
-      <p class="post-summary">
-        {{ .Summary }}
-      </p>
-      
-      <a href="{{ .Permalink }}" class="read-more">Читать далее →</a>
-    </article>
+<main class="container">
+  <!-- Превью последней статьи -->
+  {{ $latest := first 1 (where .Site.RegularPages "Type" "posts") }}
+  {{ with index $latest 0 }}
+  <section class="latest-article">
+    <h2>{{ .Title }}</h2>
+    <img src="{{ .Params.image }}" alt="{{ .Title }}" class="latest-image"/>
+    <p>{{ .Summary }}</p>
+    <a href="{{ .RelPermalink }}" class="read-more">Читать далее</a>
+  </section>
   {{ end }}
+
+  <!-- Галерея -->
+  {{ $gallery := site.Data.gallery }}
+  <section class="gallery">
+    <h2>Галерея</h2>
+    <div class="gallery-grid">
+      {{ range $gallery }}
+      <div class="gallery-item">
+        <img src="{{ .src }}" alt="{{ .alt }}"/>
+        <p>{{ .title }}</p>
+      </div>
+      {{ end }}
+    </div>
+  </section>
 </main>
 {{ end }}
