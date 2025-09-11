@@ -1,19 +1,11 @@
-<div class="carousel">
-  <button class="carousel-btn prev">&#10094;</button>
-  <div class="carousel-track">
-    {{ range .Pages }}
+<div class="carousel" id="articles-carousel">
+  {{ $pages := first 5 (where .Site.RegularPages "Section" "posts") }}
+  {{ range $pages }}
     <div class="carousel-item">
-      <a href="{{ .RelPermalink }}">
-        {{ with .Params.image }}
-          <img src="{{ . | relURL }}" alt="{{ $.Title }}" style="width:300px; height:200px; object-fit:cover; border-radius:10px;">
-        {{ end }}
-        <h3>{{ .Title }}</h3>
-      </a>
-      {{ with .Params.description }}
-      <p>{{ . | truncate 100 }}</p>
+      {{ with .Params.featured_image }}
+        <a href="{{ .Page.Permalink }}"><img src="{{ . | relURL }}" alt="{{ $.Title }}"></a>
       {{ end }}
+      <p>{{ .Title }}</p>
     </div>
-    {{ end }}
-  </div>
-  <button class="carousel-btn next">&#10095;</button>
+  {{ end }}
 </div>
