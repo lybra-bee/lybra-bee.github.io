@@ -1,23 +1,26 @@
 {{ define "main" }}
-  <h1>Последняя статья</h1>
-  {{ $latest := first 1 (where .Site.RegularPages "Section" "posts") }}
-  {{ with index $latest 0 }}
-    <article>
-      <h2><a href="{{ .RelPermalink }}">{{ .Title }}</a></h2>
-      {{ with .Params.image }}
-        <img src="{{ . | relURL }}" alt="{{ $.Title }}" class="thumb">
-      {{ end }}
-      <p>{{ .Summary }}</p>
-      <a href="{{ .RelPermalink }}">Читать полностью →</a>
-    </article>
-  {{ else }}
-    <p>Пока нет статей.</p>
-  {{ end }}
+<div class="container my-5">
+  <h1 class="text-center mb-4">Добро пожаловать в блог Alexey AI</h1>
 
-  <nav class="main-menu">
-    <a href="/">Главная</a> |
-    <a href="/posts/">Статьи</a> |
-    <a href="/gallery/">Галерея</a> |
-    <a href="/about/">Обо мне</a>
-  </nav>
+  <div class="row">
+    {{ range first 3 (where .Site.RegularPages "Section" "posts") }}
+    <div class="col-md-4 mb-4">
+      <div class="card h-100">
+        {{ with .Params.image }}
+        <img src="{{ . }}" class="card-img-top" alt="{{ $.Title }}">
+        {{ end }}
+        <div class="card-body">
+          <h5 class="card-title">{{ .Title }}</h5>
+          <p class="card-text">{{ .Summary }}</p>
+          <a href="{{ .RelPermalink }}" class="btn btn-primary">Читать</a>
+        </div>
+      </div>
+    </div>
+    {{ end }}
+  </div>
+
+  <div class="text-center mt-4">
+    <a href="/posts/" class="btn btn-lg btn-outline-light">Все статьи</a>
+  </div>
+</div>
 {{ end }}
