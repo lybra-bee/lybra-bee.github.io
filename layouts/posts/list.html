@@ -1,32 +1,33 @@
 {{ define "main" }}
-<h1 class="mb-4">Статьи</h1>
+<section class="articles-carousel">
+  <h1>Все статьи</h1>
 
-{{ if .Pages }}
-<div id="postsCarousel" class="carousel slide" data-bs-ride="carousel">
-  <div class="carousel-inner">
-    {{ range $i, $p := .Pages }}
+  <div id="articlesCarousel" class="carousel slide" data-bs-ride="carousel">
+    <div class="carousel-inner">
+      {{ $articles := where .Site.RegularPages "Type" "posts" }}
+      {{ range $i, $article := $articles }}
       <div class="carousel-item {{ if eq $i 0 }}active{{ end }}">
-        <div class="card mx-auto" style="width: 18rem;">
-          {{ with $p.Params.image }}
-          <img src="{{ . }}" class="card-img-top" alt="{{ $p.Title }}">
-          {{ end }}
-          <div class="card-body">
-            <h5 class="card-title">{{ $p.Title }}</h5>
-            <p class="card-text">{{ $p.Summary | plainify }}</p>
-            <a href="{{ $p.RelPermalink }}" class="btn btn-primary">Читать</a>
+        <a href="{{ $article.RelPermalink }}">
+          <img src="{{ $article.Params.image }}" class="d-block w-100" alt="{{ $article.Title }}">
+          <div class="carousel-caption d-none d-md-block">
+            <h5>{{ $article.Title }}</h5>
+            <p>{{ $article.Summary }}</p>
           </div>
-        </div>
+        </a>
       </div>
-    {{ end }}
+      {{ end }}
+    </div>
+
+    <!-- Ручные кнопки -->
+    <button class="carousel-control-prev" type="button" data-bs-target="#articlesCarousel" data-bs-slide="prev">
+      <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+      <span class="visually-hidden">Предыдущая</span>
+    </button>
+    <button class="carousel-control-next" type="button" data-bs-target="#articlesCarousel" data-bs-slide="next">
+      <span class="carousel-control-next-icon" aria-hidden="true"></span>
+      <span class="visually-hidden">Следующая</span>
+    </button>
   </div>
-  <button class="carousel-control-prev" type="button" data-bs-target="#postsCarousel" data-bs-slide="prev">
-    <span class="carousel-control-prev-icon"></span>
-  </button>
-  <button class="carousel-control-next" type="button" data-bs-target="#postsCarousel" data-bs-slide="next">
-    <span class="carousel-control-next-icon"></span>
-  </button>
-</div>
-{{ else }}
-<p>Статей пока нет.</p>
+</section>
 {{ end }}
-{{ end }}
+
