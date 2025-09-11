@@ -1,14 +1,12 @@
 {{ define "main" }}
-  <main>
-    <section class="latest-article">
-      {{ $latest := first 1 (where .Site.RegularPages "Type" "posts") }}
-      {{ range $latest }}
-        <article>
-          <h1><a href="{{ .Permalink }}">{{ .Title }}</a></h1>
-          <p>{{ .Summary }}</p>
-          <a href="{{ .Permalink }}">Читать далее →</a>
-        </article>
-      {{ end }}
-    </section>
-  </main>
+<section class="latest-article">
+  {{ $last := first 1 (where .Site.RegularPages "Type" "posts") }}
+  {{ range $last }}
+    <article class="post">
+      <h2><a href="{{ .Permalink }}">{{ .Title }}</a></h2>
+      <p>{{ .Summary }}</p>
+      <p><a href="{{ .Permalink }}">Читать далее →</a></p>
+    </article>
+  {{ end }}
+</section>
 {{ end }}
