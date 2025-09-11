@@ -1,26 +1,15 @@
 {{ define "main" }}
-<div class="container my-5">
-  <h1 class="text-center mb-4">Добро пожаловать в блог Alexey AI</h1>
-
-  <div class="row">
-    {{ range first 3 (where .Site.RegularPages "Section" "posts") }}
-    <div class="col-md-4 mb-4">
-      <div class="card h-100">
-        {{ with .Params.image }}
-        <img src="{{ . }}" class="card-img-top" alt="{{ $.Title }}">
-        {{ end }}
-        <div class="card-body">
-          <h5 class="card-title">{{ .Title }}</h5>
-          <p class="card-text">{{ .Summary }}</p>
-          <a href="{{ .RelPermalink }}" class="btn btn-primary">Читать</a>
-        </div>
-      </div>
-    </div>
-    {{ end }}
-  </div>
-
-  <div class="text-center mt-4">
-    <a href="/posts/" class="btn btn-lg btn-outline-light">Все статьи</a>
-  </div>
-</div>
+<section class="latest-article">
+  <h2>Последняя статья</h2>
+  {{ $latest := first 1 (where .Site.RegularPages "Type" "posts") }}
+  {{ range $latest }}
+    <article class="post-preview">
+      <a href="{{ .RelPermalink }}">
+        <img src="{{ .Params.image }}" alt="{{ .Title }}">
+        <h3>{{ .Title }}</h3>
+      </a>
+      <p>{{ .Summary }}</p>
+    </article>
+  {{ end }}
+</section>
 {{ end }}
