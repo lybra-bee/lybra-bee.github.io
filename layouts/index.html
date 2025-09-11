@@ -1,15 +1,23 @@
 {{ define "main" }}
-<section class="latest-post">
-  {{ $posts := where .Site.RegularPages "Section" "posts" }}
-  {{ $latest := index (sort $posts "Date" "desc") 0 }}
-  {{ if $latest }}
-    <article>
-      <h2><a href="{{ $latest.RelPermalink }}">{{ $latest.Title }}</a></h2>
-      <p>{{ $latest.Summary | safeHTML }}</p>
-      <a href="{{ $latest.RelPermalink }}">Читать полностью →</a>
+<main class="posts-list">
+  {{ range .Pages }}
+    <article class="post-preview">
+      {{ with .Params.image }}
+        <a href="{{ .Permalink }}">
+          <img src="{{ . }}" alt="{{ $.Title }}" class="post-thumbnail"/>
+        </a>
+      {{ end }}
+      
+      <h2 class="post-title">
+        <a href="{{ .Permalink }}">{{ .Title }}</a>
+      </h2>
+      
+      <p class="post-summary">
+        {{ .Summary }}
+      </p>
+      
+      <a href="{{ .Permalink }}" class="read-more">Читать далее →</a>
     </article>
-  {{ else }}
-    <p>Статей пока нет.</p>
   {{ end }}
-</section>
+</main>
 {{ end }}
