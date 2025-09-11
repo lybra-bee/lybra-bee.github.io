@@ -1,30 +1,77 @@
+# =========================
+# Основные настройки
+# =========================
 baseURL = "https://lybra-bee.github.io/"
-languageCode = "ru"
+languageCode = "ru-ru"
 title = "Alexey AI"
+theme = "ananke"       # используйте вашу тему, если нет, можно убрать и кастомизировать
+enableRobotsTXT = true
+defaultContentLanguage = "ru"
+hasCJKLanguage = false
+paginate = 10
+pluralizeListTitles = false
 
+# =========================
+# Permalinks
+# =========================
+[permalinks]
+posts = "/posts/:slug/"
+articles = "/articles/:slug/"
+
+# =========================
+# Params (настройки темы и сайта)
+# =========================
+[params]
+author = "Alexey AI"
+description = "Блог о нейросетях, генерации видео и изображений"
+showReadingTime = true
+mainSections = ["posts", "articles"]
+
+# =========================
 # Меню
+# =========================
 [menu]
 
   [[menu.main]]
-    identifier = "home"
-    name = "Главная"
-    url = "/"
-    weight = 1
+  name = "Главная"
+  url = "/"
+  weight = 1
 
   [[menu.main]]
-    identifier = "posts"
-    name = "Статьи"
-    url = "/posts/"
-    weight = 2
+  name = "Статьи"
+  url = "/posts/"
+  weight = 2
 
   [[menu.main]]
-    identifier = "gallery"
-    name = "Галерея"
-    url = "/gallery/"
-    weight = 3
+  name = "Галерея"
+  url = "/gallery/"
+  weight = 3
 
   [[menu.main]]
-    identifier = "about"
-    name = "Обо мне"
-    url = "/about/"
-    weight = 4
+  name = "Обо мне"
+  url = "/about/"
+  weight = 4
+
+# =========================
+# Output Formats
+# =========================
+[outputs]
+home = ["HTML", "RSS", "JSON"]
+
+# =========================
+# Build
+# =========================
+[build]
+writeStats = true
+useResourceCacheWhen = "always"
+
+# =========================
+# Asset & Static dirs
+# =========================
+[mediaTypes."image/svg+xml"]
+suffixes = ["svg"]
+
+[markup]
+  [markup.goldmark]
+    [markup.goldmark.renderer]
+      unsafe = true
