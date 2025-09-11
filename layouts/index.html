@@ -1,17 +1,14 @@
-{{ partial "header.html" . }}
-
-<main>
-  <!-- Статьи -->
-  <section id="articles">
-    <h2>Последние статьи</h2>
-    {{ partial "articles-carousel.html" . }}
-  </section>
-
-  <!-- Галерея -->
-  <section id="gallery">
-    <h2>Галерея</h2>
-    {{ partial "gallery-carousel.html" . }}
-  </section>
-</main>
-
-{{ partial "footer.html" . }}
+{{ define "main" }}
+  <main>
+    <section class="latest-article">
+      {{ $latest := first 1 (where .Site.RegularPages "Type" "posts") }}
+      {{ range $latest }}
+        <article>
+          <h1><a href="{{ .Permalink }}">{{ .Title }}</a></h1>
+          <p>{{ .Summary }}</p>
+          <a href="{{ .Permalink }}">Читать далее →</a>
+        </article>
+      {{ end }}
+    </section>
+  </main>
+{{ end }}
