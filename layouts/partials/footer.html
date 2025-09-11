@@ -1,5 +1,9 @@
-<footer class="bg-dark text-white text-center py-3 mt-auto">
-  <div class="container">
-    <p class="mb-0">&copy; {{ now.Year }} {{ .Site.Title }}. Все права защищены.</p>
-  </div>
+<footer>
+  <p>&copy; {{ now.Format "2006" }} {{ .Site.Params.author }}</p>
 </footer>
+
+<script src="{{ "js/carousel.js" | relURL }}"></script>
+<script src="{{ "js/scripts.js" | relURL }}"></script>
+<script src="{{ "js/theme-toggle.js" | relURL }}"></script>
+</body>
+</html>
