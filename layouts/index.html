@@ -1,15 +1,15 @@
 {{ define "main" }}
 <section class="latest-article">
   <h2>Последняя статья</h2>
-  {{ $latest := first 1 (where .Site.RegularPages "Type" "posts") }}
-  {{ range $latest }}
-    <article class="post-preview">
-      <a href="{{ .RelPermalink }}">
-        <img src="{{ .Params.image }}" alt="{{ .Title }}">
-        <h3>{{ .Title }}</h3>
-      </a>
-      <p>{{ .Summary }}</p>
-    </article>
+  {{ with (first 1 (where .Site.RegularPages "Type" "posts")) }}
+    {{ range . }}
+      <article>
+        <a href="{{ .Permalink }}">
+          <img src="{{ .Params.image }}" alt="{{ .Title }}">
+          <h3>{{ .Title }}</h3>
+        </a>
+      </article>
+    {{ end }}
   {{ end }}
 </section>
 {{ end }}
