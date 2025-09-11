@@ -1,0 +1,84 @@
+/* Общие стили */
+body {
+  font-family: Arial, sans-serif;
+  line-height: 1.6;
+  margin: 0;
+  padding: 0;
+  background: #f4f4f4;
+  color: #333;
+}
+
+.container {
+  max-width: 1200px;
+  margin: auto;
+  padding: 20px;
+}
+
+/* Последняя статья */
+.latest-article {
+  background: #fff;
+  padding: 20px;
+  margin-bottom: 40px;
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.latest-article h2 {
+  font-size: 2rem;
+  margin-bottom: 15px;
+}
+
+.latest-article img.latest-image {
+  max-width: 100%;
+  border-radius: 8px;
+  margin-bottom: 15px;
+}
+
+.latest-article p {
+  font-size: 1.1rem;
+}
+
+.latest-article .read-more {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 8px 16px;
+  background: #667eea;
+  color: #fff;
+  text-decoration: none;
+  border-radius: 5px;
+}
+
+.latest-article .read-more:hover {
+  background: #5a67d8;
+}
+
+/* Галерея */
+.gallery h2 {
+  font-size: 1.8rem;
+  margin-bottom: 20px;
+}
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill,minmax(200px,1fr));
+  gap: 20px;
+}
+
+.gallery-item {
+  background: #fff;
+  padding: 10px;
+  border-radius: 12px;
+  text-align: center;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.gallery-item img {
+  max-width: 100%;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.gallery-item p {
+  font-size: 0.9rem;
+  color: #555;
+}
