@@ -1,33 +1,17 @@
 {{ define "main" }}
-<section class="articles-carousel">
-  <h1>Все статьи</h1>
-
-  <div id="articlesCarousel" class="carousel slide" data-bs-ride="carousel">
-    <div class="carousel-inner">
-      {{ $articles := where .Site.RegularPages "Type" "posts" }}
-      {{ range $i, $article := $articles }}
-      <div class="carousel-item {{ if eq $i 0 }}active{{ end }}">
-        <a href="{{ $article.RelPermalink }}">
-          <img src="{{ $article.Params.image }}" class="d-block w-100" alt="{{ $article.Title }}">
-          <div class="carousel-caption d-none d-md-block">
-            <h5>{{ $article.Title }}</h5>
-            <p>{{ $article.Summary }}</p>
-          </div>
-        </a>
-      </div>
-      {{ end }}
+<h1>Статьи</h1>
+<div class="swiper-container">
+  <div class="swiper-wrapper">
+  {{ range .Pages }}
+    <div class="swiper-slide">
+      <a href="{{ .Permalink }}">
+        <img src="{{ .Params.image }}" alt="{{ .Title }}">
+        <h3>{{ .Title }}</h3>
+      </a>
     </div>
-
-    <!-- Ручные кнопки -->
-    <button class="carousel-control-prev" type="button" data-bs-target="#articlesCarousel" data-bs-slide="prev">
-      <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-      <span class="visually-hidden">Предыдущая</span>
-    </button>
-    <button class="carousel-control-next" type="button" data-bs-target="#articlesCarousel" data-bs-slide="next">
-      <span class="carousel-control-next-icon" aria-hidden="true"></span>
-      <span class="visually-hidden">Следующая</span>
-    </button>
+  {{ end }}
   </div>
-</section>
+  <div class="swiper-button-next"></div>
+  <div class="swiper-button-prev"></div>
+</div>
 {{ end }}
-
