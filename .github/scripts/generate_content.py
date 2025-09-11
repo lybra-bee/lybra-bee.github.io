@@ -11,10 +11,11 @@ import yaml
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+# --- Ключи API ---
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
-CLOUDFLARE_API_KEY = os.environ.get("CLOUDFLARE_API_KEY")
 
+# --- Пути ---
 POSTS_DIR = 'content/posts'
 STATIC_DIR = 'static/images/posts'
 GALLERY_FILE = 'data/gallery.yaml'
@@ -25,16 +26,40 @@ os.makedirs(STATIC_DIR, exist_ok=True)
 os.makedirs(os.path.dirname(PLACEHOLDER), exist_ok=True)
 os.makedirs(os.path.dirname(GALLERY_FILE), exist_ok=True)
 
+# --- Утилиты ---
 def safe_yaml_value(value):
     if not value: return ""
     return str(value).replace('"', "'").replace(':', ' -').replace('\n', ' ').replace('\r', ' ').strip()
 
-def generate_with_openrouter(prompt):
-    """Генерация через OpenRouter"""
+# --- Генераторы ---
+def generate_with_groq(prompt):
+    """Попытка генерации через Groq API"""
+    if not GROQ_API_KEY:
+        logging.warning("⚠️ Groq API ключ не найден.")
+        return None
     try:
-        if not OPENROUTER_API_KEY:
-            logging.warning("⚠️ OpenRouter API ключ не найден.")
-            return None
+        logging.info("🌐 Используем Groq...")
+        # Пример запроса к Groq (замени на реальный API)
+        headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
+        r = requests.post("https://api.groq.ai/generate",
+            headers=headers,
+            json={"prompt": prompt, "max_tokens": 1000},
+            timeout=30
+        )
+        r.raise_for_status()
+        result = r.json().get("text", "").strip()
+        logging.info("✅ Groq успешно сгенерировал текст.")
+        return result if result else None
+    except Exception as e:
+        logging.warning(f"⚠️ Groq не сработал: {e}")
+        return None
+
+def generate_with_openrouter(prompt):
+    """Попытка генерации через OpenRouter"""
+    if not OPENROUTER_API_KEY:
+        logging.warning("⚠️ OpenRouter API ключ не найден.")
+        return None
+    try:
         logging.info("🌐 Используем OpenRouter...")
         headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}"}
         r = requests.post("https://openrouter.ai/api/v1/chat/completions",
@@ -47,68 +72,58 @@ def generate_with_openrouter(prompt):
             timeout=30
         )
         r.raise_for_status()
-        content = r.json()["choices"][0]["message"]["content"].strip().strip('"')
-        logging.info("✅ OpenRouter успешно сгенерировал контент")
-        return content
+        result = r.json()["choices"][0]["message"]["content"].strip()
+        logging.info("✅ OpenRouter успешно сгенерировал текст.")
+        return result if result else None
     except Exception as e:
         logging.warning(f"⚠️ OpenRouter не сработал: {e}")
         return None
 
-def generate_with_groq(prompt):
-    """Генерация через Groq"""
-    if not GROQ_API_KEY:
-        logging.warning("⚠️ Groq API ключ не найден.")
-        return None
-    try:
-        logging.info("🌐 Используем Groq...")
-        headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
-        r = requests.post("https://api.groq.ai/v1/completions",
-                          headers=headers,
-                          json={"prompt": prompt, "max_tokens": 1000},
-                          timeout=30)
-        r.raise_for_status()
-        content = r.json().get("text", "").strip()
-        if content:
-            logging.info("✅ Groq успешно сгенерировал контент")
-            return content
-        else:
-            logging.warning("⚠️ Groq вернул пустой результат")
-            return None
-    except Exception as e:
-        logging.warning(f"⚠️ Groq не сработал: {e}")
-        return None
-
+# --- Генерация статьи ---
 def generate_article():
-    header_prompt = "Придумай интересный заголовок о последних трендах в искусственном интеллекте и технологиях (не более 7 слов)"
+    # Промпт для заголовка (тот, который ты велел запомнить)
+    header_prompt = ("Придумай интересный и цепляющий заголовок о последних трендах в "
+                     "искусственном интеллекте и технологиях. Он должен быть не более 7 слов, "
+                     "интригующим, современным, понятным широкой аудитории, "
+                     "с акцентом на практическое применение технологий и их влияние на жизнь людей.")
+
     logging.info("📝 Генерация заголовка...")
     title = generate_with_groq(header_prompt)
     if not title:
         logging.info("🔄 Пытаемся через OpenRouter для заголовка...")
         title = generate_with_openrouter(header_prompt)
     if not title:
-        title = "Новые тренды в искусственном интеллекте 2025"
         logging.warning("⚠️ Не удалось получить заголовок от API — fallback")
+        title = "Новые тренды в искусственном интеллекте 2025"
     logging.info(f"✅ Заголовок: {title}")
 
-    content_prompt = f"Напиши подробную статью на русском языке 500-600 слов по заголовку: {title}. Сделай текст информативным и интересным."
+    # Промпт для текста статьи
+    content_prompt = f"""
+Напиши подробную, информативную и интересную статью на русском языке длиной 500-600 слов по заголовку: {title}.
+Статья должна включать:
+- Четкое введение, объясняющее суть темы
+- Основную часть с минимум 3-4 логическими абзацами
+- Заключение с выводами и перспективами
+- Поддержку примерами и ссылками на реальные технологии и тренды
+- Акцент на практическое применение и влияние на общество
+- Текст должен быть уникальным, читабельным и легким для восприятия
+Не используй списки меньше 2 пунктов, избегай сухой технической терминологии без пояснений.
+"""
+
     logging.info("📝 Генерация текста статьи...")
     text = generate_with_groq(content_prompt)
     if not text:
         logging.info("🔄 Пытаемся через OpenRouter для текста статьи...")
         text = generate_with_openrouter(content_prompt)
     if not text:
-        text = f"""Искусственный интеллект продолжает революционизировать различные отрасли. В 2025 году мы наблюдаем несколько ключевых трендов:
-
-1. **Генеративный AI** - модели типа GPT стали доступны широкой публике
-2. **Мультимодальность** - AI работает с текстом, изображениями и аудио одновременно
-3. **Этический AI** - повышенное внимание к безопасности и этике
-
-Эти технологии меняют нашу повседневную жизнь и бизнес-процессы."""
         logging.warning("⚠️ Все генераторы не сработали — fallback")
+        text = (f"Искусственный интеллект продолжает революционизировать различные отрасли. "
+                "В 2025 году наблюдаются ключевые тренды: генеративный AI, мультимодальность, "
+                "этический AI. Эти технологии меняют повседневную жизнь и бизнес-процессы.")
     return title, text, "AI Generator"
 
+# --- Изображение ---
 def generate_image(title, slug):
-    """Создает SVG-заглушку для статьи"""
     try:
         logging.info("🖼️ Создание SVG-заглушки для изображения...")
         img_path = os.path.join(STATIC_DIR, f"{slug}.svg")
@@ -136,8 +151,8 @@ def generate_image(title, slug):
         logging.error(f"❌ Ошибка создания изображения: {e}")
         return PLACEHOLDER
 
+# --- Галерея ---
 def update_gallery(title, slug, image_path):
-    """Обновляет галерею, хранит все изображения"""
     try:
         gallery = []
         if os.path.exists(GALLERY_FILE):
@@ -149,8 +164,7 @@ def update_gallery(title, slug, image_path):
                 gallery = []
 
         image_src = image_path if image_path.startswith('/') else f"/{image_path}"
-
-        gallery.insert(0, {
+        gallery.append({
             "title": safe_yaml_value(title),
             "alt": safe_yaml_value(title),
             "src": image_src,
@@ -160,15 +174,16 @@ def update_gallery(title, slug, image_path):
 
         with open(GALLERY_FILE, 'w', encoding='utf-8') as f:
             yaml.safe_dump(gallery, f, allow_unicode=True, default_flow_style=False)
-        logging.info(f"✅ Галерея обновлена ({len(gallery)} изображений)")
+
+        logging.info(f"✅ Галерея обновлена (всего {len(gallery)} изображений)")
     except Exception as e:
         logging.error(f"❌ Ошибка обновления галереи: {e}")
 
+# --- Сохранение статьи ---
 def save_article(title, text, model, slug, image_path):
     try:
         filename = os.path.join(POSTS_DIR, f'{slug}.md')
         image_url = image_path if image_path.startswith('/') else f"/{image_path}"
-
         front_matter = {
             'title': safe_yaml_value(title),
             'date': datetime.now().strftime("%Y-%m-%dT%H:%M:%S+03:00"),
@@ -180,19 +195,15 @@ def save_article(title, text, model, slug, image_path):
             'type': "posts",
             'description': safe_yaml_value(text[:150] + "..." if len(text) > 150 else text)
         }
-
         yaml_content = yaml.safe_dump(front_matter, allow_unicode=True, default_flow_style=False, sort_keys=False)
-        content = f"""---
-{yaml_content}---
-
-{text}
-"""
+        content = f"---\n{yaml_content}---\n\n{text}\n"
         with open(filename, 'w', encoding='utf-8') as f:
             f.write(content)
         logging.info(f"✅ Статья сохранена: {filename}")
     except Exception as e:
         logging.error(f"❌ Ошибка сохранения статьи: {e}")
 
+# --- Очистка старых постов ---
 def cleanup_old_posts(keep=10):
     try:
         posts = sorted(glob.glob(os.path.join(POSTS_DIR, "*.md")), key=os.path.getmtime, reverse=True)
@@ -200,7 +211,7 @@ def cleanup_old_posts(keep=10):
             for old_post in posts[keep:]:
                 slug = os.path.splitext(os.path.basename(old_post))[0]
                 os.remove(old_post)
-                logging.info(f"🗑 Удалена старая статья: {old_post}")
+                logging.info(f"🗑 Удалён старый пост: {old_post}")
                 for ext in ['.png', '.svg', '.jpg']:
                     img_path = os.path.join(STATIC_DIR, f"{slug}{ext}")
                     if os.path.exists(img_path):
@@ -209,16 +220,19 @@ def cleanup_old_posts(keep=10):
     except Exception as e:
         logging.error(f"❌ Ошибка очистки: {e}")
 
+# --- Основной запуск ---
 def main():
     try:
         logging.info("🚀 Запуск генерации контента...")
+
         title, text, model = generate_article()
         slug = slugify(title)
-        logging.info(f"📄 Сгенерирована статья: {title}")
+
         image_path = generate_image(title, slug)
         save_article(title, text, model, slug, image_path)
         update_gallery(title, slug, image_path)
         cleanup_old_posts(keep=10)
+
         logging.info("🎉 Генерация завершена успешно!")
     except Exception as e:
         logging.error(f"❌ Критическая ошибка: {e}")
