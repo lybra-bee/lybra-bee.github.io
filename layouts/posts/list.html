@@ -1,6 +1,6 @@
 {{ define "main" }}
 <section class="posts-carousel-section">
-  <h1>Все статьи</h1>
+  <h1>{{ .Title }}</h1>
 
   {{ $pages := .RegularPages.ByDate.Reverse }}
   {{ if gt (len $pages) 0 }}
@@ -30,7 +30,7 @@
 .posts-carousel-section {
   max-width: 1200px;
   margin: auto;
-  padding: 2rem;
+  padding: 1rem;
 }
 .posts-carousel {
   display: flex;
@@ -43,10 +43,10 @@
   display: none;
 }
 .carousel-item {
-  flex: 0 0 300px;
+  flex: 0 0 280px;
   scroll-snap-align: start;
   border: 1px solid #ddd;
-  border-radius: 8px;
+  border-radius: 10px;
   overflow: hidden;
   background: #fff;
   transition: transform 0.3s ease;
@@ -63,6 +63,7 @@
 .carousel-caption {
   padding: 0.5rem;
   text-align: center;
+  font-size: 0.9rem;
 }
 .no-image {
   width: 100%;
@@ -73,6 +74,24 @@
   justify-content: center;
   color: #666;
   font-style: italic;
+}
+
+/* 📱 Адаптив для телефонов */
+@media (max-width: 768px) {
+  .carousel-item {
+    flex: 0 0 80%;
+  }
+  .carousel-item img {
+    height: 160px;
+  }
+}
+@media (max-width: 480px) {
+  .carousel-item {
+    flex: 0 0 90%;
+  }
+  .carousel-item img {
+    height: 140px;
+  }
 }
 </style>
 
