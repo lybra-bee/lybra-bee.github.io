@@ -10,7 +10,7 @@ description = "Портфолио сгенерированных AI статей
     weight = 1
   [[menu.main]]
     name = "Статьи"
-    url = "/articles/"
+    url = "/posts/"
     weight = 2
   [[menu.main]]
     name = "Галерея"
