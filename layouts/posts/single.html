@@ -1,22 +1,8 @@
 {{ define "main" }}
-<article class="post-single">
-    <header class="post-header">
-        <h1>{{ .Title }}</h1>
-        <p class="post-meta">
-            {{ .Date.Format "02.01.2006" }} • 
-            Модель: {{ .Params.model }}
-        </p>
-        {{ if .Params.image }}
-        <img src="{{ .Params.image }}" alt="{{ .Title }}" class="post-image">
-        {{ end }}
-    </header>
-
-    <div class="post-content">
-        {{ .Content }}
-    </div>
-
-    <footer class="post-footer">
-        <a href="/posts/" class="back-link">← Все статьи</a>
-    </footer>
+<article>
+  <h1>{{ .Title }}</h1>
+  <img src="{{ .Params.image }}" alt="{{ .Title }}">
+  {{ .Content }}
+  <p><a href="/posts/">Все статьи</a></p>
 </article>
 {{ end }}
