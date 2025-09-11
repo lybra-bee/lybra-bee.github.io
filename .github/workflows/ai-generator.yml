@@ -1,4 +1,4 @@
-name: 🚀 Generate Content & Deploy Hugo Site
+name: 🚀 Build & Deploy Hugo Site with Content Generation
 
 on:
   push:
@@ -16,46 +16,41 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  generate_and_build:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
 
-      # Установка Python и зависимостей
-      - name: 🐍 Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.x"
-
-      - name: 📦 Install Python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install pyyaml
-
-      # Генерация контента
-      - name: ✨ Generate content
-        run: python .github/scripts/generate_content.py
-
-      # Установка Hugo
       - name: 🛠️ Setup Hugo
         uses: peaceiris/actions-hugo@v2
         with:
           hugo-version: '0.148.0'
           extended: true
 
-      # Сборка сайта
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: 📦 Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyyaml requests Pillow
+
+      - name: ⚡ Generate content
+        run: python .github/scripts/generate_content.py
+
       - name: ⚡ Build Hugo site
         run: hugo --minify
 
-      # Загружаем public как артефакт для деплоя
       - name: 📤 Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./public
 
   deploy:
-    needs: generate_and_build
+    needs: build
     runs-on: ubuntu-latest
     environment:
       name: github-pages
