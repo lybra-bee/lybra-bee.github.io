@@ -7,10 +7,6 @@ hasCJKLanguage = false
 defaultContentLanguage = "ru"
 pygmentsUseClasses = true
 
-# Пагинация статей
-[pagination]
-  pagerSize = 10
-
 # Вывод
 [outputs]
   home = ["HTML"]
