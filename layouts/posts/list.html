@@ -1,17 +1,66 @@
 {{ define "main" }}
-<h1>Статьи</h1>
-<div class="swiper-container">
-  <div class="swiper-wrapper">
-  {{ range .Pages }}
-    <div class="swiper-slide">
-      <a href="{{ .Permalink }}">
-        <img src="{{ .Params.image }}" alt="{{ .Title }}">
-        <h3>{{ .Title }}</h3>
-      </a>
-    </div>
-  {{ end }}
+<section class="posts-carousel">
+  <h1>Статьи</h1>
+  <div class="carousel-container" id="postsCarousel">
+    {{ range .Paginator.Pages }}
+      <div class="carousel-item">
+        <a href="{{ .RelPermalink }}">
+          {{ if .Params.image }}
+          <img src="{{ .Params.image }}" alt="{{ .Title }}">
+          {{ end }}
+          <h2>{{ .Title }}</h2>
+        </a>
+      </div>
+    {{ end }}
   </div>
-  <div class="swiper-button-next"></div>
-  <div class="swiper-button-prev"></div>
-</div>
+  <button class="carousel-prev" onclick="scrollCarousel('postsCarousel', -1)">&#10094;</button>
+  <button class="carousel-next" onclick="scrollCarousel('postsCarousel', 1)">&#10095;</button>
+</section>
+
+<style>
+.carousel-container {
+  display: flex;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  gap: 1rem;
+  padding: 1rem 0;
+}
+.carousel-item {
+  flex: 0 0 300px;
+  background: #f4f4f4;
+  border-radius: 8px;
+  text-align: center;
+  padding: 0.5rem;
+}
+.carousel-item img {
+  width: 100%;
+  border-radius: 4px;
+}
+.carousel-prev, .carousel-next {
+  background: rgba(0,0,0,0.5);
+  color: #fff;
+  border: none;
+  font-size: 2rem;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  z-index: 10;
+}
+.carousel-prev { left: 10px; }
+.carousel-next { right: 10px; }
+</style>
+
+<script>
+function scrollCarousel(id, direction) {
+  const container = document.getElementById(id);
+  container.scrollBy({ left: direction * 320, behavior: 'smooth' });
+}
+
+// Автопрокрутка
+setInterval(() => {
+  const container = document.getElementById('postsCarousel');
+  if(container) container.scrollBy({ left: 320, behavior: 'smooth' });
+}, 5000);
+</script>
 {{ end }}
