@@ -1,77 +1,54 @@
-# =========================
-# Основные настройки
-# =========================
 baseURL = "https://lybra-bee.github.io/"
 languageCode = "ru-ru"
 title = "Alexey AI"
-theme = "ananke"       # используйте вашу тему, если нет, можно убрать и кастомизировать
+theme = "ananke"
 enableRobotsTXT = true
-defaultContentLanguage = "ru"
 hasCJKLanguage = false
-paginate = 10
-pluralizeListTitles = false
+defaultContentLanguage = "ru"
+pygmentsUseClasses = true
 
-# =========================
-# Permalinks
-# =========================
-[permalinks]
-posts = "/posts/:slug/"
-articles = "/articles/:slug/"
+# Пагинация статей
+[pagination]
+  pagerSize = 10
 
-# =========================
-# Params (настройки темы и сайта)
-# =========================
-[params]
-author = "Alexey AI"
-description = "Блог о нейросетях, генерации видео и изображений"
-showReadingTime = true
-mainSections = ["posts", "articles"]
-
-# =========================
-# Меню
-# =========================
-[menu]
-
-  [[menu.main]]
-  name = "Главная"
-  url = "/"
-  weight = 1
-
-  [[menu.main]]
-  name = "Статьи"
-  url = "/posts/"
-  weight = 2
-
-  [[menu.main]]
-  name = "Галерея"
-  url = "/gallery/"
-  weight = 3
-
-  [[menu.main]]
-  name = "Обо мне"
-  url = "/about/"
-  weight = 4
-
-# =========================
-# Output Formats
-# =========================
+# Вывод
 [outputs]
-home = ["HTML", "RSS", "JSON"]
+  home = ["HTML"]
 
-# =========================
-# Build
-# =========================
-[build]
-writeStats = true
-useResourceCacheWhen = "always"
+# Настройка меню
+[menu]
+  [[menu.main]]
+    identifier = "home"
+    name = "Главная"
+    url = "/"
+    weight = 1
 
-# =========================
-# Asset & Static dirs
-# =========================
-[mediaTypes."image/svg+xml"]
-suffixes = ["svg"]
+  [[menu.main]]
+    identifier = "posts"
+    name = "Статьи"
+    url = "/posts/"
+    weight = 2
 
-[markup]
-  [markup.goldmark]
-    [markup.goldmark.renderer]
-      unsafe = true
+  [[menu.main]]
+    identifier = "gallery"
+    name = "Галерея"
+    url = "/gallery/"
+    weight = 3
+
+  [[menu.main]]
+    identifier = "about"
+    name = "Обо мне"
+    url = "/about/"
+    weight = 4
+
+# Параметры сайта
+[params]
+  description = "Блог о генеративных нейросетях, ИИ и технологиях"
+  author = "Alexey"
+  showReadMore = true
+  showLastModified = true
+
+# Подключение социальных ссылок (если нужно)
+[social]
+  github = "https://github.com/lybra-bee"
+  telegram = "https://t.me/Lybra777"
