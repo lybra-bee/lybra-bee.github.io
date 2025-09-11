@@ -1,7 +1,6 @@
 baseURL = "https://lybra-bee.github.io/"
 languageCode = "ru"
 title = "Alexey AI"
-theme = "ananke"
 
 # Меню
 [menu]
