@@ -1,9 +1,9 @@
-name: 🚀 Deploy Hugo site to Pages
+name: 🚀 Generate Content & Deploy Hugo Site
 
 on:
   push:
     branches:
-      - main  # деплой при каждом пуше в main
+      - main
   workflow_dispatch:
 
 permissions:
@@ -16,49 +16,50 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  generate_and_build:
     runs-on: ubuntu-latest
     steps:
-      - name: 📥 Checkout
+      - name: 📥 Checkout repository
         uses: actions/checkout@v4
 
-      # --- Добавляем генерацию AI-контента ---
+      # Установка Python и зависимостей
       - name: 🐍 Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.12"
+          python-version: "3.x"
 
       - name: 📦 Install Python dependencies
         run: |
-          pip install --upgrade pip
-          pip install -r requirements.txt || true
+          python -m pip install --upgrade pip
+          pip install pyyaml
 
-      - name: 🤖 Generate AI content
-        run: |
-          python .github/scripts/generate_content.py
-          python generate_gallery.py || true
-      # --- Конец генерации AI-контента ---
+      # Генерация контента
+      - name: ✨ Generate content
+        run: python .github/scripts/generate_content.py
 
+      # Установка Hugo
       - name: 🛠️ Setup Hugo
         uses: peaceiris/actions-hugo@v2
         with:
-          hugo-version: '0.148.0' # твоя версия Hugo
+          hugo-version: '0.148.0'
           extended: true
 
+      # Сборка сайта
       - name: ⚡ Build Hugo site
         run: hugo --minify
 
+      # Загружаем public как артефакт для деплоя
       - name: 📤 Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./public
 
   deploy:
+    needs: generate_and_build
+    runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
     steps:
       - name: 🚀 Deploy to GitHub Pages
         id: deployment
