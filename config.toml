@@ -6,7 +6,6 @@ enableRobotsTXT = true
 hasCJKLanguage = false
 defaultContentLanguage = "ru"
 pygmentsUseClasses = true
-theme = "ananke"
 
 [pagination]
   pagerSize = 10
