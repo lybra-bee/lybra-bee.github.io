@@ -1,95 +1,32 @@
 {{ define "main" }}
-<section class="posts-carousel">
-  <h1 class="text-2xl font-bold mb-6">Все статьи</h1>
+<h1 class="mb-4">Статьи</h1>
 
-  <!-- Подключение Swiper -->
-  <link
-    rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/swiper@9/swiper-bundle.min.css"
-  />
-  <script src="https://cdn.jsdelivr.net/npm/swiper@9/swiper-bundle.min.js"></script>
-
-  <div class="swiper">
-    <div class="swiper-wrapper">
-      {{ range .Pages }}
-      <div class="swiper-slide">
-        <div class="post-card">
-          <a href="{{ .RelPermalink }}">
-            {{ with .Params.image }}
-            <img src="{{ . | relURL }}" alt="{{ $.Title }}" class="post-thumb" />
-            {{ end }}
-            <h2 class="post-title">{{ .Title }}</h2>
-          </a>
+{{ if .Pages }}
+<div id="postsCarousel" class="carousel slide" data-bs-ride="carousel">
+  <div class="carousel-inner">
+    {{ range $i, $p := .Pages }}
+      <div class="carousel-item {{ if eq $i 0 }}active{{ end }}">
+        <div class="card mx-auto" style="width: 18rem;">
+          {{ with $p.Params.image }}
+          <img src="{{ . }}" class="card-img-top" alt="{{ $p.Title }}">
+          {{ end }}
+          <div class="card-body">
+            <h5 class="card-title">{{ $p.Title }}</h5>
+            <p class="card-text">{{ $p.Summary | plainify }}</p>
+            <a href="{{ $p.RelPermalink }}" class="btn btn-primary">Читать</a>
+          </div>
         </div>
       </div>
-      {{ end }}
-    </div>
-
-    <!-- Навигация -->
-    <div class="swiper-pagination"></div>
-    <div class="swiper-button-prev"></div>
-    <div class="swiper-button-next"></div>
+    {{ end }}
   </div>
-
-  <style>
-    .posts-carousel {
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-    .swiper {
-      padding-bottom: 40px;
-    }
-    .swiper-slide {
-      display: flex;
-      justify-content: center;
-    }
-    .post-card {
-      background: #fff;
-      border-radius: 10px;
-      overflow: hidden;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-      transition: transform 0.3s ease;
-      width: 280px;
-    }
-    .post-card:hover {
-      transform: translateY(-5px);
-    }
-    .post-thumb {
-      width: 100%;
-      height: 180px;
-      object-fit: cover;
-    }
-    .post-title {
-      padding: 12px;
-      font-size: 1rem;
-      font-weight: 600;
-      text-align: center;
-    }
-  </style>
-
-  <script>
-    new Swiper('.swiper', {
-      loop: true,
-      spaceBetween: 20,
-      slidesPerView: 1,
-      autoplay: {
-        delay: 3500,
-        disableOnInteraction: false,
-      },
-      pagination: {
-        el: '.swiper-pagination',
-        clickable: true,
-      },
-      navigation: {
-        nextEl: '.swiper-button-next',
-        prevEl: '.swiper-button-prev',
-      },
-      breakpoints: {
-        640: { slidesPerView: 2 },
-        1024: { slidesPerView: 3 },
-        1280: { slidesPerView: 4 },
-      },
-    });
-  </script>
-</section>
+  <button class="carousel-control-prev" type="button" data-bs-target="#postsCarousel" data-bs-slide="prev">
+    <span class="carousel-control-prev-icon"></span>
+  </button>
+  <button class="carousel-control-next" type="button" data-bs-target="#postsCarousel" data-bs-slide="next">
+    <span class="carousel-control-next-icon"></span>
+  </button>
+</div>
+{{ else }}
+<p>Статей пока нет.</p>
+{{ end }}
 {{ end }}
