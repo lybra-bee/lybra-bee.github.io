@@ -35,7 +35,7 @@ jobs:
 
       - name: 🤖 Generate AI content
         run: |
-          python generate_content.py
+          python .github/scripts/generate_content.py
           python generate_gallery.py || true
       # --- Конец генерации AI-контента ---
 
