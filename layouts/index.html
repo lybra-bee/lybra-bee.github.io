@@ -1,28 +1,19 @@
 {{ define "main" }}
-<main class="container">
-  <!-- Превью последней статьи -->
+<main class="container mx-auto px-4 py-8">
+
   {{ $latest := first 1 (where .Site.RegularPages "Type" "posts") }}
   {{ with index $latest 0 }}
-  <section class="latest-article">
-    <h2>{{ .Title }}</h2>
-    <img src="{{ .Params.image }}" alt="{{ .Title }}" class="latest-image"/>
-    <p>{{ .Summary }}</p>
-    <a href="{{ .RelPermalink }}" class="read-more">Читать далее</a>
-  </section>
+    <article class="mb-8">
+      {{ if .Params.image }}
+      <img src="{{ .Params.image }}" alt="{{ .Title }}" class="w-full h-auto rounded-lg shadow-lg mb-4">
+      {{ end }}
+      <h1 class="text-4xl font-bold mb-2">{{ .Title }}</h1>
+      <p class="text-gray-700 mb-4">{{ .Summary }}</p>
+      <a href="{{ .Permalink }}" class="text-blue-600 hover:underline font-semibold">Читать далее →</a>
+    </article>
+  {{ else }}
+    <p>Пока нет статей для отображения.</p>
   {{ end }}
 
-  <!-- Галерея -->
-  {{ $gallery := site.Data.gallery }}
-  <section class="gallery">
-    <h2>Галерея</h2>
-    <div class="gallery-grid">
-      {{ range $gallery }}
-      <div class="gallery-item">
-        <img src="{{ .src }}" alt="{{ .alt }}"/>
-        <p>{{ .title }}</p>
-      </div>
-      {{ end }}
-    </div>
-  </section>
 </main>
 {{ end }}
