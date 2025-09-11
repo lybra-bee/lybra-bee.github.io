@@ -15,7 +15,7 @@ pygmentsUseClasses = true
 [outputs]
   home = ["HTML"]
 
-# Настройка меню
+# Меню
 [menu]
   [[menu.main]]
     identifier = "home"
@@ -48,7 +48,7 @@ pygmentsUseClasses = true
   showReadMore = true
   showLastModified = true
 
-# Подключение социальных ссылок (если нужно)
+# Социальные ссылки
 [social]
   github = "https://github.com/lybra-bee"
   telegram = "https://t.me/Lybra777"
