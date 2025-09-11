@@ -1,109 +1,95 @@
 {{ define "main" }}
-<section class="posts-carousel-section">
-  <h1>{{ .Title }}</h1>
+<section class="posts-carousel">
+  <h1 class="text-2xl font-bold mb-6">Все статьи</h1>
 
-  {{ $pages := .RegularPages.ByDate.Reverse }}
-  {{ if gt (len $pages) 0 }}
-  <div class="posts-carousel" id="posts-carousel">
-    {{ range $page := $pages }}
-    <div class="carousel-item">
-      <a href="{{ $page.RelPermalink }}">
-        {{ with $page.Params.image }}
-        <img src="{{ . }}" alt="{{ $page.Title }}" />
-        {{ else }}
-        <div class="no-image">Без изображения</div>
-        {{ end }}
-        <div class="carousel-caption">
-          <h3>{{ $page.Title }}</h3>
-          <p>{{ $page.Date.Format "2006-01-02" }}</p>
+  <!-- Подключение Swiper -->
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/swiper@9/swiper-bundle.min.css"
+  />
+  <script src="https://cdn.jsdelivr.net/npm/swiper@9/swiper-bundle.min.js"></script>
+
+  <div class="swiper">
+    <div class="swiper-wrapper">
+      {{ range .Pages }}
+      <div class="swiper-slide">
+        <div class="post-card">
+          <a href="{{ .RelPermalink }}">
+            {{ with .Params.image }}
+            <img src="{{ . | relURL }}" alt="{{ $.Title }}" class="post-thumb" />
+            {{ end }}
+            <h2 class="post-title">{{ .Title }}</h2>
+          </a>
         </div>
-      </a>
+      </div>
+      {{ end }}
     </div>
-    {{ end }}
+
+    <!-- Навигация -->
+    <div class="swiper-pagination"></div>
+    <div class="swiper-button-prev"></div>
+    <div class="swiper-button-next"></div>
   </div>
-  {{ else }}
-  <p>Статей пока нет.</p>
-  {{ end }}
+
+  <style>
+    .posts-carousel {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .swiper {
+      padding-bottom: 40px;
+    }
+    .swiper-slide {
+      display: flex;
+      justify-content: center;
+    }
+    .post-card {
+      background: #fff;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      transition: transform 0.3s ease;
+      width: 280px;
+    }
+    .post-card:hover {
+      transform: translateY(-5px);
+    }
+    .post-thumb {
+      width: 100%;
+      height: 180px;
+      object-fit: cover;
+    }
+    .post-title {
+      padding: 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      text-align: center;
+    }
+  </style>
+
+  <script>
+    new Swiper('.swiper', {
+      loop: true,
+      spaceBetween: 20,
+      slidesPerView: 1,
+      autoplay: {
+        delay: 3500,
+        disableOnInteraction: false,
+      },
+      pagination: {
+        el: '.swiper-pagination',
+        clickable: true,
+      },
+      navigation: {
+        nextEl: '.swiper-button-next',
+        prevEl: '.swiper-button-prev',
+      },
+      breakpoints: {
+        640: { slidesPerView: 2 },
+        1024: { slidesPerView: 3 },
+        1280: { slidesPerView: 4 },
+      },
+    });
+  </script>
 </section>
-
-<style>
-.posts-carousel-section {
-  max-width: 1200px;
-  margin: auto;
-  padding: 1rem;
-}
-.posts-carousel {
-  display: flex;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  gap: 1rem;
-  padding-bottom: 1rem;
-}
-.posts-carousel::-webkit-scrollbar {
-  display: none;
-}
-.carousel-item {
-  flex: 0 0 280px;
-  scroll-snap-align: start;
-  border: 1px solid #ddd;
-  border-radius: 10px;
-  overflow: hidden;
-  background: #fff;
-  transition: transform 0.3s ease;
-}
-.carousel-item:hover {
-  transform: scale(1.05);
-}
-.carousel-item img {
-  width: 100%;
-  height: 180px;
-  object-fit: cover;
-  display: block;
-}
-.carousel-caption {
-  padding: 0.5rem;
-  text-align: center;
-  font-size: 0.9rem;
-}
-.no-image {
-  width: 100%;
-  height: 180px;
-  background: #ccc;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #666;
-  font-style: italic;
-}
-
-/* 📱 Адаптив для телефонов */
-@media (max-width: 768px) {
-  .carousel-item {
-    flex: 0 0 80%;
-  }
-  .carousel-item img {
-    height: 160px;
-  }
-}
-@media (max-width: 480px) {
-  .carousel-item {
-    flex: 0 0 90%;
-  }
-  .carousel-item img {
-    height: 140px;
-  }
-}
-</style>
-
-<script>
-const carousel = document.getElementById('posts-carousel');
-let scrollAmount = 0;
-function autoScroll() {
-  if (!carousel) return;
-  scrollAmount += 1;
-  if (scrollAmount >= carousel.scrollWidth - carousel.clientWidth) scrollAmount = 0;
-  carousel.scrollTo({ left: scrollAmount, behavior: 'smooth' });
-}
-setInterval(autoScroll, 50);
-</script>
 {{ end }}
