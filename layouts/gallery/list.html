@@ -1,62 +1,28 @@
 {{ define "main" }}
-<section class="gallery-carousel">
-  <h1>Галерея</h1>
-  <div class="carousel-container" id="galleryCarousel">
-    {{ $gallery := site.Data.gallery }}
-    {{ if $gallery }}
-      {{ range $item := $gallery }}
-        <div class="carousel-item">
-          <img src="{{ $item.src }}" alt="{{ $item.alt }}">
-          <p>{{ $item.title }}</p>
-        </div>
-      {{ end }}
-    {{ end }}
-  </div>
-  <button class="carousel-prev" onclick="scrollCarousel('galleryCarousel', -1)">&#10094;</button>
-  <button class="carousel-next" onclick="scrollCarousel('galleryCarousel', 1)">&#10095;</button>
-</section>
+<h1 class="text-3xl font-bold mb-6">Галерея</h1>
+
+<div class="gallery-grid">
+  {{ range (readDir "assets/gallery") }}
+    <div class="gallery-item">
+      <img src="/assets/gallery/{{ .Name }}" alt="{{ .Name }}" class="rounded shadow-md">
+    </div>
+  {{ end }}
+</div>
 
 <style>
-.carousel-container {
-  display: flex;
-  overflow-x: auto;
-  scroll-behavior: smooth;
-  gap: 1rem;
-  padding: 1rem 0;
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
 }
-.carousel-item {
-  flex: 0 0 300px;
-  text-align: center;
-}
-.carousel-item img {
+.gallery-item img {
   width: 100%;
-  border-radius: 4px;
+  height: auto;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
-.carousel-prev, .carousel-next {
-  background: rgba(0,0,0,0.5);
-  color: #fff;
-  border: none;
-  font-size: 2rem;
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  cursor: pointer;
-  z-index: 10;
+.gallery-item img:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.3);
 }
-.carousel-prev { left: 10px; }
-.carousel-next { right: 10px; }
 </style>
-
-<script>
-function scrollCarousel(id, direction) {
-  const container = document.getElementById(id);
-  container.scrollBy({ left: direction * 320, behavior: 'smooth' });
-}
-
-// Автопрокрутка
-setInterval(() => {
-  const container = document.getElementById('galleryCarousel');
-  if(container) container.scrollBy({ left: 320, behavior: 'smooth' });
-}, 5000);
-</script>
 {{ end }}
