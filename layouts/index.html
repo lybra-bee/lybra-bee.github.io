@@ -1,19 +1,16 @@
 {{ define "main" }}
-<main class="container mx-auto px-4 py-8">
+<h1 class="text-3xl font-bold mb-6">Последняя статья</h1>
 
-  {{ $latest := first 1 (where .Site.RegularPages "Type" "posts") }}
-  {{ with index $latest 0 }}
-    <article class="mb-8">
-      {{ if .Params.image }}
-      <img src="{{ .Params.image }}" alt="{{ .Title }}" class="w-full h-auto rounded-lg shadow-lg mb-4">
-      {{ end }}
-      <h1 class="text-4xl font-bold mb-2">{{ .Title }}</h1>
-      <p class="text-gray-700 mb-4">{{ .Summary }}</p>
-      <a href="{{ .Permalink }}" class="text-blue-600 hover:underline font-semibold">Читать далее →</a>
-    </article>
-  {{ else }}
-    <p>Пока нет статей для отображения.</p>
+{{ with first 1 (where .Site.RegularPages "Section" "articles") }}
+  {{ range . }}
+  <div class="mb-8">
+    <a href="{{ .RelPermalink }}">
+      <img src="{{ .Params.image }}" alt="{{ .Title }}" class="rounded shadow-md mb-2">
+      <h2 class="text-2xl font-semibold">{{ .Title }}</h2>
+    </a>
+    <p class="text-gray-600 text-sm">{{ .Date.Format "02.01.2006" }}</p>
+    <p>{{ .Summary }}</p>
+  </div>
   {{ end }}
-
-</main>
+{{ end }}
 {{ end }}
