@@ -1,16 +1,17 @@
-document.addEventListener("DOMContentLoaded", function() {
-  const carousels = document.querySelectorAll(".carousel");
-  carousels.forEach(carousel => {
-    let index = 0;
-    const items = carousel.querySelectorAll(".carousel-item");
-    if(items.length === 0) return;
-    items.forEach(item => item.style.display = "none");
-    items[index].style.display = "block";
+const track = document.querySelector(".carousel-track");
+const prevBtn = document.querySelector(".carousel-btn.prev");
+const nextBtn = document.querySelector(".carousel-btn.next");
 
-    setInterval(() => {
-      items[index].style.display = "none";
-      index = (index + 1) % items.length;
-      items[index].style.display = "block";
-    }, 3000);
-  });
+let index = 0;
+
+nextBtn.addEventListener("click", () => {
+  index++;
+  if (index >= track.children.length) index = 0;
+  track.style.transform = `translateX(-${index * 320}px)`;
+});
+
+prevBtn.addEventListener("click", () => {
+  index--;
+  if (index < 0) index = track.children.length - 1;
+  track.style.transform = `translateX(-${index * 320}px)`;
 });
