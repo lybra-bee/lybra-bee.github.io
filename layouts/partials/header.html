@@ -1,19 +1,8 @@
-<!DOCTYPE html>
-<html lang="{{ .Site.Language.Lang }}">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{ .Site.Title }}</title>
-  <link rel="stylesheet" href="{{ "css/main.css" | relURL }}">
-  <link rel="stylesheet" href="{{ "css/style.css" | relURL }}">
-</head>
-<body>
-<header>
-  <nav>
-    <ul>
-      {{ range .Site.Menus.main }}
-      <li><a href="{{ .URL }}">{{ .Name }}</a></li>
-      {{ end }}
-    </ul>
+<header class="bg-gray-800 text-white p-4 flex justify-between">
+  <a href="/" class="font-bold text-xl">Мой сайт</a>
+  <nav class="space-x-4">
+    <a href="/articles/" class="hover:underline">Все статьи</a>
+    <a href="/gallery/" class="hover:underline">Галерея</a>
+    <a href="/about/" class="hover:underline">Обо мне</a>
   </nav>
 </header>
