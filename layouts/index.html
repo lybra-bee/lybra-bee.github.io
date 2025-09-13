@@ -1,0 +1,20 @@
+{{ define "main" }}
+  <header style="background-image: url('/images/design/header-bg.png'); padding: 50px; text-align: center; background-size: cover;">
+    <h1>Lybra Bee</h1>
+    <nav>
+      <a href="/posts/">Все статьи</a>
+      <a href="/gallery/">Галерея</a>
+      <a href="/about/">Обо мне</a>
+    </nav>
+  </header>
+  <section id="latest" style="padding: 20px;">
+    {{ $latest := index (where .Site.RegularPages "Type" "posts") 0 }}
+    {{ if $latest }}
+      <h2>{{ $latest.Title }}</h2>
+      <img src="{{ $latest.Params.image | absURL }}" alt="{{ $latest.Title }}" style="max-width: 100%; border-radius: 8px;">
+      {{ $latest.Content }}
+    {{ else }}
+      <p>Пока нет статей. Скоро появятся!</p>
+    {{ end }}
+  </section>
+{{ end }}
