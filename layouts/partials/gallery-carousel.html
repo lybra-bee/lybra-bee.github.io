@@ -1,7 +1,0 @@
-<div class="carousel" id="gallery-carousel">
-  {{ range first 10 .Site.Data.gallery }}
-    <div class="carousel-item">
-      <img src="{{ .image | relURL }}" alt="{{ .title }}">
-    </div>
-  {{ end }}
-</div>
