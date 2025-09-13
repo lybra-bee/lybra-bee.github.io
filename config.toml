@@ -1,53 +1,34 @@
 baseURL = "https://lybra-bee.github.io/"
-languageCode = "ru-ru"
-title = "Alexey AI"
-theme = "ananke"
-enableRobotsTXT = true
-defaultContentLanguage = "ru"
-pygmentsUseClasses = true
-hasCJKLanguage = false
+languageCode = "ru-RU"
+title = "Lybra Bee - Портфолио и Блог об ИИ"
+theme = "toha"
 
-[pagination]
-  pagerSize = 10
+[params]
+  background = "/images/design/site-background.jpg"  # Замени на своё нагенерированное изображение (AI-нейрон, 1920x1080)
+  enableBlogPost = true
+  enableTOC = true
+  darkMode.enable = true
+  features.pwa.enabled = true
+  features.search.enabled = true
+  gitRepo = "https://github.com/lybra-bee/lybra-bee.github.io"
 
-# Вывод
-[outputs]
-  home = ["HTML"]  # только HTML, json больше не нужен
+[params.logo]
+  main = "/images/design/logo.png"  # Замени на своё (200x200, AI-иконка)
 
-# Меню
+[params.features.portfolio.sections]
+  name = "Галерея"
+  weight = 3
+
 [menu]
   [[menu.main]]
-    identifier = "home"
-    name = "Главная"
-    url = "/"
-    weight = 1
-
-  [[menu.main]]
-    identifier = "posts"
-    name = "Статьи"
+    name = "Все статьи"
     url = "/posts/"
-    weight = 2
-
+    weight = 1
   [[menu.main]]
-    identifier = "gallery"
     name = "Галерея"
     url = "/gallery/"
-    weight = 3
-
+    weight = 2
   [[menu.main]]
-    identifier = "about"
     name = "Обо мне"
     url = "/about/"
-    weight = 4
-
-# Параметры сайта
-[params]
-  description = "Блог о генеративных нейросетях, ИИ и технологиях"
-  author = "Alexey"
-  showReadMore = true
-  showLastModified = true
-
-# Социальные ссылки
-[social]
-  github = "https://github.com/lybra-bee"
-  telegram = "https://t.me/Lybra777"
+    weight = 3
