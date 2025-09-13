@@ -1,0 +1,12 @@
+# Hugo
+public/
+resources/
+themes/toha/exampleSite/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Temp
+.tmp
