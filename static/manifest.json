@@ -1,0 +1,20 @@
+{
+  "short_name": "Lybra Bee",
+  "name": "Lybra Bee Portfolio",
+  "icons": [
+    {
+      "src": "/images/design/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/images/design/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#121212",
+  "theme_color": "#00ffcc",
+  "display": "standalone"
+}
