@@ -1,0 +1,23 @@
+{{ define "main" }}
+  <h1>Галерея</h1>
+  <div class="gallery-grid">
+    {{ range site.Data.gallery }}
+      <figure>
+        <img src="{{ .src | absURL }}" alt="{{ .alt }}" loading="lazy" style="max-width: 100%; border-radius: 8px;">
+        <figcaption>{{ .title }} ({{ .date }})</figcaption>
+      </figure>
+    {{ end }}
+  </div>
+  <style>
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 10px;
+      padding: 20px;
+    }
+    .gallery-grid img:hover {
+      transform: scale(1.05);
+      transition: transform 0.3s;
+    }
+  </style>
+{{ end }}
