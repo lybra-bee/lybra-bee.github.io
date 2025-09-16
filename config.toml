@@ -32,3 +32,13 @@ theme = "toha"
     name = "Обо мне"
     url = "/about/"
     weight = 3
+    [module]
+  [[module.mounts]]
+    source = "themes/toha @ abeb605/node_modules"
+    target = "assets/node_modules"
+  [[module.mounts]]
+    source = "assets"
+    target = "assets"
+  [[module.mounts]]
+    source = "static"
+    target = "static"
