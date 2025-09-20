@@ -9,6 +9,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       # 1. Checkout репозитория и субмодулей
       - name: Checkout repository
@@ -19,7 +20,7 @@ jobs:
 
       # 2. Setup Hugo
       - name: Setup Hugo
-        uses: peaceiris/actions-hugo@v5
+        uses: peaceiris/actions-hugo@v2
         with:
           hugo-version: '0.148.0'
           extended: true
@@ -40,16 +41,15 @@ jobs:
       - name: Run generation script
         run: |
           cd ./scripts  # путь к твоему скрипту
-          chmod +x generate_content.py
           python3 generate_content.py
 
       # 6. Build Hugo site
       - name: Build site
         run: hugo --gc --minify
 
-      # 7. (Опционально) Deploy to GitHub Pages
+      # 7. Deploy to GitHub Pages
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v6
+        uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./public
