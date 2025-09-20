@@ -1,4 +1,0 @@
----
-title: Галерея
-type: gallery
----
