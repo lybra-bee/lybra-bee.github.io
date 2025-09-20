@@ -26,9 +26,9 @@ jobs:
 
       # 3. Setup Hugo
       - name: Setup Hugo
-        uses: peaceiris/actions-hugo@v6
+        uses: peaceiris/actions-hugo@v5
         with:
-          hugo-version: '0.148.0'   # укажи версию Hugo, которую используешь
+          hugo-version: '0.148.0'
           extended: true
 
       # 4. Optional: Install Node + PostCSS (если используешь Tailwind/PostCSS)
@@ -46,7 +46,7 @@ jobs:
 
       # 6. Deploy to GitHub Pages
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v6
+        uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./public
