@@ -18,7 +18,7 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      # 2. Update submodules to use your fork
+      # 2. Update submodules
       - name: Update submodules
         run: |
           git submodule sync
@@ -26,12 +26,12 @@ jobs:
 
       # 3. Setup Hugo
       - name: Setup Hugo
-        uses: peaceiris/actions-hugo@v4
+        uses: peaceiris/actions-hugo@v3.0.0
         with:
           hugo-version: '0.148.0'
           extended: true
 
-      # 4. Optional: Install Node + PostCSS (если используешь Tailwind/PostCSS)
+      # 4. Optional: Install Node + PostCSS (if using Tailwind/PostCSS)
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
