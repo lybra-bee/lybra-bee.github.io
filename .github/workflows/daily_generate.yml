@@ -1,5 +1,9 @@
 name: Daily Blog Post
 
+- uses: actions/checkout@v4
+  with:
+    submodules: recursive
+
 on:
   schedule:
     - cron: "0 8 * * *" # каждый день в 8 утра
