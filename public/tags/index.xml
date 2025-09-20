@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Tags on My AI Blog Portfolio</title>
+    <link>https://yourusername.github.io/tags/</link>
+    <description>Recent content in Tags on My AI Blog Portfolio</description>
+    <generator>Hugo</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sat, 20 Sep 2025 01:52:06 +0300</lastBuildDate>
+    <atom:link href="https://yourusername.github.io/tags/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>AI</title>
+      <link>https://yourusername.github.io/tags/ai/</link>
+      <pubDate>Sat, 20 Sep 2025 01:52:06 +0300</pubDate>
+      <guid>https://yourusername.github.io/tags/ai/</guid>
+      <description></description>
+    </item>
+    <item>
+      <title>Tech</title>
+      <link>https://yourusername.github.io/tags/tech/</link>
+      <pubDate>Sat, 20 Sep 2025 01:52:06 +0300</pubDate>
+      <guid>https://yourusername.github.io/tags/tech/</guid>
+      <description></description>
+    </item>
+    <item>
+      <title>Нейросети</title>
+      <link>https://yourusername.github.io/tags/%D0%BD%D0%B5%D0%B9%D1%80%D0%BE%D1%81%D0%B5%D1%82%D0%B8/</link>
+      <pubDate>Sat, 20 Sep 2025 01:52:06 +0300</pubDate>
+      <guid>https://yourusername.github.io/tags/%D0%BD%D0%B5%D0%B9%D1%80%D0%BE%D1%81%D0%B5%D1%82%D0%B8/</guid>
+      <description></description>
+    </item>
+  </channel>
+</rss>
