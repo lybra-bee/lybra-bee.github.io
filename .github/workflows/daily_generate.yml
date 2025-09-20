@@ -1,4 +1,4 @@
-name: Build Hugo site + Run generation script
+name: Build and Deploy Hugo Site
 
 on:
   push:
@@ -11,46 +11,43 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout репозитория и субмодулей
+      # 1. Checkout repository including submodules
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: recursive
           fetch-depth: 0
 
-      # 2. Setup Hugo
+      # 2. Update submodules to use your fork
+      - name: Update submodules
+        run: |
+          git submodule sync
+          git submodule update --init --recursive --remote
+
+      # 3. Setup Hugo
       - name: Setup Hugo
-        uses: peaceiris/actions-hugo@v2
+        uses: peaceiris/actions-hugo@v6
         with:
-          hugo-version: '0.148.0'
+          hugo-version: '0.148.0'   # укажи версию Hugo, которую используешь
           extended: true
 
-      # 3. Setup Node.js для PostCSS
+      # 4. Optional: Install Node + PostCSS (если используешь Tailwind/PostCSS)
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '20'
+      - name: Install dependencies
+        working-directory: themes/showfolio/assets/css
+        run: npm ci
 
-      # 4. Install CSS dependencies
-      - name: Install CSS dependencies
-        run: |
-          cd themes/showfolio/assets/css
-          npm install
-
-      # 5. Run content generation script
-      - name: Run generation script
-        run: |
-          cd ./scripts  # путь к твоему скрипту
-          python3 generate_content.py
-
-      # 6. Build Hugo site
-      - name: Build site
+      # 5. Build site
+      - name: Build Hugo site
         run: hugo --gc --minify
 
-      # 7. Deploy to GitHub Pages
+      # 6. Deploy to GitHub Pages
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+        uses: peaceiris/actions-gh-pages@v6
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./public
-          keep_files: true
+          keep_files: false
