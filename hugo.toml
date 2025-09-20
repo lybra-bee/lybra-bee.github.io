@@ -1,0 +1,11 @@
+baseURL = 'https://USERNAME.github.io/REPO/'
+languageCode = 'ru-ru'
+title = 'AI Blog Portfolio'
+theme = 'ananke'   # Hugo theme
+
+[params]
+  description = "Блог-портфолио инженера ИИ: статьи, обзоры, мастер-классы"
+  featured_image = "/images/default.jpg"
+
+[markup.goldmark.renderer]
+unsafe = true
