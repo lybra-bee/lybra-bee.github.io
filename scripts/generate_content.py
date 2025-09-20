@@ -1,168 +1,72 @@
 #!/usr/bin/env python3
-import os
-import sys
-import requests
-from datetime import datetime
-from slugify import slugify
-import frontmatter
-from pathlib import Path
+import os, requests, datetime, textwrap, json
 
-# — Настройки папок
-POSTS_DIR = Path("content/posts")
-IMAGES_DIR = Path("assets/images/posts")
-POSTS_DIR.mkdir(parents=True, exist_ok=True)
-IMAGES_DIR.mkdir(parents=True, exist_ok=True)
+# Папки
+POSTS_DIR = "content/posts"
+IMAGES_DIR = "static/images/posts"
+os.makedirs(POSTS_DIR, exist_ok=True)
+os.makedirs(IMAGES_DIR, exist_ok=True)
 
-# — Получаем ключи из окружения
-groq_key = os.getenv("GROQ_API_KEY")
-openrouter_key = os.getenv("OPENROUTER_API_KEY")
-deepai_key = os.getenv("DEEPAI_API_KEY")  # для изображения
+# API-ключи из GitHub Secrets
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+DEEPAI_API_KEY = os.getenv("DEEPAI_API_KEY")
 
-def generate_text_openrouter(prompt: str) -> str:
-    if not openrouter_key:
-        return None
-    url = "https://openrouter.ai/api/v1/chat/completions"
-    headers = {
-        "Authorization": f"Bearer {openrouter_key}",
-        "Content-Type": "application/json",
+today = datetime.date.today().strftime("%Y-%m-%d")
+slug = f"{today}-ai-article"
+filename = os.path.join(POSTS_DIR, f"{slug}.md")
+
+prompt = "Напиши урок или обзор по современным технологиям AI, примерно на 700-900 слов, с подзаголовками."
+
+# --- Генерация текста через OpenRouter ---
+headers = {
+    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+    "Content-Type": "application/json"
+}
+resp = requests.post(
+    "https://openrouter.ai/api/v1/chat/completions",
+    headers=headers,
+    json={
+        "model": "openai/gpt-4o-mini",
+        "messages": [{"role": "user", "content": prompt}]
     }
-    payload = {
-        "model": "openrouter/auto",  # или другая, доступная модель
-        "messages": [
-            {"role": "system", "content": "Ты — автор технических статей для блога."},
-            {"role": "user", "content": prompt}
-        ],
-        "temperature": 0.8,
-        "max_tokens": 1000,
-    }
-    r = requests.post(url, headers=headers, json=payload)
-    r.raise_for_status()
-    data = r.json()
-    # отдаём контент
-    return data["choices"][0]["message"]["content"]
+)
 
-def generate_text_groq(prompt: str) -> str:
-    if not groq_key:
-        return None
-    # Предполагая, что Groq поддерживает совместимый с OpenAI чат-API
-    url = "https://api.groq.com/openai/v1/chat/completions"
-    headers = {
-        "Authorization": f"Bearer {groq_key}",
-        "Content-Type": "application/json",
-    }
-    payload = {
-        "model": "llama-3.1-70b-versatile", 
-        "messages": [
-            {"role": "system", "content": "Ты — автор технических статей для блога."},
-            {"role": "user", "content": prompt}
-        ],
-        "temperature": 0.8,
-        "max_tokens": 1000,
-    }
-    r = requests.post(url, headers=headers, json=payload)
-    r.raise_for_status()
-    data = r.json()
-    return data["choices"][0]["message"]["content"]
+if resp.status_code == 200:
+    article_text = resp.json()["choices"][0]["message"]["content"]
+else:
+    article_text = "Ошибка генерации текста."
+    print(resp.text)
 
-def generate_image_deepai(prompt: str, output_path: Path) -> bool:
-    """Попытка через DeepAI Text2Img"""
-    if not deepai_key:
-        return False
-    try:
-        url = "https://api.deepai.org/api/text2img"
-        headers = {
-            "Api-Key": deepai_key
-        }
-        data = {
-            "text": prompt
-        }
-        r = requests.post(url, headers=headers, data=data)
-        r.raise_for_status()
-        res = r.json()
-        # ответ содержит URL изображения
-        img_url = res.get("output_url")
-        if not img_url:
-            return False
-        img_resp = requests.get(img_url)
-        img_resp.raise_for_status()
-        with open(output_path, "wb") as f:
-            f.write(img_resp.content)
-        return True
-    except Exception as e:
-        print("DeepAI image error:", e)
-        return False
+# --- Генерация картинки через DeepAI ---
+img_prompt = "Futuristic AI concept art, high quality, digital illustration"
+img_url = None
+try:
+    r = requests.post(
+        "https://api.deepai.org/api/text2img",
+        data={"text": img_prompt},
+        headers={"api-key": DEEPAI_API_KEY}
+    )
+    img_url = r.json().get("output_url")
+    if img_url:
+        img_data = requests.get(img_url).content
+        img_path = os.path.join(IMAGES_DIR, f"{slug}.jpg")
+        with open(img_path, "wb") as f:
+            f.write(img_data)
+except Exception as e:
+    print("Ошибка генерации изображения:", e)
 
-def generate_image_fallback(output_path: Path) -> bool:
-    try:
-        url = "https://picsum.photos/1200/675"
-        r = requests.get(url)
-        r.raise_for_status()
-        with open(output_path, "wb") as f:
-            f.write(r.content)
-        return True
-    except Exception as e:
-        print("Fallback image error:", e)
-        return False
+# --- Сохраняем пост ---
+with open(filename, "w", encoding="utf-8") as f:
+    f.write(f"""---
+title: "AI Article {today}"
+date: {today}
+draft: false
+tags: ["AI", "Technology"]
+featuredImage: "/images/posts/{slug}.jpg"
+---
 
-def save_post(title: str, body: str, image_filename: str):
-    date_str = datetime.utcnow().strftime("%Y-%m-%d")
-    slug = slugify(title)[:60]
-    md_path = POSTS_DIR / f"{date_str}-{slug}.md"
-    image_rel = f"/{IMAGES_DIR}/{image_filename}"
-    metadata = {
-        "title": title,
-        "date": datetime.utcnow().isoformat(),
-        "tags": ["ai","auto"],
-        "featured_image": image_rel,
-        "draft": False
-    }
-    post = frontmatter.Post(body, **metadata)
-    with open(md_path, "w", encoding="utf-8") as f:
-        f.write(frontmatter.dumps(post))
-    print("Post saved:", md_path)
+{article_text}
+""")
 
-def main():
-    today = datetime.utcnow().strftime("%Y-%m-%d")
-    title = f"Автоматическая статья {today}"
-    prompt_text = f"Сгенери статью для технического блога-портфолио на тему AI, дата: {today}. Включи заголовок, введение, несколько секций, заключение."
-    content = None
-
-    # Попытки по приоритету
-    if openrouter_key:
-        print("Using OpenRouter for text generation")
-        content = generate_text_openrouter(prompt_text)
-    elif groq_key:
-        print("Using Groq for text generation")
-        content = generate_text_groq(prompt_text)
-    else:
-        print("❌ Нет ключей для генерации текста! Завершаю с ошибкой.")
-        sys.exit(1)
-
-    if not content:
-        print("❌ Текст не сгенерировался! Завершаю с ошибкой.")
-        sys.exit(1)
-
-    # Выбор картинки
-    image_filename = f"{slugify(title)}.jpg"
-    image_path = IMAGES_DIR / image_filename
-    image_prompt = f"{title}. Illustration for technical blog post, high quality."
-
-    if deepai_key:
-        print("Попытка создать изображение через DeepAI")
-        ok_img = generate_image_deepai(image_prompt, image_path)
-    else:
-        ok_img = False
-
-    if not ok_img:
-        print("DeepAI image failed or no key, пытаюсь fallback")
-        if not generate_image_fallback(image_path):
-            print("❌ Не удалось создать изображение ни одним методом! Завершаю с ошибкой.")
-            sys.exit(1)
-
-    # Сохраняем пост
-    save_post(title, content, image_filename)
-    print("✅ Всё сгенерировано успешно")
-    sys.exit(0)
-
-if __name__ == "__main__":
-    main()
+print("✅ Пост сгенерирован:", filename)
