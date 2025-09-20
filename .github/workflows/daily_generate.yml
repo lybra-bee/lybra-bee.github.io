@@ -1,54 +1,56 @@
-name: Daily Blog Post
+name: Build Hugo site + Run generation script
 
 on:
-  schedule:
-    - cron: "0 8 * * *" # каждый день в 8 утра
-  workflow_dispatch: # ручной запуск
+  push:
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
+      # 1. Checkout репозитория и субмодулей
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          submodules: true  # подтянем тему
+          submodules: recursive
+          fetch-depth: 0
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      # 2. Setup Hugo
+      - name: Setup Hugo
+        uses: peaceiris/actions-hugo@v5
         with:
-          python-version: "3.12"
+          hugo-version: '0.148.0'
+          extended: true
 
-      - name: Install dependencies
+      # 3. Setup Node.js для PostCSS
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      # 4. Install CSS dependencies
+      - name: Install CSS dependencies
         run: |
-          pip install requests pillow
+          cd themes/showfolio/assets/css
+          npm install
 
-      - name: Generate content
-        run: python scripts/generate_content.py
-        env:
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          DEEPAI_API_KEY: ${{ secrets.DEEPAI_API_KEY }}
+      # 5. Run content generation script
+      - name: Run generation script
+        run: |
+          cd ./scripts  # путь к твоему скрипту
+          chmod +x generate_content.py
+          python3 generate_content.py
 
-      - name: Install Hugo
-        uses: peaceiris/actions-hugo@v2
-        with:
-          hugo-version: "0.128.0"
-
+      # 6. Build Hugo site
       - name: Build site
-        run: hugo --minify
+        run: hugo --gc --minify
 
-      - name: Commit changes
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add .
-          git commit -m "📝 Daily post $(date +'%Y-%m-%d')" || echo "No changes"
-          git push
-
+      # 7. (Опционально) Deploy to GitHub Pages
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
+        uses: peaceiris/actions-gh-pages@v6
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./public
+          keep_files: true
