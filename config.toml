@@ -1,0 +1,24 @@
+baseURL = "https://yourusername.github.io/"
+languageCode = "en-us"
+title = "My AI Blog Portfolio"
+theme = "showfolio"
+paginate = 10
+
+[params]
+  author = "Alexey AI"
+  description = "AI-powered blog with daily lessons & reviews"
+  showDarkToggle = true
+  showShareButtons = true
+
+[menu]
+  [[menu.main]]
+    identifier = "blog"
+    name = "Blog"
+    url = "/posts/"
+    weight = 1
+
+  [[menu.main]]
+    identifier = "portfolio"
+    name = "Portfolio"
+    url = "/portfolio/"
+    weight = 2
