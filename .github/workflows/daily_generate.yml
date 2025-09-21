@@ -1,53 +1,57 @@
-name: Build and Deploy Hugo Site
+name: Deploy Hugo site to Pages
 
 on:
   push:
     branches:
       - main
-  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout repository including submodules
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          fetch-depth: 0
 
-      # 2. Update submodules
-      - name: Update submodules
-        run: |
-          git submodule sync
-          git submodule update --init --recursive --remote
-
-      # 3. Setup Hugo
       - name: Setup Hugo
-        uses: peaceiris/actions-hugo@v3.0.0
+        uses: peaceiris/actions-hugo@v2
         with:
-          hugo-version: '0.148.0'
+          hugo-version: "0.148.0"
           extended: true
 
-      # 4. Optional: Install Node + PostCSS (if using Tailwind/PostCSS)
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - name: Setup Node.js (для PostCSS)
+        uses: actions/setup-node@v4
         with:
-          node-version: '20'
-      - name: Install dependencies
-        working-directory: themes/showfolio/assets/css
-        run: npm ci
+          node-version: 20
 
-      # 5. Build site
-      - name: Build Hugo site
+      - name: Install PostCSS и autoprefixer
+        run: |
+          npm install -D postcss postcss-cli autoprefixer
+
+      - name: Build
         run: hugo --gc --minify
 
-      # 6. Deploy to GitHub Pages
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./public
-          keep_files: false
+          path: ./public
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
