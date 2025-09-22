@@ -1,7 +1,7 @@
-ame: Daily content generator
+name: Daily content generator
 on:
 schedule:
-- cron: '0 6 * * *' # каждый день в 06:00 UTC (подстройте под ваш часовой пояс)
+- cron: '0 6 * * *' # каждый день в 06:00 UTC
 workflow_dispatch: {}
 
 
@@ -28,12 +28,7 @@ pip install pillow requests
 
 - name: Run generator
 env:
+GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
 OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-HF_TOKEN: ${{ secrets.HF_TOKEN }}
 run: |
 python scripts/content_generator.py
-
-
-- name: Commit and push
-# Коммит производится скриптом; если нужно — можно делать коммит здесь
-run: echo "Генерация завершена"
