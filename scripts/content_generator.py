@@ -1,77 +1,66 @@
 import os
-import sys
-import random
-import subprocess
-from datetime import datetime
-import json
-from pathlib import Path
-
-
-from PIL import Image, ImageDraw, ImageFilter, ImageFont
-
-
-# Параметры
-REPO_ROOT = Path(__file__).resolve().parents[1]
-CONTENT_DIR = REPO_ROOT / 'content' / 'posts'
-IMAGES_DIR = REPO_ROOT / 'assets' / 'images' / 'posts'
-CONTENT_DIR.mkdir(parents=True, exist_ok=True)
-IMAGES_DIR.mkdir(parents=True, exist_ok=True)
-
-
-OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
-HF_TOKEN = os.getenv('HF_TOKEN')
-
-
-# Темы и шаблоны для генерации без ключей
-TYPES = ['Обзор', 'Урок', 'Мастер-класс', 'Статья']
-TOPICS = [
-'обучение нейросетей',
-'генерация изображений',
-'реалистичное видео из текста',
-'оптимизация моделей',
-'этика и ИИ',
-'инфраструктура для ИИ',
-]
-
-
-PARAGRAPHS = [
-'Сегодня мир искусственного интеллекта развивается невероятно быстро. В этой статье мы разберёмся с ключевыми концепциями и практическими шагами.',
-'Практические советы помогут вам быстрее запустить прототип и снизить затраты на обучение модели.',
-'Мы пройдём пошагово: от подготовки данных до деплоя и мониторинга качества модели в продакшн.',
-'Обратите внимание на ошибки, которые чаще всего допускают новички — и как их избегать.'
-]
-
-
-
-
-def generate_text_fallback(topic, post_type):
-title = f"{post_type}: {topic.capitalize()} — краткое руководство"
-date = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
-intro = f"В этом {post_type.lower()}е мы обсудим {topic}."
-body = '\n\n'.join(random.sample(PARAGRAPHS, k=3))
-conclusion = 'Подводя итог — экспериментируйте и не бойтесь тестировать новые подходы.'
-content = f"---\ntitle: \"{title}\"\ndate: {date}\ntags: [\"{topic}\"]\nsummary: \"Короткое руководство по {topic}\"\n---\n\n{intro}\n\n{body}\n\n## Пример кода\n\n```\n# Псевдокод\nprint(\"Hello, AI\")\n```\n\n{conclusion}\n"
-return title, content
-
-
-
-
-def generate_image_fallback(text_prompt, filename):
-# создаём абстрактную картинку по шаблону — бесплатно
-w, h = 1200, 675
-img = Image.new('RGB', (w, h), color=(20, 20, 30))
-draw = ImageDraw.Draw(img)
-
-
-# несколько цветных эллипсов
 for i in range(8):
 bbox = [random.randint(-200, w), random.randint(-200, h), random.randint(0, w+200), random.randint(0, h+200)]
 color = tuple(random.randint(60, 230) for _ in range(3))
 draw.ellipse(bbox, fill=color, outline=None)
-
-
 img = img.filter(ImageFilter.GaussianBlur(radius=6))
+try:
+font = ImageFont.truetype('DejaVuSans-Bold.ttf', 36)
+except Exception:
+font = ImageFont.load_default()
+draw.text((40, h-120), text_prompt[:80], font=font, fill=(255, 255, 255))
+out_path = IMAGES_DIR / filename
+img.save(out_path, 'PNG')
+return out_path
 
 
-# добавляем заголовок
+
+
+def git_commit_and_push(filepaths, message):
+try:
+subprocess.run(['git', 'add'] + [str(p) for p in filepaths], check=True)
+subprocess.run(['git', 'commit', '-m', message], check=True)
+subprocess.run(['git', 'push'], check=True)
+print('Коммит и пуш успешны.')
+except subprocess.CalledProcessError as e:
+print('Ошибка git:', e)
+
+
+
+
+if __name__ == '__main__':
+topic = random.choice(TOPICS)
+post_type = random.choice(TYPES)
+
+
+# 1) Текст: пробуем Groq → OpenRouter → fallback
+try:
+if GROQ_API_KEY:
+title, text = generate_text_groq(topic, post_type)
+elif OPENROUTER_API_KEY:
+title, text = generate_text_openrouter(topic, post_type)
+else:
+title, text = generate_text_fallback(topic, post_type)
+except Exception as e:
+print("Ошибка API:", e)
+title, text = generate_text_fallback(topic, post_type)
+
+
+# 2) Markdown
+date = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+slug = title.lower().replace(' ', '-').replace(':', '').replace(',', '')
+filename_md = f"{datetime.utcnow().strftime('%Y-%m-%d')}-{slug}.md"
+md_path = CONTENT_DIR / filename_md
+content = f"---\ntitle: \"{title}\"\ndate: {date}\ntags: [\"{topic}\"]\nfeatured_image: /assets/images/posts/{slug}.png\n---\n\n{text}\n"
+with open(md_path, 'w', encoding='utf-8') as f:
+f.write(content)
+
+
+# 3) Картинка
+img_filename = f"{slug}.png"
+img_path = generate_image_fallback(title, img_filename)
+
+
+# 4) Git push
+git_commit_and_push([md_path, img_path], f"📄 Автогенерация: {title}")
 print('Готово. Файл:', md_path, 'Изображение:', img_path)
