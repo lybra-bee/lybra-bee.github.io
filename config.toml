@@ -1,4 +1,4 @@
-baseURL = "https://USERNAME.github.io/REPO_NAME/"
+baseURL = "https://lybra-bee.github.io/lybra-bee.github.io/"
 languageCode = "ru"
 title = "Мой AI-блог"
 theme = "ananke"
