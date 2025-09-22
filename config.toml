@@ -1,25 +1,8 @@
-baseURL = "https://yourusername.github.io/"
-languageCode = "en-us"
-title = "My AI Blog Portfolio"
-theme = "showfolio"
-[pagination]
-pagerSize = 10
+baseURL = "https://USERNAME.github.io/REPO_NAME/"
+languageCode = "ru"
+title = "Мой AI-блог"
+theme = "ananke"
 
 [params]
-  author = "Alexey AI"
-  description = "AI-powered blog with daily lessons & reviews"
-  showDarkToggle = true
-  showShareButtons = true
-
-[menu]
-  [[menu.main]]
-    identifier = "blog"
-    name = "Blog"
-    url = "/posts/"
-    weight = 1
-
-  [[menu.main]]
-    identifier = "portfolio"
-    name = "Portfolio"
-    url = "/portfolio/"
-    weight = 2
+  author = "Алексей"
+  description = "Блог о нейросетях, генерации видео и современных технологиях."
