@@ -5,7 +5,6 @@ import re
 import glob
 from groq import Groq
 import requests
-import hashlib
 
 themes = ["Прогресс нейронных сетей", "Этика ИИ", "Квантовый ИИ", "Генеративные модели", "Робототехника", "Блокчейн ИИ", "AR/VR", "Кибер ИИ", "NLP", "Автономные системы"]
 types = ["Обзор", "Урок", "Мастер-класс", "Статья"]
@@ -66,13 +65,9 @@ if groq_key:
 else:
     title_en = title.lower().replace(" ", "-")
 
-# Уникальное имя изображения на основе даты и заголовка
-image_hash = hashlib.md5(f"{today}-{title}".encode()).hexdigest()[:8]
-image_name = f"post-{post_num}-{image_hash}.png"
-image_path = f"{assets_dir}/{image_name}"
-
-# Генерация изображения через Clipdrop API
+# Генерация изображения через Clipdrop API с подробными логами
 prompt_img = f"Futuristic illustration of {title_en}, with neural network elements in blue-purple gradient, AI high-tech theme."
+image_path = f"{assets_dir}/post-{post_num}.png"
 image_generated = False
 
 clipdrop_key = os.getenv("CLIPDROP_API_KEY")
@@ -115,5 +110,5 @@ if not image_generated:
 # Сохранение поста
 filename = f"{posts_dir}/{today}-{slug}.md"
 with open(filename, "w", encoding="utf-8") as f:
-    f.write(f"---\ntitle: \"{title}\"\ndate: {today} 00:00:00 -0000\nimage: /assets/images/posts/{image_name}\n---\n{content}\n")
+    f.write(f"---\ntitle: \"{title}\"\ndate: {today} 00:00:00 -0000\nimage: /assets/images/posts/post-{post_num}.png\n---\n{content}\n")
 print(f"Сгенерировано: {filename}")
