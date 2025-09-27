@@ -14,11 +14,15 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'  # Явная версия для совместимости
+          python-version: '3.11'
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install groq requests
+          python -c "import groq, requests; print('Зависимости установлены:', groq.__version__, requests.__version__)"
+      - name: Test network
+        run: |
+          ping -c 4 clipdrop-api.co || echo "Нет подключения к Clipdrop API"
       - name: Run generate_post.py
         run: |
           export PYTHONUNBUFFERED=1
