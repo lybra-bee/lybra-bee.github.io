@@ -4,6 +4,7 @@ import requests
 import os
 import re
 import base64
+import glob
 
 themes = ["Прогресс нейронных сетей", "Этика ИИ", "Квантовый ИИ", "Генеративные модели", "Робототехника", "Блокчейн ИИ", "AR/VR", "Кибер ИИ", "NLP", "Автономные системы"]
 types = ["Обзор", "Урок", "Мастер-класс", "Статья"]
@@ -13,15 +14,22 @@ title = random.choice(themes)
 slug = re.sub(r'[^а-яА-Яa-zA-Z0-9-]', '-', title.lower().replace(" ", "-"))
 type_ = random.choice(types)
 
-# Вычисление номера поста и изображения
+# Папки и номер поста
 posts_dir = '_posts'
 assets_dir = 'assets/images/posts'
 os.makedirs(assets_dir, exist_ok=True)
-post_num = len([f for f in os.listdir(posts_dir) if f.endswith('.md')]) + 1 if os.path.exists(posts_dir) else 1
+os.makedirs(posts_dir, exist_ok=True)
+post_num = len([f for f in os.listdir(posts_dir) if f.endswith('.md')]) + 1
 
-# Генерация текста поста через Groq API
+# Ограничение до 10 постов
+post_files = sorted(glob.glob(f"{posts_dir}/*.md"), reverse=True)
+if len(post_files) > 9:  # Удаляем старые, оставляя 10
+    for old_file in post_files[10:]:
+        os.remove(old_file)
+
+# Генерация текста через Groq API
 groq_key = os.getenv("GROQ_API_KEY")
-groq_url = "https://api.grok.x.ai/v1/completions"  # Актуальный endpoint, проверьте на https://x.ai/api
+groq_url = "https://api.grok.x.ai/v1/completions"  # Проверьте endpoint
 prompt_text = f"Напишите {type_.lower()} на русском языке на тему '{title}' (400 слов, в стиле ИИ/технологий, для блога). Формат: заголовок H1, подзаголовок H2 ({type_}), текст с абзацами, без лишних заголовков."
 
 try:
@@ -42,33 +50,31 @@ prompt_img = f"Generate a futuristic illustration of {title.lower()}, with neura
 
 try:
     openrouter_response = requests.post(openrouter_url, json={
-        "model": "google/gemini-2.5-flash-image-preview",  # Модель с image generation; замените на другую, если нужно (проверьте https://openrouter.ai/models)
+        "model": "google/gemini-2.5-flash-image-preview",  # Замените, если нужно
         "messages": [{"role": "user", "content": prompt_img}],
         "modalities": ["image", "text"],
-        "max_tokens": 100  # Для изображения не нужно много токенов
+        "max_tokens": 100
     }, headers={"Authorization": f"Bearer {openrouter_key}", "Content-Type": "application/json"}, timeout=60)
     openrouter_response.raise_for_status()
     result = openrouter_response.json()
+    image_path = f"{assets_dir}/post-{post_num}.png"
     if result.get("choices"):
         message = result["choices"][0]["message"]
         if message.get("images"):
-            image_data_url = message["images"][0]["image_url"]["url"]  # base64 data URL
-            # Декодируем и сохраняем как PNG
+            image_data_url = message["images"][0]["image_url"]["url"]
             image_data = base64.b64decode(image_data_url.split(',')[1])
-            image_path = f"{assets_dir}/post-{post_num}.png"
             with open(image_path, "wb") as img_file:
                 img_file.write(image_data)
             print(f"Изображение сохранено: {image_path}")
         else:
-            print("Нет изображения в ответе OpenRouter.")
+            print(f"Нет изображения в ответе. Промпт: {prompt_img}")
     else:
-        print("Ошибка в ответе OpenRouter.")
+        print(f"Ошибка ответа OpenRouter. Промпт: {prompt_img}")
 except Exception as e:
-    print(f"Ошибка OpenRouter API: {str(e)}. Сгенерируйте изображение вручную с промптом: {prompt_img}")
+    print(f"Ошибка OpenRouter API: {str(e)}. Сгенерируйте изображение вручную: {prompt_img}")
 
 # Сохранение поста
 filename = f"{posts_dir}/{today}-{slug}.md"
-os.makedirs(posts_dir, exist_ok=True)
 with open(filename, "w", encoding="utf-8") as f:
     f.write(f"---\ntitle: \"{title}\"\ndate: {today} 00:00:00 -0000\nimage: /assets/images/posts/post-{post_num}.png\n---\n{content}\n")
 print(f"Сгенерировано: {filename}")
