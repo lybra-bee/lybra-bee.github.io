@@ -45,8 +45,27 @@ if groq_key:
     except Exception as e:
         print(f"Ошибка Groq API: {str(e)}")
 
+# Перевод темы на английский для промпта
+if groq_key:
+    try:
+        translation = client.chat.completions.create(
+            messages=[
+                {"role": "system", "content": "Ты переводчик. Переводи на английский точно и естественно."},
+                {"role": "user", "content": f"Переведи на английский: {title}"}
+            ],
+            model="llama-3.1-8b-instant",
+            max_tokens=20,
+            temperature=0.1
+        )
+        title_en = translation.choices[0].message.content.strip()
+    except Exception as e:
+        print(f"Ошибка перевода: {str(e)}")
+        title_en = title.lower().replace(" ", "-")  # Фallback
+else:
+    title_en = title.lower().replace(" ", "-")
+
 # Генерация изображения через Clipdrop API
-prompt_img = f"Futuristic illustration of {title.lower()}, with neural network elements in blue-purple gradient, AI high-tech theme."  # Упрощённый промпт
+prompt_img = f"Futuristic illustration of {title_en}, with neural network elements in blue-purple gradient, AI high-tech theme."
 image_path = f"{assets_dir}/post-{post_num}.png"
 image_generated = False
 
@@ -58,8 +77,8 @@ if clipdrop_key:
             clipdrop_url,
             data={
                 'prompt': prompt_img,
-                'width': 1024,  # Кратно 64, default
-                'height': 1024,  # Кратно 64, default
+                'width': 1024,
+                'height': 1024,
                 'number_of_images': 1
             },
             headers={'x-api-key': clipdrop_key},
@@ -73,6 +92,8 @@ if clipdrop_key:
             image_generated = True
         else:
             print(f"Ошибка Clipdrop (HTTP {clipdrop_response.status_code}): {clipdrop_response.text}")
+    except requests.exceptions.HTTPError as e:
+        print(f"Ошибка Clipdrop API (HTTP {e.response.status_code}): {e.response.text}")
     except Exception as e:
         print(f"Ошибка Clipdrop API: {str(e)}")
 
