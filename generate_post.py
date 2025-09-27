@@ -28,7 +28,7 @@ if len(post_files) > 9:
     for old_file in post_files[10:]:
         os.remove(old_file)
 
-# Генерация текста через Groq API (используем официальную библиотеку)
+# Генерация текста через Groq API
 groq_key = os.getenv("GROQ_API_KEY")
 content = f"# {title}\n\n## {type_}\n\nОшибка генерации текста. Сгенерируйте вручную."
 if groq_key:
@@ -39,11 +39,12 @@ if groq_key:
                 {"role": "system", "content": "Ты эксперт по ИИ и технологиям. Пиши на русском, информативно и увлекательно."},
                 {"role": "user", "content": f"Напишите {type_.lower()} на тему '{title}' (400 слов, для блога). Формат: заголовок H1, подзаголовок H2 ({type_}), текст с абзацами."}
             ],
-            model="llama3-8b-8192",  # Доступная модель Groq
+            model="llama-3.1-8b-instant",  # Актуальная модель Groq (2025)
             max_tokens=600,
             temperature=0.7
         )
         content = chat_completion.choices[0].message.content
+        print("Текст сгенерирован успешно через Groq.")
     except Exception as e:
         print(f"Ошибка Groq API: {str(e)}")
 
@@ -55,29 +56,33 @@ image_path = f"{assets_dir}/post-{post_num}.png"
 if openrouter_key:
     try:
         openrouter_response = requests.post(openrouter_url, json={
-            "model": "stabilityai/stable-diffusion-xl",  # Надёжная модель для изображений
+            "model": "stabilityai/stable-diffusion-3-medium",  # Актуальная модель для изображений (output_modalities: image)
             "messages": [{"role": "user", "content": prompt_img}],
+            "response_modalities": ["image"],  # Указываем для генерации изображения
             "max_tokens": 100
         }, headers={"Authorization": f"Bearer {openrouter_key}", "Content-Type": "application/json"}, timeout=60)
         openrouter_response.raise_for_status()
         result = openrouter_response.json()
         if result.get("choices"):
             message = result["choices"][0]["message"]
-            if "content" in message and "data:image/png;base64," in message["content"]:
-                # Парсим base64 из ответа (OpenRouter может возвращать в content)
-                image_data_url = message["content"].split("data:image/png;base64,")[1].split('"')[0]
-                image_data = base64.b64decode(image_data_url)
-                with open(image_path, "wb") as img_file:
-                    img_file.write(image_data)
-                print(f"Изображение сохранено: {image_path}")
+            if "images" in message and message["images"]:
+                # Извлекаем base64 из data URL
+                image_data_url = message["images"][0]["image_url"]["url"]  # Формат: data:image/png;base64,...
+                if image_data_url.startswith("data:image"):
+                    image_data = base64.b64decode(image_data_url.split(',')[1])
+                    with open(image_path, "wb") as img_file:
+                        img_file.write(image_data)
+                    print(f"Изображение сохранено: {image_path}")
+                else:
+                    print(f"Неверный формат изображения в ответе.")
             else:
-                print(f"Нет изображения в ответе. Промпт: {prompt_img}")
+                print(f"Нет изображений в ответе. Промпт: {prompt_img}")
         else:
             print(f"Ошибка ответа OpenRouter. Промпт: {prompt_img}")
     except Exception as e:
         print(f"Ошибка OpenRouter API: {str(e)}. Сгенерируйте изображение вручную: {prompt_img}")
 else:
-    print(f"Промпт для изображения: {prompt_img}")
+    print(f"OPENROUTER_API_KEY не найден. Промпт для изображения: {prompt_img}")
 
 # Сохранение поста
 filename = f"{posts_dir}/{today}-{slug}.md"
