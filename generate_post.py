@@ -75,26 +75,26 @@ if clipdrop_key:
         clipdrop_url = "https://clipdrop-api.co/text-to-image/v1"
         clipdrop_response = requests.post(
             clipdrop_url,
-            data={
-                'prompt': prompt_img,
-                'width': 1024,
-                'height': 1024,
-                'number_of_images': 1
-            },
+            files={'prompt': (None, prompt_img)},  # multipart/form-data с полем prompt
             headers={'x-api-key': clipdrop_key},
             timeout=30
         )
         print(f"Clipdrop статус: {clipdrop_response.status_code}")
         if clipdrop_response.status_code == 200:
+            remaining_credits = clipdrop_response.headers.get('x-remaining-credits', 'Не указано')
+            credits_consumed = clipdrop_response.headers.get('x-credits-consumed', 'Не указано')
+            print(f"Остаток кредитов: {remaining_credits}, Потрачено: {credits_consumed}")
             with open(image_path, "wb") as img_file:
                 img_file.write(clipdrop_response.content)
             print(f"Изображение сгенерировано через Clipdrop: {image_path}")
             image_generated = True
         else:
-            print(f"Ошибка Clipdrop (HTTP {clipdrop_response.status_code}): {clipdrop_response.text}")
-    except requests.exceptions.HTTPError as e:
-        print(f"Ошибка Clipdrop API (HTTP {e.response.status_code}): {e.response.text}")
-    except Exception as e:
+            try:
+                error_details = clipdrop_response.json()
+                print(f"Ошибка Clipdrop (HTTP {clipdrop_response.status_code}): {error_details}")
+            except ValueError:
+                print(f"Ошибка Clipdrop (HTTP {clipdrop_response.status_code}): Нет JSON-ответа")
+    except requests.exceptions.RequestException as e:
         print(f"Ошибка Clipdrop API: {str(e)}")
 
 # Fallback для ручной генерации
