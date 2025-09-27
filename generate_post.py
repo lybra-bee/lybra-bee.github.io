@@ -4,6 +4,7 @@ import os
 import re
 import base64
 import glob
+import time  # Для ожидания асинхронных запросов
 from groq import Groq  # Для текста
 import requests  # Для изображений
 
@@ -48,7 +49,7 @@ if groq_key:
     except Exception as e:
         print(f"Ошибка Groq API: {str(e)}")
 
-# Генерация изображения через API (DeepAI, Clipdrop, Replicate)
+# Генерация изображения через API (DeepAI, Clipdrop, Gemini, Replicate, Hugging Face)
 prompt_img = f"Futuristic illustration of {title.lower()}, with neural network elements in blue-purple gradient, AI high-tech theme, 800x600 resolution, detailed and vibrant."
 image_path = f"{assets_dir}/post-{post_num}.png"
 image_generated = False
@@ -95,6 +96,28 @@ if clipdrop_key and not image_generated:
     except Exception as e:
         print(f"Ошибка Clipdrop API: {str(e)}")
 
+# Google Gemini API (fallback)
+gemini_key = os.getenv("GEMINI_API_KEY")
+if gemini_key and not image_generated:
+    try:
+        gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
+        gemini_response = requests.post(
+            gemini_url,
+            json={"contents": [{"parts": [{"text": prompt_img}]}]}
+        )
+        gemini_response.raise_for_status()
+        result = gemini_response.json()
+        if result.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("inline_data"):
+            image_data = base64.b64decode(result["candidates"][0]["content"]["parts"][0]["inline_data"]["data"])
+            with open(image_path, "wb") as img_file:
+                img_file.write(image_data)
+            print(f"Изображение сгенерировано через Gemini: {image_path}")
+            image_generated = True
+        else:
+            print(f"Нет изображения в ответе Gemini. Промпт: {prompt_img}")
+    except Exception as e:
+        print(f"Ошибка Gemini API: {str(e)}")
+
 # Replicate API (fallback)
 replicate_key = os.getenv("REPLICATE_API_KEY")
 if replicate_key and not image_generated:
@@ -108,7 +131,6 @@ if replicate_key and not image_generated:
         replicate_response.raise_for_status()
         result = replicate_response.json()
         if result.get("id"):
-            # Получаем результат асинхронно
             prediction_url = f"https://api.replicate.com/v1/predictions/{result['id']}"
             for _ in range(10):  # Ждём до 30 секунд
                 status_response = requests.get(prediction_url, headers={"Authorization": f"Token {replicate_key}"})
@@ -127,6 +149,24 @@ if replicate_key and not image_generated:
             print(f"Нет изображения в ответе Replicate. Промпт: {prompt_img}")
     except Exception as e:
         print(f"Ошибка Replicate API: {str(e)}")
+
+# Hugging Face Inference API (fallback)
+hf_token = os.getenv("HF_TOKEN")
+if hf_token and not image_generated:
+    try:
+        hf_url = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2"
+        hf_response = requests.post(
+            hf_url,
+            json={"inputs": prompt_img},
+            headers={"Authorization": f"Bearer {hf_token}"}
+        )
+        hf_response.raise_for_status()
+        with open(image_path, "wb") as img_file:
+            img_file.write(hf_response.content)
+        print(f"Изображение сгенерировано через Hugging Face: {image_path}")
+        image_generated = True
+    except Exception as e:
+        print(f"Ошибка Hugging Face API: {str(e)}")
 
 # Fallback для ручной генерации
 if not image_generated:
