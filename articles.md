@@ -10,12 +10,14 @@ title: Статьи
   <div class="carousel-inner">
     {% for post in site.posts %}
     <div class="carousel-item {% if forloop.first %}active{% endif %}">
-      <div class="card neural-card">
-        <img src="{{ post.image | relative_url }}" class="d-block w-100 carousel-image" alt="{{ post.title }}" loading="lazy">
-        <div class="carousel-caption">
-          <h3><a href="{{ post.url | relative_url }}">{{ post.title }}</a></h3>
-          <p>{{ post.date | date: "%B %d, %Y" }}</p>
-          <p>{{ post.excerpt | truncate: 100 }}</p>
+      <div class="neural-card">
+        <a href="{{ post.url | relative_url }}">
+          <img src="{{ post.image | relative_url | default: '/assets/images/posts/placeholder.png' }}" class="carousel-image" alt="{{ post.title | escape }}" loading="lazy">
+        </a>
+        <div class="carousel-caption d-block">
+          <h3><a href="{{ post.url | relative_url }}">{{ post.title | escape }}</a></h3>
+          <p class="post-date">{{ post.date | date: "%B %d, %Y" }}</p>
+          <p>{{ post.excerpt | strip_html | truncate: 100, "..." }}</p>
         </div>
       </div>
     </div>
@@ -35,13 +37,15 @@ title: Статьи
 {% endif %}
 
 <!-- Список всех статей -->
-{% if site.posts.size > 0 %}
+{% if paginator.posts.size > 0 %}
   {% for post in paginator.posts %}
   <div class="card neural-card">
-    <img src="{{ post.image | relative_url }}" alt="{{ post.title }}" loading="lazy">
-    <h3><a href="{{ post.url | relative_url }}">{{ post.title }}</a></h3>
+    <a href="{{ post.url | relative_url }}">
+      <img src="{{ post.image | relative_url | default: '/assets/images/posts/placeholder.png' }}" alt="{{ post.title | escape }}" loading="lazy">
+    </a>
+    <h3><a href="{{ post.url | relative_url }}">{{ post.title | escape }}</a></h3>
     <p>{{ post.date | date: "%B %d, %Y" }}</p>
-    <p>{{ post.excerpt }}</p>
+    <p>{{ post.excerpt | strip_html | truncate: 150, "..." }}</p>
   </div>
   {% endfor %}
 {% else %}
