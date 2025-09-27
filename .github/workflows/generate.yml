@@ -1,0 +1,23 @@
+name: Генерация ежедневного поста
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Полночь UTC
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+      - run: pip install requests
+      - run: python generate_post.py
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      - name: Коммит
+        run: |
+          git config --global user.name 'GitHub Action'
+          git config --global user.email 'action@github.com'
+          git add _posts/
+          git commit -m "Авто-пост" || echo "Нет изменений"
+          git push
