@@ -15,6 +15,6 @@ paginate_path: "/articles/page:num/"
 defaults:
   - scope:
       path: ""
-      type: "posts"
+      type: posts
     values:
-      layout: "post"
+      layout: post
