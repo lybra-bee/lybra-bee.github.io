@@ -4,7 +4,7 @@ title: Галерея
 ---
 <h1>Галерея изображений</h1>
 <div class="gallery-grid">
-  {% assign images = site.static_files | where: "relative_path", "assets/images/posts" | where_exp: "item", "item.path contains '.png' or item.path contains '.jpg'" %}
+  {% assign images = site.static_files | where: "relative_path", "assets/images/posts" | where_exp: "item", "item.path | contains: '.png' or item.path | contains: '.jpg'" %}
   {% for image in images %}
     <div class="gallery-item">
       <img src="{{ image.path | relative_url }}" alt="Галерея изображение: {{ image.name | remove: image.extname }}" loading="lazy">
