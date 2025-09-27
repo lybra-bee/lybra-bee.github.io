@@ -33,7 +33,7 @@ if groq_key:
         client = Groq(api_key=groq_key)
         chat_completion = client.chat.completions.create(
             messages=[
-                {"role": "system", "content": "Ты эксперт по ИИ и технологиями. Пиши на русском, информативно и увлекательно."},
+                {"role": "system", "content": "Ты эксперт по ИИ и технологиям. Пиши на русском, информативно и увлекательно."},
                 {"role": "user", "content": f"Напишите {type_.lower()} на тему '{title}' (400 слов, для блога). Формат: заголовок H1, подзаголовок H2 ({type_}), текст с абзацами."}
             ],
             model="llama-3.1-8b-instant",
@@ -62,52 +62,4 @@ if groq_key:
         print(f"Ошибка перевода: {str(e)}")
         title_en = title.lower().replace(" ", "-")
 else:
-    title_en = title.lower().replace(" ", "-")
-
-# Генерация изображения через Clipdrop API с подробными логами
-prompt_img = f"Futuristic illustration of {title_en}, with neural network elements in blue-purple gradient, AI high-tech theme."
-image_path = f"{assets_dir}/post-{post_num}.png"
-image_generated = False
-
-clipdrop_key = os.getenv("CLIPDROP_API_KEY")
-if clipdrop_key:
-    print(f"Инициализация запроса к Clipdrop. Ключ: {clipdrop_key[:8]}... (скрыт остаток)")
-    print(f"URL: {clipdrop_url}, Промпт: {prompt_img}")
-    try:
-        clipdrop_url = "https://clipdrop-api.co/text-to-image/v1"
-        clipdrop_response = requests.post(
-            clipdrop_url,
-            files={'prompt': (None, prompt_img)},
-            headers={'x-api-key': clipdrop_key},
-            timeout=30
-        )
-        print(f"Получен ответ от Clipdrop. Статус: {clipdrop_response.status_code}")
-        print(f"Заголовки ответа: {dict(clipdrop_response.headers)}")
-        if clipdrop_response.status_code == 200:
-            remaining_credits = clipdrop_response.headers.get('x-remaining-credits', 'Не указано')
-            credits_consumed = clipdrop_response.headers.get('x-credits-consumed', 'Не указано')
-            print(f"Остаток кредитов: {remaining_credits}, Потрачено: {credits_consumed}")
-            with open(image_path, "wb") as img_file:
-                img_file.write(clipdrop_response.content)
-            print(f"Изображение успешно сохранено: {image_path}")
-            image_generated = True
-        else:
-            try:
-                error_details = clipdrop_response.json()
-                print(f"Ошибка Clipdrop (HTTP {clipdrop_response.status_code}): {error_details}")
-            except ValueError:
-                print(f"Ошибка Clipdrop (HTTP {clipdrop_response.status_code}): Нет JSON-ответа, текст: {clipdrop_response.text}")
-    except requests.exceptions.RequestException as e:
-        print(f"Ошибка запроса к Clipdrop API: {str(e)}")
-        import traceback
-        traceback.print_exc()  # Полный стек вызовов
-
-# Fallback для ручной генерации
-if not image_generated:
-    print(f"Не удалось сгенерировать изображение. Сгенерируйте вручную: {prompt_img}")
-
-# Сохранение поста
-filename = f"{posts_dir}/{today}-{slug}.md"
-with open(filename, "w", encoding="utf-8") as f:
-    f.write(f"---\ntitle: \"{title}\"\ndate: {today} 00:00:00 -0000\nimage: /assets/images/posts/post-{post_num}.png\n---\n{content}\n")
-print(f"Сгенерировано: {filename}")
+    title_en =
