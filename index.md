@@ -23,7 +23,6 @@ title: Главная
     {% endif %}
     <p>{{ latest_post.content | strip_html | truncate: 150, "..." }}</p>
     <a href="{{ latest_post.url | relative_url }}">Читать полностью</a>
-  </div>
 {% else %}
   <p>Пока нет статей.</p>
 {% endif %}
