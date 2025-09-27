@@ -12,16 +12,16 @@ title: Статьи
     <div class="carousel-item {% if forloop.first %}active{% endif %}">
       <div class="neural-card">
         <a href="{{ post.url | relative_url }}">
-          <!-- Поддержка .png и .jpg -->
-          {% assign image_base = post.image | split: '.' | first %}
-          {% assign image_png = image_base | append: '.png' %}
-          {% assign image_jpg = image_base | append: '.jpg' %}
-          {% if site.static_files contains image_png %}
-            <img src="{{ image_png | relative_url }}" class="carousel-image" alt="{{ post.title | escape }}" loading="lazy">
-          {% elsif site.static_files contains image_jpg %}
-            <img src="{{ image_jpg | relative_url }}" class="carousel-image" alt="{{ post.title | escape }}" loading="lazy">
+          <!-- Отладка пути изображения -->
+          {% assign image_path = post.image | default: '/assets/images/posts/placeholder.png' %}
+          {% if image_path contains '.png' or image_path contains '.jpg' %}
+            {% if site.static_files | where: "path", image_path | size > 0 %}
+              <img src="{{ image_path | relative_url }}" class="carousel-image" alt="{{ post.title | escape }}" loading="lazy">
+            {% else %}
+              <img src="/assets/images/posts/placeholder.png" class="carousel-image" alt="Изображение не найдено для {{ post.title | escape }}" loading="lazy">
+            {% endif %}
           {% else %}
-            <img src="/assets/images/placeholder.png" class="carousel-image" alt="Нет изображения для {{ post.title | escape }}" loading="lazy">
+            <img src="/assets/images/posts/placeholder.png" class="carousel-image" alt="Неверный формат пути для {{ post.title | escape }}" loading="lazy">
           {% endif %}
         </a>
         <div class="carousel-caption d-block">
@@ -51,16 +51,16 @@ title: Статьи
   {% for post in paginator.posts %}
   <div class="card neural-card">
     <a href="{{ post.url | relative_url }}">
-      <!-- Поддержка .png и .jpg -->
-      {% assign image_base = post.image | split: '.' | first %}
-      {% assign image_png = image_base | append: '.png' %}
-      {% assign image_jpg = image_base | append: '.jpg' %}
-      {% if site.static_files contains image_png %}
-        <img src="{{ image_png | relative_url }}" alt="{{ post.title | escape }}" loading="lazy">
-      {% elsif site.static_files contains image_jpg %}
-        <img src="{{ image_jpg | relative_url }}" alt="{{ post.title | escape }}" loading="lazy">
+      <!-- Отладка пути изображения -->
+      {% assign image_path = post.image | default: '/assets/images/posts/placeholder.png' %}
+      {% if image_path contains '.png' or image_path contains '.jpg' %}
+        {% if site.static_files | where: "path", image_path | size > 0 %}
+          <img src="{{ image_path | relative_url }}" alt="{{ post.title | escape }}" loading="lazy">
+        {% else %}
+          <img src="/assets/images/posts/placeholder.png" alt="Изображение не найдено для {{ post.title | escape }}" loading="lazy">
+        {% endif %}
       {% else %}
-        <img src="/assets/images/placeholder.png" alt="Нет изображения для {{ post.title | escape }}" loading="lazy">
+        <img src="/assets/images/posts/placeholder.png" alt="Неверный формат пути для {{ post.title | escape }}" loading="lazy">
       {% endif %}
     </a>
     <h3><a href="{{ post.url | relative_url }}">{{ post.title | escape }}</a></h3>
