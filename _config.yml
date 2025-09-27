@@ -1,0 +1,20 @@
+title: Мой AI Блог и Портфолио
+description: Ежедневные статьи об ИИ и высоких технологиях
+baseurl: ""
+url: "https://lybra-bee.github.io"
+permalink: /:title/
+
+markdown: kramdown
+plugins:
+  - jekyll-feed
+  - jekyll-paginate
+
+paginate: 5
+paginate_path: "/articles/page:num/"
+
+defaults:
+  - scope:
+      path: ""
+      type: "posts"
+    values:
+      layout: "post"
