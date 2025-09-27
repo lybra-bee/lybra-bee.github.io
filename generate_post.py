@@ -5,6 +5,7 @@ import re
 import glob
 from groq import Groq
 import requests
+import hashlib
 
 themes = ["Прогресс нейронных сетей", "Этика ИИ", "Квантовый ИИ", "Генеративные модели", "Робототехника", "Блокчейн ИИ", "AR/VR", "Кибер ИИ", "NLP", "Автономные системы"]
 types = ["Обзор", "Урок", "Мастер-класс", "Статья"]
@@ -33,7 +34,7 @@ if groq_key:
         client = Groq(api_key=groq_key)
         chat_completion = client.chat.completions.create(
             messages=[
-                {"role": "system", "content": "Ты эксперт по ИИ и технологиям. Пиши на русском, информативно и увлекательно."},
+                {"role": "system", "content": "Ты эксперт по ИИ и технологиям. Пиши на русском, информативно и увлекательно. Не добавляй HTML-теги."},
                 {"role": "user", "content": f"Напишите {type_.lower()} на тему '{title}' (400 слов, для блога). Формат: заголовок H1, подзаголовок H2 ({type_}), текст с абзацами."}
             ],
             model="llama-3.1-8b-instant",
@@ -41,6 +42,7 @@ if groq_key:
             temperature=0.7
         )
         content = chat_completion.choices[0].message.content
+        content = re.sub(r'<[^>]+>', '', content)  # Удаление всех HTML-тегов
         print("Текст сгенерирован успешно через Groq.")
     except Exception as e:
         print(f"Ошибка Groq API: {str(e)}")
@@ -60,13 +62,17 @@ if groq_key:
         title_en = translation.choices[0].message.content.strip()
     except Exception as e:
         print(f"Ошибка перевода: {str(e)}")
-        title_en = title.lower().replace(" ", "-")  # Явное значение по умолчанию
+        title_en = title.lower().replace(" ", "-")
 else:
     title_en = title.lower().replace(" ", "-")
 
-# Генерация изображения через Clipdrop API с подробными логами
+# Уникальное имя изображения на основе даты и заголовка
+image_hash = hashlib.md5(f"{today}-{title}".encode()).hexdigest()[:8]
+image_name = f"post-{post_num}-{image_hash}.png"
+image_path = f"{assets_dir}/{image_name}"
+
+# Генерация изображения через Clipdrop API
 prompt_img = f"Futuristic illustration of {title_en}, with neural network elements in blue-purple gradient, AI high-tech theme."
-image_path = f"{assets_dir}/post-{post_num}.png"
 image_generated = False
 
 clipdrop_key = os.getenv("CLIPDROP_API_KEY")
@@ -109,5 +115,5 @@ if not image_generated:
 # Сохранение поста
 filename = f"{posts_dir}/{today}-{slug}.md"
 with open(filename, "w", encoding="utf-8") as f:
-    f.write(f"---\ntitle: \"{title}\"\ndate: {today} 00:00:00 -0000\nimage: /assets/images/posts/post-{post_num}.png\n---\n{content}\n")
+    f.write(f"---\ntitle: \"{title}\"\ndate: {today} 00:00:00 -0000\nimage: /assets/images/posts/{image_name}\n---\n{content}\n")
 print(f"Сгенерировано: {filename}")
