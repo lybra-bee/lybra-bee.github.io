@@ -5,19 +5,29 @@ title: Статьи
 <h1>Все статьи</h1>
 
 {% if site.posts.size > 0 %}
-<!-- Карусель статей -->
+<!-- Карусель статей (динамическая, привязана к постам) -->
 <div id="articlesCarousel" class="carousel slide mb-5" data-bs-ride="carousel">
   <div class="carousel-inner">
-    {% for post in site.posts %}
+    {% for post in site.posts limit: 10 %}
     <div class="carousel-item {% if forloop.first %}active{% endif %}">
       <div class="neural-card">
         <a href="{{ post.url | relative_url }}">
-          <img src="{{ post.image | relative_url | default: '/assets/images/posts/placeholder.png' }}" class="carousel-image" alt="{{ post.title | escape }}" loading="lazy">
+          <!-- Поддержка .png и .jpg -->
+          {% assign image_base = post.image | split: '.' | first %}
+          {% assign image_png = image_base | append: '.png' %}
+          {% assign image_jpg = image_base | append: '.jpg' %}
+          {% if site.static_files contains image_png %}
+            <img src="{{ image_png | relative_url }}" class="carousel-image" alt="{{ post.title | escape }}" loading="lazy">
+          {% elsif site.static_files contains image_jpg %}
+            <img src="{{ image_jpg | relative_url }}" class="carousel-image" alt="{{ post.title | escape }}" loading="lazy">
+          {% else %}
+            <img src="/assets/images/placeholder.png" class="carousel-image" alt="Нет изображения для {{ post.title | escape }}" loading="lazy">
+          {% endif %}
         </a>
         <div class="carousel-caption d-block">
           <h3><a href="{{ post.url | relative_url }}">{{ post.title | escape }}</a></h3>
           <p class="post-date">{{ post.date | date: "%B %d, %Y" }}</p>
-          <p>{{ post.excerpt | strip_html | truncate: 100, "..." }}</p>
+          <p>{{ post.content | strip_html | truncate: 100, "..." }}</p>
         </div>
       </div>
     </div>
@@ -36,12 +46,22 @@ title: Статьи
 <p>Пока нет статей.</p>
 {% endif %}
 
-<!-- Список всех статей -->
+<!-- Список всех статей (с пагинацией) -->
 {% if paginator.posts.size > 0 %}
   {% for post in paginator.posts %}
   <div class="card neural-card">
     <a href="{{ post.url | relative_url }}">
-      <img src="{{ post.image | relative_url | default: '/assets/images/posts/placeholder.png' }}" alt="{{ post.title | escape }}" loading="lazy">
+      <!-- Поддержка .png и .jpg -->
+      {% assign image_base = post.image | split: '.' | first %}
+      {% assign image_png = image_base | append: '.png' %}
+      {% assign image_jpg = image_base | append: '.jpg' %}
+      {% if site.static_files contains image_png %}
+        <img src="{{ image_png | relative_url }}" alt="{{ post.title | escape }}" loading="lazy">
+      {% elsif site.static_files contains image_jpg %}
+        <img src="{{ image_jpg | relative_url }}" alt="{{ post.title | escape }}" loading="lazy">
+      {% else %}
+        <img src="/assets/images/placeholder.png" alt="Нет изображения для {{ post.title | escape }}" loading="lazy">
+      {% endif %}
     </a>
     <h3><a href="{{ post.url | relative_url }}">{{ post.title | escape }}</a></h3>
     <p>{{ post.date | date: "%B %d, %Y" }}</p>
