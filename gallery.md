@@ -4,20 +4,14 @@ title: Галерея
 ---
 <h1>Галерея изображений</h1>
 <div class="gallery-grid">
-  {% for post in site.posts %}
+  {% assign images = site.static_files | where: "relative_path", "assets/images/posts" | where_exp: "item", "item.path contains '.png' or item.path contains '.jpg'" %}
+  {% for image in images %}
     <div class="gallery-item">
-      <!-- Поддержка .png и .jpg -->
-      {% assign image_base = post.image | split: '.' | first %}
-      {% assign image_png = image_base | append: '.png' %}
-      {% assign image_jpg = image_base | append: '.jpg' %}
-      {% if site.static_files contains image_png %}
-        <img src="{{ image_png | relative_url }}" alt="{{ post.title | escape }}" loading="lazy">
-      {% elsif site.static_files contains image_jpg %}
-        <img src="{{ image_jpg | relative_url }}" alt="{{ post.title | escape }}" loading="lazy">
-      {% else %}
-        <img src="/assets/images/placeholder.png" alt="Нет изображения для {{ post.title | escape }}" loading="lazy">
-      {% endif %}
+      <img src="{{ image.path | relative_url }}" alt="Галерея изображение: {{ image.name | remove: image.extname }}" loading="lazy">
     </div>
   {% endfor %}
+  {% if images.size == 0 %}
+    <p>Пока нет изображений в галерее. Добавьте файлы в assets/images/posts/.</p>
+  {% endif %}
 </div>
-<p>Галерея привязана к постам. Добавляйте изображения в assets/images/posts/.</p>
+<p>Галерея показывает все изображения из assets/images/posts/ (.png и .jpg). Добавляйте новые по мере создания постов.</p>
