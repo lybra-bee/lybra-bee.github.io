@@ -2,9 +2,7 @@ import datetime
 import random
 import os
 import re
-import base64
 import glob
-import time
 from groq import Groq
 import requests
 
@@ -66,29 +64,31 @@ if groq_key:
 else:
     title_en = title.lower().replace(" ", "-")
 
-# Генерация изображения через Clipdrop API
+# Генерация изображения через Clipdrop API с подробными логами
 prompt_img = f"Futuristic illustration of {title_en}, with neural network elements in blue-purple gradient, AI high-tech theme."
 image_path = f"{assets_dir}/post-{post_num}.png"
 image_generated = False
 
 clipdrop_key = os.getenv("CLIPDROP_API_KEY")
 if clipdrop_key:
+    print(f"Инициализация запроса к Clipdrop с ключом: {clipdrop_key[:8]}... (скрыт остаток)")
     try:
         clipdrop_url = "https://clipdrop-api.co/text-to-image/v1"
+        print(f"Отправка запроса на {clipdrop_url} с промптом: {prompt_img}")
         clipdrop_response = requests.post(
             clipdrop_url,
-            files={'prompt': (None, prompt_img)},  # multipart/form-data
+            files={'prompt': (None, prompt_img)},
             headers={'x-api-key': clipdrop_key},
             timeout=30
         )
-        print(f"Clipdrop статус: {clipdrop_response.status_code}")
+        print(f"Получен ответ от Clipdrop. Статус: {clipdrop_response.status_code}")
         if clipdrop_response.status_code == 200:
             remaining_credits = clipdrop_response.headers.get('x-remaining-credits', 'Не указано')
             credits_consumed = clipdrop_response.headers.get('x-credits-consumed', 'Не указано')
-            print(f"Остаток кредитов: {remaining_credits}, Потрачено: {credits_consumed}")
+            print(f"Заголовки ответа: Остаток кредитов: {remaining_credits}, Потрачено: {credits_consumed}")
             with open(image_path, "wb") as img_file:
                 img_file.write(clipdrop_response.content)
-            print(f"Изображение сгенерировано через Clipdrop: {image_path}")
+            print(f"Изображение успешно сохранено: {image_path}")
             image_generated = True
         else:
             try:
@@ -97,7 +97,9 @@ if clipdrop_key:
             except ValueError:
                 print(f"Ошибка Clipdrop (HTTP {clipdrop_response.status_code}): Нет JSON-ответа, текст: {clipdrop_response.text}")
     except requests.exceptions.RequestException as e:
-        print(f"Ошибка Clipdrop API: {str(e)}")
+        print(f"Ошибка запроса к Clipdrop API: {str(e)}")
+        import traceback
+        traceback.print_exc()  # Полный стек вызовов для отладки
 
 # Fallback для ручной генерации
 if not image_generated:
