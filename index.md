@@ -2,17 +2,31 @@
 layout: default
 title: Главная
 ---
-<div class="hero" style="background-image: url(/assets/images/header-banner.jpg);">
-  <h1>Добро пожаловать в Мой AI Блог</h1>
-  <p>Ежедневные статьи об ИИ и технологиях.</p>
-</div>
 
-<h2>Последняя статья</h2>
-{% assign latest = site.posts | first %}
-<div class="card neural-card">
-  <img src="{{ latest.image }}" alt="{{ latest.title }}" loading="lazy">
-  <h3>{{ latest.title }}</h3>
-  <p>{{ latest.date | date: "%B %d, %Y" }}</p>
-  {{ latest.content | truncate: 500 }}
-  <a href="{{ latest.url }}">Читать полностью</a>
-</div>
+<h1>Последняя статья</h1>
+
+{% if site.posts.size > 0 %}
+  {% assign latest_post = site.posts | sort: 'date' | reverse | first %}
+  <div class="latest-post">
+    <h2><a href="{{ latest_post.url | relative_url }}">{{ latest_post.title | escape }}</a></h2>
+    <p class="post-date">{{ latest_post.date | date: "%B %d, %Y" }}</p>
+    <!-- Изображение -->
+    {% assign image_path = latest_post.image | default: '/assets/images/posts/placeholder.png' %}
+    {% if image_path contains '.png' or image_path contains '.jpg' %}
+      {% if site.static_files | where: "path", image_path | size > 0 %}
+        <img src="{{ image_path | relative_url }}" alt="{{ latest_post.title | escape }}" loading="lazy">
+      {% else %}
+        <img src="/assets/images/posts/placeholder.png" alt="Изображение не найдено для {{ latest_post.title | escape }}" loading="lazy">
+      {% endif %}
+    {% else %}
+      <img src="/assets/images/posts/placeholder.png" alt="Неверный формат пути для {{ latest_post.title | escape }}" loading="lazy">
+    {% endif %}
+    <p>{{ latest_post.content | strip_html | truncate: 150, "..." }}</p>
+    <a href="{{ latest_post.url | relative_url }}">Читать полностью</a>
+  </div>
+{% else %}
+  <p>Пока нет статей.</p>
+{% endif %}
+
+<h2>Все статьи</h2>
+<a href="/articles">Перейти к списку статей</a>
