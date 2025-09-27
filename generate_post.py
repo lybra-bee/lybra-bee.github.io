@@ -2,7 +2,9 @@ import datetime
 import random
 import os
 import re
+import base64
 import glob
+import time
 from groq import Groq
 import requests
 
@@ -60,7 +62,7 @@ if groq_key:
         title_en = translation.choices[0].message.content.strip()
     except Exception as e:
         print(f"Ошибка перевода: {str(e)}")
-        title_en = title.lower().replace(" ", "-")  # Фallback
+        title_en = title.lower().replace(" ", "-")
 else:
     title_en = title.lower().replace(" ", "-")
 
@@ -75,7 +77,7 @@ if clipdrop_key:
         clipdrop_url = "https://clipdrop-api.co/text-to-image/v1"
         clipdrop_response = requests.post(
             clipdrop_url,
-            files={'prompt': (None, prompt_img)},  # multipart/form-data с полем prompt
+            files={'prompt': (None, prompt_img)},  # multipart/form-data
             headers={'x-api-key': clipdrop_key},
             timeout=30
         )
@@ -93,7 +95,7 @@ if clipdrop_key:
                 error_details = clipdrop_response.json()
                 print(f"Ошибка Clipdrop (HTTP {clipdrop_response.status_code}): {error_details}")
             except ValueError:
-                print(f"Ошибка Clipdrop (HTTP {clipdrop_response.status_code}): Нет JSON-ответа")
+                print(f"Ошибка Clipdrop (HTTP {clipdrop_response.status_code}): Нет JSON-ответа, текст: {clipdrop_response.text}")
     except requests.exceptions.RequestException as e:
         print(f"Ошибка Clipdrop API: {str(e)}")
 
