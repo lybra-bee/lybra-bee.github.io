@@ -9,10 +9,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}  # Или ${{ secrets.REPO_TOKEN }} для PAT
       - uses: actions/setup-python@v2
         with:
           python-version: '3.x'
-      - run: pip install requests
+      - run: pip install groq requests  # Добавлена groq
       - run: python generate_post.py
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
