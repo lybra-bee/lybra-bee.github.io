@@ -2,9 +2,7 @@ import datetime
 import random
 import os
 import re
-import base64
 import glob
-import time
 from groq import Groq
 import requests
 
@@ -47,61 +45,40 @@ if groq_key:
     except Exception as e:
         print(f"Ошибка Groq API: {str(e)}")
 
-# Генерация изображения
-prompt_img = f"Futuristic illustration of {title.lower()}, with neural network elements in blue-purple gradient, AI high-tech theme, 800x600 resolution, detailed and vibrant."
+# Генерация изображения через Clipdrop API
+prompt_img = f"Futuristic illustration of {title.lower()}, with neural network elements in blue-purple gradient, AI high-tech theme."  # Упрощённый промпт
 image_path = f"{assets_dir}/post-{post_num}.png"
 image_generated = False
 
-# Clipdrop API (основной с диагностикой)
 clipdrop_key = os.getenv("CLIPDROP_API_KEY")
-if clipdrop_key and not image_generated:
+if clipdrop_key:
     try:
         clipdrop_url = "https://clipdrop-api.co/text-to-image/v1"
         clipdrop_response = requests.post(
             clipdrop_url,
-            data={'prompt': prompt_img, 'width': 800, 'height': 600},  # Явно указываем размер
+            data={
+                'prompt': prompt_img,
+                'width': 1024,  # Кратно 64, default
+                'height': 1024,  # Кратно 64, default
+                'number_of_images': 1
+            },
             headers={'x-api-key': clipdrop_key},
             timeout=30
         )
-        clipdrop_response.raise_for_status()
-        with open(image_path, "wb") as img_file:
-            img_file.write(clipdrop_response.content)
-        print(f"Изображение сгенерировано через Clipdrop: {image_path}")
-        image_generated = True
-    except requests.exceptions.HTTPError as e:
-        print(f"Ошибка Clipdrop API (HTTP {e.response.status_code}): {e.response.text}")
+        print(f"Clipdrop статус: {clipdrop_response.status_code}")
+        if clipdrop_response.status_code == 200:
+            with open(image_path, "wb") as img_file:
+                img_file.write(clipdrop_response.content)
+            print(f"Изображение сгенерировано через Clipdrop: {image_path}")
+            image_generated = True
+        else:
+            print(f"Ошибка Clipdrop (HTTP {clipdrop_response.status_code}): {clipdrop_response.text}")
     except Exception as e:
         print(f"Ошибка Clipdrop API: {str(e)}")
 
-# DeepAI API (резерв)
-deepai_key = os.getenv("DEEPAI_API_KEY")
-if deepai_key and not image_generated:
-    try:
-        deepai_url = "https://api.deepai.org/api/text2img"
-        deepai_response = requests.post(
-            deepai_url,
-            files={'text': prompt_img},
-            headers={'api-key': deepai_key}
-        )
-        deepai_response.raise_for_status()
-        result = deepai_response.json()
-        if result.get("output_url"):
-            img_response = requests.get(result["output_url"])
-            img_response.raise_for_status()
-            with open(image_path, "wb") as img_file:
-                img_file.write(img_response.content)
-            print(f"Изображение сгенерировано через DeepAI: {image_path}")
-            image_generated = True
-        else:
-            print(f"Нет изображения в ответе DeepAI: {result}")
-    except requests.exceptions.HTTPError as e:
-        print(f"Ошибка DeepAI API (HTTP {e.response.status_code}): {e.response.text}")
-    except Exception as e:
-        print(f"Ошибка DeepAI API: {str(e)}")
-
 # Fallback для ручной генерации
 if not image_generated:
-    print(f"Не удалось сгенерировать изображение ни через один API. Сгенерируйте вручную: {prompt_img}")
+    print(f"Не удалось сгенерировать изображение. Сгенерируйте вручную: {prompt_img}")
 
 # Сохранение поста
 filename = f"{posts_dir}/{today}-{slug}.md"
