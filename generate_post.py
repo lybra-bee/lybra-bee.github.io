@@ -5,7 +5,7 @@ import re
 import base64
 import glob
 from groq import Groq  # Для текста
-import requests  # Для DeepAI (изображения)
+import requests  # Для изображений
 
 themes = ["Прогресс нейронных сетей", "Этика ИИ", "Квантовый ИИ", "Генеративные модели", "Робототехника", "Блокчейн ИИ", "AR/VR", "Кибер ИИ", "NLP", "Автономные системы"]
 types = ["Обзор", "Урок", "Мастер-класс", "Статья"]
@@ -48,11 +48,14 @@ if groq_key:
     except Exception as e:
         print(f"Ошибка Groq API: {str(e)}")
 
-# Генерация изображения через DeepAI API (рабочий вариант)
-deepai_key = os.getenv("DEEPAI_API_KEY")
+# Генерация изображения через API (DeepAI, Clipdrop, Replicate)
 prompt_img = f"Futuristic illustration of {title.lower()}, with neural network elements in blue-purple gradient, AI high-tech theme, 800x600 resolution, detailed and vibrant."
 image_path = f"{assets_dir}/post-{post_num}.png"
-if deepai_key:
+image_generated = False
+
+# DeepAI API
+deepai_key = os.getenv("DEEPAI_API_KEY")
+if deepai_key and not image_generated:
     try:
         deepai_url = "https://api.deepai.org/api/text2img"
         deepai_response = requests.post(
@@ -63,18 +66,71 @@ if deepai_key:
         deepai_response.raise_for_status()
         result = deepai_response.json()
         if result.get("output_url"):
-            # Скачиваем изображение по URL и сохраняем как PNG
             img_response = requests.get(result["output_url"])
             img_response.raise_for_status()
             with open(image_path, "wb") as img_file:
                 img_file.write(img_response.content)
-            print(f"Изображение сгенерировано и сохранено: {image_path}")
+            print(f"Изображение сгенерировано через DeepAI: {image_path}")
+            image_generated = True
         else:
             print(f"Нет изображения в ответе DeepAI. Промпт: {prompt_img}")
     except Exception as e:
-        print(f"Ошибка DeepAI API: {str(e)}. Сгенерируйте изображение вручную: {prompt_img}")
-else:
-    print(f"DEEPAI_API_KEY не найден. Промпт для изображения: {prompt_img}")
+        print(f"Ошибка DeepAI API: {str(e)}")
+
+# Clipdrop API (fallback)
+clipdrop_key = os.getenv("CLIPDROP_API_KEY")
+if clipdrop_key and not image_generated:
+    try:
+        clipdrop_url = "https://clipdrop-api.co/text-to-image/v1"
+        clipdrop_response = requests.post(
+            clipdrop_url,
+            data={'prompt': prompt_img},
+            headers={'x-api-key': clipdrop_key}
+        )
+        clipdrop_response.raise_for_status()
+        with open(image_path, "wb") as img_file:
+            img_file.write(clipdrop_response.content)
+        print(f"Изображение сгенерировано через Clipdrop: {image_path}")
+        image_generated = True
+    except Exception as e:
+        print(f"Ошибка Clipdrop API: {str(e)}")
+
+# Replicate API (fallback)
+replicate_key = os.getenv("REPLICATE_API_KEY")
+if replicate_key and not image_generated:
+    try:
+        replicate_url = "https://api.replicate.com/v1/predictions"
+        replicate_response = requests.post(
+            replicate_url,
+            json={"version": "27b511cc5377d3aa6b983b6e4b3f6fdada4b5ac5b8db68c7a2908898f7a7e0be", "input": {"prompt": prompt_img}},
+            headers={"Authorization": f"Token {replicate_key}", "Content-Type": "application/json"}
+        )
+        replicate_response.raise_for_status()
+        result = replicate_response.json()
+        if result.get("id"):
+            # Получаем результат асинхронно
+            prediction_url = f"https://api.replicate.com/v1/predictions/{result['id']}"
+            for _ in range(10):  # Ждём до 30 секунд
+                status_response = requests.get(prediction_url, headers={"Authorization": f"Token {replicate_key}"})
+                status_response.raise_for_status()
+                status = status_response.json()
+                if status.get("status") == "succeeded" and status.get("output"):
+                    img_response = requests.get(status["output"][0])
+                    img_response.raise_for_status()
+                    with open(image_path, "wb") as img_file:
+                        img_file.write(img_response.content)
+                    print(f"Изображение сгенерировано через Replicate: {image_path}")
+                    image_generated = True
+                    break
+                time.sleep(3)
+        else:
+            print(f"Нет изображения в ответе Replicate. Промпт: {prompt_img}")
+    except Exception as e:
+        print(f"Ошибка Replicate API: {str(e)}")
+
+# Fallback для ручной генерации
+if not image_generated:
+    print(f"Не удалось сгенерировать изображение ни через один API. Сгенерируйте вручную: {prompt_img}")
 
 # Сохранение поста
 filename = f"{posts_dir}/{today}-{slug}.md"
