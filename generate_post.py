@@ -33,7 +33,7 @@ if groq_key:
         client = Groq(api_key=groq_key)
         chat_completion = client.chat.completions.create(
             messages=[
-                {"role": "system", "content": "Ты эксперт по ИИ и технологиям. Пиши на русском, информативно и увлекательно."},
+                {"role": "system", "content": "Ты эксперт по ИИ и технологиями. Пиши на русском, информативно и увлекательно."},
                 {"role": "user", "content": f"Напишите {type_.lower()} на тему '{title}' (400 слов, для блога). Формат: заголовок H1, подзаголовок H2 ({type_}), текст с абзацами."}
             ],
             model="llama-3.1-8b-instant",
@@ -71,10 +71,10 @@ image_generated = False
 
 clipdrop_key = os.getenv("CLIPDROP_API_KEY")
 if clipdrop_key:
-    print(f"Инициализация запроса к Clipdrop с ключом: {clipdrop_key[:8]}... (скрыт остаток)")
+    print(f"Инициализация запроса к Clipdrop. Ключ: {clipdrop_key[:8]}... (скрыт остаток)")
+    print(f"URL: {clipdrop_url}, Промпт: {prompt_img}")
     try:
         clipdrop_url = "https://clipdrop-api.co/text-to-image/v1"
-        print(f"Отправка запроса на {clipdrop_url} с промптом: {prompt_img}")
         clipdrop_response = requests.post(
             clipdrop_url,
             files={'prompt': (None, prompt_img)},
@@ -82,10 +82,11 @@ if clipdrop_key:
             timeout=30
         )
         print(f"Получен ответ от Clipdrop. Статус: {clipdrop_response.status_code}")
+        print(f"Заголовки ответа: {dict(clipdrop_response.headers)}")
         if clipdrop_response.status_code == 200:
             remaining_credits = clipdrop_response.headers.get('x-remaining-credits', 'Не указано')
             credits_consumed = clipdrop_response.headers.get('x-credits-consumed', 'Не указано')
-            print(f"Заголовки ответа: Остаток кредитов: {remaining_credits}, Потрачено: {credits_consumed}")
+            print(f"Остаток кредитов: {remaining_credits}, Потрачено: {credits_consumed}")
             with open(image_path, "wb") as img_file:
                 img_file.write(clipdrop_response.content)
             print(f"Изображение успешно сохранено: {image_path}")
@@ -99,7 +100,7 @@ if clipdrop_key:
     except requests.exceptions.RequestException as e:
         print(f"Ошибка запроса к Clipdrop API: {str(e)}")
         import traceback
-        traceback.print_exc()  # Полный стек вызовов для отладки
+        traceback.print_exc()  # Полный стек вызовов
 
 # Fallback для ручной генерации
 if not image_generated:
