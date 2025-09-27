@@ -1,8 +1,0 @@
-baseURL = "https://lybra-bee.github.io/lybra-bee.github.io/"
-languageCode = "ru"
-title = "Мой AI-блог"
-theme = "ananke"
-
-[params]
-  author = "Алексей"
-  description = "Блог о нейросетях, генерации видео и современных технологиях."
