@@ -21,6 +21,12 @@ body::before {
   z-index: -1;
 }
 
+/* Темный режим */
+body.dark-mode {
+  background-color: #121212;
+  background-image: none;  /* Отключаем изображение в темном режиме */
+}
+
 /* Шапка (hero) */
 .hero {
   background: url(/assets/images/header-banner.png) no-repeat center center;
@@ -29,44 +35,57 @@ body::before {
   text-align: center;
   color: #fff;
   text-shadow: 0 0 10px #00e5ff;
+  position: relative;
+  z-index: 1;
 }
 
-.hero h1 {
-  font-size: 2.5em;
-  margin: 0;
+.hero::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);  /* Полупрозрачный оверлей для читаемости */
+  z-index: -1;
 }
 
-.hero p {
-  font-size: 1.2em;
+body.dark-mode .hero {
+  background-color: #1a1a1a;
+  background-image: none;
 }
 
-/* Карточки */
-.neural-card {
-  background: rgba(0, 0, 0, 0.7);
-  padding: 20px;
+/* Карточки (glassmorphism) */
+.neural-card, .gallery-item {
+  background: rgba(255, 255, 255, 0.1);  /* Полупрозрачный белый */
+  backdrop-filter: blur(10px);  /* Размытие для стеклянного эффекта */
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 10px;
+  padding: 20px;
   margin-bottom: 20px;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
   transition: transform 0.2s;
 }
 
-.neural-card:hover {
+.neural-card:hover, .gallery-item:hover {
   transform: translateY(-5px);
 }
 
-.neural-card a {
+.neural-card a, .gallery-item a {
   color: #00e5ff;
   text-decoration: none;
 }
 
-.neural-card a:hover {
+.neural-card a:hover, .gallery-item a:hover {
   text-decoration: underline;
 }
 
 /* Карусель */
 .carousel-image {
   max-width: 100%;
-  height: auto;
+  max-height: 400px;
   object-fit: cover;
+  border-radius: 10px;
 }
 
 .carousel-caption {
@@ -81,13 +100,6 @@ body::before {
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 10px;
   padding: 20px;
-}
-
-.gallery-item {
-  overflow: hidden;
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .gallery-item img {
@@ -134,18 +146,22 @@ body::before {
     height: auto;
   }
 
-  .neural-card {
+  .neural-card, .gallery-item {
     padding: 10px;
   }
 
   .gallery-grid {
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   }
+
+  .carousel-image {
+    max-height: 250px;
+  }
 }
 
 /* Fallback для фоновых изображений */
 body, .hero {
-  fallback-background: linear-gradient(135deg, #0d47a1, #7b1fa2);
+  background-color: linear-gradient(135deg, #0d47a1, #7b1fa2);  /* Резервный градиент */
 }
 
 /* Пагинация (если используется) */
