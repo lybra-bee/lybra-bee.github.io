@@ -6,7 +6,7 @@ dark_mode: false
 ---
 <main>
   <section class="welcome-section">
-    <h2 id="animated-text" class="animated-text">Добро пожаловать в мой блог</h2>
+    <h2 class="spread-text">Добро пожаловать в мой блог</h2>
   </section>
   {% if site.posts.size > 0 %}
     <div class="latest-post">
