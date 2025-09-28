@@ -36,7 +36,7 @@
       this.textContent = document.body.classList.contains('dark-mode') ? 'Светлая тема' : 'Темная тема';
     });
 
-    // Анимация текста (появление из центра с разъездом и зацикливание)
+    // Анимация текста (появление из центра с разъездом к исходным позициям и зацикливание)
     document.addEventListener('DOMContentLoaded', () => {
       const textElement = document.querySelector('.spread-text');
       if (textElement) {
@@ -46,7 +46,7 @@
         function resetAnimation() {
           spans.forEach(span => {
             span.style.opacity = '0';
-            span.style.transform = 'translateX(0)';
+            span.style.transform = 'translateX(0)'; // Сброс в центр
             span.style.transition = 'none'; // Сброс переходов
           });
           setTimeout(() => {
@@ -61,23 +61,35 @@
           if (pairIndex < Math.ceil(spans.length / 2)) {
             const leftIndex = pairIndex;
             const rightIndex = spans.length - 1 - pairIndex;
-            const offset = 20 * (pairIndex + 1); // Увеличиваем смещение для эффекта разъезда
             if (leftIndex < spans.length) {
               spans[leftIndex].style.opacity = '1';
-              spans[leftIndex].style.transform = `translateX(-${offset}px)`;
+              // Смещение к исходной позиции (без фиксированного offset)
+              spans[leftIndex].style.transform = 'translateX(0)';
             }
             if (rightIndex >= 0 && rightIndex !== leftIndex) {
               spans[rightIndex].style.opacity = '1';
-              spans[rightIndex].style.transform = `translateX(${offset}px)`;
+              spans[rightIndex].style.transform = 'translateX(0)';
             }
             pairIndex++;
             if (pairIndex <= Math.ceil(spans.length / 2)) {
-              setTimeout(animateSpread, 300); // Интервал 0.3 секунды
+              setTimeout(animateSpread, 300); // Интервал 0.3 секунды для появления
             } else {
-              console.log('Text animation completed');
-              setTimeout(loopAnimation, 1000); // Задержка перед повтором
+              // Разъезд к исходным позициям после появления
+              setTimeout(spreadToPositions, 300);
             }
           }
+        }
+
+        function spreadToPositions() {
+          spans.forEach((span, index) => {
+            const totalWidth = textElement.offsetWidth;
+            const spanWidth = span.offsetWidth;
+            const center = totalWidth / 2;
+            const spanOffset = (index * spanWidth) - (spans.length * spanWidth / 2) + (spanWidth / 2);
+            span.style.transform = `translateX(${spanOffset}px)`;
+          });
+          console.log('Text spread to positions');
+          setTimeout(loopAnimation, 1000); // Задержка перед повтором
         }
 
         function loopAnimation() {
