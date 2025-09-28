@@ -1,29 +1,171 @@
+/* Общие стили для body */
 body {
-  background: url(/assets/images/background.png) fixed;  # Убедитесь, что файл существует
+  background: url(/assets/images/background.png) fixed;
   background-size: cover;
   color: #fff;
   font-family: 'Arial', sans-serif;
+  margin: 0;
+  padding: 0;
   transition: background-color 0.3s;
-  fallback-background: linear-gradient(135deg, #0d47a1, #7b1fa2);  # Резервный градиент, если изображение не загружено
-}
-
-.hero {
-  background-size: cover;
-  background-position: center;
-  padding: 100px 20px;
-  text-align: center;
-  color: #fff;
-  text-shadow: 0 0 10px #00e5ff;
-  fallback-background: linear-gradient(135deg, #0d47a1, #7b1fa2);  # Резервный градиент для шапки
 }
 
 body::before {
   content: "";
   position: fixed;
-  top: 0; left: 0; width: 100%; height: 100%;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   background: inherit;
   transform: translateZ(-1px) scale(1.1);
   z-index: -1;
 }
 
-# Остальной CSS без изменений...
+/* Шапка (hero) */
+.hero {
+  background: url(/assets/images/header-banner.png) no-repeat center center;
+  background-size: cover;
+  padding: 100px 20px;
+  text-align: center;
+  color: #fff;
+  text-shadow: 0 0 10px #00e5ff;
+}
+
+.hero h1 {
+  font-size: 2.5em;
+  margin: 0;
+}
+
+.hero p {
+  font-size: 1.2em;
+}
+
+/* Карточки */
+.neural-card {
+  background: rgba(0, 0, 0, 0.7);
+  padding: 20px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  transition: transform 0.2s;
+}
+
+.neural-card:hover {
+  transform: translateY(-5px);
+}
+
+.neural-card a {
+  color: #00e5ff;
+  text-decoration: none;
+}
+
+.neural-card a:hover {
+  text-decoration: underline;
+}
+
+/* Карусель */
+.carousel-image {
+  max-width: 100%;
+  height: auto;
+  object-fit: cover;
+}
+
+.carousel-caption {
+  background: rgba(0, 0, 0, 0.5);
+  padding: 10px;
+  border-radius: 5px;
+}
+
+/* Галерея */
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+  padding: 20px;
+}
+
+.gallery-item {
+  overflow: hidden;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.gallery-item img {
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.2s ease;
+}
+
+.gallery-item:hover img {
+  transform: scale(1.05);
+}
+
+/* Последняя статья на главной */
+.latest-post {
+  max-width: 100%;
+  margin: 20px auto;
+}
+
+.latest-post img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .hero {
+    padding: 50px 10px;
+  }
+
+  .hero h1 {
+    font-size: 1.8em;
+  }
+
+  .hero p {
+    font-size: 1em;
+  }
+
+  .latest-post img {
+    width: 100%;
+    height: auto;
+  }
+
+  .neural-card {
+    padding: 10px;
+  }
+
+  .gallery-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+}
+
+/* Фallback для фоновых изображений */
+body, .hero {
+  fallback-background: linear-gradient(135deg, #0d47a1, #7b1fa2);
+}
+
+/* Пагинация (если используется) */
+.pagination {
+  display: flex;
+  justify-content: center;
+  list-style: none;
+  padding: 0;
+}
+
+.pagination li {
+  margin: 0 5px;
+}
+
+.pagination li a {
+  color: #00e5ff;
+  text-decoration: none;
+}
+
+.pagination li.active a {
+  font-weight: bold;
+  color: #fff;
+}
