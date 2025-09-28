@@ -9,7 +9,8 @@ dark_mode: false
     <h2 class="spread-text">
       <span>Д</span><span>о</span><span>б</span><span>р</span><span>о</span>
       <span>п</span><span>о</span><span>ж</span><span>а</span><span>л</span><span>о</span><span>в</span><span>а</span><span>т</span><span>ь</span>
-      <span>в</span><span>м</span><span>о</span><span>й</span>
+      <span>в</span>
+      <span>м</span><span>о</span><span>й</span>
       <span>б</span><span>л</span><span>о</span><span>г</span>
     </h2>
   </section>
