@@ -24,4 +24,11 @@ title: Главная
       <h3 class="card-title">
         <a href="{{ latest_post.url | relative_url }}">{{ latest_post.title | escape }}</a>
       </h3>
-      <p class="c
+      <p class="card-date">{{ latest_post.date | date: "%B %d, %Y" }}</p>
+      <p class="card-text">{{ latest_post.content | strip_html | truncate: 500 }}</p>
+      <a href="{{ latest_post.url | relative_url }}" class="btn btn-primary mt-2">Читать полностью</a>
+    </div>
+  </div>
+{% else %}
+  <p>Пока нет статей.</p>
+{% endif %}
