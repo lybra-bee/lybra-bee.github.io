@@ -36,7 +36,7 @@
       this.textContent = document.body.classList.contains('dark-mode') ? 'Светлая тема' : 'Темная тема';
     });
 
-    // Анимация текста (попарное появление из центра)
+    // Анимация текста (попарное появление)
     document.addEventListener('DOMContentLoaded', () => {
       const textElement = document.querySelector('.spread-text');
       if (textElement) {
@@ -47,27 +47,17 @@
           if (index < spans.length) {
             const leftIndex = Math.floor((index - 1) / 2);
             const rightIndex = Math.ceil((index - 1) / 2);
-            if (leftIndex >= 0) {
-              spans[leftIndex].style.opacity = '1';
-              spans[leftIndex].style.transform = 'translateX(-20px)';
-            }
-            if (rightIndex < spans.length) {
-              spans[rightIndex].style.opacity = '1';
-              spans[rightIndex].style.transform = 'translateX(20px)';
-            }
+            if (leftIndex >= 0) spans[leftIndex].style.opacity = '1';
+            if (rightIndex < spans.length) spans[rightIndex].style.opacity = '1';
             index += 2;
             setTimeout(animateSpread, 300); // Интервал 0.3 секунды
-          } else {
-            // Оставляем текст видимым после анимации
-            setTimeout(() => {
-              spans.forEach(span => {
-                span.style.transform = 'translateX(0)';
-              });
-            }, 300);
           }
         }
 
         // Инициализация анимации
+        spans.forEach(span => {
+          span.style.opacity = '0'; // Изначально скрываем все буквы
+        });
         animateSpread();
         console.log('Text animation initialized');
       } else {
@@ -85,7 +75,9 @@
         // Проверка активного элемента
         const activeItem = carousel.querySelector('.carousel-item.active');
         if (!activeItem) {
-          console.log('No active carousel item found');
+          console.log('No active carousel item found, forcing first item active');
+          const firstItem = carousel.querySelector('.carousel-item');
+          if (firstItem) firstItem.classList.add('active');
         }
       } else {
         console.log('Carousel element not found');
