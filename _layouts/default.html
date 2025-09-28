@@ -36,16 +36,18 @@
       this.textContent = document.body.classList.contains('dark-mode') ? 'Светлая тема' : 'Темная тема';
     });
 
-    // Анимация текста
+    // Анимация текста с замедлением
     const textElement = document.getElementById('animated-text');
-    const originalText = textElement.textContent;
+    const originalText = textElement ? textElement.textContent : 'Добро пожаловать в мой блог';
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()';
     let isAssembling = true;
+    let animationFrame = null;
 
     function animateText() {
+      if (!textElement) return;
       let displayText = '';
       for (let i = 0; i < originalText.length; i++) {
-        if (Math.random() > 0.5 || !isAssembling) {
+        if (Math.random() > 0.8 || !isAssembling) { // Увеличена вероятность оставить оригинальный символ
           displayText += originalText[i];
         } else {
           displayText += characters.charAt(Math.floor(Math.random() * characters.length));
@@ -55,15 +57,20 @@
 
       if (isAssembling && displayText === originalText) {
         isAssembling = false;
-        setTimeout(() => isAssembling = true, 1000); // Пауза перед разбором
+        setTimeout(() => isAssembling = true, 2000); // Пауза 2 секунды перед разбором
       } else if (!isAssembling && displayText !== originalText) {
         // Продолжаем разбирать
       }
 
-      requestAnimationFrame(animateText);
+      animationFrame = setTimeout(animateText, 100); // Замедление до 100мс
     }
 
-    animateText();
+    if (textElement) {
+      animateText();
+    }
+
+    // Остановка анимации при выходе
+    window.onbeforeunload = () => clearTimeout(animationFrame);
   </script>
 </body>
 </html>
