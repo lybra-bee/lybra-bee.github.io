@@ -19,23 +19,16 @@ assets_dir = 'assets/images/posts'
 os.makedirs(assets_dir, exist_ok=True)
 os.makedirs(posts_dir, exist_ok=True)
 
-# === Определяем правильный номер картинки ===
-existing_images = [f for f in os.listdir(assets_dir) if f.startswith("post-") and f.endswith(".png")]
-if existing_images:
-    max_num = max(int(re.search(r'post-(\d+)\.png', f).group(1)) for f in existing_images)
-    post_num = max_num + 1
-else:
-    post_num = 1
+# Определение следующего номера изображения
+image_files = glob.glob(f"{assets_dir}/*.png") + glob.glob(f"{assets_dir}/*.jpg")
+post_num = len(image_files) + 1 if image_files else 1
 
-image_path = f"{assets_dir}/post-{post_num}.png"
-
-# === Оставляем только 10 последних постов ===
 post_files = sorted(glob.glob(f"{posts_dir}/*.md"), reverse=True)
 if len(post_files) > 9:
     for old_file in post_files[10:]:
         os.remove(old_file)
 
-# === Генерация текста через Groq API ===
+# Генерация текста через Groq API
 groq_key = os.getenv("GROQ_API_KEY")
 content = f"# {title}\n\n## {type_}\n\nОшибка генерации текста. Сгенерируйте вручную."
 if groq_key:
@@ -51,12 +44,12 @@ if groq_key:
             temperature=0.7
         )
         content = chat_completion.choices[0].message.content
-        content = re.sub(r'<[^>]+>', '', content)  # Удаляем HTML-теги
+        content = re.sub(r'<[^>]+>', '', content)  # Удаление всех HTML-тегов
         print("Текст сгенерирован успешно через Groq.")
     except Exception as e:
         print(f"Ошибка Groq API: {str(e)}")
 
-# === Перевод темы на английский для промпта ===
+# Перевод темы на английский для промпта
 if groq_key:
     try:
         translation = client.chat.completions.create(
@@ -75,14 +68,16 @@ if groq_key:
 else:
     title_en = title.lower().replace(" ", "-")
 
-# === Генерация изображения через Clipdrop API ===
+# Генерация изображения через Clipdrop API с подробными логами
 prompt_img = f"Futuristic illustration of {title_en}, with neural network elements in blue-purple gradient, AI high-tech theme."
+image_path = f"{assets_dir}/post-{post_num}.png"
 image_generated = False
 
 clipdrop_key = os.getenv("CLIPDROP_API_KEY")
 if clipdrop_key:
     clipdrop_url = "https://clipdrop-api.co/text-to-image/v1"
-    print(f"Инициализация запроса к Clipdrop. Промпт: {prompt_img}")
+    print(f"Инициализация запроса к Clipdrop. Ключ: {clipdrop_key[:8]}... (скрыт остаток)")
+    print(f"URL: {clipdrop_url}, Промпт: {prompt_img}")
     try:
         clipdrop_response = requests.post(
             clipdrop_url,
@@ -90,29 +85,33 @@ if clipdrop_key:
             headers={'x-api-key': clipdrop_key},
             timeout=30
         )
+        print(f"Получен ответ от Clipdrop. Статус: {clipdrop_response.status_code}")
+        print(f"Заголовки ответа: {dict(clipdrop_response.headers)}")
         if clipdrop_response.status_code == 200:
+            remaining_credits = clipdrop_response.headers.get('x-remaining-credits', 'Не указано')
+            credits_consumed = clipdrop_response.headers.get('x-credits-consumed', 'Не указано')
+            print(f"Остаток кредитов: {remaining_credits}, Потрачено: {credits_consumed}")
             with open(image_path, "wb") as img_file:
                 img_file.write(clipdrop_response.content)
             print(f"Изображение успешно сохранено: {image_path}")
             image_generated = True
         else:
-            print(f"Ошибка Clipdrop ({clipdrop_response.status_code}): {clipdrop_response.text}")
+            try:
+                error_details = clipdrop_response.json()
+                print(f"Ошибка Clipdrop (HTTP {clipdrop_response.status_code}): {error_details}")
+            except ValueError:
+                print(f"Ошибка Clipdrop (HTTP {clipdrop_response.status_code}): Нет JSON-ответа, текст: {clipdrop_response.text}")
     except requests.exceptions.RequestException as e:
         print(f"Ошибка запроса к Clipdrop API: {str(e)}")
+        import traceback
+        traceback.print_exc()
 
+# Fallback для ручной генерации
 if not image_generated:
     print(f"Не удалось сгенерировать изображение. Сгенерируйте вручную: {prompt_img}")
 
-# === Сохраняем пост с правильной ссылкой на картинку ===
+# Сохранение поста
 filename = f"{posts_dir}/{today}-{slug}.md"
 with open(filename, "w", encoding="utf-8") as f:
-    f.write(
-        f"---\n"
-        f"title: \"{title}\"\n"
-        f"date: {today} 00:00:00 -0000\n"
-        f"image: /assets/images/posts/post-{post_num}.png\n"
-        f"---\n"
-        f"{content}\n"
-    )
-
+    f.write(f"---\ntitle: \"{title}\"\ndate: {today} 00:00:00 -0000\nlayout: post\nimage: /assets/images/posts/post-{post_num}.png\n---\n{content}\n")
 print(f"Сгенерировано: {filename}")
