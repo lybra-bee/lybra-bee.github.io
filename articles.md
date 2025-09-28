@@ -8,15 +8,15 @@ description: Последние обзоры и уроки по искусств
   <div class="carousel-inner">
     {% for post in site.posts limit: 10 %}
     <div class="carousel-item {% if forloop.first %}active{% endif %}">
-      <div class="neural-card d-flex flex-column align-items-center">
-        <a href="{{ post.url | relative_url }}" class="text-center">
+      <div class="neural-card d-flex flex-column align-items-center text-center">
+        <a href="{{ post.url | relative_url }}">
           {% assign image_path = post.image | default: '/assets/images/posts/placeholder.png' %}
           <img src="{{ image_path | relative_url }}" class="carousel-image img-fluid" alt="{{ post.title | escape }}" loading="lazy">
         </a>
         <div class="carousel-caption mt-auto w-100">
-          <h3 class="text-center"><a href="{{ post.url | relative_url }}">{{ post.title | escape }}</a></h3>
-          <p class="post-date text-center">{{ post.date | date: "%B %d, %Y" }}</p>
-          <p class="text-center">{{ post.content | strip_html | truncate: 100, "..." }}</p>
+          <h3><a href="{{ post.url | relative_url }}">{{ post.title | escape }}</a></h3>
+          <p class="post-date">{{ post.date | date: "%B %d, %Y" }}</p>
+          <p>{{ post.content | strip_html | truncate: 100, "..." }}</p>
         </div>
       </div>
     </div>
