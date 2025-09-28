@@ -314,5 +314,6 @@ body.dark-mode::after {
 
 /* Fallback для фоновых изображений */
 body:not(.dark-mode), .hero:not(.dark-mode) {
-  background-color: linear-gradient(135deg, #0d47a1, #7b1fa2);
+  background: url(/assets/images/background.png) fixed;
+  background-size: cover;
 }
