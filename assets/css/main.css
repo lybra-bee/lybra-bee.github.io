@@ -24,31 +24,10 @@ body::before {
 /* Темный режим */
 body.dark-mode {
   background-color: #121212;
-  background-image: none;  /* Отключаем изображение в темном режиме */
+  background-image: none;
 }
 
-/* ========================== */
-/* Шапка (header + hero) */
-/* ========================== */
-.site-header {
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  position: relative;
-}
-
-.site-header .overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(0,0,0,0.3); /* затемнение */
-  z-index: 1;
-}
-
-.site-header nav {
-  position: relative;
-  z-index: 2;
-}
-
+/* Шапка (hero) */
 .hero {
   background: url(/assets/images/header-banner.png) no-repeat center center;
   background-size: cover;
@@ -67,7 +46,7 @@ body.dark-mode {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.5);  /* Полупрозрачный оверлей для читаемости */
+  background: rgba(0, 0, 0, 0.5);
   z-index: -1;
 }
 
@@ -76,12 +55,10 @@ body.dark-mode .hero {
   background-image: none;
 }
 
-/* ========================== */
 /* Карточки (glassmorphism) */
-/* ========================== */
 .neural-card, .gallery-item {
-  background: rgba(255, 255, 255, 0.1);  /* Полупрозрачный белый */
-  backdrop-filter: blur(10px);  /* Размытие для стеклянного эффекта */
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 10px;
   padding: 20px;
@@ -103,9 +80,7 @@ body.dark-mode .hero {
   text-decoration: underline;
 }
 
-/* ========================== */
 /* Карусель */
-/* ========================== */
 .carousel-image {
   max-width: 100%;
   max-height: 400px;
@@ -119,9 +94,7 @@ body.dark-mode .hero {
   border-radius: 5px;
 }
 
-/* ========================== */
 /* Галерея */
-/* ========================== */
 .gallery-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -141,9 +114,7 @@ body.dark-mode .hero {
   transform: scale(1.05);
 }
 
-/* ========================== */
 /* Последняя статья на главной */
-/* ========================== */
 .latest-post {
   max-width: 100%;
   margin: 20px auto;
@@ -151,16 +122,14 @@ body.dark-mode .hero {
 
 .latest-post img {
   max-width: 100%;
+  max-height: 400px; /* Ограничение высоты для мобильных */
   height: auto;
   display: block;
   margin: 0 auto;
-  border-radius: 10px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  object-fit: cover;
 }
 
-/* ========================== */
 /* Адаптивность */
-/* ========================== */
 @media (max-width: 768px) {
   .hero {
     padding: 50px 10px;
@@ -175,8 +144,7 @@ body.dark-mode .hero {
   }
 
   .latest-post img {
-    width: 100%;
-    height: auto;
+    max-height: 250px;
   }
 
   .neural-card, .gallery-item {
@@ -192,17 +160,12 @@ body.dark-mode .hero {
   }
 }
 
-/* ========================== */
 /* Fallback для фоновых изображений */
-/* ========================== */
-body, .hero, .site-header {
-  background-color: #0d47a1; /* запасной цвет */
-  background-image: linear-gradient(135deg, #0d47a1, #7b1fa2);
+body:not(.dark-mode), .hero:not(.dark-mode) {
+  background-color: linear-gradient(135deg, #0d47a1, #7b1fa2); /* Резервный градиент только если изображение не загрузилось */
 }
 
-/* ========================== */
-/* Пагинация */
-/* ========================== */
+/* Пагинация (если используется) */
 .pagination {
   display: flex;
   justify-content: center;
