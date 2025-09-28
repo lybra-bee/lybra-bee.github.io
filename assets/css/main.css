@@ -19,7 +19,7 @@ body::before {
   height: 100%;
   background: inherit;
   transform: translateZ(-1px) scale(1.1);
-  z-index: -2; /* Уменьшен z-index, чтобы шапка была выше */
+  z-index: -2; /* Уменьшен z-index для фона */
 }
 
 /* Темный режим */
@@ -47,7 +47,7 @@ body.dark-mode::after {
   color: #fff;
   text-shadow: 0 0 10px #00e5ff;
   position: relative;
-  z-index: 1; /* Увеличен z-index для шапки */
+  z-index: 1; /* Базовый уровень шапки */
 }
 
 .hero::before {
@@ -58,15 +58,17 @@ body.dark-mode::after {
   width: 100%;
   height: 100%;
   background: rgba(0, 0, 0, 0.5);
-  z-index: -1; /* Оверлей ниже контента шапки */
+  z-index: -1; /* Оверлей ниже контента */
 }
 
+/* Переключатель темной темы */
 .theme-toggle {
   padding: 5px 15px;
   font-size: 1em;
   border-radius: 5px;
   cursor: pointer;
-  z-index: 2; /* Убедимся, что кнопка над оверлеем */
+  z-index: 10; /* Выше оверлея шапки */
+  position: relative; /* Для корректного z-index */
 }
 
 /* 3D-стеклянные карточки */
@@ -152,12 +154,23 @@ body.dark-mode::after {
   align-items: center;
   justify-content: center;
   transition: opacity 0.3s ease, transform 0.3s ease;
-  z-index: 10;
+  z-index: 10; /* Выше оверлея шапки */
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.carousel-control-prev {
+  left: 10px;
+}
+
+.carousel-control-next {
+  right: 10px;
 }
 
 .carousel-control-prev:hover, .carousel-control-next:hover {
   opacity: 1;
-  transform: scale(1.1);
+  transform: translateY(-50%) scale(1.1);
 }
 
 .carousel-control-prev-icon, .carousel-control-next-icon {
