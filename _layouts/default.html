@@ -35,6 +35,35 @@
       document.body.classList.toggle('dark-mode');
       this.textContent = document.body.classList.contains('dark-mode') ? 'Светлая тема' : 'Темная тема';
     });
+
+    // Анимация текста
+    const textElement = document.getElementById('animated-text');
+    const originalText = textElement.textContent;
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()';
+    let isAssembling = true;
+
+    function animateText() {
+      let displayText = '';
+      for (let i = 0; i < originalText.length; i++) {
+        if (Math.random() > 0.5 || !isAssembling) {
+          displayText += originalText[i];
+        } else {
+          displayText += characters.charAt(Math.floor(Math.random() * characters.length));
+        }
+      }
+      textElement.textContent = displayText;
+
+      if (isAssembling && displayText === originalText) {
+        isAssembling = false;
+        setTimeout(() => isAssembling = true, 1000); // Пауза перед разбором
+      } else if (!isAssembling && displayText !== originalText) {
+        // Продолжаем разбирать
+      }
+
+      requestAnimationFrame(animateText);
+    }
+
+    animateText();
   </script>
 </body>
 </html>
