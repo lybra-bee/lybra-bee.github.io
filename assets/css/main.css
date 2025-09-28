@@ -7,6 +7,7 @@ body {
   margin: 0;
   padding: 0;
   transition: background-color 0.3s;
+  perspective: 1000px; /* Глубина сцены для 3D-эффекта */
 }
 
 body::before {
@@ -60,43 +61,48 @@ body.dark-mode::after {
   z-index: -1;
 }
 
-/* Карточки (glassmorphism) */
-.neural-card {
+/* 3D-стеклянные карточки */
+.neural-card-3d {
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
+  border-radius: 15px;
   padding: 20px;
-  margin-bottom: 20px;
-  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-  transition: transform 0.2s;
+  margin: 0 auto;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  transition: transform 0.6s ease, box-shadow 0.3s ease;
+  transform-style: preserve-3d;
+  height: 500px; /* Фиксированная высота для 3D-эффекта */
+  width: 80%;
+  max-width: 400px;
+  position: relative;
 }
 
-.neural-card:hover {
-  transform: translateY(-5px);
+.neural-card-3d:hover {
+  transform: rotateY(10deg) scale(1.05);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5);
 }
 
-.neural-card a {
+.neural-card-3d a {
   color: #00e5ff;
   text-decoration: none;
 }
 
-.neural-card a:hover {
+.neural-card-3d a:hover {
   text-decoration: underline;
 }
 
 /* Карусель */
 .carousel-item {
   display: flex;
-  flex-direction: column;
+  justify-content: center;
   align-items: center;
-  text-align: center;
-  height: 100%;
+  height: 600px; /* Высота сцены карусели */
 }
 
 .carousel-image {
   max-width: 100%;
-  max-height: 400px;
+  max-height: 300px;
   object-fit: cover;
   border-radius: 10px;
   margin-bottom: 10px;
@@ -109,6 +115,7 @@ body.dark-mode::after {
   width: 100%;
   position: relative;
   color: #fff;
+  text-align: center;
 }
 
 .carousel-caption h3, .carousel-caption p {
@@ -213,8 +220,10 @@ body.dark-mode::after {
     max-height: 250px;
   }
 
-  .neural-card, .gallery-item {
+  .neural-card-3d, .gallery-item {
     padding: 10px;
+    height: 400px;
+    max-width: 300px;
   }
 
   .gallery-grid {
@@ -222,7 +231,11 @@ body.dark-mode::after {
   }
 
   .carousel-image {
-    max-height: 250px;
+    max-height: 200px;
+  }
+
+  .carousel-item {
+    height: 500px;
   }
 
   .carousel-control-prev, .carousel-control-next {
