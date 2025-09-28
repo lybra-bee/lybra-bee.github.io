@@ -7,36 +7,27 @@
   <link rel="stylesheet" href="/assets/css/main.css">
 </head>
 <body class="{% if site.dark_mode or page.dark_mode %}dark-mode{% endif %}">
-  <!-- Шапка с навигацией -->
   <header class="hero">
     <div class="hero-content">
       <h1>{{ page.title | default: site.title }}</h1>
       {% if page.description %}<p>{{ page.description }}</p>{% endif %}
-      <!-- Навигация -->
       <nav class="nav-menu">
         <a href="/" class="nav-link">Главная</a>
         <a href="/articles/" class="nav-link">Статьи</a>
         <a href="/about/" class="nav-link">Обо мне</a>
         <a href="/gallery/" class="nav-link">Галерея</a>
       </nav>
-      <!-- Переключатель темной темы -->
       <button id="theme-toggle" class="theme-toggle btn btn-outline-light mt-3">
         {% if site.dark_mode or page.dark_mode %}Светлая тема{% else %}Темная тема{% endif %}
       </button>
     </div>
   </header>
-
-  <!-- Основной контент -->
   <main>
     {{ content }}
   </main>
-
-  <!-- Подвал без навигации -->
   <footer class="footer">
     <p>&copy; {{ site.time | date: '%Y' }} Lybra Bee. Все права защищены.</p>
   </footer>
-
-  <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
   <script>
     document.getElementById('theme-toggle').addEventListener('click', function() {
