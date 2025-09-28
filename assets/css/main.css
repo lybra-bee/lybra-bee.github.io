@@ -24,7 +24,6 @@ body::before {
 /* Темный режим */
 body.dark-mode {
   background-color: #121212;
-  /* Сохраняем фоновое изображение с уменьшенным оверлеем */
 }
 
 body.dark-mode::after {
@@ -34,7 +33,7 @@ body.dark-mode::after {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.3); /* Уменьшенная прозрачность */
+  background: rgba(0, 0, 0, 0.3);
   z-index: -1;
 }
 
@@ -62,7 +61,7 @@ body.dark-mode::after {
 }
 
 /* Карточки (glassmorphism) */
-.neural-card, .gallery-item {
+.neural-card {
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -73,16 +72,16 @@ body.dark-mode::after {
   transition: transform 0.2s;
 }
 
-.neural-card:hover, .gallery-item:hover {
+.neural-card:hover {
   transform: translateY(-5px);
 }
 
-.neural-card a, .gallery-item a {
+.neural-card a {
   color: #00e5ff;
   text-decoration: none;
 }
 
-.neural-card a:hover, .gallery-item a:hover {
+.neural-card a:hover {
   text-decoration: underline;
 }
 
@@ -92,6 +91,7 @@ body.dark-mode::after {
   flex-direction: column;
   align-items: center;
   text-align: center;
+  height: 100%;
 }
 
 .carousel-image {
@@ -99,15 +99,15 @@ body.dark-mode::after {
   max-height: 400px;
   object-fit: cover;
   border-radius: 10px;
-  margin-bottom: 10px; /* Отступ между изображением и текстом */
+  margin-bottom: 10px;
 }
 
 .carousel-caption {
-  background: none; /* Убрано перекрытие фона */
+  background: none;
   padding: 10px;
   border-radius: 5px;
   width: 100%;
-  position: relative; /* Убрано absolute, чтобы не перекрывать */
+  position: relative;
   color: #fff;
 }
 
@@ -131,7 +131,7 @@ body.dark-mode::after {
 
 .carousel-control-prev:hover, .carousel-control-next:hover {
   opacity: 1;
-  transform: scale(1.1); /* Увеличение при наведении */
+  transform: scale(1.1);
 }
 
 .carousel-control-prev-icon, .carousel-control-next-icon {
@@ -150,6 +150,17 @@ body.dark-mode::after {
 }
 
 /* Галерея */
+.gallery-item {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+  transition: transform 0.2s;
+}
+
 .gallery-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
