@@ -33,19 +33,6 @@ title: Статьи
     <span class="visually-hidden">Следующий</span>
   </button>
 </div>
-
-<!-- Список всех статей -->
-  {% for post in site.posts %}
-  <div class="card neural-card">
-    <a href="{{ post.url | relative_url }}">
-      {% assign image_path = post.image | default: '/assets/images/posts/placeholder.png' %}
-      <img src="{{ image_path | relative_url }}" alt="{{ post.title | escape }}" loading="lazy">
-    </a>
-    <h3><a href="{{ post.url | relative_url }}">{{ post.title | escape }}</a></h3>
-    <p>{{ post.date | date: "%B %d, %Y" }}</p>
-    <p>{{ post.excerpt | strip_html | truncate: 150, "..." }}</p>
-  </div>
-  {% endfor %}
 {% else %}
-  <p>Пока нет статей.</p>
+<p>Пока нет статей.</p>
 {% endif %}
