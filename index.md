@@ -6,7 +6,12 @@ dark_mode: false
 ---
 <main>
   <section class="welcome-section">
-    <h2 class="spread-text">Добро пожаловать в мой блог</h2>
+    <h2 class="spread-text">
+      <span>Д</span><span>о</span><span>б</span><span>р</span><span>о</span>
+      <span>п</span><span>о</span><span>ж</span><span>а</span><span>л</span><span>о</span><span>в</span><span>а</span><span>т</span><span>ь</span>
+      <span>в</span><span>м</span><span>о</span><span>й</span>
+      <span>б</span><span>л</span><span>о</span><span>г</span>
+    </h2>
   </section>
   {% if site.posts.size > 0 %}
     <div class="latest-post">
