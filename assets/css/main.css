@@ -93,10 +93,11 @@ body.dark-mode::after {
   position: relative;
 }
 
-/* Анимация текста (попарное появление из центра) */
+/* Анимация текста (появление из центра с разъездом) */
 .welcome-section {
   padding: 20px 0;
   text-align: center;
+  position: relative;
 }
 
 .spread-text {
@@ -106,12 +107,14 @@ body.dark-mode::after {
   padding: 10px;
   white-space: nowrap;
   position: relative;
+  overflow: visible; /* Убедимся, что анимация видна */
 }
 
 .spread-text span {
   display: inline-block;
   opacity: 0;
   transition: opacity 0.3s ease, transform 0.3s ease;
+  position: relative;
 }
 
 /* 3D-стеклянные карточки */
