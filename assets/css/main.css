@@ -61,6 +61,28 @@ body.dark-mode::after {
   z-index: -1; /* Оверлей ниже контента */
 }
 
+.hero-content {
+  position: relative;
+  z-index: 2; /* Контент шапки выше оверлея */
+}
+
+.nav-menu {
+  margin: 20px 0;
+}
+
+.nav-link {
+  color: #00e5ff;
+  text-decoration: none;
+  margin: 0 15px;
+  font-size: 1.1em;
+  transition: color 0.3s ease;
+}
+
+.nav-link:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+
 /* Переключатель темной темы */
 .theme-toggle {
   padding: 5px 15px;
@@ -68,7 +90,7 @@ body.dark-mode::after {
   border-radius: 5px;
   cursor: pointer;
   z-index: 10; /* Выше оверлея шапки */
-  position: relative; /* Для корректного z-index */
+  position: relative;
 }
 
 /* 3D-стеклянные карточки */
@@ -154,7 +176,7 @@ body.dark-mode::after {
   align-items: center;
   justify-content: center;
   transition: opacity 0.3s ease, transform 0.3s ease;
-  z-index: 10; /* Выше оверлея шапки */
+  z-index: 20; /* Выше оверлея шапки и контента */
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
@@ -292,6 +314,11 @@ body.dark-mode::after {
   .carousel-control-prev, .carousel-control-next {
     width: 40px;
     height: 40px;
+  }
+
+  .nav-link {
+    margin: 0 10px;
+    font-size: 1em;
   }
 }
 
