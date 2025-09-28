@@ -19,7 +19,7 @@ body::before {
   height: 100%;
   background: inherit;
   transform: translateZ(-1px) scale(1.1);
-  z-index: -2; /* Уменьшен z-index для фона */
+  z-index: -2;
 }
 
 /* Темный режим */
@@ -91,6 +91,28 @@ body.dark-mode::after {
   cursor: pointer;
   z-index: 10;
   position: relative;
+}
+
+/* Бегущая строка */
+.welcome-section {
+  padding: 20px 0;
+  overflow: hidden;
+  position: relative;
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.marquee {
+  display: inline-block;
+  white-space: nowrap;
+  animation: marquee 10s linear infinite;
+  font-size: 2em;
+  color: #00e5ff;
+  padding: 10px;
+}
+
+@keyframes marquee {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
 }
 
 /* 3D-стеклянные карточки */
@@ -310,10 +332,8 @@ body.dark-mode::after {
     margin: 0 10px;
     font-size: 1em;
   }
-}
 
-/* Fallback для фоновых изображений */
-body:not(.dark-mode), .hero:not(.dark-mode) {
-  background: url(/assets/images/background.png) fixed;
-  background-size: cover;
+  .marquee {
+    font-size: 1.5em;
+  }
 }
