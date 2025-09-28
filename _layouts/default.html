@@ -41,18 +41,21 @@
       const textElement = document.querySelector('.spread-text');
       if (textElement) {
         const spans = textElement.querySelectorAll('span');
-        let index = 0;
+        let pairIndex = 0;
 
         function animateSpread() {
-          if (index < spans.length) {
-            const leftIndex = Math.floor((index - 1) / 2);
-            const rightIndex = Math.ceil((index - 1) / 2);
-            if (leftIndex >= 0) spans[leftIndex].style.opacity = '1';
-            if (rightIndex < spans.length) spans[rightIndex].style.opacity = '1';
-            index += 2;
-            setTimeout(animateSpread, 300); // Интервал 0.3 секунды
-          } else {
-            console.log('Text animation completed');
+          console.log(`Animating pair at index ${pairIndex}`);
+          if (pairIndex < Math.ceil(spans.length / 2)) {
+            const leftIndex = pairIndex;
+            const rightIndex = spans.length - 1 - pairIndex;
+            if (leftIndex < spans.length) spans[leftIndex].style.opacity = '1';
+            if (rightIndex >= 0 && rightIndex !== leftIndex) spans[rightIndex].style.opacity = '1';
+            pairIndex++;
+            if (pairIndex <= Math.ceil(spans.length / 2)) {
+              setTimeout(animateSpread, 300); // Интервал 0.3 секунды
+            } else {
+              console.log('Text animation completed');
+            }
           }
         }
 
@@ -61,7 +64,7 @@
           span.style.opacity = '0'; // Изначально скрываем все буквы
         });
         animateSpread();
-        console.log('Text animation initialized');
+        console.log('Text animation initialized, total spans:', spans.length);
       } else {
         console.log('Text animation element not found');
       }
