@@ -93,7 +93,7 @@ body.dark-mode::after {
   position: relative;
 }
 
-/* Анимация текста (сбор в центр с разъездом) */
+/* Анимация текста (поэтапный сбор и разъезд) */
 .welcome-section {
   padding: 20px 0;
   text-align: center;
