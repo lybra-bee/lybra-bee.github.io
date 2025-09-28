@@ -36,33 +36,58 @@
       this.textContent = document.body.classList.contains('dark-mode') ? 'Светлая тема' : 'Темная тема';
     });
 
-    // Анимация текста (попарное появление)
+    // Анимация текста (появление из центра с разъездом и зацикливание)
     document.addEventListener('DOMContentLoaded', () => {
       const textElement = document.querySelector('.spread-text');
       if (textElement) {
         const spans = textElement.querySelectorAll('span');
         let pairIndex = 0;
 
+        function resetAnimation() {
+          spans.forEach(span => {
+            span.style.opacity = '0';
+            span.style.transform = 'translateX(0)';
+            span.style.transition = 'none'; // Сброс переходов
+          });
+          setTimeout(() => {
+            spans.forEach(span => {
+              span.style.transition = 'opacity 0.3s ease, transform 0.3s ease'; // Восстановление переходов
+            });
+          }, 10);
+        }
+
         function animateSpread() {
           console.log(`Animating pair at index ${pairIndex}`);
           if (pairIndex < Math.ceil(spans.length / 2)) {
             const leftIndex = pairIndex;
             const rightIndex = spans.length - 1 - pairIndex;
-            if (leftIndex < spans.length) spans[leftIndex].style.opacity = '1';
-            if (rightIndex >= 0 && rightIndex !== leftIndex) spans[rightIndex].style.opacity = '1';
+            const offset = 20 * (pairIndex + 1); // Увеличиваем смещение для эффекта разъезда
+            if (leftIndex < spans.length) {
+              spans[leftIndex].style.opacity = '1';
+              spans[leftIndex].style.transform = `translateX(-${offset}px)`;
+            }
+            if (rightIndex >= 0 && rightIndex !== leftIndex) {
+              spans[rightIndex].style.opacity = '1';
+              spans[rightIndex].style.transform = `translateX(${offset}px)`;
+            }
             pairIndex++;
             if (pairIndex <= Math.ceil(spans.length / 2)) {
               setTimeout(animateSpread, 300); // Интервал 0.3 секунды
             } else {
               console.log('Text animation completed');
+              setTimeout(loopAnimation, 1000); // Задержка перед повтором
             }
           }
         }
 
+        function loopAnimation() {
+          pairIndex = 0;
+          resetAnimation();
+          setTimeout(animateSpread, 500); // Задержка перед началом нового цикла
+        }
+
         // Инициализация анимации
-        spans.forEach(span => {
-          span.style.opacity = '0'; // Изначально скрываем все буквы
-        });
+        resetAnimation();
         animateSpread();
         console.log('Text animation initialized, total spans:', spans.length);
       } else {
