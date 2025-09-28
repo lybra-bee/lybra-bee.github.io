@@ -1,11 +1,9 @@
 ---
 layout: default
 title: Статьи
+description: Последние обзоры и уроки по искусственному интеллекту.
 ---
 <h1>Все статьи</h1>
-
-{% if site.posts.size > 0 %}
-<!-- Карусель статей -->
 <div id="articlesCarousel" class="carousel slide mb-5" data-bs-ride="carousel">
   <div class="carousel-inner">
     {% for post in site.posts limit: 10 %}
@@ -15,7 +13,7 @@ title: Статьи
           {% assign image_path = post.image | default: '/assets/images/posts/placeholder.png' %}
           <img src="{{ image_path | relative_url }}" class="carousel-image" alt="{{ post.title | escape }}" loading="lazy">
         </a>
-        <div class="carousel-caption d-block">
+        <div class="carousel-caption">
           <h3><a href="{{ post.url | relative_url }}">{{ post.title | escape }}</a></h3>
           <p class="post-date">{{ post.date | date: "%B %d, %Y" }}</p>
           <p>{{ post.content | strip_html | truncate: 100, "..." }}</p>
@@ -33,6 +31,6 @@ title: Статьи
     <span class="visually-hidden">Следующий</span>
   </button>
 </div>
-{% else %}
+{% if site.posts.size == 0 %}
 <p>Пока нет статей.</p>
 {% endif %}
