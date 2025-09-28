@@ -24,8 +24,7 @@ body::before {
 /* Темный режим */
 body.dark-mode {
   background-color: #121212;
-  /* Сохраняем фоновое изображение, но добавляем тёмный оверлей */
-  position: relative;
+  /* Сохраняем фоновое изображение с уменьшенным оверлеем */
 }
 
 body.dark-mode::after {
@@ -35,7 +34,7 @@ body.dark-mode::after {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.3); /* Уменьшенная прозрачность */
   z-index: -1;
 }
 
@@ -60,11 +59,6 @@ body.dark-mode::after {
   height: 100%;
   background: rgba(0, 0, 0, 0.5);
   z-index: -1;
-}
-
-body.dark-mode .hero {
-  background-color: #1a1a1a;
-  /* Сохраняем фон, но добавляем оверлей */
 }
 
 /* Карточки (glassmorphism) */
@@ -93,38 +87,51 @@ body.dark-mode .hero {
 }
 
 /* Карусель */
+.carousel-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
 .carousel-image {
   max-width: 100%;
-  height: auto;
+  max-height: 400px;
   object-fit: cover;
   border-radius: 10px;
-  display: block;
-  margin: 0 auto;
+  margin-bottom: 10px; /* Отступ между изображением и текстом */
 }
 
 .carousel-caption {
-  background: rgba(0, 0, 0, 0.5);
+  background: none; /* Убрано перекрытие фона */
   padding: 10px;
   border-radius: 5px;
-  position: absolute;
-  bottom: 0;
-  left: 0;
   width: 100%;
-  text-align: center;
+  position: relative; /* Убрано absolute, чтобы не перекрывать */
+  color: #fff;
+}
+
+.carousel-caption h3, .carousel-caption p {
+  margin: 0;
+  padding: 5px;
 }
 
 /* Красивые кнопки навигации с анимацией */
 .carousel-control-prev, .carousel-control-next {
   background: linear-gradient(135deg, #0d47a1, #7b1fa2);
-  width: 40px;
-  height: 40px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
   opacity: 0.8;
-  transition: opacity 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
 .carousel-control-prev:hover, .carousel-control-next:hover {
   opacity: 1;
+  transform: scale(1.1); /* Увеличение при наведении */
 }
 
 .carousel-control-prev-icon, .carousel-control-next-icon {
@@ -170,6 +177,7 @@ body.dark-mode .hero {
 
 .latest-post img {
   max-width: 100%;
+  max-height: 400px;
   height: auto;
   display: block;
   margin: 0 auto;
@@ -204,6 +212,11 @@ body.dark-mode .hero {
 
   .carousel-image {
     max-height: 250px;
+  }
+
+  .carousel-control-prev, .carousel-control-next {
+    width: 40px;
+    height: 40px;
   }
 }
 
