@@ -27,7 +27,28 @@ body.dark-mode {
   background-image: none;  /* Отключаем изображение в темном режиме */
 }
 
-/* Шапка (hero) */
+/* ========================== */
+/* Шапка (header + hero) */
+/* ========================== */
+.site-header {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  position: relative;
+}
+
+.site-header .overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.3); /* затемнение */
+  z-index: 1;
+}
+
+.site-header nav {
+  position: relative;
+  z-index: 2;
+}
+
 .hero {
   background: url(/assets/images/header-banner.png) no-repeat center center;
   background-size: cover;
@@ -55,7 +76,9 @@ body.dark-mode .hero {
   background-image: none;
 }
 
+/* ========================== */
 /* Карточки (glassmorphism) */
+/* ========================== */
 .neural-card, .gallery-item {
   background: rgba(255, 255, 255, 0.1);  /* Полупрозрачный белый */
   backdrop-filter: blur(10px);  /* Размытие для стеклянного эффекта */
@@ -80,7 +103,9 @@ body.dark-mode .hero {
   text-decoration: underline;
 }
 
+/* ========================== */
 /* Карусель */
+/* ========================== */
 .carousel-image {
   max-width: 100%;
   max-height: 400px;
@@ -94,7 +119,9 @@ body.dark-mode .hero {
   border-radius: 5px;
 }
 
+/* ========================== */
 /* Галерея */
+/* ========================== */
 .gallery-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -114,7 +141,9 @@ body.dark-mode .hero {
   transform: scale(1.05);
 }
 
+/* ========================== */
 /* Последняя статья на главной */
+/* ========================== */
 .latest-post {
   max-width: 100%;
   margin: 20px auto;
@@ -125,9 +154,13 @@ body.dark-mode .hero {
   height: auto;
   display: block;
   margin: 0 auto;
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
 }
 
+/* ========================== */
 /* Адаптивность */
+/* ========================== */
 @media (max-width: 768px) {
   .hero {
     padding: 50px 10px;
@@ -159,12 +192,17 @@ body.dark-mode .hero {
   }
 }
 
+/* ========================== */
 /* Fallback для фоновых изображений */
-body, .hero {
-  background-color: linear-gradient(135deg, #0d47a1, #7b1fa2);  /* Резервный градиент */
+/* ========================== */
+body, .hero, .site-header {
+  background-color: #0d47a1; /* запасной цвет */
+  background-image: linear-gradient(135deg, #0d47a1, #7b1fa2);
 }
 
-/* Пагинация (если используется) */
+/* ========================== */
+/* Пагинация */
+/* ========================== */
 .pagination {
   display: flex;
   justify-content: center;
