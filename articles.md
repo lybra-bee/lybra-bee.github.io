@@ -8,7 +8,7 @@ description: Последние обзоры и уроки по искусств
   <div class="carousel-inner">
     {% for post in site.posts limit: 10 %}
     <div class="carousel-item {% if forloop.first %}active{% endif %}">
-      <div class="neural-card d-flex flex-column align-items-center text-center">
+      <div class="neural-card-3d d-flex flex-column align-items-center text-center">
         <a href="{{ post.url | relative_url }}">
           {% assign image_path = post.image | default: '/assets/images/posts/placeholder.png' %}
           <img src="{{ image_path | relative_url }}" class="carousel-image img-fluid" alt="{{ post.title | escape }}" loading="lazy">
