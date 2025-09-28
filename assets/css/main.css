@@ -143,7 +143,7 @@ body::before {
   }
 }
 
-/* Фallback для фоновых изображений */
+/* Fallback для фоновых изображений */
 body, .hero {
   fallback-background: linear-gradient(135deg, #0d47a1, #7b1fa2);
 }
