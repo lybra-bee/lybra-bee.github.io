@@ -36,13 +36,12 @@
       this.textContent = document.body.classList.contains('dark-mode') ? 'Светлая тема' : 'Темная тема';
     });
 
-    // Анимация текста (попарное появление из центра с раздвиганием)
+    // Анимация текста (попарное появление из центра)
     document.addEventListener('DOMContentLoaded', () => {
       const textElement = document.querySelector('.spread-text');
       if (textElement) {
         const spans = textElement.querySelectorAll('span');
         let index = 0;
-        let isExpanding = true;
 
         function animateSpread() {
           if (index < spans.length) {
@@ -50,38 +49,44 @@
             const rightIndex = Math.ceil((index - 1) / 2);
             if (leftIndex >= 0) {
               spans[leftIndex].style.opacity = '1';
-              spans[leftIndex].style.transform = 'translateX(-20px)'; // Раздвигание влево
+              spans[leftIndex].style.transform = 'translateX(-20px)';
             }
             if (rightIndex < spans.length) {
               spans[rightIndex].style.opacity = '1';
-              spans[rightIndex].style.transform = 'translateX(20px)'; // Раздвигание вправо
+              spans[rightIndex].style.transform = 'translateX(20px)';
             }
             index += 2;
-            setTimeout(animateSpread, 300); // Интервал 0.3 секунды для читаемости
-          } else if (isExpanding) {
-            isExpanding = false;
+            setTimeout(animateSpread, 300); // Интервал 0.3 секунды
+          } else {
+            // Оставляем текст видимым после анимации
             setTimeout(() => {
-              // Разбор (обратная анимация)
-              for (let i = spans.length - 1; i >= 0; i--) {
-                spans[i].style.opacity = '0';
-                spans[i].style.transform = 'translateY(100%)';
-              }
-              setTimeout(() => isExpanding = true, 1000); // Пауза перед сборкой
-            }, 1000); // Пауза после сборки
+              spans.forEach(span => {
+                span.style.transform = 'translateX(0)';
+              });
+            }, 300);
           }
         }
 
+        // Инициализация анимации
         animateSpread();
+        console.log('Text animation initialized');
+      } else {
+        console.log('Text animation element not found');
       }
 
       // Инициализация карусели с отладкой
       const carousel = document.getElementById('articlesCarousel');
       if (carousel) {
-        new bootstrap.Carousel(carousel, {
+        const carouselInstance = new bootstrap.Carousel(carousel, {
           interval: 3000,
           ride: 'carousel'
         });
         console.log('Carousel initialized');
+        // Проверка активного элемента
+        const activeItem = carousel.querySelector('.carousel-item.active');
+        if (!activeItem) {
+          console.log('No active carousel item found');
+        }
       } else {
         console.log('Carousel element not found');
       }
