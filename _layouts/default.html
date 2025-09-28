@@ -47,7 +47,7 @@
       if (!textElement) return;
       let displayText = '';
       for (let i = 0; i < originalText.length; i++) {
-        if (Math.random() > 0.8 || !isAssembling) { // Увеличена вероятность оставить оригинальный символ
+        if (Math.random() > 0.8 || !isAssembling) {
           displayText += originalText[i];
         } else {
           displayText += characters.charAt(Math.floor(Math.random() * characters.length));
@@ -57,12 +57,12 @@
 
       if (isAssembling && displayText === originalText) {
         isAssembling = false;
-        setTimeout(() => isAssembling = true, 2000); // Пауза 2 секунды перед разбором
+        setTimeout(() => isAssembling = true, 2000);
       } else if (!isAssembling && displayText !== originalText) {
         // Продолжаем разбирать
       }
 
-      animationFrame = setTimeout(animateText, 100); // Замедление до 100мс
+      animationFrame = setTimeout(animateText, 100);
     }
 
     if (textElement) {
@@ -71,6 +71,17 @@
 
     // Остановка анимации при выходе
     window.onbeforeunload = () => clearTimeout(animationFrame);
+
+    // Инициализация карусели
+    document.addEventListener('DOMContentLoaded', () => {
+      const carousel = document.getElementById('articlesCarousel');
+      if (carousel) {
+        new bootstrap.Carousel(carousel);
+        console.log('Carousel initialized');
+      } else {
+        console.log('Carousel element not found');
+      }
+    });
   </script>
 </body>
 </html>
