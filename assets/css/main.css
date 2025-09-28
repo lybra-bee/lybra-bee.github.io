@@ -19,7 +19,7 @@ body::before {
   height: 100%;
   background: inherit;
   transform: translateZ(-1px) scale(1.1);
-  z-index: -1;
+  z-index: -2; /* Уменьшен z-index, чтобы шапка была выше */
 }
 
 /* Темный режим */
@@ -35,7 +35,7 @@ body.dark-mode::after {
   width: 100%;
   height: 100%;
   background: rgba(0, 0, 0, 0.3);
-  z-index: -1;
+  z-index: -2;
 }
 
 /* Шапка (hero) */
@@ -47,7 +47,7 @@ body.dark-mode::after {
   color: #fff;
   text-shadow: 0 0 10px #00e5ff;
   position: relative;
-  z-index: 1;
+  z-index: 1; /* Увеличен z-index для шапки */
 }
 
 .hero::before {
@@ -58,7 +58,7 @@ body.dark-mode::after {
   width: 100%;
   height: 100%;
   background: rgba(0, 0, 0, 0.5);
-  z-index: -1;
+  z-index: -1; /* Оверлей ниже контента шапки */
 }
 
 .theme-toggle {
@@ -66,6 +66,7 @@ body.dark-mode::after {
   font-size: 1em;
   border-radius: 5px;
   cursor: pointer;
+  z-index: 2; /* Убедимся, что кнопка над оверлеем */
 }
 
 /* 3D-стеклянные карточки */
@@ -83,6 +84,7 @@ body.dark-mode::after {
   width: 80%;
   max-width: 400px;
   position: relative;
+  z-index: 1;
 }
 
 .neural-card-3d:hover {
@@ -131,6 +133,7 @@ body.dark-mode::after {
   position: relative;
   color: #fff;
   text-align: center;
+  z-index: 1;
 }
 
 .carousel-caption h3, .carousel-caption p {
@@ -225,6 +228,7 @@ body.dark-mode::after {
   text-align: center;
   color: #bbb;
   margin-top: 20px;
+  z-index: 1;
 }
 
 .footer a {
