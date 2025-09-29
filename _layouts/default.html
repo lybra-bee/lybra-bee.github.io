@@ -23,6 +23,7 @@
       </button>
     </div>
   </header>
+
   <main>
     <section class="welcome-section">
       <h2 class="spread-text">
@@ -32,108 +33,114 @@
         <span> </span><span>б</span><span>л</span><span>о</span><span>г</span>
       </h2>
     </section>
+
     {{ content }}
   </main>
+
   <footer class="footer">
     <p>&copy; {{ site.time | date: '%Y' }} Lybra Bee. Все права защищены.</p>
   </footer>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+
   <script>
-    document.getElementById('theme-toggle').addEventListener('click', function() {
-      document.body.classList.toggle('dark-mode');
-      this.textContent = document.body.classList.contains('dark-mode') ? 'Светлая тема' : 'Темная тема';
+  // Переключение темы
+  document.getElementById('theme-toggle').addEventListener('click', function() {
+    document.body.classList.toggle('dark-mode');
+    this.textContent = document.body.classList.contains('dark-mode') ? 'Светлая тема' : 'Темная тема';
+  });
+
+  // Анимация бегущей строки
+  document.addEventListener("DOMContentLoaded", () => {
+    const textContainer = document.querySelector(".spread-text");
+    if (!textContainer) return;
+    const letters = Array.from(textContainer.querySelectorAll("span"));
+    const midX = textContainer.offsetWidth / 2;
+
+    // сохраняем конечные позиции
+    letters.forEach(span => {
+      const rect = span.getBoundingClientRect();
+      const containerRect = textContainer.getBoundingClientRect();
+      const finalX = rect.left - containerRect.left;
+      span.dataset.finalX = finalX;
+      span.style.transform = `translateX(${midX - finalX}px)`; // старт в центре
+      span.style.opacity = 0;
     });
 
-    // Анимация текста (попарное появление в центре с разъездом)
-    document.addEventListener("DOMContentLoaded", () => {
-      const textContainer = document.querySelector(".spread-text");
-      if (!textContainer) {
-        console.log('Text container not found');
+    let pairIndex = 0;
+
+    function animatePair() {
+      if (pairIndex >= Math.ceil(letters.length / 2)) {
+        setTimeout(resetAnimation, 1500); // пауза перед циклом
         return;
       }
-      const letters = Array.from(textContainer.querySelectorAll("span"));
-      const midX = textContainer.offsetWidth / 2;
 
-      // Сохраняем конечные позиции
-      letters.forEach(span => {
-        const rect = span.getBoundingClientRect();
-        const containerRect = textContainer.getBoundingClientRect();
-        const finalX = rect.left - containerRect.left + (span.offsetWidth / 2); // Корректировка центра
-        span.dataset.finalX = finalX;
-        span.style.transform = `translateX(0)`; // Начало в центре
-        span.style.opacity = 0;
+      const left = letters[pairIndex];
+      const right = letters[letters.length - 1 - pairIndex];
+
+      [left, right].forEach(span => {
+        if (span) {
+          span.style.transition = "transform 0.6s ease, opacity 0.3s ease";
+          span.style.opacity = 1;
+          span.style.transform = `translateX(0)`; // едут на свои места
+        }
       });
 
-      let pairIndex = 0;
+      pairIndex++;
+      setTimeout(animatePair, 200); // скорость анимации
+    }
 
-      function animatePair() {
-        if (pairIndex >= Math.ceil(letters.length / 2)) {
-          setTimeout(animateSpread, 500); // Переход к разъезду
-          return;
-        }
+    function resetAnimation() {
+      letters.forEach(span => {
+        const finalX = span.dataset.finalX;
+        span.style.transition = "none";
+        span.style.transform = `translateX(${midX - finalX}px)`;
+        span.style.opacity = 0;
+      });
+      pairIndex = 0;
+      setTimeout(animatePair, 300); // новый цикл
+    }
 
-        const left = letters[pairIndex];
-        const right = letters[letters.length - 1 - pairIndex];
+    animatePair();
 
-        [left, right].forEach(span => {
-          if (span) {
-            span.style.transition = "opacity 0.3s ease";
-            span.style.opacity = 1; // Появление в центре
-          }
-        });
+    // ---------------------------
+    // 3D карусель статей
+    const track = document.querySelector('.carousel-3d-track');
+    if (!track) return;
 
-        pairIndex++;
-        setTimeout(animatePair, 200); // Скорость появления
-      }
+    const items = Array.from(track.children);
+    const prevBtn = document.querySelector('.carousel-3d-controls .prev');
+    const nextBtn = document.querySelector('.carousel-3d-controls .next');
+    let currentIndex = 0;
 
-      function animateSpread() {
-        let spreadIndex = 0;
-        function spreadNext() {
-          if (spreadIndex < letters.length) {
-            const span = letters[spreadIndex];
-            if (span) {
-              span.style.transition = "transform 0.6s ease";
-              const finalX = span.dataset.finalX;
-              span.style.transform = `translateX(${midX - finalX}px)`; // Разъезд к позициям
-            }
-            spreadIndex++;
-            setTimeout(spreadNext, 100); // Скорость разъезда
-          } else {
-            setTimeout(resetAnimation, 1500); // Пауза перед циклом
-          }
-        }
-        spreadNext();
-      }
+    function updateCarousel() {
+      items.forEach((item, i) => {
+        item.classList.remove('prev2', 'prev', 'active', 'next', 'next2');
+        if (i === currentIndex) item.classList.add('active');
+        if (i === currentIndex - 1) item.classList.add('prev');
+        if (i === currentIndex - 2) item.classList.add('prev2');
+        if (i === currentIndex + 1) item.classList.add('next');
+        if (i === currentIndex + 2) item.classList.add('next2');
+      });
+    }
 
-      function resetAnimation() {
-        letters.forEach(span => {
-          span.style.transition = "none";
-          span.style.transform = `translateX(0)`;
-          span.style.opacity = 0;
-        });
-        pairIndex = 0;
-        setTimeout(animatePair, 300); // Новый цикл
-      }
-
-      animatePair();
-      console.log('Text animation initialized, total letters:', letters.length);
-
-      // Инициализация карусели
-      const carousel = document.getElementById('articlesCarousel');
-      if (carousel) {
-        try {
-          const carouselInstance = new bootstrap.Carousel(carousel, {
-            interval: 3000,
-            ride: 'carousel'
-          });
-          console.log('Carousel initialized successfully');
-        } catch (e) {
-          console.error('Carousel initialization failed:', e);
-        }
-      } else {
-        console.log('Carousel element not found');
-      }
+    prevBtn.addEventListener('click', () => {
+      currentIndex = (currentIndex - 1 + items.length) % items.length;
+      updateCarousel();
     });
+
+    nextBtn.addEventListener('click', () => {
+      currentIndex = (currentIndex + 1) % items.length;
+      updateCarousel();
+    });
+
+    setInterval(() => {
+      currentIndex = (currentIndex + 1) % items.length;
+      updateCarousel();
+    }, 4000);
+
+    updateCarousel();
+  });
   </script>
 </body>
 </html>
