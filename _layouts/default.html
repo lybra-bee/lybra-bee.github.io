@@ -11,6 +11,17 @@
   <header class="hero">
     <div class="hero-content">
       <h1>{{ page.title | default: site.title }}</h1>
+
+      <!-- Блок с анимацией текста -->
+      <div class="welcome-section">
+        <div class="spread-text">
+          {% assign letters = site.title | split: "" %}
+          {% for letter in letters %}
+            <span>{{ letter }}</span>
+          {% endfor %}
+        </div>
+      </div>
+
       {% if page.description %}<p>{{ page.description }}</p>{% endif %}
       <nav class="nav-menu">
         <a href="/" class="nav-link">Главная</a>
@@ -47,68 +58,56 @@
           spans.forEach(span => {
             span.style.opacity = '0';
             span.style.transform = 'translateX(0)';
-            span.style.transition = 'none'; // Сброс переходов
+            span.style.transition = 'none';
           });
           setTimeout(() => {
             spans.forEach(span => {
-              span.style.transition = 'opacity 0.3s ease, transform 0.6s ease'; // Плавный переход
+              span.style.transition = 'opacity 0.3s ease, transform 0.6s ease';
             });
           }, 10);
         }
 
         function gatherToCenter() {
-          console.log(`Gathering letter at index ${index}`);
           if (index < spans.length) {
             spans[index].style.opacity = '1';
-            spans[index].style.transform = 'translateX(0)'; // Появление в центре
+            spans[index].style.transform = 'translateX(0)';
             index++;
-            setTimeout(gatherToCenter, 200); // Интервал 0.2 секунды для последовательного появления
+            setTimeout(gatherToCenter, 200);
           } else {
-            console.log('Gathering completed');
-            index = 0; // Сброс для разъезда
-            setTimeout(animateSpread, 500); // Переход к разъезду
+            index = 0;
+            setTimeout(animateSpread, 500);
           }
         }
 
         function animateSpread() {
-          console.log(`Spreading letter at index ${index}`);
           if (index < spans.length) {
-            const totalWidth = textElement.offsetWidth;
             const spanWidth = spans[0].offsetWidth;
-            const targetOffset = (index * spanWidth) - (spans.length * spanWidth / 2) + (spanWidth / 2);
+            const targetOffset = (index - spans.length / 2) * spanWidth;
             spans[index].style.transform = `translateX(${targetOffset}px)`;
             index++;
-            setTimeout(animateSpread, 200); // Интервал 0.2 секунды для разъезда
+            setTimeout(animateSpread, 200);
           } else {
-            console.log('Spreading completed');
-            setTimeout(loopAnimation, 1000); // Задержка перед повтором
+            setTimeout(loopAnimation, 1000);
           }
         }
 
         function loopAnimation() {
           index = 0;
           resetAnimation();
-          setTimeout(gatherToCenter, 500); // Запуск нового цикла
+          setTimeout(gatherToCenter, 500);
         }
 
-        // Инициализация анимации
         resetAnimation();
         gatherToCenter();
-        console.log('Text animation initialized, total spans:', spans.length);
-      } else {
-        console.log('Text animation element not found');
       }
 
-      // Инициализация карусели (оставим пока без изменений)
+      // Карусель
       const carousel = document.getElementById('articlesCarousel');
       if (carousel) {
-        const carouselInstance = new bootstrap.Carousel(carousel, {
+        new bootstrap.Carousel(carousel, {
           interval: 3000,
           ride: 'carousel'
         });
-        console.log('Carousel initialized');
-      } else {
-        console.log('Carousel element not found');
       }
     });
   </script>
