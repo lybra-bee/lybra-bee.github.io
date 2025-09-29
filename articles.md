@@ -5,6 +5,7 @@ description: Последние обзоры и уроки по искусств
 ---
 
 <h1>Все статьи</h1>
+
 <div id="articlesCarousel" class="carousel slide" data-bs-ride="carousel">
   <div class="carousel-inner">
     {% for post in site.posts limit: 10 %}
@@ -12,7 +13,7 @@ description: Последние обзоры и уроки по искусств
       <div class="neural-card-3d d-flex flex-column align-items-center text-center">
         <a href="{{ post.url | relative_url }}">
           {% assign image_path = post.image | default: '/assets/images/posts/placeholder.png' %}
-          <img src="{{ image_path | relative_url }}" class="carousel-image img-fluid" alt="{{ post.title | escape }}" loading="lazy">
+          <img src="{{ image_path | relative_url }}" class="carousel-image img-fluid" alt="{{ post.title | escape }}">
         </a>
         <div class="carousel-caption mt-auto w-100">
           <h3><a href="{{ post.url | relative_url }}">{{ post.title | escape }}</a></h3>
@@ -23,6 +24,7 @@ description: Последние обзоры и уроки по искусств
     </div>
     {% endfor %}
   </div>
+
   <button class="carousel-control-prev" type="button" data-bs-target="#articlesCarousel" data-bs-slide="prev">
     <span class="carousel-control-prev-icon" aria-hidden="true"></span>
     <span class="visually-hidden">Предыдущий</span>
