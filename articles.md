@@ -3,10 +3,14 @@ layout: default
 title: Статьи
 description: Последние обзоры и уроки по искусственному интеллекту.
 ---
-<h1 class="text-center mb-4">Все статьи</h1>
-
-<div id="articlesCarousel" class="carousel slide carousel-multi d-flex" data-bs-ride="carousel">
-  <div class="carousel-inner d-flex">
+<h1>Все статьи</h1>
+<div id="articlesCarousel" class="carousel slide mb-5" data-bs-ride="carousel">
+  <div class="carousel-indicators">
+    {% for post in site.posts limit: 10 %}
+    <button type="button" data-bs-target="#articlesCarousel" data-bs-slide-to="{{ forloop.index0 }}" class="{% if forloop.first %}active{% endif %}" aria-label="Slide {{ forloop.index }}"></button>
+    {% endfor %}
+  </div>
+  <div class="carousel-inner">
     {% for post in site.posts limit: 10 %}
     <div class="carousel-item {% if forloop.first %}active{% endif %}">
       <div class="neural-card-3d d-flex flex-column align-items-center text-center">
@@ -23,7 +27,6 @@ description: Последние обзоры и уроки по искусств
     </div>
     {% endfor %}
   </div>
-
   <button class="carousel-control-prev" type="button" data-bs-target="#articlesCarousel" data-bs-slide="prev">
     <span class="carousel-control-prev-icon" aria-hidden="true"></span>
     <span class="visually-hidden">Предыдущий</span>
@@ -33,28 +36,6 @@ description: Последние обзоры и уроки по искусств
     <span class="visually-hidden">Следующий</span>
   </button>
 </div>
-
 {% if site.posts.size == 0 %}
 <p>Пока нет статей.</p>
 {% endif %}
-
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-  const carouselEl = document.querySelector("#articlesCarousel");
-  if (!carouselEl) return;
-
-  const carousel = new bootstrap.Carousel(carouselEl, {
-    interval: 4000,
-    ride: 'carousel',
-    wrap: true,
-  });
-
-  // Делаем карусель мульти-карточной
-  const items = carouselEl.querySelectorAll(".carousel-item");
-  items.forEach((el) => {
-    const next = el.nextElementSibling || items[0];
-    const cloneChild = next.querySelector(".neural-card-3d").cloneNode(true);
-    el.appendChild(cloneChild);
-  });
-});
-</script>
