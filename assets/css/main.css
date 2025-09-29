@@ -1,5 +1,5 @@
 /* ==========================
-   Общие стили для body
+   Общие стили
 ========================== */
 body {
   background: url(/assets/images/background.png) fixed;
@@ -24,9 +24,6 @@ body::before {
   z-index: -2;
 }
 
-/* ==========================
-   Темный режим
-========================== */
 body.dark-mode {
   background-color: #121212;
 }
@@ -38,7 +35,7 @@ body.dark-mode::after {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0,0,0,0.3);
   z-index: -2;
 }
 
@@ -61,22 +58,13 @@ body.dark-mode::after {
   position: absolute;
   top: 0; left: 0;
   width: 100%; height: 100%;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0,0,0,0.5);
   z-index: -1;
 }
 
-.hero-content {
-  position: relative;
-  z-index: 2;
-}
+.hero-content { position: relative; z-index: 2; }
 
-/* ==========================
-   Навигация
-========================== */
-.nav-menu {
-  margin: 20px 0;
-}
-
+.nav-menu { margin: 20px 0; }
 .nav-link {
   color: #00e5ff;
   text-decoration: none;
@@ -84,15 +72,8 @@ body.dark-mode::after {
   font-size: 1.1em;
   transition: color 0.3s ease;
 }
+.nav-link:hover { color: #fff; text-decoration: underline; }
 
-.nav-link:hover {
-  color: #fff;
-  text-decoration: underline;
-}
-
-/* ==========================
-   Переключатель темной темы
-========================== */
 .theme-toggle {
   padding: 5px 15px;
   font-size: 1em;
@@ -103,14 +84,9 @@ body.dark-mode::after {
 }
 
 /* ==========================
-   Бегущая строка (spread-text)
+   Бегущая строка
 ========================== */
-.welcome-section {
-  padding: 20px 0;
-  text-align: center;
-  position: relative;
-}
-
+.welcome-section { padding: 20px 0; text-align: center; position: relative; }
 .spread-text {
   display: inline-block;
   font-size: 2em;
@@ -118,9 +94,8 @@ body.dark-mode::after {
   padding: 10px;
   white-space: nowrap;
   position: relative;
-  overflow: visible; 
+  overflow: visible;
 }
-
 .spread-text span {
   display: inline-block;
   opacity: 0;
@@ -129,59 +104,53 @@ body.dark-mode::after {
 }
 
 /* ==========================
-   3D-стеклянные карточки
+   3D карточки
 ========================== */
 .neural-card-3d {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255,255,255,0.1);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255,255,255,0.2);
   border-radius: 15px;
-  padding: 20px;
+  padding: 10px;
   margin: 0 auto;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  transform-style: preserve-3d;
   width: 200px;
   height: 300px;
-  position: relative;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  transition: transform 0.6s ease, box-shadow 0.3s ease;
+  transform-style: preserve-3d;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
 }
-
 .neural-card-3d:hover {
   transform: rotateY(10deg) scale(1.05);
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 15px 40px rgba(0,0,0,0.5);
 }
-
-.neural-card-3d a {
-  color: #e0f7fa;
-  text-decoration: none;
-}
-
-.neural-card-3d a:hover {
-  text-decoration: underline;
-}
+.neural-card-3d a { color: #e0f7fa; text-decoration: none; }
+.neural-card-3d a:hover { text-decoration: underline; }
 
 /* ==========================
    Карусель
 ========================== */
 .carousel {
   perspective: 1000px;
+  margin-bottom: 50px;
 }
-
 .carousel-inner {
-  overflow: visible;
+  overflow: hidden;
   display: flex;
   justify-content: center;
   align-items: center;
 }
-
 .carousel-item {
   display: flex;
   justify-content: center;
-  align-items: center;
+  flex: 0 0 auto;
+  transition: transform 0.5s ease;
 }
-
 .carousel-image {
-  max-width: 100%;
+  max-width: 180px;
   max-height: 180px;
   object-fit: cover;
   border-radius: 10px;
@@ -189,27 +158,18 @@ body.dark-mode::after {
 }
 
 .carousel-caption {
-  background: none;
+  background: rgba(0,0,0,0.5);
   padding: 10px;
   border-radius: 5px;
   width: 100%;
-  position: relative;
   color: #fff;
   text-align: center;
-  z-index: 1;
 }
 
-.carousel-caption h3, .carousel-caption p {
-  margin: 0;
-  padding: 5px;
-}
-
-/* Кнопки карусели */
-.carousel-control-prev,
-.carousel-control-next {
-  background: linear-gradient(135deg, #0d47a1, #7b1fa2);
-  width: 40px;
-  height: 40px;
+.carousel-control-prev, .carousel-control-next {
+  background: linear-gradient(135deg,#0d47a1,#7b1fa2);
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
   opacity: 0.8;
   display: flex;
@@ -221,58 +181,32 @@ body.dark-mode::after {
   top: 50%;
   transform: translateY(-50%);
 }
-
-.carousel-control-prev {
-  left: 10px;
-}
-
-.carousel-control-next {
-  right: 10px;
-}
-
-.carousel-control-prev:hover,
-.carousel-control-next:hover {
+.carousel-control-prev { left: 10px; }
+.carousel-control-next { right: 10px; }
+.carousel-control-prev:hover, .carousel-control-next:hover {
   opacity: 1;
   transform: translateY(-50%) scale(1.1);
-}
-
-.carousel-control-prev-icon,
-.carousel-control-next-icon {
-  background: none;
-  font-size: 24px;
-  color: #fff;
-  transition: transform 0.3s ease;
-}
-
-.carousel-control-prev:hover .carousel-control-prev-icon {
-  transform: rotate(-90deg);
-}
-
-.carousel-control-next:hover .carousel-control-next-icon {
-  transform: rotate(90deg);
 }
 
 /* ==========================
    Галерея
 ========================== */
 .gallery-item {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255,255,255,0.1);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255,255,255,0.2);
   border-radius: 10px;
   padding: 20px;
   margin-bottom: 20px;
-  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+  box-shadow: 0 8px 32px 0 rgba(31,38,135,0.37);
   transition: transform 0.2s;
 }
-
 .gallery-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill,minmax(200px,1fr));
   gap: 10px;
   padding: 20px;
 }
-
 .gallery-item img {
   width: 100%;
   height: auto;
@@ -280,24 +214,13 @@ body.dark-mode::after {
   display: block;
   transition: transform 0.2s ease;
 }
-
-.gallery-item:hover img {
-  transform: scale(1.05);
-}
-
-/* ==========================
-   Последняя статья на главной
-========================== */
-.latest-post {
-  max-width: 100%;
-  margin: 20px auto;
-}
+.gallery-item:hover img { transform: scale(1.05); }
 
 /* ==========================
    Подвал
 ========================== */
 .footer {
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0,0,0,0.7);
   padding: 20px;
   text-align: center;
   color: #bbb;
@@ -309,50 +232,14 @@ body.dark-mode::after {
    Адаптивность
 ========================== */
 @media (max-width: 768px) {
-  .hero {
-    padding: 50px 10px;
-  }
-
-  .hero h1 {
-    font-size: 1.8em;
-  }
-
-  .hero p {
-    font-size: 1em;
-  }
-
-  .latest-post img {
-    max-height: 250px;
-  }
-
-  .neural-card-3d,
-  .gallery-item {
-    padding: 10px;
-    height: 250px;
-    width: 150px;
-    max-width: 150px;
-  }
-
-  .gallery-grid {
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  }
-
-  .carousel-image {
-    max-height: 120px;
-  }
-
-  .carousel-item {
-    height: auto;
-  }
-
-  .carousel-control-prev,
-  .carousel-control-next {
-    width: 35px;
-    height: 35px;
-  }
-
-  .nav-link {
-    margin: 0 10px;
-    font-size: 1em;
-  }
+  .hero { padding: 50px 10px; }
+  .hero h1 { font-size: 1.8em; }
+  .hero p { font-size: 1em; }
+  .latest-post img { max-height: 250px; }
+  .neural-card-3d, .gallery-item { padding: 10px; height: 250px; max-width: 180px; }
+  .gallery-grid { grid-template-columns: repeat(auto-fill,minmax(150px,1fr)); }
+  .carousel-image { max-height: 150px; }
+  .carousel-item { height: auto; }
+  .carousel-control-prev, .carousel-control-next { width: 40px; height: 40px; }
+  .nav-link { margin: 0 10px; font-size: 1em; }
 }
