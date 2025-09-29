@@ -1,4 +1,6 @@
-/* Общие стили для body */
+/* ==========================
+   Общие стили для body
+========================== */
 body {
   background: url(/assets/images/background.png) fixed;
   background-size: cover;
@@ -22,7 +24,9 @@ body::before {
   z-index: -2;
 }
 
-/* Темный режим */
+/* ==========================
+   Темный режим
+========================== */
 body.dark-mode {
   background-color: #121212;
 }
@@ -38,7 +42,9 @@ body.dark-mode::after {
   z-index: -2;
 }
 
-/* Шапка (hero) */
+/* ==========================
+   Шапка (hero)
+========================== */
 .hero {
   background: url(/assets/images/header-banner.png) no-repeat center center;
   background-size: cover;
@@ -53,10 +59,8 @@ body.dark-mode::after {
 .hero::before {
   content: "";
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
   background: rgba(0, 0, 0, 0.5);
   z-index: -1;
 }
@@ -66,6 +70,9 @@ body.dark-mode::after {
   z-index: 2;
 }
 
+/* ==========================
+   Навигация
+========================== */
 .nav-menu {
   margin: 20px 0;
 }
@@ -83,7 +90,9 @@ body.dark-mode::after {
   text-decoration: underline;
 }
 
-/* Переключатель темной темы */
+/* ==========================
+   Переключатель темной темы
+========================== */
 .theme-toggle {
   padding: 5px 15px;
   font-size: 1em;
@@ -93,7 +102,9 @@ body.dark-mode::after {
   position: relative;
 }
 
-/* Анимация текста (появление в центре с разъездом) */
+/* ==========================
+   Бегущая строка (spread-text)
+========================== */
 .welcome-section {
   padding: 20px 0;
   text-align: center;
@@ -105,9 +116,9 @@ body.dark-mode::after {
   font-size: 2em;
   color: #00e5ff;
   padding: 10px;
-  white-space: pre; /* сохраним пробелы */
+  white-space: nowrap;
   position: relative;
-  overflow: visible;
+  overflow: visible; 
 }
 
 .spread-text span {
@@ -117,7 +128,9 @@ body.dark-mode::after {
   position: relative;
 }
 
-/* 3D-стеклянные карточки */
+/* ==========================
+   3D-стеклянные карточки
+========================== */
 .neural-card-3d {
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
@@ -126,10 +139,10 @@ body.dark-mode::after {
   padding: 20px;
   margin: 0 auto;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-  transition: transform 0.6s ease, box-shadow 0.3s ease;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
   transform-style: preserve-3d;
-  width: 250px;
-  height: 350px;
+  width: 200px;
+  height: 300px;
   position: relative;
 }
 
@@ -147,34 +160,101 @@ body.dark-mode::after {
   text-decoration: underline;
 }
 
-/* 3D-карусель */
-.carousel-3d-track {
+/* ==========================
+   Карусель
+========================== */
+.carousel {
+  perspective: 1000px;
+}
+
+.carousel-inner {
+  overflow: visible;
   display: flex;
   justify-content: center;
   align-items: center;
-  perspective: 1200px;
-  position: relative;
+}
+
+.carousel-item {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.carousel-image {
+  max-width: 100%;
+  max-height: 180px;
+  object-fit: cover;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+
+.carousel-caption {
+  background: none;
+  padding: 10px;
+  border-radius: 5px;
   width: 100%;
-  height: 400px;
-  margin: 0 auto 40px auto;
+  position: relative;
+  color: #fff;
+  text-align: center;
+  z-index: 1;
 }
 
-.carousel-3d-track > .neural-card-3d {
+.carousel-caption h3, .carousel-caption p {
+  margin: 0;
+  padding: 5px;
+}
+
+/* Кнопки карусели */
+.carousel-control-prev,
+.carousel-control-next {
+  background: linear-gradient(135deg, #0d47a1, #7b1fa2);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  opacity: 0.8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  z-index: 20;
   position: absolute;
-  opacity: 0;
-  transform: scale(0.5) translateX(0px) rotateY(0deg);
-  transition: transform 0.6s ease, opacity 0.6s ease;
-  z-index: 0;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
-/* Позиции соседних карточек */
-.carousel-3d-track > .prev2 { transform: translateX(-200px) scale(0.5) rotateY(25deg); opacity: 0.3; z-index: 1; }
-.carousel-3d-track > .prev  { transform: translateX(-120px) scale(0.7) rotateY(15deg); opacity: 0.6; z-index: 2; }
-.carousel-3d-track > .active{ transform: translateX(0) scale(1) rotateY(0deg); opacity: 1; z-index: 3; }
-.carousel-3d-track > .next  { transform: translateX(120px) scale(0.7) rotateY(-15deg); opacity: 0.6; z-index: 2; }
-.carousel-3d-track > .next2 { transform: translateX(200px) scale(0.5) rotateY(-25deg); opacity: 0.3; z-index: 1; }
+.carousel-control-prev {
+  left: 10px;
+}
 
-/* Галерея */
+.carousel-control-next {
+  right: 10px;
+}
+
+.carousel-control-prev:hover,
+.carousel-control-next:hover {
+  opacity: 1;
+  transform: translateY(-50%) scale(1.1);
+}
+
+.carousel-control-prev-icon,
+.carousel-control-next-icon {
+  background: none;
+  font-size: 24px;
+  color: #fff;
+  transition: transform 0.3s ease;
+}
+
+.carousel-control-prev:hover .carousel-control-prev-icon {
+  transform: rotate(-90deg);
+}
+
+.carousel-control-next:hover .carousel-control-next-icon {
+  transform: rotate(90deg);
+}
+
+/* ==========================
+   Галерея
+========================== */
 .gallery-item {
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
@@ -205,13 +285,17 @@ body.dark-mode::after {
   transform: scale(1.05);
 }
 
-/* Последняя статья на главной */
+/* ==========================
+   Последняя статья на главной
+========================== */
 .latest-post {
   max-width: 100%;
   margin: 20px auto;
 }
 
-/* Подвал */
+/* ==========================
+   Подвал
+========================== */
 .footer {
   background: rgba(0, 0, 0, 0.7);
   padding: 20px;
@@ -221,7 +305,9 @@ body.dark-mode::after {
   z-index: 1;
 }
 
-/* Адаптивность */
+/* ==========================
+   Адаптивность
+========================== */
 @media (max-width: 768px) {
   .hero {
     padding: 50px 10px;
@@ -239,10 +325,12 @@ body.dark-mode::after {
     max-height: 250px;
   }
 
-  .neural-card-3d, .gallery-item {
+  .neural-card-3d,
+  .gallery-item {
     padding: 10px;
-    height: 300px;
-    width: 200px;
+    height: 250px;
+    width: 150px;
+    max-width: 150px;
   }
 
   .gallery-grid {
@@ -250,6 +338,21 @@ body.dark-mode::after {
   }
 
   .carousel-image {
-    max-height: 200px;
+    max-height: 120px;
+  }
+
+  .carousel-item {
+    height: auto;
+  }
+
+  .carousel-control-prev,
+  .carousel-control-next {
+    width: 35px;
+    height: 35px;
+  }
+
+  .nav-link {
+    margin: 0 10px;
+    font-size: 1em;
   }
 }
