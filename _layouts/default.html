@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{ page.title }} | {{ site.title }}</title>
-  <meta name="description" content="{{ page.description | default: site.description }}">
-  <link rel="stylesheet" href="{{ '/assets/css/style.css' | relative_url }}">
+  <title>{{ page.title | default: site.title }}</title>
+  <link rel="stylesheet" href="/assets/css/main.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐝</text></svg>" type="image/svg+xml">
   <style>
     body {
       margin: 0;
@@ -14,26 +14,15 @@
       color: #e0f7fa;
     }
 
-    header {
-      background: rgba(0, 0, 0, 0.7);
-      padding: 1rem;
+    .hero {
+      background: url('/assets/images/header-banner.png') no-repeat center center/cover;
+      padding: 5rem 2rem;
       text-align: center;
+      color: #fff;
+      position: relative;
+      z-index: 1;
     }
 
-    main {
-      padding: 2rem;
-      max-width: 900px;
-      margin: auto;
-    }
-
-    footer {
-      background: rgba(0, 0, 0, 0.7);
-      text-align: center;
-      padding: 1rem;
-      margin-top: 2rem;
-    }
-
-    /* Анимация букв */
     .spread-text {
       display: flex;
       justify-content: center;
@@ -49,74 +38,87 @@
       opacity: 0;
       transform: translateX(0);
       transition: transform 1s ease, opacity 0.5s ease;
-      position: relative;
     }
 
     .spread-text span.active {
       opacity: 1;
     }
+
+    /* Остальные стили (карточки, галерея, подвал) можно подключить из main.css */
   </style>
 </head>
-<body>
-  <header>
-    <h1>{{ site.title }}</h1>
+<body class="{% if site.dark_mode or page.dark_mode %}dark-mode{% endif %}">
+  <header class="hero">
+    <h1 class="spread-text">
+      <span>Д</span><span>о</span><span>б</span><span>р</span><span>о</span>
+      <span> </span><span>п</span><span>о</span><span>ж</span><span>а</span>
+      <span>л</span><span>о</span><span>в</span><span>а</span><span>т</span><span>ь</span>
+      <span> </span><span>в</span><span> </span><span>м</span><span>о</span><span>й</span>
+      <span> </span><span>б</span><span>л</span><span>о</span><span>г</span>
+    </h1>
   </header>
 
   <main>
     {{ content }}
   </main>
 
-  <footer>
-    <p>&copy; {{ site.time | date: "%Y" }} {{ site.title }}. Все права защищены.</p>
+  <footer class="footer">
+    <p>&copy; {{ site.time | date: '%Y' }} Lybra Bee. Все права защищены.</p>
   </footer>
 
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
   <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const textContainer = document.querySelector(".spread-text");
-      if (!textContainer) return;
+  document.addEventListener("DOMContentLoaded", () => {
+    const textContainer = document.querySelector(".spread-text");
+    if (!textContainer) return;
 
-      const letters = Array.from(textContainer.querySelectorAll("span"));
-      const midX = textContainer.offsetWidth / 2;
+    const letters = Array.from(textContainer.querySelectorAll("span"));
+    const midX = textContainer.offsetWidth / 2;
 
-      // ставим все буквы в центр
-      letters.forEach(span => {
-        const rect = span.getBoundingClientRect();
-        const containerRect = textContainer.getBoundingClientRect();
-        const finalX = rect.left - containerRect.left; // конечная позиция
-        span.dataset.finalX = finalX;
-        span.style.transform = `translateX(${midX - finalX}px)`; // все в центр
-      });
+    // сохраняем конечные позиции
+    letters.forEach(span => {
+      const rect = span.getBoundingClientRect();
+      const containerRect = textContainer.getBoundingClientRect();
+      const finalX = rect.left - containerRect.left;
+      span.dataset.finalX = finalX;
+      span.style.transform = `translateX(${midX - finalX}px)`; // все в центр
+    });
 
-      let pairIndex = 0;
-      function animatePair() {
-        if (pairIndex >= letters.length) {
-          // перезапуск цикла
-          pairIndex = 0;
-          setTimeout(() => {
-            letters.forEach(span => {
-              const finalX = span.dataset.finalX;
-              span.style.opacity = 0;
-              span.style.transform = `translateX(${midX - finalX}px)`;
-            });
-            setTimeout(animatePair, 500);
-          }, 3000);
-          return;
-        }
-
-        const pair = letters.slice(pairIndex, pairIndex + 2);
-        pair.forEach(span => {
-          requestAnimationFrame(() => {
-            span.classList.add("active");
-            span.style.transform = `translateX(0)`; // на своё место
+    let step = 0;
+    function animatePair() {
+      if (step >= Math.ceil(letters.length / 2)) {
+        step = 0;
+        setTimeout(() => {
+          letters.forEach(span => {
+            const finalX = span.dataset.finalX;
+            span.style.opacity = 0;
+            span.style.transform = `translateX(${midX - finalX}px)`;
+            span.classList.remove("active");
           });
-        });
-
-        pairIndex += 2;
-        setTimeout(animatePair, 600); // задержка между парами
+          setTimeout(animatePair, 500);
+        }, 3000);
+        return;
       }
 
-      animatePair();
-    });
+      const left = letters[step];
+      const right = letters[letters.length - 1 - step];
+
+      [left, right].forEach(span => {
+        if (span) {
+          requestAnimationFrame(() => {
+            span.classList.add("active");
+            span.style.transform = `translateX(0)`;
+          });
+        }
+      });
+
+      step++;
+      setTimeout(animatePair, 800);
+    }
+
+    animatePair();
+  });
   </script>
 </body>
 </html>
