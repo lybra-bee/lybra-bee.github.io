@@ -93,7 +93,7 @@ body.dark-mode::after {
   position: relative;
 }
 
-/* Анимация текста (появление в центре с разъездом) */
+/* Анимация текста (попарное появление и разъезд) */
 .welcome-section {
   padding: 20px 0;
   text-align: center;
@@ -105,9 +105,9 @@ body.dark-mode::after {
   font-size: 2em;
   color: #00e5ff;
   padding: 10px;
-  white-space: pre-wrap;
+  white-space: nowrap;
   position: relative;
-  overflow: visible;
+  overflow: visible; /* Убедимся, что анимация видна */
 }
 
 .spread-text span {
@@ -155,17 +155,13 @@ body.dark-mode::after {
 
 .carousel-inner {
   overflow: visible;
-  display: flex;
-  gap: 20px;
 }
 
 .carousel-item {
   display: flex;
   justify-content: center;
   align-items: center;
-  flex: 0 0 auto;
-  width: 300px;
-  transition: transform 0.6s ease;
+  height: 600px;
 }
 
 .carousel-image {
@@ -192,7 +188,7 @@ body.dark-mode::after {
   padding: 5px;
 }
 
-/* Кнопки навигации карусели */
+/* Красивые кнопки навигации с анимацией */
 .carousel-control-prev, .carousel-control-next {
   background: linear-gradient(135deg, #0d47a1, #7b1fa2);
   width: 50px;
@@ -285,12 +281,6 @@ body.dark-mode::after {
 }
 
 /* Адаптивность */
-@media (max-width: 1200px) {
-  .carousel-item {
-    width: 250px;
-  }
-}
-
 @media (max-width: 768px) {
   .hero {
     padding: 50px 10px;
