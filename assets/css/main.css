@@ -121,6 +121,7 @@ body.dark-mode::after {
 .carousel {
   perspective: 1000px;
   max-width: 100%;
+  margin: 0 auto;
 }
 
 .carousel-inner {
@@ -129,7 +130,7 @@ body.dark-mode::after {
 
 .carousel-item {
   display: block; /* Убираем flex для корректного слайдера */
-  height: auto; /* Убираем фиксированную высоту */
+  text-align: center;
 }
 
 .carousel-image {
