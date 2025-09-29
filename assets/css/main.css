@@ -1,4 +1,4 @@
-/* ----------------------------- Общие стили ----------------------------- */
+/* Общие стили для body */
 body {
   background: url(/assets/images/background.png) fixed;
   background-size: cover;
@@ -38,7 +38,7 @@ body.dark-mode::after {
   z-index: -2;
 }
 
-/* ----------------------------- Шапка (hero) ----------------------------- */
+/* Шапка (hero) */
 .hero {
   background: url(/assets/images/header-banner.png) no-repeat center center;
   background-size: cover;
@@ -83,6 +83,7 @@ body.dark-mode::after {
   text-decoration: underline;
 }
 
+/* Переключатель темной темы */
 .theme-toggle {
   padding: 5px 15px;
   font-size: 1em;
@@ -92,7 +93,7 @@ body.dark-mode::after {
   position: relative;
 }
 
-/* ----------------------------- Бегущая строка ----------------------------- */
+/* Анимация текста (появление в центре с разъездом) */
 .welcome-section {
   padding: 20px 0;
   text-align: center;
@@ -104,7 +105,7 @@ body.dark-mode::after {
   font-size: 2em;
   color: #00e5ff;
   padding: 10px;
-  white-space: nowrap;
+  white-space: pre; /* сохраним пробелы */
   position: relative;
   overflow: visible;
 }
@@ -116,7 +117,7 @@ body.dark-mode::after {
   position: relative;
 }
 
-/* ----------------------------- 3D стеклянные карточки ----------------------------- */
+/* 3D-стеклянные карточки */
 .neural-card-3d {
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
@@ -127,9 +128,8 @@ body.dark-mode::after {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
   transition: transform 0.6s ease, box-shadow 0.3s ease;
   transform-style: preserve-3d;
-  height: 500px;
-  width: 80%;
-  max-width: 400px;
+  width: 250px;
+  height: 350px;
   position: relative;
 }
 
@@ -147,7 +147,7 @@ body.dark-mode::after {
   text-decoration: underline;
 }
 
-/* ----------------------------- 3D Карусель статей ----------------------------- */
+/* 3D-карусель */
 .carousel-3d-track {
   display: flex;
   justify-content: center;
@@ -155,7 +155,7 @@ body.dark-mode::after {
   perspective: 1200px;
   position: relative;
   width: 100%;
-  height: 550px;
+  height: 400px;
   margin: 0 auto 40px auto;
 }
 
@@ -167,41 +167,14 @@ body.dark-mode::after {
   z-index: 0;
 }
 
-.carousel-3d-track > .prev2 { transform: translateX(-300px) scale(0.5) rotateY(25deg); opacity: 0.3; z-index: 1; }
-.carousel-3d-track > .prev  { transform: translateX(-150px) scale(0.7) rotateY(15deg); opacity: 0.6; z-index: 2; }
+/* Позиции соседних карточек */
+.carousel-3d-track > .prev2 { transform: translateX(-200px) scale(0.5) rotateY(25deg); opacity: 0.3; z-index: 1; }
+.carousel-3d-track > .prev  { transform: translateX(-120px) scale(0.7) rotateY(15deg); opacity: 0.6; z-index: 2; }
 .carousel-3d-track > .active{ transform: translateX(0) scale(1) rotateY(0deg); opacity: 1; z-index: 3; }
-.carousel-3d-track > .next  { transform: translateX(150px) scale(0.7) rotateY(-15deg); opacity: 0.6; z-index: 2; }
-.carousel-3d-track > .next2 { transform: translateX(300px) scale(0.5) rotateY(-25deg); opacity: 0.3; z-index: 1; }
+.carousel-3d-track > .next  { transform: translateX(120px) scale(0.7) rotateY(-15deg); opacity: 0.6; z-index: 2; }
+.carousel-3d-track > .next2 { transform: translateX(200px) scale(0.5) rotateY(-25deg); opacity: 0.3; z-index: 1; }
 
-.carousel-3d-controls {
-  text-align: center;
-  margin-top: 10px;
-}
-
-.carousel-3d-controls button {
-  padding: 8px 16px;
-  margin: 0 10px;
-  font-size: 1em;
-  background: linear-gradient(135deg, #0d47a1, #7b1fa2);
-  color: #fff;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  transition: transform 0.3s ease;
-}
-
-.carousel-3d-controls button:hover {
-  transform: scale(1.05);
-}
-
-/* ----------------------------- Карусель Bootstrap (на всякий случай) ----------------------------- */
-.carousel-inner { overflow: visible; }
-.carousel-item { display: flex; justify-content: center; align-items: center; height: 600px; }
-.carousel-image { max-width: 100%; max-height: 300px; object-fit: cover; border-radius: 10px; margin-bottom: 10px; }
-.carousel-caption { background: none; padding: 10px; border-radius: 5px; width: 100%; position: relative; color: #fff; text-align: center; z-index: 1; }
-.carousel-caption h3, .carousel-caption p { margin: 0; padding: 5px; }
-
-/* ----------------------------- Галерея ----------------------------- */
+/* Галерея */
 .gallery-item {
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
@@ -232,10 +205,13 @@ body.dark-mode::after {
   transform: scale(1.05);
 }
 
-/* ----------------------------- Последняя статья на главной ----------------------------- */
-.latest-post { max-width: 100%; margin: 20px auto; }
+/* Последняя статья на главной */
+.latest-post {
+  max-width: 100%;
+  margin: 20px auto;
+}
 
-/* ----------------------------- Подвал ----------------------------- */
+/* Подвал */
 .footer {
   background: rgba(0, 0, 0, 0.7);
   padding: 20px;
@@ -245,21 +221,35 @@ body.dark-mode::after {
   z-index: 1;
 }
 
-/* ----------------------------- Адаптивность ----------------------------- */
+/* Адаптивность */
 @media (max-width: 768px) {
-  .hero { padding: 50px 10px; }
-  .hero h1 { font-size: 1.8em; }
-  .hero p { font-size: 1em; }
+  .hero {
+    padding: 50px 10px;
+  }
 
-  .latest-post img { max-height: 250px; }
-  .neural-card-3d, .gallery-item { padding: 10px; height: 400px; max-width: 300px; }
+  .hero h1 {
+    font-size: 1.8em;
+  }
 
-  .gallery-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
-  .carousel-image { max-height: 200px; }
-  .carousel-item { height: 500px; }
-  .carousel-3d-track { height: 450px; }
-  .carousel-3d-track > .neural-card-3d { height: 400px; }
+  .hero p {
+    font-size: 1em;
+  }
 
-  .carousel-3d-controls button { padding: 6px 12px; font-size: 0.9em; }
-  .nav-link { margin: 0 10px; font-size: 1em; }
+  .latest-post img {
+    max-height: 250px;
+  }
+
+  .neural-card-3d, .gallery-item {
+    padding: 10px;
+    height: 300px;
+    width: 200px;
+  }
+
+  .gallery-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+
+  .carousel-image {
+    max-height: 200px;
+  }
 }
