@@ -16,7 +16,7 @@ dark_mode: false
   {% if site.posts.size > 0 %}
     <div class="latest-post">
       {% assign latest_post = site.posts.first %}
-      <h2>Последняя статья</h2>
+     
       <div class="neural-card-3d d-flex flex-column align-items-center text-center">
         <a href="{{ latest_post.url | relative_url }}">
           <img src="{{ latest_post.image | default: '/assets/images/posts/placeholder.png' | relative_url }}" alt="{{ latest_post.title | escape }}" class="carousel-image img-fluid">
