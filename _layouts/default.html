@@ -28,10 +28,10 @@
   <main>
     <section class="welcome-section">
       <h2 class="spread-text">
-        <span>Д</span><span>о</span><span>б</span><span>р</span><span>о</span>
-        <span> </span><span>п</span><span>о</span><span>ж</span><span>а</span><span>л</span><span>о</span><span>в</span><span>а</span><span>т</span><span>ь</span>
-        <span> </span><span>в</span><span> </span><span>м</span><span>о</span><span>й</span>
-        <span> </span><span>б</span><span>л</span><span>о</span><span>г</span>
+        Д&nbsp;о&nbsp;б&nbsp;р&nbsp;о&nbsp;
+        п&nbsp;о&nbsp;ж&nbsp;а&nbsp;л&nbsp;о&nbsp;в&nbsp;а&nbsp;т&nbsp;ь&nbsp;
+        в&nbsp;м&nbsp;о&nbsp;й&nbsp;
+        б&nbsp;л&nbsp;о&nbsp;г
       </h2>
     </section>
 
@@ -50,14 +50,24 @@
       this.textContent = document.body.classList.contains('dark-mode') ? 'Светлая тема' : 'Темная тема';
     });
 
-    // Бегущая строка: пары букв
+    // Бегущая строка: пары букв с пробелами
     document.addEventListener("DOMContentLoaded", () => {
       const textContainer = document.querySelector(".spread-text");
       if (!textContainer) return;
-      const letters = Array.from(textContainer.querySelectorAll("span"));
+      const letters = Array.from(textContainer.childNodes).filter(n => n.nodeType === Node.TEXT_NODE || n.nodeType === Node.ELEMENT_NODE);
       const midX = textContainer.offsetWidth / 2;
 
-      letters.forEach(span => {
+      letters.forEach((span, idx) => {
+        if(span.nodeType === Node.TEXT_NODE) {
+          const txt = span.textContent.split('').map(c => `<span>${c === ' ' ? '\u00A0' : c}</span>`).join('');
+          const temp = document.createElement('span');
+          temp.innerHTML = txt;
+          span.replaceWith(...Array.from(temp.childNodes));
+        }
+      });
+
+      const allSpans = Array.from(textContainer.querySelectorAll('span'));
+      allSpans.forEach(span => {
         const rect = span.getBoundingClientRect();
         const containerRect = textContainer.getBoundingClientRect();
         const finalX = rect.left - containerRect.left;
@@ -69,12 +79,12 @@
       let pairIndex = 0;
 
       function animatePair() {
-        if (pairIndex >= Math.ceil(letters.length / 2)) {
+        if (pairIndex >= Math.ceil(allSpans.length / 2)) {
           setTimeout(resetAnimation, 1500);
           return;
         }
-        const left = letters[pairIndex];
-        const right = letters[letters.length - 1 - pairIndex];
+        const left = allSpans[pairIndex];
+        const right = allSpans[allSpans.length - 1 - pairIndex];
         [left, right].forEach(span => {
           if (span) {
             span.style.transition = "transform 0.4s ease, opacity 0.2s ease";
@@ -87,7 +97,7 @@
       }
 
       function resetAnimation() {
-        letters.forEach(span => {
+        allSpans.forEach(span => {
           const finalX = span.dataset.finalX;
           span.style.transition = "none";
           span.style.transform = `translateX(${midX - finalX}px)`;
