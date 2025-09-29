@@ -36,12 +36,12 @@
       this.textContent = document.body.classList.contains('dark-mode') ? 'Светлая тема' : 'Темная тема';
     });
 
-    // Анимация текста (попарное появление в центре с разъездом)
+    // Анимация текста (появление в центре с разъездом и зацикливание)
     document.addEventListener('DOMContentLoaded', () => {
       const textElement = document.querySelector('.spread-text');
       if (textElement) {
         const spans = textElement.querySelectorAll('span');
-        let pairIndex = 0;
+        let index = 0;
 
         function resetAnimation() {
           spans.forEach(span => {
@@ -56,63 +56,44 @@
           }, 10);
         }
 
-        function animateGather() {
-          console.log(`Gathering pair at index ${pairIndex}`);
-          if (pairIndex < Math.ceil(spans.length / 2)) {
-            const leftIndex = pairIndex;
-            const rightIndex = spans.length - 1 - pairIndex;
-            if (leftIndex < spans.length) {
-              spans[leftIndex].style.opacity = '1';
-              spans[leftIndex].style.transform = 'translateX(0)'; // Появление в центре
-            }
-            if (rightIndex >= 0 && rightIndex !== leftIndex) {
-              spans[rightIndex].style.opacity = '1';
-              spans[rightIndex].style.transform = 'translateX(0)'; // Появление в центре
-            }
-            pairIndex++;
-            if (pairIndex <= Math.ceil(spans.length / 2)) {
-              setTimeout(animateGather, 300); // Интервал 0.3 секунды для попарного появления
-            } else {
-              console.log('Gathering completed');
-              setTimeout(animateSpread, 500); // Переход к разъезду
-            }
+        function gatherToCenter() {
+          console.log(`Gathering letter at index ${index}`);
+          if (index < spans.length) {
+            spans[index].style.opacity = '1';
+            spans[index].style.transform = 'translateX(0)'; // Появление в центре
+            index++;
+            setTimeout(gatherToCenter, 200); // Интервал 0.2 секунды для последовательного появления
+          } else {
+            console.log('Gathering completed');
+            index = 0; // Сброс для разъезда
+            setTimeout(animateSpread, 500); // Переход к разъезду
           }
         }
 
         function animateSpread() {
-          console.log(`Spreading pair at index ${pairIndex - 1}`);
-          if (pairIndex > 0) {
-            const leftIndex = pairIndex - 1;
-            const rightIndex = spans.length - pairIndex;
+          console.log(`Spreading letter at index ${index}`);
+          if (index < spans.length) {
             const totalWidth = textElement.offsetWidth;
             const spanWidth = spans[0].offsetWidth;
-            if (leftIndex < spans.length) {
-              const targetOffset = (leftIndex * spanWidth) - (spans.length * spanWidth / 2) + (spanWidth / 2);
-              spans[leftIndex].style.transform = `translateX(${targetOffset}px)`;
-            }
-            if (rightIndex >= 0 && rightIndex !== leftIndex) {
-              const targetOffset = (rightIndex * spanWidth) - (spans.length * spanWidth / 2) + (spanWidth / 2);
-              spans[rightIndex].style.transform = `translateX(${targetOffset}px)`;
-            }
-            pairIndex--;
-            if (pairIndex > 0) {
-              setTimeout(animateSpread, 300); // Интервал 0.3 секунды для разъезда
-            } else {
-              console.log('Spreading completed');
-              setTimeout(loopAnimation, 1000); // Задержка перед повтором
-            }
+            const targetOffset = (index * spanWidth) - (spans.length * spanWidth / 2) + (spanWidth / 2);
+            spans[index].style.transform = `translateX(${targetOffset}px)`;
+            index++;
+            setTimeout(animateSpread, 200); // Интервал 0.2 секунды для разъезда
+          } else {
+            console.log('Spreading completed');
+            setTimeout(loopAnimation, 1000); // Задержка перед повтором
           }
         }
 
         function loopAnimation() {
-          pairIndex = 0;
+          index = 0;
           resetAnimation();
-          setTimeout(animateGather, 500); // Запуск нового цикла
+          setTimeout(gatherToCenter, 500); // Запуск нового цикла
         }
 
         // Инициализация анимации
         resetAnimation();
-        animateGather();
+        gatherToCenter();
         console.log('Text animation initialized, total spans:', spans.length);
       } else {
         console.log('Text animation element not found');
