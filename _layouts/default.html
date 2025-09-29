@@ -58,9 +58,9 @@
       letters.forEach(span => {
         const rect = span.getBoundingClientRect();
         const containerRect = textContainer.getBoundingClientRect();
-        const finalX = rect.left - containerRect.left;
+        const finalX = rect.left - containerRect.left + (span.offsetWidth / 2); // Корректировка центра
         span.dataset.finalX = finalX;
-        span.style.transform = `translateX(${midX - finalX}px)`;
+        span.style.transform = `translateX(0)`; // Начало в центре
         span.style.opacity = 0;
       });
 
@@ -68,7 +68,7 @@
 
       function animatePair() {
         if (pairIndex >= Math.ceil(letters.length / 2)) {
-          setTimeout(resetAnimation, 1500); // Пауза перед циклом
+          setTimeout(animateSpread, 500); // Переход к разъезду
           return;
         }
 
@@ -77,25 +77,38 @@
 
         [left, right].forEach(span => {
           if (span) {
-            span.style.transition = "transform 0.6s ease, opacity 0.3s ease";
-            span.style.opacity = 1;
-            span.style.transform = `translateX(0)`; // Появление в центре
-            setTimeout(() => {
-              const finalX = span.dataset.finalX;
-              span.style.transform = `translateX(${midX - finalX}px)`; // Разъезд
-            }, 100); // Задержка для видимого сбора
+            span.style.transition = "opacity 0.3s ease";
+            span.style.opacity = 1; // Появление в центре
           }
         });
 
         pairIndex++;
-        setTimeout(animatePair, 200); // Скорость анимации
+        setTimeout(animatePair, 200); // Скорость появления
+      }
+
+      function animateSpread() {
+        let spreadIndex = 0;
+        function spreadNext() {
+          if (spreadIndex < letters.length) {
+            const span = letters[spreadIndex];
+            if (span) {
+              span.style.transition = "transform 0.6s ease";
+              const finalX = span.dataset.finalX;
+              span.style.transform = `translateX(${midX - finalX}px)`; // Разъезд к позициям
+            }
+            spreadIndex++;
+            setTimeout(spreadNext, 100); // Скорость разъезда
+          } else {
+            setTimeout(resetAnimation, 1500); // Пауза перед циклом
+          }
+        }
+        spreadNext();
       }
 
       function resetAnimation() {
         letters.forEach(span => {
-          const finalX = span.dataset.finalX;
           span.style.transition = "none";
-          span.style.transform = `translateX(${midX - finalX}px)`;
+          span.style.transform = `translateX(0)`;
           span.style.opacity = 0;
         });
         pairIndex = 0;
@@ -108,11 +121,15 @@
       // Инициализация карусели
       const carousel = document.getElementById('articlesCarousel');
       if (carousel) {
-        const carouselInstance = new bootstrap.Carousel(carousel, {
-          interval: 3000,
-          ride: 'carousel'
-        });
-        console.log('Carousel initialized');
+        try {
+          const carouselInstance = new bootstrap.Carousel(carousel, {
+            interval: 3000,
+            ride: 'carousel'
+          });
+          console.log('Carousel initialized successfully');
+        } catch (e) {
+          console.error('Carousel initialization failed:', e);
+        }
       } else {
         console.log('Carousel element not found');
       }
