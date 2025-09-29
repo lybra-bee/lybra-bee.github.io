@@ -23,85 +23,10 @@
       </button>
     </div>
   </header>
-
   <main>
-    <section class="welcome-section">
-      <h2 class="spread-text">
-        <span>Д</span><span>о</span><span>б</span><span>р</span><span>о</span>
-      <span> </span><span>п</span><span>о</span><span>ж</span><span>а</span><span>л</span><span>о</span><span>в</span><span>а</span><span>т</span><span>ь</span>
-      <span> </span><span>в</span><span> </span> <span>  
-      </span><span>м</span><span>о</span><span>й</span>
-      <span> </span><span>б</span><span>л</span><span>о</span><span>г</span>
-      </h2>
-    </section>
-
     {{ content }}
   </main>
-
   <footer class="footer">
     <p>&copy; {{ site.time | date: '%Y' }} Lybra Bee. Все права защищены.</p>
   </footer>
-
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
-
-  <script>
-  document.getElementById('theme-toggle').addEventListener('click', function() {
-    document.body.classList.toggle('dark-mode');
-    this.textContent = document.body.classList.contains('dark-mode') ? 'Светлая тема' : 'Темная тема';
-  });
-
-  document.addEventListener("DOMContentLoaded", () => {
-    const textContainer = document.querySelector(".spread-text");
-    if (!textContainer) return;
-    const letters = Array.from(textContainer.querySelectorAll("span"));
-    const midX = textContainer.offsetWidth / 2;
-
-    // сохраняем конечные позиции
-    letters.forEach(span => {
-      const rect = span.getBoundingClientRect();
-      const containerRect = textContainer.getBoundingClientRect();
-      const finalX = rect.left - containerRect.left;
-      span.dataset.finalX = finalX;
-      span.style.transform = `translateX(${midX - finalX}px)`; // старт в центре
-      span.style.opacity = 0;
-    });
-
-    let pairIndex = 0;
-
-    function animatePair() {
-      if (pairIndex >= Math.ceil(letters.length / 2)) {
-        setTimeout(resetAnimation, 1500); // пауза перед циклом
-        return;
-      }
-
-      const left = letters[pairIndex];
-      const right = letters[letters.length - 1 - pairIndex];
-
-      [left, right].forEach(span => {
-        if (span) {
-          span.style.transition = "transform 0.6s ease, opacity 0.3s ease";
-          span.style.opacity = 1;
-          span.style.transform = `translateX(0)`; // едут на свои места
-        }
-      });
-
-      pairIndex++;
-      setTimeout(animatePair, 200); // скорость анимации
-    }
-
-    function resetAnimation() {
-      letters.forEach(span => {
-        const finalX = span.dataset.finalX;
-        span.style.transition = "none";
-        span.style.transform = `translateX(${midX - finalX}px)`;
-        span.style.opacity = 0;
-      });
-      pairIndex = 0;
-      setTimeout(animatePair, 300); // новый цикл
-    }
-
-    animatePair();
-  });
-  </script>
-</body>
-</html>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0
