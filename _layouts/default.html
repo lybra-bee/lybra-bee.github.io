@@ -3,129 +3,119 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{ page.title | default: site.title }}</title>
-  <link rel="stylesheet" href="/assets/css/main.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐝</text></svg>" type="image/svg+xml">
+  <title>{{ page.title }} | {{ site.title }}</title>
+  <meta name="description" content="{{ page.description | default: site.description }}">
+  <link rel="stylesheet" href="{{ '/assets/css/style.css' | relative_url }}">
   <style>
-    .spread-text {
-      display: inline-block;
-      position: relative;
-      font-size: 2em;
-      color: #00e5ff;
-      white-space: nowrap;
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #0a0a0a;
+      color: #e0f7fa;
     }
+
+    header {
+      background: rgba(0, 0, 0, 0.7);
+      padding: 1rem;
+      text-align: center;
+    }
+
+    main {
+      padding: 2rem;
+      max-width: 900px;
+      margin: auto;
+    }
+
+    footer {
+      background: rgba(0, 0, 0, 0.7);
+      text-align: center;
+      padding: 1rem;
+      margin-top: 2rem;
+    }
+
+    /* Анимация букв */
+    .spread-text {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      position: relative;
+      overflow: hidden;
+      font-size: 2rem;
+      font-weight: bold;
+    }
+
     .spread-text span {
-      position: absolute;
+      display: inline-block;
       opacity: 0;
-      transform: translateX(-50%);
+      transform: translateX(0);
+      transition: transform 1s ease, opacity 0.5s ease;
+      position: relative;
+    }
+
+    .spread-text span.active {
+      opacity: 1;
     }
   </style>
 </head>
-<body class="{% if site.dark_mode or page.dark_mode %}dark-mode{% endif %}">
-  <header class="hero">
-    <div class="hero-content">
-      <h1>{{ page.title | default: site.title }}</h1>
-      {% if page.description %}<p>{{ page.description }}</p>{% endif %}
-      <nav class="nav-menu">
-        <a href="/" class="nav-link">Главная</a>
-        <a href="/articles/" class="nav-link">Статьи</a>
-        <a href="/about/" class="nav-link">Обо мне</a>
-        <a href="/gallery/" class="nav-link">Галерея</a>
-      </nav>
-      <button id="theme-toggle" class="theme-toggle btn btn-outline-light mt-3">
-        {% if site.dark_mode or page.dark_mode %}Светлая тема{% else %}Темная тема{% endif %}
-      </button>
-    </div>
+<body>
+  <header>
+    <h1>{{ site.title }}</h1>
   </header>
 
   <main>
     {{ content }}
   </main>
 
-  <footer class="footer">
-    <p>&copy; {{ site.time | date: '%Y' }} Lybra Bee. Все права защищены.</p>
+  <footer>
+    <p>&copy; {{ site.time | date: "%Y" }} {{ site.title }}. Все права защищены.</p>
   </footer>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
-    integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
-    crossorigin="anonymous"></script>
-
   <script>
-    document.getElementById('theme-toggle').addEventListener('click', function() {
-      document.body.classList.toggle('dark-mode');
-      this.textContent = document.body.classList.contains('dark-mode') ? 'Светлая тема' : 'Темная тема';
-    });
+    document.addEventListener("DOMContentLoaded", () => {
+      const textContainer = document.querySelector(".spread-text");
+      if (!textContainer) return;
 
-    // Анимация текста: буквы появляются попарно в центре и разъезжаются по местам
-    document.addEventListener('DOMContentLoaded', () => {
-      const textElement = document.querySelector('.spread-text');
-      if (!textElement) return;
+      const letters = Array.from(textContainer.querySelectorAll("span"));
+      const midX = textContainer.offsetWidth / 2;
 
-      const spans = textElement.querySelectorAll('span');
-      const centerX = textElement.offsetWidth / 2;
-
-      // вычисляем конечные позиции
-      const positions = [];
-      let currentX = 0;
-      spans.forEach(span => {
-        const w = span.offsetWidth || 16; // запасное значение
-        positions.push(currentX);
-        currentX += w;
+      // ставим все буквы в центр
+      letters.forEach(span => {
+        const rect = span.getBoundingClientRect();
+        const containerRect = textContainer.getBoundingClientRect();
+        const finalX = rect.left - containerRect.left; // конечная позиция
+        span.dataset.finalX = finalX;
+        span.style.transform = `translateX(${midX - finalX}px)`; // все в центр
       });
-      const totalWidth = currentX;
-      const offsetStart = centerX - totalWidth / 2;
 
       let pairIndex = 0;
-
-      function reset() {
-        spans.forEach(span => {
-          span.style.opacity = '0';
-          span.style.left = centerX + 'px';
-          span.style.transform = 'translateX(-50%)';
-          span.style.transition = 'none';
-        });
-      }
-
-      function showPairs() {
-        const left = pairIndex;
-        const right = spans.length - 1 - pairIndex;
-
-        if (left > right) {
+      function animatePair() {
+        if (pairIndex >= letters.length) {
+          // перезапуск цикла
           pairIndex = 0;
-          setTimeout(spreadToFinal, 500);
+          setTimeout(() => {
+            letters.forEach(span => {
+              const finalX = span.dataset.finalX;
+              span.style.opacity = 0;
+              span.style.transform = `translateX(${midX - finalX}px)`;
+            });
+            setTimeout(animatePair, 500);
+          }, 3000);
           return;
         }
 
-        [left, right].forEach(i => {
-          if (spans[i]) {
-            spans[i].style.opacity = '1';
-          }
+        const pair = letters.slice(pairIndex, pairIndex + 2);
+        pair.forEach(span => {
+          requestAnimationFrame(() => {
+            span.classList.add("active");
+            span.style.transform = `translateX(0)`; // на своё место
+          });
         });
 
-        pairIndex++;
-        setTimeout(showPairs, 200);
+        pairIndex += 2;
+        setTimeout(animatePair, 600); // задержка между парами
       }
 
-      function spreadToFinal() {
-        spans.forEach((span, i) => {
-          span.style.transition = 'all 1s ease';
-          span.style.left = offsetStart + positions[i] + 'px';
-          span.style.transform = 'translateX(0)';
-        });
-        setTimeout(loop, 3000);
-      }
-
-      function loop() {
-        spans.forEach(span => {
-          span.style.transition = 'none';
-        });
-        reset();
-        setTimeout(showPairs, 500);
-      }
-
-      // старт цикла
-      reset();
-      showPairs();
+      animatePair();
     });
   </script>
 </body>
