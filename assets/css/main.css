@@ -21,18 +21,32 @@ body::before {
   z-index: -1;
 }
 
+/* Темный режим */
 body.dark-mode {
   background-color: #121212;
   background-image: none;
 }
 
-/* Шапка и hero */
-.site-header, .hero {
+/* ========================== */
+/* Шапка (header + hero) */
+/* ========================== */
+.site-header {
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   position: relative;
-  color: #fff;
+}
+
+.site-header .overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.3);
+  z-index: 1;
+}
+
+.site-header nav {
+  position: relative;
+  z-index: 2;
 }
 
 .hero {
@@ -62,7 +76,9 @@ body.dark-mode .hero {
   background-image: none;
 }
 
+/* ========================== */
 /* Карточки (glassmorphism) */
+/* ========================== */
 .neural-card, .gallery-item, .neural-card-3d {
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
@@ -87,38 +103,22 @@ body.dark-mode .hero {
   text-decoration: underline;
 }
 
+/* ========================== */
 /* Карусель */
 .carousel-image {
   max-width: 100%;
   max-height: 400px;
   object-fit: cover;
-  border-radius: 15px;
-  box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+  border-radius: 10px;
 }
 
 .carousel-caption {
-  background: rgba(0,0,0,0.5);
-  border-radius: 10px;
-  padding: 15px;
-  color: #fff;
-}
-
-#articlesCarousel .carousel-item {
-  transition: transform 0.6s ease-in-out;
-}
-
-#articlesCarousel .carousel-control-prev,
-#articlesCarousel .carousel-control-next {
-  width: 5%;
-}
-
-#articlesCarousel .carousel-control-prev-icon,
-#articlesCarousel .carousel-control-next-icon {
-  background-color: rgba(0,229,255,0.8);
-  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
   padding: 10px;
+  border-radius: 5px;
 }
 
+/* ========================== */
 /* Галерея */
 .gallery-grid {
   display: grid;
@@ -139,6 +139,7 @@ body.dark-mode .hero {
   transform: scale(1.05);
 }
 
+/* ========================== */
 /* Последняя статья на главной */
 .latest-post {
   max-width: 100%;
@@ -154,6 +155,7 @@ body.dark-mode .hero {
   box-shadow: 0 4px 16px rgba(0,0,0,0.3);
 }
 
+/* ========================== */
 /* Адаптивность */
 @media (max-width: 768px) {
   .hero {
@@ -173,7 +175,7 @@ body.dark-mode .hero {
     height: auto;
   }
 
-  .neural-card, .gallery-item, .neural-card-3d {
+  .neural-card, .gallery-item {
     padding: 10px;
   }
 
@@ -184,19 +186,16 @@ body.dark-mode .hero {
   .carousel-image {
     max-height: 250px;
   }
-
-  #articlesCarousel .carousel-caption {
-    font-size: 0.9em;
-    padding: 10px;
-  }
 }
 
+/* ========================== */
 /* Фоновый fallback */
 body, .hero, .site-header {
   background-color: #0d47a1;
   background-image: linear-gradient(135deg, #0d47a1, #7b1fa2);
 }
 
+/* ========================== */
 /* Пагинация */
 .pagination {
   display: flex;
