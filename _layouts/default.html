@@ -6,7 +6,6 @@
   <title>{{ page.title | default: site.title }}</title>
   <link rel="stylesheet" href="/assets/css/main.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐝</text></svg>" type="image/svg+xml">
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
 </head>
 <body class="{% if site.dark_mode or page.dark_mode %}dark-mode{% endif %}">
   <header class="hero">
@@ -42,63 +41,67 @@
     <p>&copy; {{ site.time | date: '%Y' }} Lybra Bee. Все права защищены.</p>
   </footer>
 
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+
   <script>
-    document.getElementById('theme-toggle').addEventListener('click', function() {
-      document.body.classList.toggle('dark-mode');
-      this.textContent = document.body.classList.contains('dark-mode') ? 'Светлая тема' : 'Темная тема';
+  // Переключение темы
+  document.getElementById('theme-toggle').addEventListener('click', function() {
+    document.body.classList.toggle('dark-mode');
+    this.textContent = document.body.classList.contains('dark-mode') ? 'Светлая тема' : 'Темная тема';
+  });
+
+  // Анимация бегущей строки (попарное появление)
+  document.addEventListener("DOMContentLoaded", () => {
+    const textContainer = document.querySelector(".spread-text");
+    if (!textContainer) return;
+    const letters = Array.from(textContainer.querySelectorAll("span"));
+    const midX = textContainer.offsetWidth / 2;
+
+    letters.forEach(span => {
+      const rect = span.getBoundingClientRect();
+      const containerRect = textContainer.getBoundingClientRect();
+      const finalX = rect.left - containerRect.left;
+      span.dataset.finalX = finalX;
+      span.style.transform = `translateX(${midX - finalX}px)`;
+      span.style.opacity = 0;
     });
 
-    document.addEventListener("DOMContentLoaded", () => {
-      const textContainer = document.querySelector(".spread-text");
-      if (!textContainer) return;
-      const letters = Array.from(textContainer.querySelectorAll("span"));
-      const midX = textContainer.offsetWidth / 2;
+    let pairIndex = 0;
 
+    function animatePair() {
+      if (pairIndex >= Math.ceil(letters.length / 2)) {
+        setTimeout(resetAnimation, 1500);
+        return;
+      }
+
+      const left = letters[pairIndex];
+      const right = letters[letters.length - 1 - pairIndex];
+
+      [left, right].forEach(span => {
+        if (span) {
+          span.style.transition = "transform 0.6s ease, opacity 0.3s ease";
+          span.style.opacity = 1;
+          span.style.transform = `translateX(0)`;
+        }
+      });
+
+      pairIndex++;
+      setTimeout(animatePair, 150); // скорость анимации
+    }
+
+    function resetAnimation() {
       letters.forEach(span => {
-        const rect = span.getBoundingClientRect();
-        const containerRect = textContainer.getBoundingClientRect();
-        const finalX = rect.left - containerRect.left;
-        span.dataset.finalX = finalX;
+        const finalX = span.dataset.finalX;
+        span.style.transition = "none";
         span.style.transform = `translateX(${midX - finalX}px)`;
         span.style.opacity = 0;
       });
+      pairIndex = 0;
+      setTimeout(animatePair, 300);
+    }
 
-      let pairIndex = 0;
-
-      function animatePair() {
-        if (pairIndex >= Math.ceil(letters.length / 2)) {
-          setTimeout(resetAnimation, 1500);
-          return;
-        }
-
-        const left = letters[pairIndex];
-        const right = letters[letters.length - 1 - pairIndex];
-
-        [left, right].forEach(span => {
-          if (span) {
-            span.style.transition = "transform 0.6s ease, opacity 0.3s ease";
-            span.style.opacity = 1;
-            span.style.transform = `translateX(0)`;
-          }
-        });
-
-        pairIndex++;
-        setTimeout(animatePair, 200);
-      }
-
-      function resetAnimation() {
-        letters.forEach(span => {
-          const finalX = span.dataset.finalX;
-          span.style.transition = "none";
-          span.style.transform = `translateX(${midX - finalX}px)`;
-          span.style.opacity = 0;
-        });
-        pairIndex = 0;
-        setTimeout(animatePair, 300);
-      }
-
-      animatePair();
-    });
+    animatePair();
+  });
   </script>
 </body>
 </html>
