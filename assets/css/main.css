@@ -1,79 +1,220 @@
-/* Общие стили */
+/* Общие стили для body */
 body {
+  background: url(/assets/images/background.png) fixed;
+  background-size: cover;
+  color: #fff;
   font-family: 'Arial', sans-serif;
-  background-color: #f9f9f9;
   margin: 0;
+  padding: 0;
+  transition: background-color 0.3s;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: inherit;
+  transform: translateZ(-1px) scale(1.1);
+  z-index: -1;
+}
+
+body.dark-mode {
+  background-color: #121212;
+  background-image: none;
+}
+
+/* Шапка и hero */
+.site-header, .hero {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  position: relative;
+  color: #fff;
+}
+
+.hero {
+  background: url(/assets/images/header-banner.png) no-repeat center center;
+  background-size: cover;
+  padding: 100px 20px;
+  text-align: center;
+  color: #fff;
+  text-shadow: 0 0 10px #00e5ff;
+  position: relative;
+  z-index: 1;
+}
+
+.hero::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: -1;
+}
+
+body.dark-mode .hero {
+  background-color: #1a1a1a;
+  background-image: none;
+}
+
+/* Карточки (glassmorphism) */
+.neural-card, .gallery-item, .neural-card-3d {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+  transition: transform 0.2s;
+}
+
+.neural-card:hover, .gallery-item:hover, .neural-card-3d:hover {
+  transform: translateY(-5px);
+}
+
+.neural-card a, .gallery-item a, .neural-card-3d a {
+  color: #00e5ff;
+  text-decoration: none;
+}
+
+.neural-card a:hover, .gallery-item a:hover, .neural-card-3d a:hover {
+  text-decoration: underline;
+}
+
+/* Карусель */
+.carousel-image {
+  max-width: 100%;
+  max-height: 400px;
+  object-fit: cover;
+  border-radius: 15px;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+}
+
+.carousel-caption {
+  background: rgba(0,0,0,0.5);
+  border-radius: 10px;
+  padding: 15px;
+  color: #fff;
+}
+
+#articlesCarousel .carousel-item {
+  transition: transform 0.6s ease-in-out;
+}
+
+#articlesCarousel .carousel-control-prev,
+#articlesCarousel .carousel-control-next {
+  width: 5%;
+}
+
+#articlesCarousel .carousel-control-prev-icon,
+#articlesCarousel .carousel-control-next-icon {
+  background-color: rgba(0,229,255,0.8);
+  border-radius: 50%;
+  padding: 10px;
+}
+
+/* Галерея */
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+  padding: 20px;
+}
+
+.gallery-item img {
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.2s ease;
+}
+
+.gallery-item:hover img {
+  transform: scale(1.05);
+}
+
+/* Последняя статья на главной */
+.latest-post {
+  max-width: 100%;
+  margin: 20px auto;
+}
+
+.latest-post img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .hero {
+    padding: 50px 10px;
+  }
+
+  .hero h1 {
+    font-size: 1.8em;
+  }
+
+  .hero p {
+    font-size: 1em;
+  }
+
+  .latest-post img {
+    width: 100%;
+    height: auto;
+  }
+
+  .neural-card, .gallery-item, .neural-card-3d {
+    padding: 10px;
+  }
+
+  .gallery-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+
+  .carousel-image {
+    max-height: 250px;
+  }
+
+  #articlesCarousel .carousel-caption {
+    font-size: 0.9em;
+    padding: 10px;
+  }
+}
+
+/* Фоновый fallback */
+body, .hero, .site-header {
+  background-color: #0d47a1;
+  background-image: linear-gradient(135deg, #0d47a1, #7b1fa2);
+}
+
+/* Пагинация */
+.pagination {
+  display: flex;
+  justify-content: center;
+  list-style: none;
   padding: 0;
 }
 
-h1, h2, h3 {
-  color: #333;
+.pagination li {
+  margin: 0 5px;
 }
 
-/* Навигация */
-.navbar-nav .nav-link {
-  margin-left: 1rem;
+.pagination li a {
+  color: #00e5ff;
+  text-decoration: none;
 }
 
-/* Бегущая строка */
-.marquee-container {
-  overflow: hidden;
-  white-space: nowrap;
-  background: #222;
+.pagination li.active a {
+  font-weight: bold;
   color: #fff;
-  padding: 0.5rem 0;
-}
-
-.marquee {
-  display: inline-block;
-  padding-left: 100%;
-  animation: marquee 15s linear infinite;
-}
-
-@keyframes marquee {
-  0% { transform: translateX(0%); }
-  100% { transform: translateX(-100%); }
-}
-
-/* Карусель карточек */
-.carousel-item {
-  transition: transform 0.6s ease, opacity 0.6s ease;
-}
-
-.neural-card-3d {
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.1);
-  padding: 1rem;
-  width: 100%;
-  max-width: 400px;
-  margin: 0 auto;
-}
-
-.carousel-image {
-  border-radius: 8px;
-  max-height: 250px;
-  object-fit: cover;
-}
-
-/* Кнопки управления каруселью */
-.carousel-control-prev,
-.carousel-control-next {
-  width: 3rem;
-  height: 3rem;
-  top: auto;
-  bottom: 10px;
-  background: rgba(0,0,0,0.5);
-  border-radius: 50%;
-}
-
-.carousel-control-prev-icon,
-.carousel-control-next-icon {
-  background-size: 100%, 100%;
-}
-
-/* Footer */
-footer {
-  background: #f1f1f1;
-  color: #555;
 }
