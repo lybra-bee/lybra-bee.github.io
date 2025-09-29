@@ -28,9 +28,10 @@
     <section class="welcome-section">
       <h2 class="spread-text">
         <span>Д</span><span>о</span><span>б</span><span>р</span><span>о</span>
-        <span> </span><span>п</span><span>о</span><span>ж</span><span>а</span><span>л</span><span>о</span><span>в</span><span>а</span><span>т</span><span>ь</span>
-        <span> </span><span>в</span><span> </span><span>м</span><span>о</span><span>й</span>
-        <span> </span><span>б</span><span>л</span><span>о</span><span>г</span>
+      <span> </span><span>п</span><span>о</span><span>ж</span><span>а</span><span>л</span><span>о</span><span>в</span><span>а</span><span>т</span><span>ь</span>
+      <span> </span><span>в</span><span> </span> <span>  
+      </span><span>м</span><span>о</span><span>й</span>
+      <span> </span><span>б</span><span>л</span><span>о</span><span>г</span>
       </h2>
     </section>
 
@@ -55,12 +56,13 @@
     const letters = Array.from(textContainer.querySelectorAll("span"));
     const midX = textContainer.offsetWidth / 2;
 
+    // сохраняем конечные позиции
     letters.forEach(span => {
       const rect = span.getBoundingClientRect();
       const containerRect = textContainer.getBoundingClientRect();
       const finalX = rect.left - containerRect.left;
       span.dataset.finalX = finalX;
-      span.style.transform = `translateX(${midX - finalX}px)`;
+      span.style.transform = `translateX(${midX - finalX}px)`; // старт в центре
       span.style.opacity = 0;
     });
 
@@ -68,7 +70,7 @@
 
     function animatePair() {
       if (pairIndex >= Math.ceil(letters.length / 2)) {
-        setTimeout(resetAnimation, 1500);
+        setTimeout(resetAnimation, 1500); // пауза перед циклом
         return;
       }
 
@@ -79,12 +81,12 @@
         if (span) {
           span.style.transition = "transform 0.6s ease, opacity 0.3s ease";
           span.style.opacity = 1;
-          span.style.transform = `translateX(0)`;
+          span.style.transform = `translateX(0)`; // едут на свои места
         }
       });
 
       pairIndex++;
-      setTimeout(animatePair, 200);
+      setTimeout(animatePair, 200); // скорость анимации
     }
 
     function resetAnimation() {
@@ -95,7 +97,7 @@
         span.style.opacity = 0;
       });
       pairIndex = 0;
-      setTimeout(animatePair, 300);
+      setTimeout(animatePair, 300); // новый цикл
     }
 
     animatePair();
