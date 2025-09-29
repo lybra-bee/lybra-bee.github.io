@@ -1,12 +1,12 @@
 ---
 layout: default
 title: Статьи
-description: Последние обзоры и уроки по искусственному интеллекту.
+description: Последние статьи по искусственному интеллекту.
 ---
 
 <h1>Все статьи</h1>
 
-<div id="articlesCarousel" class="carousel slide" data-bs-ride="carousel">
+<div id="articlesCarousel" class="carousel slide" data-bs-ride="carousel" data-bs-interval="5000">
   <div class="carousel-inner">
     {% for post in site.posts %}
       <div class="carousel-item {% if forloop.first %}active{% endif %}">
@@ -24,6 +24,7 @@ description: Последние обзоры и уроки по искусств
       </div>
     {% endfor %}
   </div>
+
   <button class="carousel-control-prev" type="button" data-bs-target="#articlesCarousel" data-bs-slide="prev">
     <span class="carousel-control-prev-icon"></span>
     <span class="visually-hidden">Предыдущий</span>
