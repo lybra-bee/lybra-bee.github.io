@@ -1,52 +1,76 @@
 ---
 layout: default
 title: Статьи
-description: Последние статьи по искусственному интеллекту.
+description: Последние обзоры и уроки по искусственному интеллекту.
 ---
 
 <h1>Все статьи</h1>
 
-<div id="articlesCarousel" class="carousel slide mb-5" data-bs-ride="carousel">
-  <div class="carousel-inner">
-    {% assign posts_array = site.posts | reverse %}
-    {% assign total_posts = posts_array | size %}
+<div class="articles-wrapper">
+  <div class="carousel-container">
+    {% assign posts_per_slide = 3 %}
+    {% assign slide_index = 0 %}
+    {% assign total_posts = site.posts | size %}
 
-    {% assign i = 0 %}
-    {% while i < total_posts %}
-      <div class="carousel-item {% if i == 0 %}active{% endif %}">
-        <div class="carousel-slide d-flex justify-content-center gap-4">
-          {% assign j = 0 %}
-          {% while j < 3 %}
-            {% assign post = posts_array[i | plus: j] %}
-            {% if post %}
-              <div class="neural-card-3d text-center">
-                <a href="{{ post.url | relative_url }}">
-                  {% assign image_path = post.image | default: '/assets/images/posts/placeholder.png' %}
-                  <img src="{{ image_path | relative_url }}" class="carousel-image img-fluid" alt="{{ post.title }}" loading="lazy">
-                </a>
-                <h3><a href="{{ post.url | relative_url }}">{{ post.title | escape }}</a></h3>
-                <p class="post-date">{{ post.date | date: "%B %d, %Y" }}</p>
-                <p>{{ post.content | strip_html | truncate: 100, "..." }}</p>
-              </div>
-            {% endif %}
-            {% assign j = j | plus: 1 %}
-          {% endwhile %}
-        </div>
+    {% for post in site.posts %}
+      {% assign remainder = forloop.index0 | modulo: posts_per_slide %}
+      
+      {% if remainder == 0 %}
+        {% if forloop.index0 != 0 %}
+          </div>
+        {% endif %}
+        <div class="carousel-slide">
+      {% endif %}
+      
+      <div class="neural-card-3d text-center">
+        <a href="{{ post.url | relative_url }}">
+          {% assign image_path = post.image | default: '/assets/images/posts/placeholder.png' %}
+          <img src="{{ image_path | relative_url }}" class="carousel-image img-fluid" alt="{{ post.title | escape }}" loading="lazy">
+        </a>
+        <h3><a href="{{ post.url | relative_url }}">{{ post.title | escape }}</a></h3>
+        <p class="post-date">{{ post.date | date: "%B %d, %Y" }}</p>
+        <p>{{ post.content | strip_html | truncate: 100, "..." }}</p>
       </div>
-      {% assign i = i | plus: 3 %}
-    {% endwhile %}
+
+      {% if forloop.last %}
+        </div>
+      {% endif %}
+    {% endfor %}
   </div>
 
-  <button class="carousel-control-prev" type="button" data-bs-target="#articlesCarousel" data-bs-slide="prev">
-    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-    <span class="visually-hidden">Предыдущий</span>
-  </button>
-  <button class="carousel-control-next" type="button" data-bs-target="#articlesCarousel" data-bs-slide="next">
-    <span class="carousel-control-next-icon" aria-hidden="true"></span>
-    <span class="visually-hidden">Следующий</span>
-  </button>
+  <div class="carousel-controls">
+    <button class="carousel-prev">Предыдущий</button>
+    <button class="carousel-next">Следующий</button>
+  </div>
 </div>
 
 {% if site.posts.size == 0 %}
 <p>Пока нет статей.</p>
 {% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const slides = document.querySelectorAll('.carousel-slide');
+  const prevBtn = document.querySelector('.carousel-prev');
+  const nextBtn = document.querySelector('.carousel-next');
+  let currentSlide = 0;
+
+  function showSlide(index) {
+    slides.forEach((slide, i) => {
+      slide.style.display = i === index ? 'flex' : 'none';
+    });
+  }
+
+  prevBtn.addEventListener('click', function() {
+    currentSlide = (currentSlide - 1 + slides.length) % slides.length;
+    showSlide(currentSlide);
+  });
+
+  nextBtn.addEventListener('click', function() {
+    currentSlide = (currentSlide + 1) % slides.length;
+    showSlide(currentSlide);
+  });
+
+  showSlide(currentSlide);
+});
+</script>
