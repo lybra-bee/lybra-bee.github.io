@@ -1,3 +1,4 @@
+/* Основные стили */
 body {
   background: url(/assets/images/background.png) fixed;
   background-size: cover;
@@ -6,12 +7,14 @@ body {
   margin: 0;
   padding: 0;
   transition: background-color 0.3s;
+  perspective: 1000px;
 }
 
 body.dark-mode {
   background-color: #121212;
 }
 
+/* Шапка */
 .hero {
   background: url(/assets/images/header-banner.png) no-repeat center center;
   background-size: cover;
@@ -22,18 +25,12 @@ body.dark-mode {
   position: relative;
 }
 
-.hero::before {
-  content:"";
-  position:absolute;
-  top:0; left:0; width:100%; height:100%;
-  background: rgba(0,0,0,0.5);
-  z-index:-1;
+.hero-content {
+  position: relative;
+  z-index: 2;
 }
 
 .nav-menu {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
   margin: 20px 0;
 }
 
@@ -42,103 +39,111 @@ body.dark-mode {
   text-decoration: none;
   margin: 0 15px;
   font-size: 1.1em;
+  transition: color 0.3s ease;
 }
 
 .nav-link:hover {
-  color:#fff;
+  color: #fff;
   text-decoration: underline;
 }
 
+/* Переключатель темы */
 .theme-toggle {
   padding: 5px 15px;
   font-size: 1em;
   border-radius: 5px;
   cursor: pointer;
-  margin-top:10px;
+  z-index: 10;
+  position: relative;
 }
 
+/* Бегущая строка */
 .welcome-section {
   padding: 20px 0;
   text-align: center;
+  position: relative;
 }
 
 .spread-text {
-  display: flex;
-  justify-content: center;
-  flex-wrap: nowrap;
+  display: inline-block;
   font-size: 2em;
   color: #00e5ff;
+  padding: 10px;
   white-space: nowrap;
+  position: relative;
   overflow: visible;
 }
 
 .spread-text span {
   display: inline-block;
-  opacity:0;
+  opacity: 0;
+  transition: opacity 0.3s ease, transform 0.6s ease;
   position: relative;
 }
 
+/* Карточки */
 .neural-card-3d {
-  background: rgba(255,255,255,0.1);
+  background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255,255,255,0.2);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 15px;
   padding: 20px;
-  width: 250px;
-  margin: 0 10px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-  transition: transform 0.3s ease;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  transition: transform 0.6s ease, box-shadow 0.3s ease;
+  transform-style: preserve-3d;
+  width: 90%;
+  max-width: 350px;
+  margin: auto;
 }
 
 .neural-card-3d:hover {
-  transform: scale(1.05);
+  transform: rotateY(10deg) scale(1.05);
 }
 
-.neural-card-3d a {
-  color:#e0f7fa;
-  text-decoration:none;
-}
-
-.neural-card-3d a:hover {
-  text-decoration: underline;
+/* Карусель */
+.carousel-inner {
+  display: flex;
+  flex-wrap: nowrap;
 }
 
 .carousel-item {
+  flex: 0 0 33.3333%;
+  max-width: 33.3333%;
   display: flex;
   justify-content: center;
+  padding: 10px;
 }
 
 .carousel-image {
-  width:100%;
-  height:auto;
+  max-width: 100%;
   border-radius: 10px;
 }
 
+/* Кнопки навигации */
 .carousel-control-prev, .carousel-control-next {
-  width: 40px;
-  height: 40px;
-  opacity:0.8;
+  width: 50px;
+  height: 50px;
 }
 
-.footer {
-  background: rgba(0,0,0,0.7);
-  padding: 20px;
-  text-align:center;
-  color:#bbb;
-  margin-top:20px;
-}
-
-@media (min-width: 992px) {
-  .carousel-inner {
-    display: flex;
-  }
+@media (max-width: 992px) {
   .carousel-item {
-    flex: 0 0 33.3333%;
-    max-width: 33.3333%;
+    flex: 0 0 50%;
+    max-width: 50%;
   }
 }
 
-@media (max-width: 768px) {
-  .neural-card-3d { width:180px; padding:10px; }
-  .nav-menu { flex-direction: column; align-items:center; }
+@media (max-width: 576px) {
+  .carousel-item {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+}
+
+/* Подвал */
+.footer {
+  background: rgba(0, 0, 0, 0.7);
+  padding: 20px;
+  text-align: center;
+  color: #bbb;
+  margin-top: 20px;
 }
