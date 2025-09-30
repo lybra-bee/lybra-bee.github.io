@@ -1,5 +1,5 @@
-title: Мой AI Блог и Портфолио
-description: Ежедневные статьи об ИИ и высоких технологиях
+title: "Мой AI Блог и Портфолио"
+description: "Ежедневные статьи об ИИ и высоких технологиях"
 baseurl: ""
 url: "https://lybra-bee.github.io"
 permalink: /:title/
@@ -12,13 +12,19 @@ plugins:
 paginate: 5
 paginate_path: "/articles/page:num/"
 
+collections:
+  pages:
+    output: true
+    permalink: /:path/
+
 defaults:
   - scope:
       path: ""
       type: posts
     values:
       layout: post
-      collections:
-  pages:
-    output: true
-    permalink: /:path/
+  - scope:
+      path: ""
+      type: pages
+    values:
+      layout: default
