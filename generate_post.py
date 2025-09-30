@@ -6,12 +6,9 @@ import glob
 from groq import Groq
 import requests
 
-themes = ["Прогресс нейронных сетей", "Этика ИИ", "Квантовый ИИ", "Генеративные модели", "Робототехника", "Блокчейн ИИ", "AR/VR", "Кибер ИИ", "NLP", "Автономные системы"]
 types = ["Обзор", "Урок", "Мастер-класс", "Статья"]
 
 today = datetime.date.today()
-title = random.choice(themes)
-slug = re.sub(r'[^а-яА-Яa-zA-Z0-9-]', '-', title.lower().replace(" ", "-"))
 type_ = random.choice(types)
 
 posts_dir = '_posts'
@@ -28,28 +25,66 @@ if len(post_files) > 9:
     for old_file in post_files[10:]:
         os.remove(old_file)
 
-# Генерация текста через Groq API
+# Генерация заголовка через Groq API
 groq_key = os.getenv("GROQ_API_KEY")
-content = f"# {title}\n\n## {type_}\n\nОшибка генерации текста. Сгенерируйте вручную."
+title = "Современные тенденции в искусственном интеллекте"  # заголовок по умолчанию
+
 if groq_key:
     try:
         client = Groq(api_key=groq_key)
-        chat_completion = client.chat.completions.create(
+        # Генерация заголовка на основе трендов ИИ
+        title_completion = client.chat.completions.create(
             messages=[
-                {"role": "system", "content": "Ты эксперт по ИИ и технологиям. Пиши на русском, информативно и увлекательно. Не добавляй HTML-теги."},
-                {"role": "user", "content": f"Напишите {type_.lower()} на тему '{title}' (400 слов, для блога). Формат: заголовок H1, подзаголовок H2 ({type_}), текст с абзацами."}
+                {
+                    "role": "system", 
+                    "content": "Ты эксперт по ИИ и высоким технологиям. Создай креативные заголовки на русском языке (5-10 слов) на основе последних трендов в области искусственного интеллекта, машинного обучения и высоких технологий."
+                },
+                {
+                    "role": "user", 
+                    "content": f"Придумай один заголовок {type_.lower()} (5-10 слов) на актуальную тему в области ИИ и высоких технологий. Только заголовок, без пояснений."
+                }
             ],
             model="llama-3.1-8b-instant",
-            max_tokens=600,
+            max_tokens=50,
+            temperature=0.8
+        )
+        title = title_completion.choices[0].message.content.strip()
+        # Очистка заголовка от кавычек и лишних символов
+        title = re.sub(r'^["\']|["\']$', '', title)
+        print(f"Заголовок сгенерирован: {title}")
+    except Exception as e:
+        print(f"Ошибка генерации заголовка: {str(e)}")
+
+slug = re.sub(r'[^а-яА-Яa-zA-Z0-9-]', '-', title.lower().replace(" ", "-"))
+
+# Генерация полного текста статьи
+content = f"# {title}\n\n## {type_}\n\nОшибка генерации текста. Сгенерируйте вручную."
+
+if groq_key:
+    try:
+        # Генерация полноценной статьи
+        article_completion = client.chat.completions.create(
+            messages=[
+                {
+                    "role": "system", 
+                    "content": "Ты профессиональный автор технических статей. Пиши на русском языке информативно, структурированно и увлекательно. Создавай законченные статьи с введением, основной частью и заключением."
+                },
+                {
+                    "role": "user", 
+                    "content": f"Напиши {type_.lower()} на тему '{title}' объемом 600-800 слов. Статья должна быть полной и законченной, не обрываться на середине предложения. Включи несколько разделов и подзаголовков. Формат: Заголовок H1, подзаголовок H2 с указанием типа, затем структурированный текст с абзацами и подзаголовками H3 для разделов."
+                }
+            ],
+            model="llama-3.1-8b-instant",
+            max_tokens=1500,  # Увеличиваем для более длинной статьи
             temperature=0.7
         )
-        content = chat_completion.choices[0].message.content
+        content = article_completion.choices[0].message.content
         content = re.sub(r'<[^>]+>', '', content)  # Удаление всех HTML-тегов
-        print("Текст сгенерирован успешно через Groq.")
+        print("Статья сгенерирована успешно через Groq.")
     except Exception as e:
-        print(f"Ошибка Groq API: {str(e)}")
+        print(f"Ошибка генерации статьи: {str(e)}")
 
-# Перевод темы на английский для промпта
+# Перевод заголовка на английский для промпта изображения
 if groq_key:
     try:
         translation = client.chat.completions.create(
@@ -58,7 +93,7 @@ if groq_key:
                 {"role": "user", "content": f"Переведи на английский: {title}"}
             ],
             model="llama-3.1-8b-instant",
-            max_tokens=20,
+            max_tokens=30,
             temperature=0.1
         )
         title_en = translation.choices[0].message.content.strip()
@@ -68,16 +103,15 @@ if groq_key:
 else:
     title_en = title.lower().replace(" ", "-")
 
-# Генерация изображения через Clipdrop API с подробными логами
-prompt_img = f"Futuristic illustration of {title_en}, with neural network elements in blue-purple gradient, AI high-tech theme."
+# Генерация изображения через Clipdrop API
+prompt_img = f"Futuristic digital art illustration of {title_en}, neural networks AI technology, cyberpunk style, blue purple gradient, high quality detailed"
 image_path = f"{assets_dir}/post-{post_num}.png"
 image_generated = False
 
 clipdrop_key = os.getenv("CLIPDROP_API_KEY")
 if clipdrop_key:
     clipdrop_url = "https://clipdrop-api.co/text-to-image/v1"
-    print(f"Инициализация запроса к Clipdrop. Ключ: {clipdrop_key[:8]}... (скрыт остаток)")
-    print(f"URL: {clipdrop_url}, Промпт: {prompt_img}")
+    print(f"Генерация изображения для: {title_en}")
     try:
         clipdrop_response = requests.post(
             clipdrop_url,
@@ -85,12 +119,8 @@ if clipdrop_key:
             headers={'x-api-key': clipdrop_key},
             timeout=30
         )
-        print(f"Получен ответ от Clipdrop. Статус: {clipdrop_response.status_code}")
-        print(f"Заголовки ответа: {dict(clipdrop_response.headers)}")
+        print(f"Статус генерации изображения: {clipdrop_response.status_code}")
         if clipdrop_response.status_code == 200:
-            remaining_credits = clipdrop_response.headers.get('x-remaining-credits', 'Не указано')
-            credits_consumed = clipdrop_response.headers.get('x-credits-consumed', 'Не указано')
-            print(f"Остаток кредитов: {remaining_credits}, Потрачено: {credits_consumed}")
             with open(image_path, "wb") as img_file:
                 img_file.write(clipdrop_response.content)
             print(f"Изображение успешно сохранено: {image_path}")
@@ -98,20 +128,18 @@ if clipdrop_key:
         else:
             try:
                 error_details = clipdrop_response.json()
-                print(f"Ошибка Clipdrop (HTTP {clipdrop_response.status_code}): {error_details}")
+                print(f"Ошибка Clipdrop: {error_details}")
             except ValueError:
-                print(f"Ошибка Clipdrop (HTTP {clipdrop_response.status_code}): Нет JSON-ответа, текст: {clipdrop_response.text}")
+                print(f"Ошибка Clipdrop: {clipdrop_response.text}")
     except requests.exceptions.RequestException as e:
         print(f"Ошибка запроса к Clipdrop API: {str(e)}")
-        import traceback
-        traceback.print_exc()
 
-# Fallback для ручной генерации
+# Fallback для ручной генерации изображения
 if not image_generated:
-    print(f"Не удалось сгенерировать изображение. Сгенерируйте вручную: {prompt_img}")
+    print(f"Не удалось сгенерировать изображение. Сгенерируйте вручную по промпту: {prompt_img}")
 
 # Сохранение поста
 filename = f"{posts_dir}/{today}-{slug}.md"
 with open(filename, "w", encoding="utf-8") as f:
     f.write(f"---\ntitle: \"{title}\"\ndate: {today} 00:00:00 -0000\nlayout: post\nimage: /assets/images/posts/post-{post_num}.png\n---\n{content}\n")
-print(f"Сгенерировано: {filename}")
+print(f"Сгенерирован пост: {filename}")
