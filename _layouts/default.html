@@ -26,22 +26,25 @@
   <!-- Canonical URL -->
   <link rel="canonical" href="{{ site.url }}{{ page.url }}">
   
-  <!-- Счётчики аналитики -->
-  <!-- Yandex.Metrika -->
-  <script type="text/javascript" >
-    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
-    m[i].l=1*new Date();
-    k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
-    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+  <!-- Яндекс.Метрика -->
+  <script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=104334067', 'ym');
 
-    ym(ваш_ID_счётчика, "init", {
-          clickmap:true,
-          trackLinks:true,
-          accurateTrackBounce:true,
-          webvisor:true
+    ym(104334067, 'init', {
+        ssr:true, 
+        webvisor:true, 
+        clickmap:true, 
+        ecommerce:"dataLayer", 
+        accurateTrackBounce:true, 
+        trackLinks:true
     });
   </script>
-  <noscript><div><img src="https://mc.yandex.ru/watch/ваш_ID_счётчика" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+  <noscript><div><img src="https://mc.yandex.ru/watch/104334067" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
   <!-- /Yandex.Metrika -->
 
   <!-- Google Analytics -->
@@ -91,7 +94,7 @@
     <div class="container">
       <p>&copy; {{ site.time | date: '%Y' }} Lybra Bee. Все права защищены.</p>
       <p class="footer-stats">
-        <small>Статистика посещений: <span id="visit-counter">загрузка...</span></small>
+        <small>Статистика посещений отслеживается Яндекс.Метрикой</small>
       </p>
     </div>
   </footer>
@@ -155,12 +158,6 @@
     }
 
     animatePair();
-
-    // Простой счетчик посещений (можно заменить на данные из аналитики)
-    const visitCount = localStorage.getItem('visitCount') || 0;
-    const newCount = parseInt(visitCount) + 1;
-    localStorage.setItem('visitCount', newCount);
-    document.getElementById('visit-counter').textContent = `Посещений: ${newCount}`;
   });
   </script>
 </body>
