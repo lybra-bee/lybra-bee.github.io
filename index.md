@@ -17,14 +17,17 @@ dark_mode: false
     <div class="latest-post">
       {% assign latest_post = site.posts.first %}
      
-      <div class="neural-card-3d d-flex flex-column align-items-center text-center">
-        <a href="{{ latest_post.url | relative_url }}">
-          <img src="{{ latest_post.image | default: '/assets/images/posts/placeholder.png' | relative_url }}" alt="{{ latest_post.title | escape }}" class="carousel-image img-fluid">
-        </a>
-        <div class="carousel-caption mt-auto w-100">
-          <h3><a href="{{ latest_post.url | relative_url }}" style="color: #e0f7fa;">{{ latest_post.title | escape }}</a></h3>
+      <div class="neural-card-3d main-page-card">
+        <div class="card-image-container">
+          <a href="{{ latest_post.url | relative_url }}">
+            <img src="{{ latest_post.image | default: '/assets/images/posts/placeholder.png' | relative_url }}" alt="{{ latest_post.title | escape }}" class="main-page-image">
+          </a>
+        </div>
+        <div class="card-content-container">
+          <h3><a href="{{ latest_post.url | relative_url }}">{{ latest_post.title | escape }}</a></h3>
           <p class="post-date">{{ latest_post.date | date: "%B %d, %Y" }}</p>
-          <p>{{ latest_post.content | strip_html | truncate: 100, "..." }}</p>
+          <p class="card-excerpt">{{ latest_post.content | strip_html | truncate: 100, "..." }}</p>
+          <a href="{{ latest_post.url | relative_url }}" class="btn btn-outline-light">Читать далее</a>
         </div>
       </div>
     </div>
