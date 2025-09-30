@@ -66,21 +66,31 @@ body.dark-mode::after {
   z-index: 2;
 }
 
+/* ИСПРАВЛЕНИЕ: Навигационное меню - горизонтальное расположение */
 .nav-menu {
   margin: 20px 0;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 15px;
 }
 
 .nav-link {
   color: #00e5ff;
   text-decoration: none;
-  margin: 0 15px;
   font-size: 1.1em;
   transition: color 0.3s ease;
+  padding: 8px 16px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .nav-link:hover {
   color: #fff;
-  text-decoration: underline;
+  background: rgba(0, 229, 255, 0.3);
+  text-decoration: none;
 }
 
 /* Переключатель темной темы */
@@ -117,27 +127,72 @@ body.dark-mode::after {
   position: relative;
 }
 
-/* Карусель */
+/* ИСПРАВЛЕНИЕ: Карусель - правильная работа */
 .carousel {
   perspective: 1000px;
   max-width: 100%;
   margin: 0 auto;
+  position: relative;
 }
 
 .carousel-inner {
   overflow: hidden;
   border-radius: 15px;
-  padding: 10px;
+  position: relative;
+  width: 100%;
 }
 
 .carousel-item {
   display: none;
-  text-align: center;
+  width: 100%;
+  margin-right: -100%;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
   transition: transform 0.6s ease-in-out;
+  text-align: center;
 }
 
-.carousel-item.active {
+.carousel-item.active,
+.carousel-item-next,
+.carousel-item-prev {
   display: block;
+}
+
+.carousel-item-next:not(.carousel-item-start),
+.carousel-item-prev:not(.carousel-item-end),
+.active.carousel-item-end,
+.active.carousel-item-start {
+  transform: translateX(0);
+}
+
+.carousel-item-next,
+.active.carousel-item-end {
+  transform: translateX(100%);
+}
+
+.carousel-item-prev,
+.active.carousel-item-start {
+  transform: translateX(-100%);
+}
+
+.carousel-fade .carousel-item {
+  opacity: 0;
+  transition-property: opacity;
+  transform: none;
+}
+
+.carousel-fade .carousel-item.active,
+.carousel-fade .carousel-item-next.carousel-item-start,
+.carousel-fade .carousel-item-prev.carousel-item-end {
+  z-index: 1;
+  opacity: 1;
+}
+
+.carousel-fade .active.carousel-item-start,
+.carousel-fade .active.carousel-item-end {
+  z-index: 0;
+  opacity: 0;
+  transition: opacity 0s 0.6s;
 }
 
 .carousel-image {
@@ -186,6 +241,11 @@ body.dark-mode::after {
 /* Индикаторы карусели */
 .carousel-indicators {
   bottom: -50px;
+  display: flex;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .carousel-indicators button {
@@ -196,6 +256,7 @@ body.dark-mode::after {
   background-color: rgba(255, 255, 255, 0.5);
   border: none;
   transition: background-color 0.3s ease;
+  cursor: pointer;
 }
 
 .carousel-indicators button.active {
@@ -238,17 +299,17 @@ body.dark-mode::after {
 .carousel-control-prev-icon,
 .carousel-control-next-icon {
   background: none;
-  font-size: 24px;
-  color: #fff;
-  transition: transform 0.3s ease;
+  width: 20px;
+  height: 20px;
+  background-size: 100% 100%;
 }
 
-.carousel-control-prev:hover .carousel-control-prev-icon {
-  transform: rotate(-90deg);
+.carousel-control-prev-icon {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23fff'%3e%3cpath d='M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z'/%3e%3c/svg%3e");
 }
 
-.carousel-control-next:hover .carousel-control-next-icon {
-  transform: rotate(90deg);
+.carousel-control-next-icon {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23fff'%3e%3cpath d='M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
 }
 
 /* 3D-стеклянные карточки */
@@ -382,6 +443,18 @@ body.dark-mode::after {
     font-size: 1em;
   }
 
+  /* ИСПРАВЛЕНИЕ: Навигация для мобильных */
+  .nav-menu {
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .nav-link {
+    width: 200px;
+    text-align: center;
+  }
+
   .latest-post img {
     max-height: 250px;
   }
@@ -403,11 +476,6 @@ body.dark-mode::after {
   .carousel-control-next {
     width: 40px;
     height: 40px;
-  }
-
-  .nav-link {
-    margin: 0 10px;
-    font-size: 1em;
   }
 
   .carousel-caption {
@@ -446,5 +514,10 @@ body.dark-mode::after {
   
   .article-thumbnail {
     height: 150px;
+  }
+  
+  .nav-link {
+    width: 180px;
+    font-size: 1em;
   }
 }
