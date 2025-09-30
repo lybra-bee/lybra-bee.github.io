@@ -18,3 +18,7 @@ defaults:
       type: posts
     values:
       layout: post
+      collections:
+  pages:
+    output: true
+    permalink: /:path/
