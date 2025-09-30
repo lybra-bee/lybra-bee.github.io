@@ -1111,6 +1111,12 @@ article img,
   }
 }
 /* Стили для страницы консультаций */
+.consultation-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
 .services-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -1123,6 +1129,11 @@ article img,
   background: rgba(255, 255, 255, 0.05);
   border-radius: 10px;
   border-left: 4px solid #00e5ff;
+  transition: transform 0.3s ease;
+}
+
+.service-item:hover {
+  transform: translateY(-3px);
 }
 
 .service-item h4 {
@@ -1133,26 +1144,88 @@ article img,
 .service-item ul {
   list-style: none;
   padding-left: 0;
-  margin-bottom: 20px;
+  margin-bottom: 0;
 }
 
 .service-item li {
-  padding: 5px 0;
+  padding: 8px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+  padding-left: 20px;
+}
+
+.service-item li:before {
+  content: "•";
+  color: #00e5ff;
+  position: absolute;
+  left: 0;
 }
 
 .service-item li:last-child {
   border-bottom: none;
+}
+
+.contact-methods {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.contact-method {
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  text-align: center;
+}
+
+.contact-detail {
+  display: block;
+  font-size: 1.1em;
   font-weight: bold;
   color: #00e5ff;
+  background: rgba(0, 229, 255, 0.1);
+  padding: 10px;
+  border-radius: 8px;
+  margin: 10px 0;
+  font-family: 'Courier New', monospace;
+}
+
+.process-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-top: 20px;
+}
+
+.process-step {
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.process-step h5 {
+  color: #00e5ff;
+  margin-bottom: 10px;
 }
 
 .review-item {
   background: rgba(255, 255, 255, 0.05);
-  padding: 15px;
-  border-radius: 8px;
+  padding: 20px;
+  border-radius: 10px;
   margin-bottom: 15px;
   border-left: 3px solid #00e5ff;
+}
+
+.review-item p {
+  font-style: italic;
+  margin-bottom: 5px;
+}
+
+.review-item small {
+  color: #bbb;
 }
 
 /* Адаптивность */
@@ -1161,7 +1234,12 @@ article img,
     grid-template-columns: 1fr;
   }
   
-  .payment-method {
-    margin-bottom: 20px;
+  .contact-methods {
+    grid-template-columns: 1fr;
+  }
+  
+  .process-steps {
+    grid-template-columns: 1fr;
   }
 }
+
