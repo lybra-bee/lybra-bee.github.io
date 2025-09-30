@@ -1,0 +1,25 @@
+---
+layout: null
+---
+User-agent: *
+Allow: /
+
+# Basic crawler configuration
+Crawl-delay: 1
+
+# Sitemaps
+Sitemap: {{ site.url }}/sitemap.xml
+
+# Allow all main pages
+Allow: /about/
+Allow: /articles/
+Allow: /gallery/
+
+# Allow CSS and JS
+Allow: /assets/css/
+Allow: /assets/js/
+Allow: /assets/images/
+
+# Disallow admin pages (if any)
+Disallow: /admin/
+Disallow: /private/
