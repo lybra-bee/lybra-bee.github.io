@@ -16,4 +16,39 @@ layout: default
   <div class="post-content">
     {{ content }}
   </div>
+
+  <!-- Комментарии -->
+  <div class="comments-section mt-5">
+    <h2>💬 Обсуждение статьи</h2>
+    <p>Есть вопросы или хотите поделиться опытом? Оставляйте комментарии!</p>
+    <div class="giscus"></div>
+  </div>
 </article>
+
+<script>
+function loadGiscus() {
+  const script = document.createElement('script');
+  script.src = 'https://giscus.app/client.js';
+  script.setAttribute('data-repo', 'lybra-bee/lybra-bee.github.io');
+  script.setAttribute('data-repo-id', 'R_kgDOLgSkBg');
+  script.setAttribute('data-category', 'Announcements');
+  script.setAttribute('data-category-id', 'DIC_kwDOLgSkBs4CbRPo');
+  script.setAttribute('data-mapping', 'pathname');          // ← ВАЖНО: путь страницы
+  script.setAttribute('data-strict', '1');                 // ← ВАЖНО: строгое соответствие
+  script.setAttribute('data-reactions-enabled', '1');      // ← реакции включены
+  script.setAttribute('data-emit-metadata', '0');          // ← метаданные выключены
+  script.setAttribute('data-input-position', 'top');       // ← поле комментария сверху
+  script.setAttribute('data-theme', 'preferred_color_scheme');
+  script.setAttribute('data-lang', 'ru');
+  script.setAttribute('data-loading', 'lazy');             // ← ленивая загрузка
+  script.crossOrigin = 'anonymous';
+  script.async = true;
+  
+  document.querySelector('.giscus').appendChild(script);
+}
+
+// Загружаем комментарии когда страница загружена
+if (document.querySelector('.giscus')) {
+  document.addEventListener('DOMContentLoaded', loadGiscus);
+}
+</script>
