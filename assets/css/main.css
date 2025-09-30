@@ -288,6 +288,123 @@ body.dark-mode::after {
   color: #e0e0e0;
 }
 
+/* СТРАНИЦА СТАТЬИ - адаптивные изображения и типографика */
+.post-article {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.post-header {
+  text-align: center;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.post-header h1 {
+  color: #00e5ff;
+  margin-bottom: 10px;
+  font-size: 2.2em;
+}
+
+.post-date {
+  color: #bbb;
+  font-size: 0.9em;
+}
+
+.post-content {
+  max-width: 100%;
+  overflow-x: hidden;
+  line-height: 1.7;
+  font-size: 1.1em;
+}
+
+.post-content p {
+  margin-bottom: 1.5em;
+}
+
+.post-content h2 {
+  color: #00e5ff;
+  margin-top: 2em;
+  margin-bottom: 1em;
+}
+
+.post-content h3 {
+  color: #e0f7fa;
+  margin-top: 1.5em;
+  margin-bottom: 1em;
+}
+
+.post-content ul, 
+.post-content ol {
+  margin-bottom: 1.5em;
+  padding-left: 1.5em;
+}
+
+.post-content li {
+  margin-bottom: 0.5em;
+}
+
+.post-content blockquote {
+  border-left: 4px solid #00e5ff;
+  padding-left: 1em;
+  margin-left: 0;
+  font-style: italic;
+  color: #bbb;
+}
+
+/* Адаптивные изображения в статьях */
+.post-content img,
+article img,
+.post-image {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 20px auto;
+  border-radius: 10px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.post-content img.large-image,
+.post-content .featured-image,
+.post-image.featured {
+  width: 100%;
+  max-height: 500px;
+  object-fit: cover;
+  object-position: center;
+}
+
+.image-container {
+  margin: 25px 0;
+  text-align: center;
+}
+
+.image-container img {
+  margin-bottom: 10px;
+}
+
+.image-caption {
+  font-style: italic;
+  color: #bbb;
+  font-size: 0.9em;
+  margin-top: 5px;
+}
+
+.post-content .gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 15px;
+  margin: 25px 0;
+}
+
+.post-content .gallery img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  margin: 0;
+}
+
 /* 3D-стеклянные карточки для статей в сетке */
 .neural-card-3d {
   background: rgba(255, 255, 255, 0.1);
@@ -448,6 +565,46 @@ body.dark-mode::after {
     height: 180px;
   }
 
+  /* Адаптивность для статей */
+  .post-article {
+    padding: 15px;
+  }
+  
+  .post-header h1 {
+    font-size: 1.8em;
+  }
+  
+  .post-content {
+    padding: 0 5px;
+    font-size: 1em;
+  }
+  
+  .post-content img,
+  article img,
+  .post-image {
+    margin: 15px auto;
+    border-radius: 8px;
+  }
+  
+  .post-content img.large-image,
+  .post-content .featured-image,
+  .post-image.featured {
+    max-height: 300px;
+  }
+  
+  .post-content .gallery {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  
+  .post-content .gallery img {
+    height: 150px;
+  }
+  
+  .image-container {
+    margin: 20px 0;
+  }
+
   .latest-post img {
     max-height: 250px;
   }
@@ -488,7 +645,17 @@ body.dark-mode::after {
   }
 }
 
-@media (max-width: 576px) {
+@media (max-width: 480px) {
+  .post-content img.large-image,
+  .post-content .featured-image,
+  .post-image.featured {
+    max-height: 250px;
+  }
+  
+  .post-content .gallery img {
+    height: 120px;
+  }
+  
   .carousel-image {
     max-height: 200px;
   }
