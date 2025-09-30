@@ -23,64 +23,105 @@ description: Поддержите развитие проекта и помог�
         </div>
 
         <div class="payment-methods">
-          <h3>Способы поддержки:</h3>
+          <h3>💳 Перевод на банковскую карту</h3>
+          <p class="text-muted">Выберите любую карту для перевода</p>
           
           <div class="row mt-4">
-            <div class="col-md-6 mb-3">
+            <div class="col-md-4 mb-4">
               <div class="payment-method neural-card-3d">
-                <h4>🟦 ЮMoney</h4>
-                <p>Быстрый перевод с карты любого банка</p>
-                <a href="https://yoomoney.ru/to/4100117445131234" target="_blank" class="btn btn-primary">
-                  Поддержать через ЮMoney
-                </a>
+                <h4>🔷 Карта 1</h4>
+                <p>Основная карта для переводов</p>
+                <div class="card-info">
+                  <p><strong>Номер карты:</strong></p>
+                  <code class="card-number">2204 3201 5374 0651</code>
+                  <button onclick="copyToClipboard('2204320153740651')" class="btn btn-outline-light btn-sm mt-2">
+                    📋 Копировать номер
+                  </button>
+                </div>
               </div>
             </div>
             
-            <div class="col-md-6 mb-3">
+            <div class="col-md-4 mb-4">
               <div class="payment-method neural-card-3d">
-                <h4>🟧 DonationAlerts</h4>
-                <p>Для международных переводов</p>
-                <a href="https://www.donationalerts.com/r/lybra_bee" target="_blank" class="btn btn-warning">
-                  Поддержать через DonationAlerts
-                </a>
+                <h4>🔷 Карта 2</h4>
+                <p>Дополнительная карта</p>
+                <div class="card-info">
+                  <p><strong>Номер карты:</strong></p>
+                  <code class="card-number">2204 3201 6279 6777</code>
+                  <button onclick="copyToClipboard('2204320162796777')" class="btn btn-outline-light btn-sm mt-2">
+                    📋 Копировать номер
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <div class="col-md-4 mb-4">
+              <div class="payment-method neural-card-3d">
+                <h4>🔷 Карта 3</h4>
+                <p>Резервная карта</p>
+                <div class="card-info">
+                  <p><strong>Номер карты:</strong></p>
+                  <code class="card-number">2204 3101 9359 0521</code>
+                  <button onclick="copyToClipboard('2204310193590521')" class="btn btn-outline-light btn-sm mt-2">
+                    📋 Копировать номер
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-          
-          <div class="row">
-            <div class="col-md-6 mb-3">
-              <div class="payment-method neural-card-3d">
-                <h4>🔷 Tinkoff</h4>
-                <p>Перевод на карту Тинькофф</p>
-                <div class="card-info">
-                  <p><strong>Номер карты:</strong><br>5536 9138 1234 5678</p>
-                </div>
-              </div>
-            </div>
-            
-            <div class="col-md-6 mb-3">
-              <div class="payment-method neural-card-3d">
-                <h4>⚡ Crypto</h4>
-                <p>Криптовалютные переводы</p>
-                <div class="crypto-info">
-                  <p><strong>BTC:</strong> bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh</p>
-                  <p><strong>ETH:</strong> 0x742d35Cc6634C0532925a3b8D4B5A3b8D4B5A3b8</p>
-                </div>
-              </div>
+
+          <div class="instructions mt-4">
+            <div class="neural-card-3d p-4">
+              <h4>📋 Как перевести:</h4>
+              <ol class="text-start">
+                <li>Скопируйте номер карты (кнопка "Копировать номер")</li>
+                <li>В приложении вашего банка выберите "Перевод по номеру карты"</li>
+                <li>Вставьте скопированный номер карты</li>
+                <li>Укажите сумму перевода</li>
+                <li>Подтвердите операцию</li>
+              </ol>
+              <p class="text-muted mt-3"><small>Переводы между картами разных банков обычно бесплатны и приходят мгновенно</small></p>
             </div>
           </div>
         </div>
 
         <div class="benefits-section mt-5">
-          <h3>Что даст ваша поддержка:</h3>
+          <h3>🎯 На что пойдут средства:</h3>
           <ul class="list-unstyled">
+            <li>✅ Мощная видеокарта для локального AI (RTX 4090)</li>
             <li>✅ Более быстрая генерация контента</li>
-            <li>✅ Эксперименты с большими моделями</li>
+            <li>✅ Эксперименты с большими моделями нейросетей</li>
             <li>✅ Видео-туториалы и стримы</li>
             <li>✅ Открытый исходный код инструментов</li>
           </ul>
+        </div>
+
+        <div class="thank-you mt-4">
+          <p class="text-muted">Спасибо за вашу поддержку! Каждый рубль приближает нас к цели 🚀</p>
         </div>
       </div>
     </div>
   </div>
 </div>
+
+<script>
+function copyToClipboard(text) {
+  navigator.clipboard.writeText(text).then(function() {
+    // Показываем уведомление об успешном копировании
+    const button = event.target;
+    const originalText = button.textContent;
+    button.textContent = '✅ Скопировано!';
+    button.classList.add('btn-success');
+    button.classList.remove('btn-outline-light');
+    
+    setTimeout(function() {
+      button.textContent = originalText;
+      button.classList.remove('btn-success');
+      button.classList.add('btn-outline-light');
+    }, 2000);
+  }).catch(function(err) {
+    console.error('Ошибка копирования: ', err);
+    alert('Не удалось скопировать номер карты. Скопируйте вручную: ' + text);
+  });
+}
+</script>
