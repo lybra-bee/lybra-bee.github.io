@@ -126,37 +126,84 @@ body.dark-mode::after {
 
 .carousel-inner {
   overflow: hidden;
+  border-radius: 15px;
+  padding: 10px;
 }
 
 .carousel-item {
-  display: block; /* Убираем flex для корректного слайдера */
+  display: none;
   text-align: center;
+  transition: transform 0.6s ease-in-out;
+}
+
+.carousel-item.active {
+  display: block;
 }
 
 .carousel-image {
-  max-width: 100%;
-  max-height: 300px;
+  width: 100%;
+  max-height: 400px;
   object-fit: cover;
   border-radius: 10px;
-  margin-bottom: 10px;
+  margin-bottom: 15px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
 }
 
 .carousel-caption {
-  background: none;
-  padding: 10px;
-  border-radius: 5px;
-  width: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(10px);
+  padding: 20px;
+  border-radius: 10px;
+  width: 90%;
   position: relative;
   color: #fff;
   text-align: center;
-  z-index: 1;
+  margin: 0 auto;
 }
 
-.carousel-caption h3, .carousel-caption p {
-  margin: 0;
-  padding: 5px;
+.carousel-caption h3 a {
+  color: #00e5ff;
+  text-decoration: none;
+  transition: color 0.3s ease;
 }
 
+.carousel-caption h3 a:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+
+.post-date {
+  color: #bbb;
+  font-size: 0.9em;
+  margin-bottom: 10px;
+}
+
+.excerpt {
+  color: #e0e0e0;
+  line-height: 1.5;
+}
+
+/* Индикаторы карусели */
+.carousel-indicators {
+  bottom: -50px;
+}
+
+.carousel-indicators button {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin: 0 5px;
+  background-color: rgba(255, 255, 255, 0.5);
+  border: none;
+  transition: background-color 0.3s ease;
+}
+
+.carousel-indicators button.active {
+  background-color: #00e5ff;
+  transform: scale(1.2);
+}
+
+/* Кнопки управления каруселью */
 .carousel-control-prev,
 .carousel-control-next {
   background: linear-gradient(135deg, #0d47a1, #7b1fa2);
@@ -207,22 +254,22 @@ body.dark-mode::after {
 /* 3D-стеклянные карточки */
 .neural-card-3d {
   background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(15px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 15px;
-  padding: 20px;
-  margin: 0 auto;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  padding: 25px;
+  margin: 20px auto;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
   transition: transform 0.6s ease, box-shadow 0.3s ease;
   transform-style: preserve-3d;
-  width: 80%;
-  max-width: 400px;
+  width: 90%;
+  max-width: 600px;
   position: relative;
 }
 
 .neural-card-3d:hover {
-  transform: rotateY(10deg) scale(1.05);
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5);
+  transform: rotateY(5deg) scale(1.02);
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.6);
 }
 
 .neural-card-3d a {
@@ -232,6 +279,26 @@ body.dark-mode::after {
 
 .neural-card-3d a:hover {
   text-decoration: underline;
+}
+
+.article-thumbnail {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.article-thumbnail:hover {
+  transform: scale(1.05);
+}
+
+.article-title {
+  color: #00e5ff;
+  transition: color 0.3s ease;
+}
+
+.article-title:hover {
+  color: #fff;
 }
 
 /* Галерея */
@@ -281,6 +348,26 @@ body.dark-mode::after {
   z-index: 1;
 }
 
+/* Контейнер Bootstrap переопределение */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 15px;
+}
+
+/* Кнопки */
+.btn-outline-light {
+  border-color: #00e5ff;
+  color: #00e5ff;
+  transition: all 0.3s ease;
+}
+
+.btn-outline-light:hover {
+  background-color: #00e5ff;
+  border-color: #00e5ff;
+  color: #000;
+}
+
 /* Адаптивность */
 @media (max-width: 768px) {
   .hero {
@@ -300,7 +387,7 @@ body.dark-mode::after {
   }
 
   .neural-card-3d, .gallery-item {
-    padding: 10px;
+    padding: 15px;
     max-width: 300px;
   }
 
@@ -309,7 +396,7 @@ body.dark-mode::after {
   }
 
   .carousel-image {
-    max-height: 200px;
+    max-height: 250px;
   }
 
   .carousel-control-prev,
@@ -321,5 +408,43 @@ body.dark-mode::after {
   .nav-link {
     margin: 0 10px;
     font-size: 1em;
+  }
+
+  .carousel-caption {
+    padding: 15px;
+    width: 95%;
+  }
+  
+  .carousel-caption h3 {
+    font-size: 1.2em;
+  }
+  
+  .carousel-caption p {
+    font-size: 0.9em;
+  }
+  
+  .spread-text {
+    font-size: 1.5em;
+  }
+}
+
+@media (max-width: 576px) {
+  .carousel-image {
+    max-height: 200px;
+  }
+  
+  .carousel-control-prev,
+  .carousel-control-next {
+    width: 35px;
+    height: 35px;
+  }
+  
+  .neural-card-3d {
+    padding: 10px;
+    width: 95%;
+  }
+  
+  .article-thumbnail {
+    height: 150px;
   }
 }
