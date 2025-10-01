@@ -116,7 +116,7 @@ description: Эксперт по запуску нейросетей на бюд
         </div>
         
         <div class="progress-section mt-4">
-          <h4>Цель: RTX 4090 (2000$)</h4>
+          <h4>Цель: RTX 5090 (2000$)</h4>
           <div class="progress" style="height: 25px;">
             <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" 
                  style="width: 5%;">5%</div>
