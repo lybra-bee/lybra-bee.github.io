@@ -21,8 +21,8 @@ image_files = glob.glob(f"{assets_dir}/*.png") + glob.glob(f"{assets_dir}/*.jpg"
 post_num = len(image_files) + 1 if image_files else 1
 
 post_files = sorted(glob.glob(f"{posts_dir}/*.md"), reverse=True)
-if len(post_files) > 9:
-    for old_file in post_files[10:]:
+if len(post_files) > 39:
+    for old_file in post_files[40:]:
         os.remove(old_file)
 
 # Генерация заголовка через Groq API
