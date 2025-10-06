@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', function() {
-  // Анимация бегущей строки
   const textContainer = document.querySelector('.spread-text');
   if (textContainer) {
     const letters = Array.from(textContainer.querySelectorAll('span'));
@@ -27,7 +26,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
       [left, right].forEach(span => {
         if (span) {
-          span.style.transition = 'transform 0.6s ease, opacity 0.3s ease';
+          span.style.transition = "transform 0.6s ease, opacity 0.3s ease";
           span.style.opacity = 1;
           span.style.transform = `translateX(0)`;
         }
@@ -40,7 +39,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function resetAnimation() {
       letters.forEach(span => {
         const finalX = span.dataset.finalX;
-        span.style.transition = 'none';
+        span.style.transition = "none";
         span.style.transform = `translateX(${midX - finalX}px)`;
         span.style.opacity = 0;
       });
@@ -50,13 +49,4 @@ document.addEventListener('DOMContentLoaded', function() {
 
     animatePair();
   }
-
-  // Модальное окно галереи
-  const galleryItems = document.querySelectorAll('.gallery-item img');
-  const modalImage = document.getElementById('modalImage');
-  galleryItems.forEach(item => {
-    item.addEventListener('click', function() {
-      modalImage.src = this.dataset.src;
-    });
-  });
 });
