@@ -1,0 +1,23 @@
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if page.title %}{{ page.title }} | {% endif %}{{ site.title }}</title>
+    {% seo %}
+    <meta name="google-site-verification" content="qHNHO0VlQ69kLt5M2XBlhsvlnn6imVfWlqRUsYRpsrM" />
+    <meta name="yandex-verification" content="ВАШ_ЯНДЕКС_КОД" /> <!-- Получите в https://webmaster.yandex.ru -->
+    <link rel="canonical" href="{{ site.url }}{{ page.url }}">
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      "name": "{{ page.title | default: site.title }}",
+      "description": "{{ page.description | default: site.description }}",
+      "url": "{{ site.url }}{{ page.url }}"
+    }
+    </script>
+    
+    <link rel="stylesheet" href="{{ '/assets/css/style.css' | relative_url }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+</head>
