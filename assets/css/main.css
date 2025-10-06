@@ -56,18 +56,24 @@ main {
 .nav-link {
   background: rgba(255, 255, 255, 0.2);
   opacity: 0.9;
-  padding: 0.5rem 1rem;
+  padding: 0.7rem 1.2rem; /* Увеличен padding */
   margin: 0.5rem;
-  border-radius: 5px;
+  border-radius: 8px; /* Скруглённые углы */
   color: #fff !important;
   text-decoration: none;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  transition: box-shadow 0.3s ease, opacity 0.3s ease;
+  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.2); /* Увеличен shadow для объёма */
+  transition: box-shadow 0.3s ease, opacity 0.3s ease, transform 0.3s ease;
 }
 
 .nav-link:hover {
-  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 8px 10px rgba(0, 0, 0, 0.3);
   opacity: 1;
+  transform: translateY(-2px); /* Лёгкий подъём для объёма */
+}
+
+.nav-link:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 /* Бегущая строка */
