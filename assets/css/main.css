@@ -284,3 +284,21 @@ body::before {
   content: "CSS Loaded";
   display: none;
 }
+/* ... (Остальные стили из предыдущего ответа) */
+
+/* Статьи */
+.post-article img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+  border-radius: 10px;
+}
+
+/* Адаптивность для мобильных */
+@media (max-width: 768px) {
+  .post-article img {
+    max-width: 100%;
+    height: auto;
+  }
+}
