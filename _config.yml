@@ -1,23 +1,52 @@
+# Основные настройки сайта
 title: "Lybra AI: Блог об ИИ и IoT"
-description: "Ежедневные статьи о гибридном ИИ, IoT и edge-вычислениях 2025 года"
+description: "Ежедневные статьи о гибридном ИИ, IoT и edge-вычислениях 2025 года. Читайте обзоры и эксперименты из Lybra AI Lab."
 baseurl: ""
 url: "https://lybra-ai.ru"
-permalink: /:year/:month/:day/:title/
+timezone: Europe/Moscow
 markdown: kramdown
+
+# Плагины
 plugins:
   - jekyll-feed
   - jekyll-paginate
   - jekyll-sitemap
   - jekyll-seo-tag
+  - jekyll-compress
 
+# Настройки сжатия HTML
+compress_html:
+  clippings: all
+  comments: ["<!-- ", " -->"]
+  endings: all
+  ignore:
+    envs: [development]
+  blanklines: false
+  profile: false
+  startings: [html, head, body]
+
+# Пагинация
 paginate: 5
 paginate_path: "/articles/page:num/"
 
+# Исключения из сборки
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - README.md
+  - .gitignore
+  - node_modules
+  - vendor
+  - .sass-cache
+  - .jekyll-cache
+
+# Коллекции
 collections:
   pages:
     output: true
     permalink: /:path/
 
+# Настройки по умолчанию
 defaults:
   - scope:
       path: ""
@@ -27,8 +56,26 @@ defaults:
       image: /assets/images/posts/placeholder.png
       image_alt: "ИИ и IoT 2025"
       description: "Статья о трендах ИИ и IoT 2025 года"
+      tags: [ИИ, IoT, технологии]
   - scope:
       path: ""
       type: pages
     values:
       layout: default
+      description: "Блог о гибридном ИИ и IoT 2025 года"
+
+# SEO настройки
+seo:
+  date: "{{ site.time | date_to_xmlschema }}"
+  author: "Lybra Bee"
+
+# Feed настройки
+feed:
+  path: /feed.xml
+  categories: [ИИ, IoT, edge-вычисления]
+
+# Sitemap настройки
+sitemap:
+  exclude:
+    - "/feed.xml"
+  include_posts: true
