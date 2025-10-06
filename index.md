@@ -1,7 +1,7 @@
 ---
 layout: default
-title: Lybra AI: Блог об ИИ и IoT
-description: Блог о гибридном ИИ, IoT и edge-вычислениях 2025 года. Читайте статьи и эксперименты в Lybra AI Lab.
+title: "Lybra AI: Блог об ИИ и IoT"
+description: "Блог о гибридном ИИ, IoT и edge-вычислениях 2025 года. Читайте статьи и эксперименты в Lybra AI Lab."
 dark_mode: false
 ---
 
