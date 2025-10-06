@@ -4,16 +4,46 @@ title: Статьи
 description: Статьи о гибридном ИИ и IoT
 ---
 
-<section class="articles-carousel container my-4">
-  <div id="articlesCarousel" class="carousel slide" data-bs-ride="carousel">
-    <div class="carousel-inner">
-      {% for post in site.posts limit:5 %}
+<div class="container py-4">
+  <h1 class="text-center mb-2">Все статьи</h1>
+  <p class="text-center mb-5">Последние обзоры и уроки по искусственному интеллекту</p>
+
+  {% if site.posts.size > 0 %}
+  <div id="articlesCarousel" class="carousel slide mb-5" data-bs-ride="carousel" data-bs-interval="5000">
+    <div class="carousel-indicators">
+      {% for post in site.posts limit: 5 %}
+      <button type="button" data-bs-target="#articlesCarousel" data-bs-slide-to="{{ forloop.index0 }}" 
+              class="{% if forloop.first %}active{% endif %}" 
+              aria-label="Слайд {{ forloop.index }}"></button>
+      {% endfor %}
+    </div>
+    <div class="carousel-inner rounded-3">
+      {% for post in site.posts limit: 5 %}
       <div class="carousel-item {% if forloop.first %}active{% endif %}">
-        <div class="card">
-          <div class="card-body">
-            <h3 class="card-title"><a href="{{ post.url | relative_url }}">{{ post.title }}</a></h3>
-            <p class="card-text">{{ post.excerpt | strip_html | truncate: 100 }}</p>
-            <a href="{{ post.url | relative_url }}" class="btn btn-outline-light">Читать далее</a>
+        <div class="container">
+          <div class="row justify-content-center">
+            <div class="col-md-10 col-lg-8">
+              <div class="neural-card-3d p-4">
+                <div class="row align-items-center">
+                  {% if post.image %}
+                  <div class="col-md-5 mb-3 mb-md-0">
+                    <a href="{{ post.url | relative_url }}">
+                      <img src="{{ post.image | relative_url }}" class="img-fluid rounded carousel-image" 
+                           alt="{{ post.title | escape }}" loading="lazy">
+                    </a>
+                  </div>
+                  {% endif %}
+                  <div class="{% if post.image %}col-md-7{% else %}col-12{% endif %}">
+                    <div class="carousel-caption-content text-start">
+                      <h3 class="h4"><a href="{{ post.url | relative_url }}" class="text-decoration-none text-light">{{ post.title | escape }}</a></h3>
+                      <p class="post-date text-muted mb-2">{{ post.date | date: "%d.%m.%Y" }}</p>
+                      <p class="excerpt mb-3">{{ post.excerpt | default: post.content | strip_html | truncate: 150 }}</p>
+                      <a href="{{ post.url | relative_url }}" class="btn btn-outline-light btn-sm">Читать далее</a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -28,4 +58,5 @@ description: Статьи о гибридном ИИ и IoT
       <span class="visually-hidden">Следующий</span>
     </button>
   </div>
-</section>
+  {% endif %}
+</div>
