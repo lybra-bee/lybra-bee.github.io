@@ -8,6 +8,11 @@
   <main class="container">
     <article class="post-article">
       <h1>{{ page.title }}</h1>
+      {% if page.image %}
+      <img src="{{ page.image | relative_url }}" alt="{{ page.title | escape }}" class="post-image img-fluid mb-4">
+      {% else %}
+      <p class="text-muted">Изображение отсутствует</p>
+      {% endif %}
       <div class="post-content">
         {{ content }}
       </div>
