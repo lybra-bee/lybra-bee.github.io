@@ -15,7 +15,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <link rel="canonical" href="{{ site.url }}{{ page.url }}">
   <meta http-equiv="Cache-Control" content="public, max-age=604800">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https://lybra-bee.github.io; script-src 'self' https://www.googletagmanager.com https://mc.yandex.ru; connect-src 'self' https://analytics.google.com https://mc.yandex.ru">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https://lybra-bee.github.io; script-src 'self' https://www.googletagmanager.com https://mc.yandex.ru https://cdn.jsdelivr.net; connect-src 'self' https://analytics.google.com https://mc.yandex.ru">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -37,7 +37,6 @@
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
     gtag('config', 'G-23L72G58BB');
-    // Событие: клик на лабораторию
     document.addEventListener('DOMContentLoaded', function() {
       const labLink = document.querySelector('.lab-promo a');
       if (labLink) {
@@ -48,7 +47,6 @@
           });
         });
       }
-      // Событие: клик на статьи
       const articlesLink = document.querySelector('a[href="/articles"]');
       if (articlesLink) {
         articlesLink.addEventListener('click', () => {
@@ -82,5 +80,5 @@
   <link rel="stylesheet" href="{{ '/assets/css/main.css' | relative_url }}">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <meta name="theme-color" content="#000000">
-  <link rel="preload" href="{{ site.posts.first.image | default: '/assets/images/posts/placeholder.png' }}" as="image">
+  <link rel="preload" href="{{ site.posts.first.image | default: '/assets/images/posts/placeholder.png' | relative_url }}" as="image">
 </head>
