@@ -1,5 +1,5 @@
-// Анимация бегущей строки
 document.addEventListener('DOMContentLoaded', function() {
+  // Анимация бегущей строки
   const textContainer = document.querySelector('.spread-text');
   if (textContainer) {
     const letters = Array.from(textContainer.querySelectorAll('span'));
@@ -47,6 +47,16 @@ document.addEventListener('DOMContentLoaded', function() {
       pairIndex = 0;
       setTimeout(animatePair, 300);
     }
+
     animatePair();
-}
+  }
+
+  // Модальное окно галереи
+  const galleryItems = document.querySelectorAll('.gallery-item img');
+  const modalImage = document.getElementById('modalImage');
+  galleryItems.forEach(item => {
+    item.addEventListener('click', function() {
+      modalImage.src = this.dataset.src;
+    });
+  });
 });
