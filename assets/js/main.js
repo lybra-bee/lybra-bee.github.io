@@ -47,3 +47,6 @@ document.addEventListener('DOMContentLoaded', function() {
       pairIndex = 0;
       setTimeout(animatePair, 300);
     }
+    animatePair();
+}
+});
