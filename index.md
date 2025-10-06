@@ -15,19 +15,26 @@ header_image: /assets/images/bg.png
   </h2>
 </section>
 
-<section class="latest-post container my-4">
-  {% for post in site.posts limit:1 %}
-  <div class="card glass-card">
-    <div class="card-body">
-      <h3 class="card-title"><a href="{{ post.url | relative_url }}">{{ post.title }}</a></h3>
-      <p class="card-text">{{ post.excerpt | strip_html | truncate: 150 }}</p>
-      <a href="{{ post.url | relative_url }}" class="btn btn-outline-light">Читать далее</a>
+<div class="latest-post">
+  {% assign latest_post = site.posts.first %}
+  <div class="neural-card-3d main-page-card">
+    <div class="card-image-container">
+      <a href="{{ latest_post.url | relative_url }}">
+        <img src="{{ latest_post.image | default: '/assets/images/posts/placeholder.png' | relative_url }}" alt="{{ latest_post.title | escape }}" class="main-page-image">
+      </a>
+    </div>
+    <div class="card-content-container">
+      <h3><a href="{{ latest_post.url | relative_url }}">{{ latest_post.title | escape }}</a></h3>
+      <p class="post-date">{{ latest_post.date | date: "%B %d, %Y" }}</p>
+      <p class="card-excerpt">{{ latest_post.content | strip_html | truncate: 150, "..." }}</p>
+      <a href="{{ latest_post.url | relative_url }}" class="btn btn-outline-light">Читать далее</a>
     </div>
   </div>
-  {% endfor %}
-</section>
+</div>
 
-<section class="seo-text container my-4">
+<section class="seo-text">
   <h2>О блоге Lybra AI</h2>
   <p>Добро пожаловать в Lybra AI — блог о гибридном искусственном интеллекте и Интернете вещей (IoT) 2025 года. Здесь вы найдете статьи о локальном ИИ, машинном обучении, нейросетях, Stable Diffusion, LLM и экспериментах на слабом железе. Мы делимся практическими решениями и инновациями в области ИИ и IoT.</p>
+  <p>В 2025 году гибридный ИИ становится ключевым трендом, сочетающим локальные и облачные вычисления для повышения эффективности. Edge-вычисления позволяют обрабатывать данные ближе к источнику, снижая задержки и энергозатраты. Мои эксперименты в <a href="https://lybra-bee.github.io/lybra-ai-lab/">Lybra AI Lab</a> показывают, как запускать Stable Diffusion на P102-100 за 12 секунд, делая ИИ доступным для всех. Читайте наши статьи, чтобы узнать, как ИИ меняет мир IoT, от умных городов до автономных систем.</p>
+  <p>Мы анализируем тренды 2025, такие как Agentic AI, RAG и Sovereign AI, и предоставляем практические уроки для их применения. Подписывайтесь, чтобы быть в курсе!</p>
 </section>
