@@ -1,23 +1,62 @@
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% if page.title %}{{ page.title }} | {% endif %}{{ site.title }}</title>
-    {% seo %}
-    <meta name="google-site-verification" content="qHNHO0VlQ69kLt5M2XBlhsvlnn6imVfWlqRUsYRpsrM" />
-    <meta name="yandex-verification" content="ВАШ_ЯНДЕКС_КОД" /> <!-- Получите в https://webmaster.yandex.ru -->
-    <link rel="canonical" href="{{ site.url }}{{ page.url }}">
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "WebPage",
-      "name": "{{ page.title | default: site.title }}",
-      "description": "{{ page.description | default: site.description }}",
-      "url": "{{ site.url }}{{ page.url }}"
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% if page.title %}{{ page.title }} | {% endif %}{{ site.title }}</title>
+  {% seo %}
+  <meta name="yandex-verification" content="a538b35a7696ff2c">
+  <meta name="google-site-verification" content="google7a98bc4928c11fc0.html">
+  <meta property="og:title" content="{{ page.title | default: site.title }}">
+  <meta property="og:description" content="{{ page.description | default: site.description }}">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="{{ site.url }}{{ page.url }}">
+  <meta property="og:image" content="{{ site.url }}/assets/images/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="canonical" href="{{ site.url }}{{ page.url }}">
+  <meta http-equiv="Cache-Control" content="public, max-age=604800">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https://lybra-bee.github.io;">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "{{ page.title | default: site.title }}",
+    "description": "{{ page.description | default: site.description }}",
+    "url": "{{ site.url }}{{ page.url }}",
+    "publisher": {
+      "@type": "Organization",
+      "name": "Lybra AI",
+      "url": "{{ site.url }}"
     }
-    </script>
-    
-    <link rel="stylesheet" href="{{ '/assets/css/style.css' | relative_url }}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+  }
+  </script>
+  <!-- Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=ВАШ_GA_ID"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'ВАШ_GA_ID');
+  </script>
+  <!-- Яндекс.Метрика -->
+  <script async src="https://mc.yandex.ru/metrika/tag.js"></script>
+  <script>
+    (function(m,e,t,r,i,k,a){
+      m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+      m[i].l=1*new Date();
+      k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js', 'ym');
+    ym(104334067, 'init', {
+      ssr: true,
+      webvisor: true,
+      clickmap: true,
+      ecommerce: "dataLayer",
+      accurateTrackBounce: true,
+      trackLinks: true
+    });
+  </script>
+  <noscript><div><img src="https://mc.yandex.ru/watch/104334067" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+  <link rel="stylesheet" href="{{ '/assets/css/main.css' | relative_url }}">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <meta name="theme-color" content="#000000">
+  <link rel="preload" href="{{ site.posts.first.image | default: '/assets/images/posts/placeholder.png' }}" as="image">
 </head>
