@@ -5,7 +5,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const letters = Array.from(textContainer.querySelectorAll('span'));
     const midX = textContainer.offsetWidth / 2;
 
-    // Сохраняем конечные позиции
     letters.forEach(span => {
       const rect = span.getBoundingClientRect();
       const containerRect = textContainer.getBoundingClientRect();
@@ -68,11 +67,3 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 });
-document.getElementById('dark-mode-toggle').addEventListener('click', () => {
-  document.body.classList.toggle('dark-mode');
-  localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
-});
-
-if (localStorage.getItem('darkMode') === 'true') {
-  document.body.classList.add('dark-mode');
-}
