@@ -12,7 +12,6 @@ description: Галерея изображений проектов Lybra AI
       {% if post.image %}
       <figure class="gallery-item">
         <img src="{{ post.image | relative_url }}" alt="{{ post.title | escape }}" data-bs-toggle="modal" data-bs-target="#galleryModal" data-src="{{ post.image | relative_url }}">
-        <figcaption>{{ post.title | escape }}</figcaption>
       </figure>
       {% endif %}
     {% endfor %}
