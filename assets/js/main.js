@@ -59,12 +59,12 @@ document.addEventListener('DOMContentLoaded', function() {
   if (galleryItems && modalImage && modalElement) {
     galleryItems.forEach(item => {
       item.addEventListener('click', function() {
-        const largeSrc = this.getAttribute('data-large-src');
+        const largeSrc = this.getAttribute('data-large-src') || this.src;
         if (largeSrc) {
           modalImage.src = largeSrc;
-          console.log('Modal image set to:', largeSrc); // Отладка
+          console.log('Modal image set to:', largeSrc);
         } else {
-          console.warn('data-large-src is missing for image:', this.src);
+          console.warn('data-large-src and src are missing for image:', this);
         }
         const modal = new bootstrap.Modal(modalElement, {
           keyboard: true,
@@ -77,7 +77,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Очистка после закрытия модального окна
     modalElement.addEventListener('hide.bs.modal', function() {
       modalImage.src = '';
-      console.log('Modal image cleared'); // Отладка
+      console.log('Modal image cleared');
       const modal = bootstrap.Modal.getInstance(modalElement);
       if (modal) {
         modal.dispose();
