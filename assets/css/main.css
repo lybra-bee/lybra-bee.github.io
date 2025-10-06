@@ -24,7 +24,7 @@ main {
   background-image: url('/assets/images/bg.png');
   background-size: cover;
   background-position: center;
-  min-height: 300px; /* Увеличена высота для красоты */
+  min-height: 300px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -54,15 +54,15 @@ main {
 }
 
 .nav-link {
-  background: rgba(255, 255, 255, 0.2); /* Полупрозрачный фон */
-  opacity: 0.9; /* Semi-transparent */
+  background: rgba(255, 255, 255, 0.2);
+  opacity: 0.9;
   padding: 0.5rem 1rem;
   margin: 0.5rem;
   border-radius: 5px;
   color: #fff !important;
   text-decoration: none;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Volume effect */
-  transition: box-shadow 0.3s ease;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.3s ease, opacity 0.3s ease;
 }
 
 .nav-link:hover {
@@ -88,7 +88,7 @@ main {
   display: inline-block;
 }
 
-/* Стеклянная карточка для статьи на главной */
+/* Стеклянная карточка */
 .neural-card-3d {
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
@@ -122,12 +122,16 @@ main {
   line-height: 1.6;
 }
 
+.seo-text h2 {
+  color: #fff;
+}
+
 /* Карусель статей */
 .articles-carousel .carousel-inner {
   padding: 1rem 0;
 }
 
-.articles-carousel .carousel-item .card {
+.articles-carousel .carousel-item .neural-card-3d {
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -136,12 +140,29 @@ main {
   margin: 0 0.5rem;
 }
 
+.articles-carousel .carousel-item .carousel-image {
+  max-height: 200px;
+  object-fit: cover;
+}
+
 .articles-carousel .carousel-item .card-title {
   font-size: 1.3rem;
 }
 
 .articles-carousel .carousel-item .card-text {
   color: #ddd;
+}
+
+/* Список статей */
+.articles-list .neural-card-3d {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.articles-list img {
+  max-height: 100px;
+  object-fit: cover;
 }
 
 /* Галерея */
@@ -161,7 +182,7 @@ main {
 
 .gallery-item img {
   width: 100%;
-  height: 200px; /* Фиксированная высота для thumbnails */
+  height: 200px;
   object-fit: cover;
   display: block;
   transition: transform 0.3s ease;
@@ -183,6 +204,62 @@ main {
   font-size: 0.9rem;
 }
 
+/* Модальное окно */
+.modal-content {
+  background: rgba(0, 0, 0, 0.9);
+  border: none;
+}
+
+.modal-body img {
+  max-height: 80vh;
+  object-fit: contain;
+}
+
+/* Статьи */
+article {
+  margin-bottom: 2rem;
+}
+
+article h1,
+article h2,
+article h3,
+article h4 {
+  color: #fff;
+}
+
+article p {
+  color: #ddd;
+  line-height: 1.6;
+}
+
+/* Футер */
+.footer {
+  background-color: #111;
+  color: #fff;
+  padding: 2rem 0;
+  margin-top: 2rem;
+}
+
+.footer-links a {
+  margin-right: 1rem;
+  color: #fff !important;
+}
+
+.lab-promo {
+  margin-top: 1rem;
+}
+
+.lab-promo a {
+  color: #fff !important;
+  background-color: #007bff;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+}
+
+.lab-promo a:hover {
+  background-color: #0056b3;
+}
+
 /* Адаптивность */
 @media (max-width: 991px) {
   .nav-menu {
@@ -197,4 +274,13 @@ main {
   .gallery {
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   }
+  .main-page-card {
+    max-width: 100%;
+  }
+}
+
+/* Диагностика */
+body::before {
+  content: "CSS Loaded";
+  display: none;
 }
