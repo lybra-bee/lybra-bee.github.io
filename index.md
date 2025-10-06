@@ -15,12 +15,19 @@ header_image: /assets/images/bg.png
   </h2>
 </section>
 
-<aside class="container my-4">
-  <h3>Последние статьи</h3>
-  {% for post in site.posts limit:3 %}
-    <article>
-      <h4><a href="{{ post.url | relative_url }}">{{ post.title }}</a></h4>
-      <p>{{ post.excerpt | strip_html | truncate: 100 }}</p>
-    </article>
+<section class="latest-post container my-4">
+  {% for post in site.posts limit:1 %}
+  <div class="card glass-card">
+    <div class="card-body">
+      <h3 class="card-title"><a href="{{ post.url | relative_url }}">{{ post.title }}</a></h3>
+      <p class="card-text">{{ post.excerpt | strip_html | truncate: 150 }}</p>
+      <a href="{{ post.url | relative_url }}" class="btn btn-outline-light">Читать далее</a>
+    </div>
+  </div>
   {% endfor %}
-</aside>
+</section>
+
+<section class="seo-text container my-4">
+  <h2>О блоге Lybra AI</h2>
+  <p>Добро пожаловать в Lybra AI — блог о гибридном искусственном интеллекте и Интернете вещей (IoT) 2025 года. Здесь вы найдете статьи о локальном ИИ, машинном обучении, нейросетях, Stable Diffusion, LLM и экспериментах на слабом железе. Мы делимся практическими решениями и инновациями в области ИИ и IoT.</p>
+</section>
