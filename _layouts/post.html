@@ -1,54 +1,33 @@
----
-layout: default
----
-<article class="post-article">
-  <div class="post-header">
-    <h1>{{ page.title }}</h1>
-    <p class="post-date">{{ page.date | date: "%d.%m.%Y" }}</p>
-  </div>
-  
-  {% if page.image %}
-  <div class="image-container">
-    <img src="{{ page.image }}" alt="{{ page.title }}" class="post-image featured" loading="lazy">
-  </div>
-  {% endif %}
-  
-  <div class="post-content">
-    {{ content }}
-  </div>
-
-  <!-- Комментарии -->
-  <div class="comments-section mt-5">
-    <h2>💬 Обсуждение статьи</h2>
-    <p>Есть вопросы или хотите поделиться опытом? Оставляйте комментарии!</p>
-    <div class="giscus"></div>
-  </div>
-</article>
-
-<script>
-function loadGiscus() {
-  const script = document.createElement('script');
-  script.src = 'https://giscus.app/client.js';
-  script.setAttribute('data-repo', 'lybra-bee/lybra-bee.github.io');
-  script.setAttribute('data-repo-id', 'R_kgDOLgSkBg');
-  script.setAttribute('data-category', 'Announcements');
-  script.setAttribute('data-category-id', 'DIC_kwDOLgSkBs4CbRPo');
-  script.setAttribute('data-mapping', 'pathname');          // ← ВАЖНО: путь страницы
-  script.setAttribute('data-strict', '1');                 // ← ВАЖНО: строгое соответствие
-  script.setAttribute('data-reactions-enabled', '1');      // ← реакции включены
-  script.setAttribute('data-emit-metadata', '0');          // ← метаданные выключены
-  script.setAttribute('data-input-position', 'top');       // ← поле комментария сверху
-  script.setAttribute('data-theme', 'preferred_color_scheme');
-  script.setAttribute('data-lang', 'ru');
-  script.setAttribute('data-loading', 'lazy');             // ← ленивая загрузка
-  script.crossOrigin = 'anonymous';
-  script.async = true;
-  
-  document.querySelector('.giscus').appendChild(script);
-}
-
-// Загружаем комментарии когда страница загружена
-if (document.querySelector('.giscus')) {
-  document.addEventListener('DOMContentLoaded', loadGiscus);
-}
-</script>
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  {% include head.html %}
+</head>
+<body>
+  {% include header.html %}
+  <main class="container">
+    <article class="post-article">
+      <h1>{{ page.title }}</h1>
+      <div class="post-content">
+        {{ content }}
+      </div>
+    </article>
+  </main>
+  <footer class="footer">
+    <div class="container">
+      <p>&copy; {{ site.time | date: '%Y' }} Lybra Bee. Все права защищены.</p>
+      <div class="footer-links mt-2">
+        <a href="https://metrika.yandex.ru/dashboard?id=104334067" target="_blank" class="btn btn-outline-light btn-sm me-2">🟧 Яндекс.Метрика</a>
+        <a href="https://analytics.google.com/" target="_blank" class="btn btn-outline-light btn-sm">🟦 Google Analytics</a>
+      </div>
+      <div class="lab-promo">
+        <h3>Перейти в практическую лабораторию</h3>
+        <p>Смотрите реальные эксперименты с моим железом</p>
+        <a href="https://lybra-bee.github.io/lybra-ai-lab/" class="button">🧪 Открыть лабораторию</a>
+      </div>
+    </div>
+  </footer>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" defer crossorigin="anonymous"></script>
+  <script src="{{ '/assets/js/main.js' | relative_url }}" defer></script>
+</body>
+</html>
