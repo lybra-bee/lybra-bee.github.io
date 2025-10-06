@@ -18,52 +18,56 @@ main {
   background-color: transparent;
 }
 
-/* Шапка */
-.site-header {
+/* Шапка (hero) */
+.hero {
   position: relative;
-  width: 100%;
-  z-index: 1000;
-}
-
-.header-bg {
   background-image: url('/assets/images/bg.png');
   background-size: cover;
   background-position: center;
-  background-repeat: no-repeat;
-  min-height: 250px; /* Увеличена высота для корректного отображения */
-  position: relative;
+  min-height: 300px; /* Увеличена высота для красоты */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #fff;
 }
 
-.overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.7);
-  z-index: 1;
-}
-
-.navbar {
-  position: relative;
+.hero-content {
   z-index: 2;
-  padding: 1rem 0;
+  padding: 2rem;
 }
 
-.navbar-brand {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #fff !important;
+.hero h1 {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+.hero p {
+  font-size: 1.2rem;
+  margin-bottom: 1.5rem;
+}
+
+.nav-menu {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
 }
 
 .nav-link {
+  background: rgba(255, 255, 255, 0.2); /* Полупрозрачный фон */
+  opacity: 0.9; /* Semi-transparent */
+  padding: 0.5rem 1rem;
+  margin: 0.5rem;
+  border-radius: 5px;
   color: #fff !important;
-  font-size: 1rem;
-  margin-left: 1rem;
+  text-decoration: none;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Volume effect */
+  transition: box-shadow 0.3s ease;
 }
 
 .nav-link:hover {
-  color: #ccc !important;
+  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.2);
+  opacity: 1;
 }
 
 /* Бегущая строка */
@@ -84,38 +88,38 @@ main {
   display: inline-block;
 }
 
-/* Стеклянная карточка */
-.glass-card {
+/* Стеклянная карточка для статьи на главной */
+.neural-card-3d {
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 10px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  margin-bottom: 1rem;
+  transition: transform 0.3s ease;
 }
 
-.glass-card .card-body {
-  padding: 1.5rem;
+.neural-card-3d:hover {
+  transform: scale(1.02);
 }
 
-.glass-card .card-title {
-  color: #fff;
-  font-size: 1.5rem;
+.main-page-card {
+  margin: 2rem auto;
+  max-width: 800px;
 }
 
-.glass-card .card-text {
-  color: #ddd;
+.main-page-image {
+  max-width: 100%;
+  height: auto;
+  border-radius: 10px;
 }
 
 /* SEO-текст */
 .seo-text {
+  padding: 2rem;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 10px;
   color: #ddd;
   line-height: 1.6;
-}
-
-.seo-text h2 {
-  color: #fff;
-  font-size: 1.8rem;
 }
 
 /* Карусель статей */
@@ -157,8 +161,8 @@ main {
 
 .gallery-item img {
   width: 100%;
-  height: 200px; /* Фиксированная высота для превью */
-  object-fit: cover; /* Масштабирование без искажений */
+  height: 200px; /* Фиксированная высота для thumbnails */
+  object-fit: cover;
   display: block;
   transition: transform 0.3s ease;
 }
@@ -179,57 +183,12 @@ main {
   font-size: 0.9rem;
 }
 
-/* Статьи */
-article {
-  margin-bottom: 2rem;
-}
-
-article h1,
-article h2,
-article h3,
-article h4 {
-  color: #fff;
-}
-
-article p {
-  color: #ddd;
-  line-height: 1.6;
-}
-
-/* Футер */
-.footer {
-  background-color: #111;
-  color: #fff;
-  padding: 2rem 0;
-  margin-top: 2rem;
-}
-
-.footer-links a {
-  margin-right: 1rem;
-  color: #fff !important;
-}
-
-.lab-promo {
-  margin-top: 1rem;
-}
-
-.lab-promo a {
-  color: #fff !important;
-  background-color: #007bff;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-}
-
-.lab-promo a:hover {
-  background-color: #0056b3;
-}
-
 /* Адаптивность */
 @media (max-width: 991px) {
-  .navbar-nav {
-    text-align: center;
+  .nav-menu {
+    flex-direction: column;
   }
-  .nav-item {
+  .nav-link {
     margin: 0.5rem 0;
   }
   .spread-text {
@@ -238,13 +197,4 @@ article p {
   .gallery {
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   }
-  .glass-card .card-title {
-    font-size: 1.2rem;
-  }
-}
-
-/* Диагностика */
-body::before {
-  content: "CSS Loaded";
-  display: none;
 }
