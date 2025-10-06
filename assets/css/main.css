@@ -1,11 +1,11 @@
-/* Тело сайта (только тёмная тема) */
+/* Тело сайта (тёмная тема) */
 body {
   background-image: url('/assets/images/body-bg.png');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   background-attachment: fixed;
-  color: #fff; /* Белый текст для тёмной темы */
+  color: #fff;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   margin: 0;
   padding: 0;
@@ -30,7 +30,7 @@ main {
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  min-height: 200px;
+  min-height: 250px; /* Увеличена высота для корректного отображения */
   position: relative;
 }
 
@@ -40,7 +40,7 @@ main {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.7); /* Усиленный оверлей для читаемости */
+  background: rgba(0, 0, 0, 0.7);
   z-index: 1;
 }
 
@@ -76,7 +76,7 @@ main {
   display: inline-block;
   font-size: 2rem;
   font-weight: 700;
-  color: #fff; /* Белый текст для читаемости */
+  color: #fff;
   white-space: nowrap;
 }
 
@@ -84,10 +84,66 @@ main {
   display: inline-block;
 }
 
+/* Стеклянная карточка */
+.glass-card {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1rem;
+}
+
+.glass-card .card-body {
+  padding: 1.5rem;
+}
+
+.glass-card .card-title {
+  color: #fff;
+  font-size: 1.5rem;
+}
+
+.glass-card .card-text {
+  color: #ddd;
+}
+
+/* SEO-текст */
+.seo-text {
+  color: #ddd;
+  line-height: 1.6;
+}
+
+.seo-text h2 {
+  color: #fff;
+  font-size: 1.8rem;
+}
+
+/* Карусель статей */
+.articles-carousel .carousel-inner {
+  padding: 1rem 0;
+}
+
+.articles-carousel .carousel-item .card {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  color: #fff;
+  margin: 0 0.5rem;
+}
+
+.articles-carousel .carousel-item .card-title {
+  font-size: 1.3rem;
+}
+
+.articles-carousel .carousel-item .card-text {
+  color: #ddd;
+}
+
 /* Галерея */
 .gallery {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1rem;
   padding: 2rem 0;
 }
@@ -96,11 +152,13 @@ main {
   position: relative;
   overflow: hidden;
   border-radius: 8px;
+  cursor: pointer;
 }
 
 .gallery-item img {
   width: 100%;
-  height: auto;
+  height: 200px; /* Фиксированная высота для превью */
+  object-fit: cover; /* Масштабирование без искажений */
   display: block;
   transition: transform 0.3s ease;
 }
@@ -118,6 +176,7 @@ main {
   color: #fff;
   padding: 0.5rem;
   text-align: center;
+  font-size: 0.9rem;
 }
 
 /* Статьи */
@@ -177,7 +236,10 @@ article p {
     font-size: 1.5rem;
   }
   .gallery {
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+  .glass-card .card-title {
+    font-size: 1.2rem;
   }
 }
 
