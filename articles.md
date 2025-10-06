@@ -11,14 +11,14 @@ description: Статьи о гибридном ИИ и IoT
   {% if site.posts.size > 0 %}
   <div id="articlesCarousel" class="carousel slide mb-5" data-bs-ride="carousel" data-bs-interval="5000">
     <div class="carousel-indicators">
-      {% for post in site.posts limit: 5 %}
+      {% for post in site.posts %}
       <button type="button" data-bs-target="#articlesCarousel" data-bs-slide-to="{{ forloop.index0 }}" 
               class="{% if forloop.first %}active{% endif %}" 
               aria-label="Слайд {{ forloop.index }}"></button>
       {% endfor %}
     </div>
     <div class="carousel-inner rounded-3">
-      {% for post in site.posts limit: 5 %}
+      {% for post in site.posts %}
       <div class="carousel-item {% if forloop.first %}active{% endif %}">
         <div class="container">
           <div class="row justify-content-center">
@@ -59,4 +59,30 @@ description: Статьи о гибридном ИИ и IoT
     </button>
   </div>
   {% endif %}
+
+  <div class="articles-list">
+    <h2 class="text-center mb-4">Список всех статей</h2>
+    <ul class="list-unstyled">
+      {% for post in site.posts %}
+      <li class="mb-3">
+        <a href="{{ post.url | relative_url }}" class="text-decoration-none text-light">
+          <div class="neural-card-3d p-3">
+            <div class="row align-items-center">
+              {% if post.image %}
+              <div class="col-md-3">
+                <img src="{{ post.image | relative_url }}" class="img-fluid rounded" alt="{{ post.title | escape }}" loading="lazy">
+              </div>
+              {% endif %}
+              <div class="{% if post.image %}col-md-9{% else %}col-12{% endif %}">
+                <h4 class="h5 mb-1">{{ post.title | escape }}</h4>
+                <p class="text-muted mb-1">{{ post.date | date: "%d.%m.%Y" }}</p>
+                <p class="mb-0">{{ post.excerpt | default: post.content | strip_html | truncate: 100 }}</p>
+              </div>
+            </div>
+          </div>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
 </div>
