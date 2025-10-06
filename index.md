@@ -6,13 +6,23 @@ dark_mode: false
 ---
 
 <main>
-  <section class="welcome-section">
-    <h2 class="spread-text">
-      <span>Д</span><span>о</span><span>б</span><span>р</span><span>о</span>
-      <span> </span><span>п</span><span>о</span><span>ж</span><span>а</span><span>л</span><span>о</span><span>в</span><span>а</span><span>т</span><span>ь</span>
-      <span> </span><span>в</span><span> </span><span>L</span><span>y</span><span>b</span><span>r</span><span>a</span>
-      <span> </span><span>A</span><span>I</span>
-    </h2>
+  ---
+layout: default
+title: Lybra AI
+description: Блог о гибридном ИИ и IoT 2025 года
+header_image: /assets/images/bg.png
+---
+<section class="welcome-section">
+  <h2 class="spread-text">
+    <span>Д</span><span>о</span><span>б</span><span>р</span><span>о</span>
+    <span> </span><span>п</span><span>о</span><span>ж</span><span>а</span><span>л</span><span>о</span><span>в</span><span>а</span><span>т</span><span>ь</span>
+    <span> </span><span>в</span>
+    <span> </span><span>м</span><span>о</span><span>й</span>
+    <span> </span><span>б</span><span>л</span><span>о</span><span>г</span>
+  </h2>
+</section>
+
+<!-- Остальной контент главной страницы -->
     <p>Добро пожаловать в мой блог! Здесь я делюсь трендами гибридного ИИ и IoT 2025 года. Мои статьи и эксперименты раскрывают, как искусственный интеллект трансформирует технологии: от edge-вычислений до применения ИИ на бюджетном оборудовании, таком как P102-100. Читайте мои исследования, следите за экспериментами в <a href="https://lybra-bee.github.io/lybra-ai-lab/">Lybra AI Lab</a> и узнавайте, как ИИ меняет мир.</p>
     <p>В 2025 году гибридный ИИ в IoT становится ключевым трендом. Edge-вычисления позволяют обрабатывать данные локально, снижая задержки и повышая безопасность. Моя лаборатория тестирует Stable Diffusion, LLaMA и другие модели на доступном оборудовании, чтобы показать, как ИИ доступен каждому. Подписывайтесь, чтобы не пропустить новые статьи и эксперименты!</p>
   </section>
