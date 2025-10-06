@@ -3,6 +3,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% if page.title %}{{ page.title }} | {% endif %}{{ site.title }}</title>
   {% seo %}
+  <meta name="keywords" content="искусственный интеллект, нейросети, машинное обучение, AI, ML, локальный AI, слабое железо, Stable Diffusion, LLM">
+  <meta name="author" content="Lybra Bee">
   <meta name="yandex-verification" content="a538b35a7696ff2c">
   <meta name="google-site-verification" content="google7a98bc4928c11fc0.html">
   <meta property="og:title" content="{{ page.title | default: site.title }}">
@@ -13,7 +15,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <link rel="canonical" href="{{ site.url }}{{ page.url }}">
   <meta http-equiv="Cache-Control" content="public, max-age=604800">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https://lybra-bee.github.io; script-src 'self' https://www.googletagmanager.com https://mc.yandex.ru">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https://lybra-bee.github.io; script-src 'self' https://www.googletagmanager.com https://mc.yandex.ru; connect-src 'self' https://analytics.google.com https://mc.yandex.ru">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -35,6 +37,28 @@
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
     gtag('config', 'G-23L72G58BB');
+    // Событие: клик на лабораторию
+    document.addEventListener('DOMContentLoaded', function() {
+      const labLink = document.querySelector('.lab-promo a');
+      if (labLink) {
+        labLink.addEventListener('click', () => {
+          gtag('event', 'click_lab_link', {
+            'event_category': 'Engagement',
+            'event_label': 'Lab Promo Click'
+          });
+        });
+      }
+      // Событие: клик на статьи
+      const articlesLink = document.querySelector('a[href="/articles"]');
+      if (articlesLink) {
+        articlesLink.addEventListener('click', () => {
+          gtag('event', 'click_articles', {
+            'event_category': 'Navigation',
+            'event_label': 'Articles Page'
+          });
+        });
+      }
+    });
   </script>
   <!-- Яндекс.Метрика -->
   <script async src="https://mc.yandex.ru/metrika/tag.js"></script>
@@ -43,4 +67,20 @@
       m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
       m[i].l=1*new Date();
       k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
-    })(window,
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js', 'ym');
+    ym(104334067, 'init', {
+      ssr: true,
+      webvisor: true,
+      clickmap: true,
+      ecommerce: "dataLayer",
+      accurateTrackBounce: true,
+      trackLinks: true
+    });
+  </script>
+  <noscript><div><img src="https://mc.yandex.ru/watch/104334067" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+  <link rel="stylesheet" href="{{ '/assets/css/main.css' | relative_url }}">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <meta name="theme-color" content="#000000">
+  <link rel="preload" href="{{ site.posts.first.image | default: '/assets/images/posts/placeholder.png' }}" as="image">
+</head>
