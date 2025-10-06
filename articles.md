@@ -1,17 +1,16 @@
 ---
 layout: default
-title: Статьи
-description: Последние обзоры и уроки по искусственному интеллекту.
+title: Статьи об ИИ и IoT
+description: Все статьи о гибридном ИИ, IoT и edge-вычислениях 2025 года. Читайте обзоры и эксперименты из Lybra AI Lab.
 ---
 
 <div class="container py-4">
-    <h1 class="text-center mb-2">Все статьи</h1>
-    <p class="text-center mb-5">Последние обзоры и уроки по искусственному интеллекту</p>
+    <h1 class="text-center mb-2">Статьи об ИИ и IoT</h1>
+    <p class="text-center mb-5">Последние обзоры, уроки и эксперименты по искусственному интеллекту и IoT. Смотрите мои исследования в <a href="https://lybra-bee.github.io/lybra-ai-lab/">Lybra AI Lab</a>.</p>
 
     {% if site.posts.size > 0 %}
     <!-- Карусель -->
     <div id="articlesCarousel" class="carousel slide mb-5" data-bs-ride="carousel" data-bs-interval="5000">
-        <!-- Индикаторы -->
         <div class="carousel-indicators">
             {% for post in site.posts limit: 5 %}
             <button type="button" data-bs-target="#articlesCarousel" data-bs-slide-to="{{ forloop.index0 }}" 
@@ -19,8 +18,6 @@ description: Последние обзоры и уроки по искусств
                     aria-label="Слайд {{ forloop.index }}"></button>
             {% endfor %}
         </div>
-
-        <!-- Слайды -->
         <div class="carousel-inner rounded-3">
             {% for post in site.posts limit: 5 %}
             <div class="carousel-item {% if forloop.first %}active{% endif %}">
@@ -33,7 +30,7 @@ description: Последние обзоры и уроки по искусств
                                     <div class="col-md-5 mb-3 mb-md-0">
                                         <a href="{{ post.url | relative_url }}">
                                             <img src="{{ post.image | relative_url }}" class="img-fluid rounded carousel-image" 
-                                                 alt="{{ post.title | escape }}" loading="lazy">
+                                                 alt="{{ post.image_alt | default: post.title | escape }}" loading="lazy">
                                         </a>
                                     </div>
                                     {% endif %}
@@ -53,8 +50,6 @@ description: Последние обзоры и уроки по искусств
             </div>
             {% endfor %}
         </div>
-
-        <!-- Кнопки управления -->
         <button class="carousel-control-prev" type="button" data-bs-target="#articlesCarousel" data-bs-slide="prev">
             <span class="carousel-control-prev-icon" aria-hidden="true"></span>
             <span class="visually-hidden">Предыдущий</span>
@@ -64,7 +59,17 @@ description: Последние обзоры и уроки по искусств
             <span class="visually-hidden">Следующий</span>
         </button>
     </div>
-    {% endif %}
 
-    <!-- Остальной контент страницы -->
+    <!-- Полный список статей -->
+    <div class="all-posts">
+        <h2>Все статьи</h2>
+        <ul class="post-list">
+            {% for post in site.posts %}
+            <li>
+                <a href="{{ post.url | relative_url }}">{{ post.title | escape }}</a> — {{ post.date | date: "%d.%m.%Y" }}
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
 </div>
