@@ -6,12 +6,6 @@ dark_mode: false
 ---
 
 <main>
----
-layout: default
-title: Lybra AI
-description: Блог о гибридном ИИ и IoT 2025 года
-header_image: /assets/images/bg.png
----
 <section class="welcome-section">
   <h2 class="spread-text">
     <span>Д</span><span>о</span><span>б</span><span>р</span><span>о</span>
