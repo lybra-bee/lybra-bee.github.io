@@ -6,7 +6,7 @@ dark_mode: false
 ---
 
 <main>
-  ---
+---
 layout: default
 title: Lybra AI
 description: Блог о гибридном ИИ и IoT 2025 года
