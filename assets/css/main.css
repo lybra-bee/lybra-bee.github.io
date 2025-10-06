@@ -219,9 +219,18 @@ main {
   border-radius: 10px;
 }
 
+.post-image {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+  border-radius: 10px;
+}
+
 /* Адаптивность для мобильных */
 @media (max-width: 768px) {
-  .post-article img {
+  .post-article img,
+  .post-image {
     max-width: 100%;
     height: auto;
   }
