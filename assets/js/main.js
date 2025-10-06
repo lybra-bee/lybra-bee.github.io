@@ -50,20 +50,4 @@ document.addEventListener('DOMContentLoaded', function() {
 
     animatePair();
   }
-
-  // Переключение тёмной темы
-  const toggle = document.getElementById('dark-mode-toggle');
-  if (toggle) {
-    toggle.addEventListener('click', function() {
-      document.body.classList.toggle('dark-mode');
-      this.textContent = document.body.classList.contains('dark-mode') ? 'Светлая тема' : 'Темная тема';
-      localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
-    });
-
-    const savedTheme = localStorage.getItem('darkMode');
-    if (savedTheme === 'true') {
-      document.body.classList.add('dark-mode');
-      toggle.textContent = 'Светлая тема';
-    }
-  }
 });
