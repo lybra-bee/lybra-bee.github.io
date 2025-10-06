@@ -6,13 +6,15 @@ description: Галерея изображений проектов Lybra AI
 
 <div class="container py-4">
   <h1 class="text-center mb-2">Галерея</h1>
-  <p class="text-center mb-5">Галерея изображений проектов Lybra AI</p>
+  <p class="text-center mb-5">Изображения проектов Lybra AI из статей</p>
   <div class="gallery">
-    {% for image in site.data.gallery %}
-    <figure class="gallery-item">
-      <img src="{{ image.src | relative_url }}" alt="{{ image.alt }}" data-bs-toggle="modal" data-bs-target="#galleryModal" data-src="{{ image.src | relative_url }}">
-      <figcaption>{{ image.caption }}</figcaption>
-    </figure>
+    {% for post in site.posts %}
+      {% if post.image %}
+      <figure class="gallery-item">
+        <img src="{{ post.image | relative_url }}" alt="{{ post.title | escape }}" data-bs-toggle="modal" data-bs-target="#galleryModal" data-src="{{ post.image | relative_url }}">
+        <figcaption>{{ post.title | escape }}</figcaption>
+      </figure>
+      {% endif %}
     {% endfor %}
   </div>
 </div>
