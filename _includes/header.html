@@ -1,7 +1,9 @@
 <header class="hero">
   <div class="hero-content">
     <h1>{{ page.title | default: site.title }}</h1>
-    {% if page.description %}<p>{{ page.description }}</p>{% endif %}
+    {% if page.description %}
+    <p>{{ page.description }}</p>
+    {% endif %}
     <nav class="nav-menu">
       <a href="/" class="nav-link">Главная</a>
       <a href="/articles/" class="nav-link">Статьи</a>
