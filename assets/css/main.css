@@ -19,7 +19,7 @@ main {
   color: #fff !important;
 }
 
-.container {
+.container, .container * {
   color: #fff !important;
 }
 
@@ -46,7 +46,7 @@ main {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.6); /* Усиленный оверлей */
+  background: rgba(0, 0, 0, 0.8); /* Максимально тёмный оверлей */
   z-index: 0;
 }
 
@@ -75,28 +75,29 @@ main {
 }
 
 .nav-link {
-  background: rgba(255, 255, 255, 0.6); /* Более непрозрачный фон для видимости */
+  background: rgba(255, 255, 255, 0.7) !important; /* Усиленная непрозрачность */
   padding: 0.8rem 1.5rem;
   margin: 0.5rem;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.5); /* Чёткая граница */
+  border-radius: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.6) !important; /* Чёткая граница */
   color: #fff !important;
-  text-decoration: none;
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4); /* Усиленная тень */
-  transition: box-shadow 0.3s ease, transform 0.3s ease, background 0.3s ease;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); /* Контраст текста */
-  font-weight: 500; /* Увеличенный вес шрифта */
+  text-decoration: none !important;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5) !important; /* Усиленная тень */
+  transition: box-shadow 0.3s ease, transform 0.3s ease, background 0.3s ease !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5) !important; /* Контраст текста */
+  font-weight: 600 !important; /* Увеличенный вес шрифта */
+  z-index: 3 !important; /* На передний план */
 }
 
 .nav-link:hover {
-  background: rgba(255, 255, 255, 0.8); /* Ещё ярче при hover */
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.5);
-  transform: translateY(-4px); /* Подъём */
+  background: rgba(255, 255, 255, 0.9) !important; /* Ярче при hover */
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.6) !important;
+  transform: translateY(-5px) !important; /* Подъём */
 }
 
 .nav-link:active {
-  transform: translateY(0);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+  transform: translateY(0) !important;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4) !important;
 }
 
 /* Бегущая строка */
@@ -226,22 +227,26 @@ main {
 
 /* Модальное окно */
 .modal-dialog {
-  max-width: none;
-  width: auto;
+  max-width: fit-content !important; /* Точно под размер изображения */
+  width: intrinsic !important; /* Для старых браузеров */
   margin: 1rem auto;
   display: flex;
   justify-content: center;
+  align-items: center;
 }
 
 .modal-content {
-  background: transparent;
-  border: none;
+  background: transparent !important; /* Прозрачный фон */
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-shadow: none !important;
   display: inline-block;
-  box-shadow: none;
 }
 
 .modal-body {
-  padding: 0;
+  padding: 0 !important;
+  margin: 0 !important;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -250,8 +255,8 @@ main {
 .modal-body img {
   max-height: 80vh;
   max-width: 90vw;
-  width: auto;
-  height: auto;
+  width: auto !important; /* Естественная ширина */
+  height: auto !important; /* Естественная высота */
   object-fit: contain;
   display: block;
   margin: 0 auto;
@@ -265,11 +270,11 @@ main {
 }
 
 .btn-close-white {
-  filter: invert(1);
+  filter: invert(1) !important;
 }
 
 /* Статьи */
-.post-article {
+.post-article, .post-article * {
   color: #fff !important;
 }
 
@@ -305,10 +310,10 @@ main {
   .post-article img,
   .post-image,
   .modal-body img {
-    max-width: 100%;
-    max-height: 80vh;
-    width: auto;
-    height: auto;
+    max-width: 100% !important;
+    max-height: 80vh !important;
+    width: auto !important;
+    height: auto !important;
   }
   .modal-dialog {
     margin: 0.5rem;
@@ -316,6 +321,7 @@ main {
   .nav-link {
     padding: 0.6rem 1rem;
     font-size: 0.9rem;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5) !important;
   }
 }
 
@@ -355,7 +361,7 @@ main {
   }
   .nav-link {
     margin: 0.5rem 0;
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5); /* Объём на мобильных */
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5) !important;
   }
   .spread-text {
     font-size: 1.5rem;
@@ -370,6 +376,6 @@ main {
 
 /* Диагностика */
 body::before {
-  content: "CSS Loaded";
+  content: "CSS Loaded - v2";
   display: none;
 }
