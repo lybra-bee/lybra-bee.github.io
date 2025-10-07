@@ -23,7 +23,7 @@ description: Галерея изображений проектов Lybra AI
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Закрыть модальное окно"></button>
       </div>
       <div class="modal-body">
         <img src="" class="img-fluid" id="modalImage" alt="Увеличенное изображение">
