@@ -1,17 +1,15 @@
-<header>
-  <nav class="navbar navbar-expand-lg navbar-light bg-light">
-    <div class="container">
-      <a class="navbar-brand" href="{{ '/' | relative_url }}">Lybra AI</a>
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-        <span class="navbar-toggler-icon"></span>
-      </button>
-      <div class="collapse navbar-collapse" id="navbarNav">
-        <ul class="navbar-nav ms-auto">
-          <li class="nav-item"><a class="nav-link" href="{{ '/gallery' | relative_url }}">Галерея</a></li>
-          <li class="nav-item"><a class="nav-link" href="{{ '/about' | relative_url }}">О нас</a></li>
-          <li class="nav-item"><a class="nav-link" href="{{ '/contact' | relative_url }}">Контакты</a></li>
-        </ul>
-      </div>
-    </div>
-  </nav>
+<header class="hero">
+  <div class="hero-content">
+    <h1>{{ page.title | default: site.title }}</h1>
+    {% if page.description %}
+    <p>{{ page.description }}</p>
+    {% endif %}
+    <nav class="nav-menu">
+      <a href="/" class="nav-link">Главная</a>
+      <a href="/articles/" class="nav-link">Статьи</a>
+      <a href="/gallery/" class="nav-link">Галерея</a>
+      <a href="/about/" class="nav-link">Обо мне</a>
+      <a href="https://lybra-bee.github.io/lybra-ai-lab/" class="nav-link">Лаборатория</a>
+    </nav>
+  </div>
 </header>
