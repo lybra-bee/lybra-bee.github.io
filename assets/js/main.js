@@ -61,6 +61,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let lastFocusedElement = null; // Сохраняем элемент, вызвавший модальное окно
 
     galleryItems.forEach(item => {
+      item.setAttribute('tabindex', '0'); // Делаем превью доступным для фокуса
       item.addEventListener('click', function() {
         try {
           lastFocusedElement = document.activeElement; // Сохраняем элемент с фокусом
@@ -96,19 +97,37 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     });
 
+    // Удаляем aria-hidden перед открытием модального окна
+    modalElement.addEventListener('show.bs.modal', function() {
+      modalElement.removeAttribute('aria-hidden');
+      console.log('aria-hidden removed before modal show');
+    });
+
+    // Удаляем aria-hidden перед началом закрытия
+    modalElement.addEventListener('hide.bs.modal', function() {
+      try {
+        modalElement.removeAttribute('aria-hidden');
+        console.log('aria-hidden removed before modal hide');
+      } catch (error) {
+        console.error('Error in hide.bs.modal:', error);
+      }
+    });
+
     // Очистка после полного закрытия модального окна
     modalElement.addEventListener('hidden.bs.modal', function() {
       try {
         modalImage.src = '';
         modalDialog.style.maxWidth = '';
         modalDialog.style.maxHeight = '';
-        modalElement.setAttribute('inert', ''); // Добавляем inert для предотвращения фокуса
+        modalElement.setAttribute('inert', ''); // Предотвращаем фокус
         console.log('Modal fully cleared');
 
         // Возвращаем фокус на последний элемент
-        if (lastFocusedElement) {
+        if (lastFocusedElement && lastFocusedElement !== document.body) {
           lastFocusedElement.focus();
           console.log('Focus returned to:', lastFocusedElement);
+        } else {
+          console.warn('No valid lastFocusedElement, focus not returned');
         }
 
         const modal = bootstrap.Modal.getInstance(modalElement);
@@ -122,14 +141,8 @@ document.addEventListener('DOMContentLoaded', function() {
           modalElement.removeAttribute('inert');
         }, 100);
       } catch (error) {
-        console.error('Error closing modal:', error);
+        console.error('Error in hidden.bs.modal:', error);
       }
-    });
-
-    // Удаляем aria-hidden перед открытием, чтобы избежать конфликта
-    modalElement.addEventListener('show.bs.modal', function() {
-      modalElement.removeAttribute('aria-hidden');
-      console.log('aria-hidden removed before modal show');
     });
   } else {
     console.error('Gallery items, modal image, or modal element not found:', {
