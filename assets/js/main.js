@@ -55,8 +55,9 @@ document.addEventListener('DOMContentLoaded', function() {
   const galleryItems = document.querySelectorAll('.gallery-item img');
   const modalImage = document.getElementById('modalImage');
   const modalElement = document.getElementById('galleryModal');
+  const modalDialog = document.querySelector('#galleryModal .modal-dialog');
 
-  if (galleryItems && modalImage && modalElement) {
+  if (galleryItems && modalImage && modalElement && modalDialog) {
     galleryItems.forEach(item => {
       item.addEventListener('click', function() {
         const largeSrc = this.getAttribute('data-large-src') || this.src;
@@ -84,7 +85,7 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     });
 
-    // Очистка после закрытия модального окна
+    // Очистка после полного закрытия модального окна
     modalElement.addEventListener('hidden.bs.modal', function() {
       modalImage.src = '';
       modalDialog.style.maxWidth = '';
