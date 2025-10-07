@@ -46,7 +46,7 @@ main {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.7); /* Усиленный оверлей для контраста кнопок */
+  background: rgba(0, 0, 0, 0.6); /* Усиленный оверлей */
   z-index: 0;
 }
 
@@ -75,28 +75,28 @@ main {
 }
 
 .nav-link {
-  background: rgba(255, 255, 255, 0.6); /* Более непрозрачный фон для постоянной видимости */
+  background: rgba(255, 255, 255, 0.6); /* Более непрозрачный фон для видимости */
   padding: 0.8rem 1.5rem;
   margin: 0.5rem;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.5); /* Чёткая граница */
   color: #fff !important;
   text-decoration: none;
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5); /* Усиленная тень для объёма */
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4); /* Усиленная тень */
   transition: box-shadow 0.3s ease, transform 0.3s ease, background 0.3s ease;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); /* Контраст текста */
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); /* Контраст текста */
   font-weight: 500; /* Увеличенный вес шрифта */
 }
 
 .nav-link:hover {
   background: rgba(255, 255, 255, 0.8); /* Ещё ярче при hover */
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.6);
-  transform: translateY(-5px); /* Подъём для эффекта */
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.5);
+  transform: translateY(-4px); /* Подъём */
 }
 
 .nav-link:active {
   transform: translateY(0);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
 }
 
 /* Бегущая строка */
@@ -226,22 +226,22 @@ main {
 
 /* Модальное окно */
 .modal-dialog {
-  max-width: none; /* Убираем фиксированную ширину */
-  width: auto; /* Адаптация под изображение */
+  max-width: none;
+  width: auto;
   margin: 1rem auto;
   display: flex;
   justify-content: center;
 }
 
 .modal-content {
-  background: transparent; /* Убираем фон, чтобы не было полос */
+  background: transparent;
   border: none;
   display: inline-block;
   box-shadow: none;
 }
 
 .modal-body {
-  padding: 0; /* Убираем отступы */
+  padding: 0;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -249,13 +249,13 @@ main {
 
 .modal-body img {
   max-height: 80vh;
-  max-width: 90vw; /* Ограничиваем ширину */
-  width: auto; /* Естественная ширина изображения */
-  height: auto; /* Пропорции изображения */
+  max-width: 90vw;
+  width: auto;
+  height: auto;
   object-fit: contain;
   display: block;
   margin: 0 auto;
-  border-radius: 8px; /* Скругление углов изображения */
+  border-radius: 8px;
 }
 
 .modal-header {
@@ -265,7 +265,7 @@ main {
 }
 
 .btn-close-white {
-  filter: invert(1); /* Белая кнопка закрытия */
+  filter: invert(1);
 }
 
 /* Статьи */
