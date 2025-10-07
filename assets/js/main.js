@@ -60,78 +60,64 @@ document.addEventListener('DOMContentLoaded', function() {
   if (galleryItems && modalImage && modalElement && modalDialog) {
     let lastFocusedElement = null; // Сохраняем элемент, вызвавший модальное окно
 
+    // Удаляем дублирующиеся обработчики
+    const modalOpenHandler = function() {
+      try {
+        lastFocusedElement = document.activeElement; // Сохраняем элемент с фокусом
+        const largeSrc = this.getAttribute('data-large-src') || this.src;
+        if (largeSrc) {
+          modalImage.src = largeSrc;
+          console.log('Modal image set to:', largeSrc);
+
+          const img = new Image();
+          img.src = largeSrc;
+          img.onload = function() {
+            const width = img.naturalWidth;
+            const height = img.naturalHeight;
+            console.log('Image dimensions:', width, 'x', height);
+            modalDialog.style.maxWidth = `${Math.min(width, window.innerWidth * 0.9)}px`;
+            modalDialog.style.maxHeight = `${Math.min(height, window.innerHeight * 0.8)}px`;
+          };
+          img.onerror = function() {
+            console.error('Failed to load image:', largeSrc);
+          };
+
+          const modal = new bootstrap.Modal(modalElement, {
+            keyboard: true,
+            backdrop: true
+          });
+          modal.show();
+        } else {
+          console.warn('data-large-src and src are missing for image:', this.src);
+        }
+      } catch (error) {
+        console.error('Error opening modal:', error);
+      }
+    };
+
     galleryItems.forEach(item => {
       item.setAttribute('tabindex', '0'); // Делаем превью доступным для фокуса
-      item.addEventListener('click', function() {
-        try {
-          lastFocusedElement = document.activeElement; // Сохраняем элемент с фокусом
-          const largeSrc = this.getAttribute('data-large-src') || this.src;
-          if (largeSrc) {
-            modalImage.src = largeSrc;
-            console.log('Modal image set to:', largeSrc);
-
-            const img = new Image();
-            img.src = largeSrc;
-            img.onload = function() {
-              const width = img.naturalWidth;
-              const height = img.naturalHeight;
-              console.log('Image dimensions:', width, 'x', height);
-              modalDialog.style.maxWidth = `${Math.min(width, window.innerWidth * 0.9)}px`;
-              modalDialog.style.maxHeight = `${Math.min(height, window.innerHeight * 0.8)}px`;
-            };
-            img.onerror = function() {
-              console.error('Failed to load image:', largeSrc);
-            };
-
-            const modal = new bootstrap.Modal(modalElement, {
-              keyboard: true,
-              backdrop: true
-            });
-            modal.show();
-          } else {
-            console.warn('data-large-src and src are missing for image:', this.src);
-          }
-        } catch (error) {
-          console.error('Error opening modal:', error);
-        }
-      });
-    });
-
-    // Удаляем aria-hidden перед открытием модального окна
-    modalElement.addEventListener('show.bs.modal', function() {
-      try {
-        modalElement.removeAttribute('aria-hidden');
-        console.log('aria-hidden removed before modal show');
-      } catch (error) {
-        console.error('Error in show.bs.modal:', error);
-      }
-    });
-
-    // Удаляем aria-hidden и устанавливаем inert перед закрытием
-    modalElement.addEventListener('hide.bs.modal', function() {
-      try {
-        modalElement.removeAttribute('aria-hidden');
-        modalElement.setAttribute('inert', '');
-        console.log('aria-hidden removed and inert set before modal hide');
-      } catch (error) {
-        console.error('Error in hide.bs.modal:', error);
-      }
+      item.removeEventListener('click', modalOpenHandler); // Удаляем старый обработчик
+      item.addEventListener('click', modalOpenHandler); // Добавляем новый
     });
 
     // Очистка после полного закрытия модального окна
-    modalElement.addEventListener('hidden.bs.modal', function() {
+    const modalHiddenHandler = function() {
       try {
         modalImage.src = '';
         if (modalDialog) {
           modalDialog.style.maxWidth = '';
           modalDialog.style.maxHeight = '';
         }
+        modalElement.setAttribute('inert', ''); // Предотвращаем фокус
         console.log('Modal fully cleared');
 
         // Возвращаем фокус на последний элемент
         if (lastFocusedElement && lastFocusedElement !== document.body) {
-          lastFocusedElement.focus();
-          console.log('Focus returned to:', lastFocusedElement);
+          setTimeout(() => {
+            lastFocusedElement.focus();
+            console.log('Focus returned to:', lastFocusedElement);
+          }, 200);
         } else {
           console.warn('No valid lastFocusedElement, focus not returned');
         }
@@ -139,11 +125,15 @@ document.addEventListener('DOMContentLoaded', function() {
         // Удаляем inert после завершения
         setTimeout(() => {
           modalElement.removeAttribute('inert');
-        }, 200);
+        }, 300);
       } catch (error) {
         console.error('Error in hidden.bs.modal:', error);
       }
-    });
+    };
+
+    // Удаляем старый обработчик и добавляем новый
+    modalElement.removeEventListener('hidden.bs.modal', modalHiddenHandler);
+    modalElement.addEventListener('hidden.bs.modal', modalHiddenHandler);
   } else {
     console.error('Gallery items, modal image, or modal element not found:', {
       galleryItems: !!galleryItems,
