@@ -60,41 +60,68 @@ document.addEventListener('DOMContentLoaded', function() {
   if (galleryItems && modalImage && modalElement && modalDialog) {
     galleryItems.forEach(item => {
       item.addEventListener('click', function() {
-        const largeSrc = this.getAttribute('data-large-src') || this.src;
-        if (largeSrc) {
-          modalImage.src = largeSrc;
-          console.log('Modal image set to:', largeSrc);
+        try {
+          const largeSrc = this.getAttribute('data-large-src') || this.src;
+          if (largeSrc) {
+            modalImage.src = largeSrc;
+            console.log('Modal image set to:', largeSrc);
 
-          // Динамическая подгонка размеров модального окна
-          const img = new Image();
-          img.src = largeSrc;
-          img.onload = function() {
-            const width = img.naturalWidth;
-            const height = img.naturalHeight;
-            console.log('Image dimensions:', width, 'x', height);
-            modalDialog.style.maxWidth = `${Math.min(width, window.innerWidth * 0.9)}px`;
-            modalDialog.style.maxHeight = `${Math.min(height, window.innerHeight * 0.8)}px`;
-          };
-        } else {
-          console.warn('data-large-src and src are missing for image:', this.src);
+            // Динамическая подгонка размеров модального окна
+            const img = new Image();
+            img.src = largeSrc;
+            img.onload = function() {
+              const width = img.naturalWidth;
+              const height = img.naturalHeight;
+              console.log('Image dimensions:', width, 'x', height);
+              modalDialog.style.maxWidth = `${Math.min(width, window.innerWidth * 0.9)}px`;
+              modalDialog.style.maxHeight = `${Math.min(height, window.innerHeight * 0.8)}px`;
+            };
+            img.onerror = function() {
+              console.error('Failed to load image:', largeSrc);
+            };
+
+            const modal = new bootstrap.Modal(modalElement, {
+              keyboard: true,
+              backdrop: true
+            });
+            modal.show();
+          } else {
+            console.warn('data-large-src and src are missing for image:', this.src);
+          }
+        } catch (error) {
+          console.error('Error opening modal:', error);
         }
-        const modal = new bootstrap.Modal(modalElement, {
-          keyboard: true,
-          backdrop: true
-        });
-        modal.show();
       });
     });
 
     // Очистка после закрытия модального окна
     modalElement.addEventListener('hide.bs.modal', function() {
-      modalImage.src = '';
-      modalDialog.style.maxWidth = '';
-      modalDialog.style.maxHeight = '';
-      console.log('Modal image and styles cleared');
-      const modal = bootstrap.Modal.getInstance(modalElement);
-      if (modal) {
-        modal.dispose();
+      try {
+        modalImage.src = '';
+        modalDialog.style.maxWidth = '';
+        modalDialog.style.maxHeight = '';
+        console.log('Modal image and styles cleared');
+
+        // Проверка и уничтожение модального окна
+        const modal = bootstrap.Modal.getInstance(modalElement);
+        if (modal) {
+          modal.hide(); // Гарантируем закрытие
+          modal.dispose();
+          console.log('Modal disposed');
+        }
+      } catch (error) {
+        console.error('Error closing modal:', error);
+      }
+    });
+
+    // Очистка после полного скрытия
+    modalElement.addEventListener('hidden.bs.modal', function() {
+      try {
+        modalImage.removeAttribute('src');
+        modalDialog.removeAttribute('style');
+        console.log('Modal fully cleared');
+      } catch (error) {
+        console.error('Error in hidden.bs.modal:', error);
       }
     });
   } else {
