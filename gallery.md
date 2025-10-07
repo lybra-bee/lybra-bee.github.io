@@ -11,7 +11,7 @@ description: Галерея изображений проектов Lybra AI
     {% for post in site.posts %}
       {% if post.image %}
       <figure class="gallery-item">
-        <img src="{{ post.image | relative_url }}" alt="{{ post.title | escape }}" data-bs-toggle="modal" data-bs-target="#galleryModal" data-large-src="{{ post.image | relative_url }}" data-style-applied="gallery-item">
+        <img src="{{ post.image | relative_url }}" alt="{{ post.title | escape }}" data-bs-toggle="modal" data-bs-target="#galleryModal" data-large-src="{{ post.image | relative_url }}">
       </figure>
       {% endif %}
     {% endfor %}
@@ -26,7 +26,7 @@ description: Галерея изображений проектов Lybra AI
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Закрыть"></button>
       </div>
       <div class="modal-body">
-        <img src="" class="img-fluid" id="modalImage" alt="Увеличенное изображение" data-style-applied="modal-image">
+        <img src="" class="img-fluid" id="modalImage" alt="Увеличенное изображение">
       </div>
     </div>
   </div>
