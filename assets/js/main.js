@@ -55,16 +55,28 @@ document.addEventListener('DOMContentLoaded', function() {
   const galleryItems = document.querySelectorAll('.gallery-item img');
   const modalImage = document.getElementById('modalImage');
   const modalElement = document.getElementById('galleryModal');
+  const modalDialog = document.querySelector('#galleryModal .modal-dialog');
 
-  if (galleryItems && modalImage && modalElement) {
+  if (galleryItems && modalImage && modalElement && modalDialog) {
     galleryItems.forEach(item => {
       item.addEventListener('click', function() {
         const largeSrc = this.getAttribute('data-large-src') || this.src;
         if (largeSrc) {
           modalImage.src = largeSrc;
           console.log('Modal image set to:', largeSrc);
+
+          // Динамическая подгонка размеров модального окна
+          const img = new Image();
+          img.src = largeSrc;
+          img.onload = function() {
+            const width = img.naturalWidth;
+            const height = img.naturalHeight;
+            console.log('Image dimensions:', width, 'x', height);
+            modalDialog.style.maxWidth = `${Math.min(width, window.innerWidth * 0.9)}px`;
+            modalDialog.style.maxHeight = `${Math.min(height, window.innerHeight * 0.8)}px`;
+          };
         } else {
-          console.warn('data-large-src and src are missing for image:', this);
+          console.warn('data-large-src and src are missing for image:', this.src);
         }
         const modal = new bootstrap.Modal(modalElement, {
           keyboard: true,
@@ -77,13 +89,32 @@ document.addEventListener('DOMContentLoaded', function() {
     // Очистка после закрытия модального окна
     modalElement.addEventListener('hide.bs.modal', function() {
       modalImage.src = '';
-      console.log('Modal image cleared');
+      modalDialog.style.maxWidth = '';
+      modalDialog.style.maxHeight = '';
+      console.log('Modal image and styles cleared');
       const modal = bootstrap.Modal.getInstance(modalElement);
       if (modal) {
         modal.dispose();
       }
     });
   } else {
-    console.warn('Gallery items, modal image, or modal element not found');
+    console.error('Gallery items, modal image, or modal element not found:', {
+      galleryItems: !!galleryItems,
+      modalImage: !!modalImage,
+      modalElement: !!modalElement,
+      modalDialog: !!modalDialog
+    });
   }
+
+  // Диагностика CSS
+  const navLinks = document.querySelectorAll('.nav-link');
+  navLinks.forEach(link => {
+    const computedStyle = window.getComputedStyle(link);
+    console.log('Nav-link styles:', {
+      background: computedStyle.background,
+      boxShadow: computedStyle.boxShadow,
+      border: computedStyle.border,
+      color: computedStyle.color
+    });
+  });
 });
