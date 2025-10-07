@@ -99,15 +99,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Удаляем aria-hidden перед открытием модального окна
     modalElement.addEventListener('show.bs.modal', function() {
-      modalElement.removeAttribute('aria-hidden');
-      console.log('aria-hidden removed before modal show');
+      try {
+        modalElement.removeAttribute('aria-hidden');
+        console.log('aria-hidden removed before modal show');
+      } catch (error) {
+        console.error('Error in show.bs.modal:', error);
+      }
     });
 
-    // Удаляем aria-hidden перед началом закрытия
+    // Удаляем aria-hidden и устанавливаем inert перед закрытием
     modalElement.addEventListener('hide.bs.modal', function() {
       try {
         modalElement.removeAttribute('aria-hidden');
-        console.log('aria-hidden removed before modal hide');
+        modalElement.setAttribute('inert', '');
+        console.log('aria-hidden removed and inert set before modal hide');
       } catch (error) {
         console.error('Error in hide.bs.modal:', error);
       }
@@ -117,9 +122,10 @@ document.addEventListener('DOMContentLoaded', function() {
     modalElement.addEventListener('hidden.bs.modal', function() {
       try {
         modalImage.src = '';
-        modalDialog.style.maxWidth = '';
-        modalDialog.style.maxHeight = '';
-        modalElement.setAttribute('inert', ''); // Предотвращаем фокус
+        if (modalDialog) {
+          modalDialog.style.maxWidth = '';
+          modalDialog.style.maxHeight = '';
+        }
         console.log('Modal fully cleared');
 
         // Возвращаем фокус на последний элемент
@@ -130,16 +136,10 @@ document.addEventListener('DOMContentLoaded', function() {
           console.warn('No valid lastFocusedElement, focus not returned');
         }
 
-        const modal = bootstrap.Modal.getInstance(modalElement);
-        if (modal) {
-          modal.dispose();
-          console.log('Modal disposed');
-        }
-
         // Удаляем inert после завершения
         setTimeout(() => {
           modalElement.removeAttribute('inert');
-        }, 100);
+        }, 200);
       } catch (error) {
         console.error('Error in hidden.bs.modal:', error);
       }
