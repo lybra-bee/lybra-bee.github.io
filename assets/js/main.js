@@ -57,10 +57,16 @@ document.addEventListener('DOMContentLoaded', function() {
   const modalElement = document.getElementById('galleryModal');
   const modalDialog = document.querySelector('#galleryModal .modal-dialog');
 
+  // Проверяем, не инициализирован ли скрипт повторно
+  if (modalElement && modalElement.dataset.initialized) {
+    console.warn('Modal script already initialized, skipping');
+    return;
+  }
+
   if (galleryItems && modalImage && modalElement && modalDialog) {
+    modalElement.dataset.initialized = 'true'; // Отмечаем, что скрипт инициализирован
     let lastFocusedElement = null; // Сохраняем элемент, вызвавший модальное окно
 
-    // Удаляем дублирующиеся обработчики
     const modalOpenHandler = function() {
       try {
         lastFocusedElement = document.activeElement; // Сохраняем элемент с фокусом
@@ -109,7 +115,6 @@ document.addEventListener('DOMContentLoaded', function() {
           modalDialog.style.maxWidth = '';
           modalDialog.style.maxHeight = '';
         }
-        modalElement.setAttribute('inert', ''); // Предотвращаем фокус
         console.log('Modal fully cleared');
 
         // Возвращаем фокус на последний элемент
@@ -117,29 +122,13 @@ document.addEventListener('DOMContentLoaded', function() {
           setTimeout(() => {
             lastFocusedElement.focus();
             console.log('Focus returned to:', lastFocusedElement);
-          }, 200);
+          }, 300);
         } else {
           console.warn('No valid lastFocusedElement, focus not returned');
         }
-
-        // Удаляем inert после завершения
-        setTimeout(() => {
-          modalElement.removeAttribute('inert');
-        }, 300);
       } catch (error) {
         console.error('Error in hidden.bs.modal:', error);
       }
     };
 
-    // Удаляем старый обработчик и добавляем новый
-    modalElement.removeEventListener('hidden.bs.modal', modalHiddenHandler);
-    modalElement.addEventListener('hidden.bs.modal', modalHiddenHandler);
-  } else {
-    console.error('Gallery items, modal image, or modal element not found:', {
-      galleryItems: !!galleryItems,
-      modalImage: !!modalImage,
-      modalElement: !!modalElement,
-      modalDialog: !!modalDialog
-    });
-  }
-});
+    // Добавляем однораз
