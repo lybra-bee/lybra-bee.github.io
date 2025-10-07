@@ -11,7 +11,7 @@ description: Галерея изображений проектов Lybra AI
     {% for post in site.posts %}
       {% if post.image %}
       <figure class="gallery-item">
-        <img src="{{ post.image | relative_url }}" alt="{{ post.title | escape }}" data-bs-toggle="modal" data-bs-target="#galleryModal" data-large-src="{{ post.image | relative_url }}" tabindex="0">
+        <img src="{{ post.image | relative_url }}" alt="{{ post.title | escape }}" data-bs-toggle="modal" data-bs-target="#galleryModal" data-large-src="{{ post.image | relative_url }}">
       </figure>
       {% endif %}
     {% endfor %}
@@ -19,11 +19,11 @@ description: Галерея изображений проектов Lybra AI
 </div>
 
 <!-- Модальное окно -->
-<div class="modal fade" id="galleryModal" tabindex="-1" aria-labelledby="galleryModalLabel">
-  <div class="modal-dialog">
+<div class="modal fade" id="galleryModal" tabindex="-1" aria-labelledby="galleryModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Закрыть модальное окно"></button>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Закрыть"></button>
       </div>
       <div class="modal-body">
         <img src="" class="img-fluid" id="modalImage" alt="Увеличенное изображение">
