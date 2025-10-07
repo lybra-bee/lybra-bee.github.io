@@ -23,7 +23,7 @@ main {
   color: #fff !important;
 }
 
-/* Шапка (hero) */
+/* Шапка (hero) - ОБНОВЛЕНО: уменьшено затемнение */
 .hero {
   position: relative;
   background-image: url('/assets/images/bg.png');
@@ -38,7 +38,7 @@ main {
   z-index: 1;
 }
 
-/* Полупрозрачный оверлей для улучшения читаемости */
+/* Полупрозрачный оверлей - ОБНОВЛЕНО: светлее */
 .hero::before {
   content: '';
   position: absolute;
@@ -46,7 +46,7 @@ main {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.8); /* Максимально тёмный оверлей */
+  background: rgba(0, 0, 0, 0.4) !important; /* БЫЛО 0.8 - СДЕЛАЛИ СВЕТЛЕЕ */
   z-index: 0;
 }
 
@@ -60,53 +60,61 @@ main {
   font-size: 2.5rem;
   margin-bottom: 1rem;
   color: #fff !important;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .hero p {
   font-size: 1.2rem;
   margin-bottom: 1.5rem;
   color: #fff !important;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .nav-menu {
   display: flex;
   justify-content: center;
   flex-wrap: wrap;
+  gap: 0.8rem;
 }
 
-/* ОБНОВЛЕННЫЕ СТИЛИ КНОПОК - СТЕКЛЯННЫЙ НЕОМОРФИЗМ */
+/* ОБНОВЛЕННЫЕ СТИЛИ КНОПОК - ПРЯМОУГОЛЬНЫЕ ОБЪЕМНЫЕ */
 .nav-link {
-  background: rgba(255, 255, 255, 0.1) !important; /* Полупрозрачный фон */
-  backdrop-filter: blur(10px); /* Размытие для эффекта матового стекла */
-  padding: 0.8rem 1.5rem;
-  margin: 0.5rem;
-  border-radius: 8px; /* Прямоугольность с лёгким скруглением */
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  background: rgba(255, 255, 255, 0.15) !important;
+  backdrop-filter: blur(10px);
+  padding: 0.9rem 2rem !important;
+  margin: 0.3rem !important;
+  border-radius: 4px !important; /* ПРЯМОУГОЛЬНАЯ ФОРМА */
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
   color: #fff !important;
   text-decoration: none !important;
-  box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.2),
-              -2px -2px 10px rgba(255, 255, 255, 0.05) !important; /* Объёмные тени */
+  /* ОБЪЕМНЫЕ ТЕНИ */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3),
+              0 6px 12px rgba(0, 0, 0, 0.2),
+              inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
   transition: all 0.3s ease !important;
   font-weight: 600 !important;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4) !important;
   position: relative;
   z-index: 3 !important;
+  font-size: 1rem !important;
+  min-width: 120px;
+  text-align: center;
 }
 
 .nav-link:hover {
-  background: rgba(255, 255, 255, 0.15) !important;
-  box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2),
-              -1px -1px 5px rgba(255, 255, 255, 0.05),
-              inset 2px 2px 5px rgba(0, 0, 0, 0.1) !important; /* Эффект "вдавленности" при наведении */
-  transform: translateY(2px) !important;
+  background: rgba(255, 255, 255, 0.25) !important;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4),
+              0 8px 16px rgba(0, 0, 0, 0.3),
+              inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+  transform: translateY(-2px) !important;
   color: #fff !important;
 }
 
 .nav-link:active {
-  background: rgba(255, 255, 255, 0.05) !important;
-  box-shadow: inset 3px 3px 6px rgba(0, 0, 0, 0.2),
-              inset -3px -3px 6px rgba(255, 255, 255, 0.05) !important;
-  transform: translateY(4px) !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4),
+              inset 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+  transform: translateY(1px) !important;
 }
 
 /* Бегущая строка */
@@ -236,8 +244,8 @@ main {
 
 /* Модальное окно */
 .modal-dialog {
-  max-width: fit-content !important; /* Точно под размер изображения */
-  width: intrinsic !important; /* Для старых браузеров */
+  max-width: fit-content !important;
+  width: intrinsic !important;
   margin: 1rem auto;
   display: flex;
   justify-content: center;
@@ -245,7 +253,7 @@ main {
 }
 
 .modal-content {
-  background: transparent !important; /* Прозрачный фон */
+  background: transparent !important;
   border: none !important;
   padding: 0 !important;
   margin: 0 !important;
@@ -264,8 +272,8 @@ main {
 .modal-body img {
   max-height: 80vh;
   max-width: 90vw;
-  width: auto !important; /* Естественная ширина */
-  height: auto !important; /* Естественная высота */
+  width: auto !important;
+  height: auto !important;
   object-fit: contain;
   display: block;
   margin: 0 auto;
@@ -328,9 +336,16 @@ main {
     margin: 0.5rem;
   }
   .nav-link {
-    padding: 0.6rem 1rem;
+    padding: 0.7rem 1.2rem !important;
     font-size: 0.9rem;
-    margin: 0.3rem;
+    margin: 0.2rem !important;
+    min-width: 100px;
+  }
+  .hero h1 {
+    font-size: 2rem;
+  }
+  .hero p {
+    font-size: 1rem;
   }
 }
 
@@ -367,9 +382,12 @@ main {
 @media (max-width: 991px) {
   .nav-menu {
     flex-direction: column;
+    align-items: center;
   }
   .nav-link {
-    margin: 0.3rem 0;
+    margin: 0.3rem 0 !important;
+    width: 80%;
+    max-width: 250px;
   }
   .spread-text {
     font-size: 1.5rem;
@@ -384,6 +402,6 @@ main {
 
 /* Диагностика */
 body::before {
-  content: "CSS Loaded - v3 (Glass Neumorphism Navigation)";
+  content: "CSS Loaded - Rectangular 3D Buttons";
   display: none;
 }
