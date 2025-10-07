@@ -19,7 +19,7 @@ description: Галерея изображений проектов Lybra AI
 </div>
 
 <!-- Модальное окно -->
-<div class="modal fade" id="galleryModal" tabindex="-1" aria-labelledby="galleryModalLabel" aria-hidden="true">
+<div class="modal fade" id="galleryModal" tabindex="-1" aria-labelledby="galleryModalLabel">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
