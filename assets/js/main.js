@@ -58,46 +58,85 @@ document.addEventListener('DOMContentLoaded', function() {
   const modalDialog = document.querySelector('#galleryModal .modal-dialog');
 
   if (galleryItems && modalImage && modalElement && modalDialog) {
+    let lastFocusedElement = null; // Сохраняем элемент, вызвавший модальное окно
+
     galleryItems.forEach(item => {
       item.addEventListener('click', function() {
-        const largeSrc = this.getAttribute('data-large-src') || this.src;
-        if (largeSrc) {
-          modalImage.src = largeSrc;
-          console.log('Modal image set to:', largeSrc);
+        try {
+          lastFocusedElement = document.activeElement; // Сохраняем элемент с фокусом
+          const largeSrc = this.getAttribute('data-large-src') || this.src;
+          if (largeSrc) {
+            modalImage.src = largeSrc;
+            console.log('Modal image set to:', largeSrc);
 
-          const img = new Image();
-          img.src = largeSrc;
-          img.onload = function() {
-            const width = img.naturalWidth;
-            const height = img.naturalHeight;
-            console.log('Image dimensions:', width, 'x', height);
-            modalDialog.style.maxWidth = `${Math.min(width, window.innerWidth * 0.9)}px`;
-            modalDialog.style.maxHeight = `${Math.min(height, window.innerHeight * 0.8)}px`;
-          };
-        } else {
-          console.warn('data-large-src and src are missing for image:', this.src);
+            const img = new Image();
+            img.src = largeSrc;
+            img.onload = function() {
+              const width = img.naturalWidth;
+              const height = img.naturalHeight;
+              console.log('Image dimensions:', width, 'x', height);
+              modalDialog.style.maxWidth = `${Math.min(width, window.innerWidth * 0.9)}px`;
+              modalDialog.style.maxHeight = `${Math.min(height, window.innerHeight * 0.8)}px`;
+            };
+            img.onerror = function() {
+              console.error('Failed to load image:', largeSrc);
+            };
+
+            const modal = new bootstrap.Modal(modalElement, {
+              keyboard: true,
+              backdrop: true
+            });
+            modal.show();
+          } else {
+            console.warn('data-large-src and src are missing for image:', this.src);
+          }
+        } catch (error) {
+          console.error('Error opening modal:', error);
         }
-        const modal = new bootstrap.Modal(modalElement, {
-          keyboard: true,
-          backdrop: true
-        });
-        modal.show();
       });
     });
 
     // Очистка после полного закрытия модального окна
     modalElement.addEventListener('hidden.bs.modal', function() {
-      modalImage.src = '';
-      modalDialog.style.maxWidth = '';
-      modalDialog.style.maxHeight = '';
-      console.log('Modal fully cleared');
-      const modal = bootstrap.Modal.getInstance(modalElement);
-      if (modal) {
-        modal.dispose();
-        console.log('Modal disposed');
+      try {
+        modalImage.src = '';
+        modalDialog.style.maxWidth = '';
+        modalDialog.style.maxHeight = '';
+        modalElement.setAttribute('inert', ''); // Добавляем inert для предотвращения фокуса
+        console.log('Modal fully cleared');
+
+        // Возвращаем фокус на последний элемент
+        if (lastFocusedElement) {
+          lastFocusedElement.focus();
+          console.log('Focus returned to:', lastFocusedElement);
+        }
+
+        const modal = bootstrap.Modal.getInstance(modalElement);
+        if (modal) {
+          modal.dispose();
+          console.log('Modal disposed');
+        }
+
+        // Удаляем inert после завершения
+        setTimeout(() => {
+          modalElement.removeAttribute('inert');
+        }, 100);
+      } catch (error) {
+        console.error('Error closing modal:', error);
       }
     });
+
+    // Удаляем aria-hidden перед открытием, чтобы избежать конфликта
+    modalElement.addEventListener('show.bs.modal', function() {
+      modalElement.removeAttribute('aria-hidden');
+      console.log('aria-hidden removed before modal show');
+    });
   } else {
-    console.warn('Gallery items, modal image, or modal element not found');
+    console.error('Gallery items, modal image, or modal element not found:', {
+      galleryItems: !!galleryItems,
+      modalImage: !!modalImage,
+      modalElement: !!modalElement,
+      modalDialog: !!modalDialog
+    });
   }
 });
