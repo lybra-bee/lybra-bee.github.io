@@ -99,6 +99,9 @@ main {
   font-size: 1rem !important;
   min-width: 120px;
   text-align: center;
+  /* ОБЕСПЕЧИВАЕМ ЕДИНУЮ ШИРИНУ */
+  flex: 0 1 auto;
+  white-space: nowrap;
 }
 
 .nav-link:hover {
@@ -322,7 +325,7 @@ main {
   border-radius: 10px;
 }
 
-/* Адаптивность для мобильных */
+/* Адаптивность для мобильных - ОБНОВЛЕНО: единая ширина кнопок */
 @media (max-width: 768px) {
   .post-article img,
   .post-image,
@@ -335,12 +338,27 @@ main {
   .modal-dialog {
     margin: 0.5rem;
   }
-  .nav-link {
-    padding: 0.7rem 1.2rem !important;
-    font-size: 0.9rem;
-    margin: 0.2rem !important;
-    min-width: 100px;
+  
+  /* ИСПРАВЛЕНИЕ: одинаковые кнопки на всех страницах */
+  .nav-menu {
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
   }
+  
+  .nav-link {
+    width: 280px !important; /* ФИКСИРОВАННАЯ ШИРИНА */
+    max-width: 90%;
+    padding: 0.9rem 1.5rem !important;
+    font-size: 0.95rem;
+    margin: 0.25rem auto !important; /* Центрирование */
+    display: block;
+    box-sizing: border-box;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
   .hero h1 {
     font-size: 2rem;
   }
@@ -378,17 +396,19 @@ main {
   background-color: #0056b3;
 }
 
-/* Адаптивность */
-@media (max-width: 991px) {
+/* Адаптивность для планшетов */
+@media (max-width: 991px) and (min-width: 769px) {
   .nav-menu {
     flex-direction: column;
     align-items: center;
   }
+  
   .nav-link {
-    margin: 0.3rem 0 !important;
-    width: 80%;
-    max-width: 250px;
+    width: 300px !important; /* ФИКСИРОВАННАЯ ШИРИНА для планшетов */
+    margin: 0.3rem auto !important;
+    padding: 0.8rem 1.8rem !important;
   }
+  
   .spread-text {
     font-size: 1.5rem;
   }
@@ -402,6 +422,6 @@ main {
 
 /* Диагностика */
 body::before {
-  content: "CSS Loaded - Rectangular 3D Buttons";
+  content: "CSS Loaded - Fixed Mobile Buttons";
   display: none;
 }
