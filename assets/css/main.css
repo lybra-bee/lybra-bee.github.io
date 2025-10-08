@@ -46,7 +46,7 @@ main {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.4) !important; /* БЫЛО 0.8 - СДЕЛАЛИ СВЕТЛЕЕ */
+  background: rgba(0, 0, 0, 0.4) !important;
   z-index: 0;
 }
 
@@ -75,19 +75,20 @@ main {
   justify-content: center;
   flex-wrap: wrap;
   gap: 0.8rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-/* ОБНОВЛЕННЫЕ СТИЛИ КНОПОК - ПРЯМОУГОЛЬНЫЕ ОБЪЕМНЫЕ */
+/* ОСНОВНЫЕ СТИЛИ КНОПОК - ЖЕСТКИЙ КОНТРОЛЬ РАЗМЕРОВ */
 .nav-link {
   background: rgba(255, 255, 255, 0.15) !important;
   backdrop-filter: blur(10px);
-  padding: 0.9rem 2rem !important;
+  padding: 0.9rem 1.5rem !important;
   margin: 0.3rem !important;
-  border-radius: 4px !important; /* ПРЯМОУГОЛЬНАЯ ФОРМА */
+  border-radius: 4px !important;
   border: 1px solid rgba(255, 255, 255, 0.3) !important;
   color: #fff !important;
   text-decoration: none !important;
-  /* ОБЪЕМНЫЕ ТЕНИ */
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3),
               0 6px 12px rgba(0, 0, 0, 0.2),
               inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
@@ -97,11 +98,17 @@ main {
   position: relative;
   z-index: 3 !important;
   font-size: 1rem !important;
-  min-width: 120px;
+  
+  /* ЖЕСТКИЙ КОНТРОЛЬ ШИРИНЫ */
+  width: 180px !important;
+  min-width: 180px !important;
+  max-width: 180px !important;
   text-align: center;
-  /* ОБЕСПЕЧИВАЕМ ЕДИНУЮ ШИРИНУ */
-  flex: 0 1 auto;
+  box-sizing: border-box !important;
   white-space: nowrap;
+  overflow: hidden;
+  flex-shrink: 0;
+  display: inline-block;
 }
 
 .nav-link:hover {
@@ -118,6 +125,48 @@ main {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4),
               inset 0 2px 4px rgba(0, 0, 0, 0.3) !important;
   transform: translateY(1px) !important;
+}
+
+/* АДАПТИВНОСТЬ ДЛЯ МОБИЛЬНЫХ - АБСОЛЮТНАЯ ШИРИНА */
+@media (max-width: 768px) {
+  .nav-menu {
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0 1rem;
+  }
+  
+  .nav-link {
+    width: 280px !important;
+    min-width: 280px !important;
+    max-width: 280px !important;
+    padding: 0.9rem 1rem !important;
+    font-size: 0.95rem;
+    margin: 0.1rem auto !important;
+    display: block;
+  }
+  
+  .hero h1 {
+    font-size: 2rem;
+  }
+  .hero p {
+    font-size: 1rem;
+  }
+}
+
+/* АДАПТИВНОСТЬ ДЛЯ ПЛАНШЕТОВ */
+@media (max-width: 991px) and (min-width: 769px) {
+  .nav-menu {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .nav-link {
+    width: 260px !important;
+    min-width: 260px !important;
+    max-width: 260px !important;
+    margin: 0.2rem auto !important;
+  }
 }
 
 /* Бегущая строка */
@@ -325,48 +374,6 @@ main {
   border-radius: 10px;
 }
 
-/* Адаптивность для мобильных - ОБНОВЛЕНО: единая ширина кнопок */
-@media (max-width: 768px) {
-  .post-article img,
-  .post-image,
-  .modal-body img {
-    max-width: 100% !important;
-    max-height: 80vh !important;
-    width: auto !important;
-    height: auto !important;
-  }
-  .modal-dialog {
-    margin: 0.5rem;
-  }
-  
-  /* ИСПРАВЛЕНИЕ: одинаковые кнопки на всех страницах */
-  .nav-menu {
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-  }
-  
-  .nav-link {
-    width: 280px !important; /* ФИКСИРОВАННАЯ ШИРИНА */
-    max-width: 90%;
-    padding: 0.9rem 1.5rem !important;
-    font-size: 0.95rem;
-    margin: 0.25rem auto !important; /* Центрирование */
-    display: block;
-    box-sizing: border-box;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  
-  .hero h1 {
-    font-size: 2rem;
-  }
-  .hero p {
-    font-size: 1rem;
-  }
-}
-
 /* Футер */
 .footer {
   background-color: #111;
@@ -396,32 +403,8 @@ main {
   background-color: #0056b3;
 }
 
-/* Адаптивность для планшетов */
-@media (max-width: 991px) and (min-width: 769px) {
-  .nav-menu {
-    flex-direction: column;
-    align-items: center;
-  }
-  
-  .nav-link {
-    width: 300px !important; /* ФИКСИРОВАННАЯ ШИРИНА для планшетов */
-    margin: 0.3rem auto !important;
-    padding: 0.8rem 1.8rem !important;
-  }
-  
-  .spread-text {
-    font-size: 1.5rem;
-  }
-  .gallery {
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  }
-  .main-page-card {
-    max-width: 100%;
-  }
-}
-
 /* Диагностика */
 body::before {
-  content: "CSS Loaded - Fixed Mobile Buttons";
+  content: "CSS Loaded - Final Fixed Width Buttons";
   display: none;
 }
