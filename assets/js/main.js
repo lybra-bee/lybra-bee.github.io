@@ -1,86 +1,103 @@
 document.addEventListener('DOMContentLoaded', function() {
-  // Анимация бегущей строки
+  // Анимация бегущей строки - ИСПРАВЛЕННАЯ ВЕРСИЯ
   const textContainer = document.querySelector('.spread-text');
   if (textContainer) {
     const letters = Array.from(textContainer.querySelectorAll('span'));
-    const midX = textContainer.offsetWidth / 2;
+    const containerRect = textContainer.getBoundingClientRect();
+    const containerCenterX = containerRect.left + containerRect.width / 2;
 
-    letters.forEach(span => {
-      const rect = span.getBoundingClientRect();
-      const containerRect = textContainer.getBoundingClientRect();
-      const finalX = rect.left - containerRect.left;
-      span.dataset.finalX = finalX;
-      span.style.transform = `translateX(${midX - finalX}px)`;
-      span.style.opacity = 0;
-    });
+    // Функция для сброса позиций букв в центр
+    function resetLettersToCenter() {
+      letters.forEach(span => {
+        const rect = span.getBoundingClientRect();
+        const letterCenterX = rect.left + rect.width / 2;
+        const offsetX = containerCenterX - letterCenterX;
+        
+        // Сохраняем исходную позицию для анимации
+        if (!span.dataset.originalTransform) {
+          span.dataset.originalTransform = window.getComputedStyle(span).transform;
+        }
+        
+        span.style.transition = 'none';
+        span.style.transform = `translateX(${offsetX}px)`;
+        span.style.opacity = '0';
+      });
+    }
 
-    let pairIndex = 0;
+    // Функция для анимации букв попарно из центра
+    function animateLettersFromCenter() {
+      let pairIndex = 0;
+      const totalPairs = Math.ceil(letters.length / 2);
 
-    function animatePair() {
-      if (pairIndex >= Math.ceil(letters.length / 2)) {
-        setTimeout(resetAnimation, 1500);
-        return;
+      function animateNextPair() {
+        if (pairIndex >= totalPairs) {
+          // Анимация завершена, перезапускаем через 2 секунды
+          setTimeout(() => {
+            resetLettersToCenter();
+            setTimeout(animateLettersFromCenter, 100);
+          }, 2000);
+          return;
+        }
+
+        const leftIndex = pairIndex;
+        const rightIndex = letters.length - 1 - pairIndex;
+
+        const leftLetter = letters[leftIndex];
+        const rightLetter = letters[rightIndex];
+
+        // Анимируем левую букву
+        if (leftLetter) {
+          leftLetter.style.transition = 'transform 0.6s ease-out, opacity 0.4s ease';
+          leftLetter.style.transform = leftLetter.dataset.originalTransform || 'translateX(0)';
+          leftLetter.style.opacity = '1';
+        }
+
+        // Анимируем правую букву (если это не та же самая буква для нечетного количества)
+        if (rightLetter && rightIndex !== leftIndex) {
+          rightLetter.style.transition = 'transform 0.6s ease-out, opacity 0.4s ease';
+          rightLetter.style.transform = rightLetter.dataset.originalTransform || 'translateX(0)';
+          rightLetter.style.opacity = '1';
+        }
+
+        pairIndex++;
+        setTimeout(animateNextPair, 150);
       }
 
-      const left = letters[pairIndex];
-      const right = letters[letters.length - 1 - pairIndex];
-
-      [left, right].forEach(span => {
-        if (span) {
-          span.style.transition = 'transform 0.6s ease, opacity 0.3s ease';
-          span.style.opacity = 1;
-          span.style.transform = `translateX(0)`;
-        }
-      });
-
-      pairIndex++;
-      setTimeout(animatePair, 200);
+      animateNextPair();
     }
 
-    function resetAnimation() {
-      letters.forEach(span => {
-        const finalX = span.dataset.finalX;
-        span.style.transition = 'none';
-        span.style.transform = `translateX(${midX - finalX}px)`;
-        span.style.opacity = 0;
-      });
-      pairIndex = 0;
-      setTimeout(animatePair, 300);
-    }
-
-    animatePair();
+    // Запускаем анимацию
+    resetLettersToCenter();
+    setTimeout(animateLettersFromCenter, 100);
   }
 
-  // Модальное окно галереи
+  // Модальное окно галереи (ваш существующий код)
   const galleryItems = document.querySelectorAll('.gallery-item img');
   const modalImage = document.getElementById('modalImage');
   const modalElement = document.getElementById('galleryModal');
   const modalDialog = document.querySelector('#galleryModal .modal-dialog');
 
-  // Проверяем, не инициализирован ли скрипт повторно
   if (modalElement && modalElement.dataset.initialized) {
     console.warn('Modal script already initialized, skipping');
     return;
   }
 
   if (galleryItems && modalImage && modalElement && modalDialog) {
-    modalElement.dataset.initialized = 'true'; // Отмечаем, что скрипт инициализирован
-    let lastFocusedElement = null; // Сохраняем элемент, вызвавший модальное окно
+    modalElement.dataset.initialized = 'true';
+    let lastFocusedElement = null;
 
     const modalOpenHandler = function() {
       try {
-        lastFocusedElement = document.activeElement; // Сохраняем элемент с фокусом
+        lastFocusedElement = document.activeElement;
         const largeSrc = this.getAttribute('data-large-src') || this.src;
         if (largeSrc) {
           modalImage.src = largeSrc;
-          console.log('Modal image set to:', largeSrc);
 
           const img = new Image();
           img.src = largeSrc;
           img.onload = function() {
             const width = img.naturalWidth;
             const height = img.naturalHeight;
-            console.log('Image dimensions:', width, 'x', height);
             modalDialog.style.maxWidth = `${Math.min(width, window.innerWidth * 0.9)}px`;
             modalDialog.style.maxHeight = `${Math.min(height, window.innerHeight * 0.8)}px`;
           };
@@ -91,7 +108,7 @@ document.addEventListener('DOMContentLoaded', function() {
           const modal = new bootstrap.Modal(modalElement, {
             keyboard: true,
             backdrop: true,
-            focus: false // Отключаем автофокус Bootstrap
+            focus: false
           });
           modal.show();
         } else {
@@ -103,12 +120,11 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     galleryItems.forEach(item => {
-      item.setAttribute('tabindex', '0'); // Делаем превью доступным для фокуса
-      item.removeEventListener('click', modalOpenHandler); // Удаляем старый обработчик
-      item.addEventListener('click', modalOpenHandler); // Добавляем новый
+      item.setAttribute('tabindex', '0');
+      item.removeEventListener('click', modalOpenHandler);
+      item.addEventListener('click', modalOpenHandler);
     });
 
-    // Очистка после полного закрытия модального окна
     const modalHiddenHandler = function() {
       try {
         modalImage.src = '';
@@ -116,14 +132,11 @@ document.addEventListener('DOMContentLoaded', function() {
           modalDialog.style.maxWidth = '';
           modalDialog.style.maxHeight = '';
         }
-        console.log('Modal fully cleared');
 
-        // Возвращаем фокус на последний элемент
         if (lastFocusedElement && lastFocusedElement !== document.body) {
           setTimeout(() => {
             lastFocusedElement.focus();
-            console.log('Focus returned to:', lastFocusedElement);
-          }, 600); // Задержка для завершения анимации
+          }, 600);
         } else {
           console.warn('No valid lastFocusedElement, focus not returned');
         }
@@ -132,7 +145,6 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     };
 
-    // Добавляем одноразовый обработчик
     modalElement.removeEventListener('hidden.bs.modal', modalHiddenHandler);
     modalElement.addEventListener('hidden.bs.modal', modalHiddenHandler, { once: true });
   } else {
