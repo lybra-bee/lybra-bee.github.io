@@ -46,7 +46,7 @@ main {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.4) !important; /* БЫЛО 0.8 - СДЕЛАЛИ СВЕТЛЕЕ */
+  background: rgba(0, 0, 0, 0.4) !important;
   z-index: 0;
 }
 
@@ -83,11 +83,10 @@ main {
   backdrop-filter: blur(10px);
   padding: 0.9rem 2rem !important;
   margin: 0.3rem !important;
-  border-radius: 4px !important; /* ПРЯМОУГОЛЬНАЯ ФОРМА */
+  border-radius: 4px !important;
   border: 1px solid rgba(255, 255, 255, 0.3) !important;
   color: #fff !important;
   text-decoration: none !important;
-  /* ОБЪЕМНЫЕ ТЕНИ */
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3),
               0 6px 12px rgba(0, 0, 0, 0.2),
               inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
@@ -117,7 +116,7 @@ main {
   transform: translateY(1px) !important;
 }
 
-/* БЕГУЩАЯ СТРОКА - ТОЛЬКО БАЗОВЫЕ СТИЛИ ДЛЯ JS АНИМАЦИИ */
+/* БЕГУЩАЯ СТРОКА - ИСПРАВЛЕННАЯ CSS АНИМАЦИЯ */
 .welcome-section {
   text-align: center;
   padding: 2rem 0;
@@ -134,9 +133,64 @@ main {
 
 .spread-text span {
   display: inline-block;
-  /* Анимация полностью управляется JavaScript */
-  will-change: transform, opacity; /* Оптимизация для анимаций */
+  opacity: 0;
+  animation: letterFly 1.2s ease-out forwards;
 }
+
+/* Анимация для разлетания букв из центра */
+@keyframes letterFly {
+  0% {
+    opacity: 0;
+    transform: translateX(0) scale(0.3);
+    filter: blur(10px);
+  }
+  20% {
+    opacity: 1;
+    transform: translateX(0) scale(1.1);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(var(--target-pos, 0)) scale(1);
+    filter: blur(0);
+  }
+}
+
+/* РАСЧЕТ ЗАДЕРЖЕК ДЛЯ КАЖДОЙ БУКВЫ */
+/* Для текста из 6 букв: П Р И В Е Т */
+.spread-text span:nth-child(1) { 
+  animation-delay: 0.5s; 
+  --target-pos: -150px;
+}
+.spread-text span:nth-child(2) { 
+  animation-delay: 0.4s; 
+  --target-pos: -90px;
+}
+.spread-text span:nth-child(3) { 
+  animation-delay: 0.3s; 
+  --target-pos: -30px;
+}
+.spread-text span:nth-child(4) { 
+  animation-delay: 0.3s; 
+  --target-pos: 30px;
+}
+.spread-text span:nth-child(5) { 
+  animation-delay: 0.4s; 
+  --target-pos: 90px;
+}
+.spread-text span:nth-child(6) { 
+  animation-delay: 0.5s; 
+  --target-pos: 150px;
+}
+
+/* Для более длинного текста добавьте дополнительные правила */
+.spread-text span:nth-child(7) { animation-delay: 0.6s; --target-pos: -180px; }
+.spread-text span:nth-child(8) { animation-delay: 0.5s; --target-pos: -120px; }
+.spread-text span:nth-child(9) { animation-delay: 0.4s; --target-pos: -60px; }
+.spread-text span:nth-child(10) { animation-delay: 0.3s; --target-pos: 0px; }
+.spread-text span:nth-child(11) { animation-delay: 0.4s; --target-pos: 60px; }
+.spread-text span:nth-child(12) { animation-delay: 0.5s; --target-pos: 120px; }
+.spread-text span:nth-child(13) { animation-delay: 0.6s; --target-pos: 180px; }
 
 /* Стеклянная карточка */
 .neural-card-3d {
@@ -353,6 +407,13 @@ main {
   .spread-text {
     font-size: 1.5rem;
   }
+  /* Адаптивные смещения для мобильных */
+  .spread-text span:nth-child(1) { --target-pos: -80px; }
+  .spread-text span:nth-child(2) { --target-pos: -50px; }
+  .spread-text span:nth-child(3) { --target-pos: -20px; }
+  .spread-text span:nth-child(4) { --target-pos: 20px; }
+  .spread-text span:nth-child(5) { --target-pos: 50px; }
+  .spread-text span:nth-child(6) { --target-pos: 80px; }
 }
 
 /* Футер */
@@ -408,6 +469,6 @@ main {
 
 /* Диагностика */
 body::before {
-  content: "CSS Loaded - JS Animation Ready";
+  content: "CSS Loaded - Fixed Spread Animation";
   display: none;
 }
