@@ -1,74 +1,82 @@
 document.addEventListener('DOMContentLoaded', function() {
-  // Анимация бегущей строки - ИСПРАВЛЕННАЯ ВЕРСИЯ
+  // Анимация бегущей строки - СЛУЧАЙНЫЕ ПОЗИЦИИ
   const textContainer = document.querySelector('.spread-text');
   if (textContainer) {
     const letters = Array.from(textContainer.querySelectorAll('span'));
-    const containerRect = textContainer.getBoundingClientRect();
-    const containerCenterX = containerRect.left + containerRect.width / 2;
+    
+    // Сохраняем исходные позиции букв
+    const originalPositions = letters.map(span => {
+      const rect = span.getBoundingClientRect();
+      const containerRect = textContainer.getBoundingClientRect();
+      return {
+        left: rect.left - containerRect.left,
+        top: rect.top - containerRect.top,
+        width: rect.width,
+        height: rect.height
+      };
+    });
 
-    // Функция для сброса позиций букв в центр
-    function resetLettersToCenter() {
-      letters.forEach(span => {
-        const rect = span.getBoundingClientRect();
-        const letterCenterX = rect.left + rect.width / 2;
-        const offsetX = containerCenterX - letterCenterX;
+    function startAnimation() {
+      // Размещаем буквы в случайных позициях
+      placeLettersRandomly();
+      
+      // Запускаем анимацию полета к своим местам
+      setTimeout(flyToPositions, 100);
+    }
+
+    function placeLettersRandomly() {
+      const containerRect = textContainer.getBoundingClientRect();
+      
+      letters.forEach((span, index) => {
+        // Случайные координаты в пределах видимой области
+        const randomX = Math.random() * (window.innerWidth - 100);
+        const randomY = Math.random() * (window.innerHeight - 50);
         
-        // Сохраняем исходную позицию для анимации
-        if (!span.dataset.originalTransform) {
-          span.dataset.originalTransform = window.getComputedStyle(span).transform;
-        }
+        // Вычисляем смещение от случайной точки к целевой позиции
+        const targetLeft = originalPositions[index].left;
+        const targetTop = originalPositions[index].top;
+        
+        const offsetX = randomX - targetLeft;
+        const offsetY = randomY - targetTop;
         
         span.style.transition = 'none';
-        span.style.transform = `translateX(${offsetX}px)`;
+        span.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
         span.style.opacity = '0';
+        span.style.zIndex = '1000';
+        span.style.willChange = 'transform, opacity';
       });
     }
 
-    // Функция для анимации букв попарно из центра
-    function animateLettersFromCenter() {
-      let pairIndex = 0;
-      const totalPairs = Math.ceil(letters.length / 2);
-
-      function animateNextPair() {
-        if (pairIndex >= totalPairs) {
-          // Анимация завершена, перезапускаем через 2 секунды
-          setTimeout(() => {
-            resetLettersToCenter();
-            setTimeout(animateLettersFromCenter, 100);
-          }, 2000);
+    function flyToPositions() {
+      let currentIndex = 0;
+      
+      function animateNextLetter() {
+        if (currentIndex >= letters.length) {
+          // Анимация завершена, перезапускаем через 4 секунды
+          setTimeout(startAnimation, 4000);
           return;
         }
 
-        const leftIndex = pairIndex;
-        const rightIndex = letters.length - 1 - pairIndex;
+        const span = letters[currentIndex];
+        
+        // Случайная задержка для каждого письма (0-300ms)
+        const randomDelay = Math.random() * 300;
+        
+        setTimeout(() => {
+          span.style.transition = 'transform 1.2s cubic-bezier(0.2, 0.8, 0.3, 1), opacity 0.8s ease';
+          span.style.transform = 'translate(0, 0)';
+          span.style.opacity = '1';
+        }, randomDelay);
 
-        const leftLetter = letters[leftIndex];
-        const rightLetter = letters[rightIndex];
-
-        // Анимируем левую букву
-        if (leftLetter) {
-          leftLetter.style.transition = 'transform 0.6s ease-out, opacity 0.4s ease';
-          leftLetter.style.transform = leftLetter.dataset.originalTransform || 'translateX(0)';
-          leftLetter.style.opacity = '1';
-        }
-
-        // Анимируем правую букву (если это не та же самая буква для нечетного количества)
-        if (rightLetter && rightIndex !== leftIndex) {
-          rightLetter.style.transition = 'transform 0.6s ease-out, opacity 0.4s ease';
-          rightLetter.style.transform = rightLetter.dataset.originalTransform || 'translateX(0)';
-          rightLetter.style.opacity = '1';
-        }
-
-        pairIndex++;
-        setTimeout(animateNextPair, 150);
+        currentIndex++;
+        setTimeout(animateNextLetter, 150); // Задержка между запуском анимаций
       }
 
-      animateNextPair();
+      animateNextLetter();
     }
 
     // Запускаем анимацию
-    resetLettersToCenter();
-    setTimeout(animateLettersFromCenter, 100);
+    startAnimation();
   }
 
   // Модальное окно галереи (ваш существующий код)
