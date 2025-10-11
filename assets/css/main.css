@@ -116,7 +116,7 @@ main {
   transform: translateY(1px) !important;
 }
 
-/* БЕГУЩАЯ СТРОКА - ИСПРАВЛЕННАЯ CSS АНИМАЦИЯ */
+/* БЕГУЩАЯ СТРОКА - ПЕРЕРАБОТАННАЯ АНИМАЦИЯ */
 .welcome-section {
   text-align: center;
   padding: 2rem 0;
@@ -129,68 +129,51 @@ main {
   font-weight: 700;
   color: #fff !important;
   white-space: nowrap;
+  position: relative;
 }
 
 .spread-text span {
   display: inline-block;
+  position: relative;
   opacity: 0;
-  animation: letterFly 1.2s ease-out forwards;
+  animation: spreadLetter 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
-/* Анимация для разлетания букв из центра */
-@keyframes letterFly {
+/* Анимация для каждой буквы - появляется и занимает свое место */
+@keyframes spreadLetter {
   0% {
     opacity: 0;
-    transform: translateX(0) scale(0.3);
-    filter: blur(10px);
+    transform: scale(0.3) translateY(20px);
+    filter: blur(8px);
   }
-  20% {
+  50% {
     opacity: 1;
-    transform: translateX(0) scale(1.1);
+    transform: scale(1.1) translateY(0);
     filter: blur(0);
   }
   100% {
     opacity: 1;
-    transform: translateX(var(--target-pos, 0)) scale(1);
+    transform: scale(1) translateY(0);
     filter: blur(0);
   }
 }
 
-/* РАСЧЕТ ЗАДЕРЖЕК ДЛЯ КАЖДОЙ БУКВЫ */
-/* Для текста из 6 букв: П Р И В Е Т */
-.spread-text span:nth-child(1) { 
-  animation-delay: 0.5s; 
-  --target-pos: -150px;
-}
-.spread-text span:nth-child(2) { 
-  animation-delay: 0.4s; 
-  --target-pos: -90px;
-}
-.spread-text span:nth-child(3) { 
-  animation-delay: 0.3s; 
-  --target-pos: -30px;
-}
-.spread-text span:nth-child(4) { 
-  animation-delay: 0.3s; 
-  --target-pos: 30px;
-}
-.spread-text span:nth-child(5) { 
-  animation-delay: 0.4s; 
-  --target-pos: 90px;
-}
-.spread-text span:nth-child(6) { 
-  animation-delay: 0.5s; 
-  --target-pos: 150px;
-}
-
-/* Для более длинного текста добавьте дополнительные правила */
-.spread-text span:nth-child(7) { animation-delay: 0.6s; --target-pos: -180px; }
-.spread-text span:nth-child(8) { animation-delay: 0.5s; --target-pos: -120px; }
-.spread-text span:nth-child(9) { animation-delay: 0.4s; --target-pos: -60px; }
-.spread-text span:nth-child(10) { animation-delay: 0.3s; --target-pos: 0px; }
-.spread-text span:nth-child(11) { animation-delay: 0.4s; --target-pos: 60px; }
-.spread-text span:nth-child(12) { animation-delay: 0.5s; --target-pos: 120px; }
-.spread-text span:nth-child(13) { animation-delay: 0.6s; --target-pos: 180px; }
+/* Задержки для разлетания из центра - ПРАВИЛЬНЫЕ */
+/* Центральные буквы появляются первыми, крайние - последними */
+.spread-text span:nth-child(1) { animation-delay: 0.7s; }
+.spread-text span:nth-child(2) { animation-delay: 0.6s; }
+.spread-text span:nth-child(3) { animation-delay: 0.5s; }
+.spread-text span:nth-child(4) { animation-delay: 0.4s; }
+.spread-text span:nth-child(5) { animation-delay: 0.3s; }
+.spread-text span:nth-child(6) { animation-delay: 0.2s; }
+.spread-text span:nth-child(7) { animation-delay: 0.1s; }
+.spread-text span:nth-child(8) { animation-delay: 0.1s; }
+.spread-text span:nth-child(9) { animation-delay: 0.2s; }
+.spread-text span:nth-child(10) { animation-delay: 0.3s; }
+.spread-text span:nth-child(11) { animation-delay: 0.4s; }
+.spread-text span:nth-child(12) { animation-delay: 0.5s; }
+.spread-text span:nth-child(13) { animation-delay: 0.6s; }
+.spread-text span:nth-child(14) { animation-delay: 0.7s; }
 
 /* Стеклянная карточка */
 .neural-card-3d {
@@ -407,13 +390,6 @@ main {
   .spread-text {
     font-size: 1.5rem;
   }
-  /* Адаптивные смещения для мобильных */
-  .spread-text span:nth-child(1) { --target-pos: -80px; }
-  .spread-text span:nth-child(2) { --target-pos: -50px; }
-  .spread-text span:nth-child(3) { --target-pos: -20px; }
-  .spread-text span:nth-child(4) { --target-pos: 20px; }
-  .spread-text span:nth-child(5) { --target-pos: 50px; }
-  .spread-text span:nth-child(6) { --target-pos: 80px; }
 }
 
 /* Футер */
