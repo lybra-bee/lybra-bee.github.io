@@ -77,18 +77,37 @@ main {
   gap: 0.8rem;
 }
 
-/* ОБНОВЛЕННЫЕ СТИЛИ КНОПОК - ПРЯМОУГОЛЬНЫЕ ОБЪЕМНЫЕ */
+/* ОБНОВЛЕННЫЕ СТИЛИ КНОПОК - ФИКСИРОВАННЫЙ РАЗМЕР */
 .nav-link {
-    /* Существующие стили остаются здесь */
-    background: rgba(255, 255, 255, 0.15) !important;
-    backdrop-filter: blur(10px);
-    /* ... и т.д. */
-
-    /* НОВЫЕ СТИЛИ ДЛЯ ФИКСАЦИИ РАЗМЕРА: */
-    min-width: 100px; /* Задает минимальную ширину для всех кнопок */
-    padding: 0.9rem 1.5rem !important; /* Унифицирует внутренние отступы */
-    text-align: center; /* Гарантирует, что текст будет по центру */
-    box-sizing: border-box; /* Учитывает padding и border в общей ширине и высоте */
+  background: rgba(255, 255, 255, 0.15) !important;
+  backdrop-filter: blur(10px);
+  padding: 0.9rem 1.5rem !important;
+  margin: 0.3rem !important;
+  border-radius: 4px !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  color: #fff !important;
+  text-decoration: none !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3),
+              0 6px 12px rgba(0, 0, 0, 0.2),
+              inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+  transition: all 0.3s ease !important;
+  font-weight: 600 !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4) !important;
+  position: relative;
+  z-index: 3 !important;
+  font-size: 1rem !important;
+  
+  /* ФИКСИРОВАННЫЙ РАЗМЕР ДЛЯ ВСЕХ СТРАНИЦ */
+  min-width: 150px !important;
+  max-width: 150px !important;
+  width: 150px !important;
+  text-align: center !important;
+  box-sizing: border-box !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
 .nav-link:hover {
@@ -329,9 +348,11 @@ main {
   }
   .nav-link {
     padding: 0.7rem 1.2rem !important;
-    font-size: 0.9rem;
+    font-size: 0.9rem !important;
     margin: 0.2rem !important;
-    min-width: 100px;
+    min-width: 130px !important;
+    max-width: 130px !important;
+    width: 130px !important;
   }
   .hero h1 {
     font-size: 2rem;
@@ -381,8 +402,7 @@ main {
   }
   .nav-link {
     margin: 0.3rem 0 !important;
-    width: 80%;
-    max-width: 250px;
+    width: 150px !important;
   }
   .spread-text {
     font-size: 1.5rem;
@@ -397,6 +417,6 @@ main {
 
 /* Диагностика */
 body::before {
-  content: "CSS Loaded - JS Animation Only";
+  content: "CSS Loaded - Fixed Navigation Buttons";
   display: none;
 }
