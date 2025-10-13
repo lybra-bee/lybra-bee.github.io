@@ -79,25 +79,16 @@ main {
 
 /* ОБНОВЛЕННЫЕ СТИЛИ КНОПОК - ПРЯМОУГОЛЬНЫЕ ОБЪЕМНЫЕ */
 .nav-link {
-  background: rgba(255, 255, 255, 0.15) !important;
-  backdrop-filter: blur(10px);
-  padding: 0.9rem 2rem !important;
-  margin: 0.3rem !important;
-  border-radius: 4px !important;
-  border: 1px solid rgba(255, 255, 255, 0.3) !important;
-  color: #fff !important;
-  text-decoration: none !important;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3),
-              0 6px 12px rgba(0, 0, 0, 0.2),
-              inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
-  transition: all 0.3s ease !important;
-  font-weight: 600 !important;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4) !important;
-  position: relative;
-  z-index: 3 !important;
-  font-size: 1rem !important;
-  min-width: 120px;
-  text-align: center;
+    /* Существующие стили остаются здесь */
+    background: rgba(255, 255, 255, 0.15) !important;
+    backdrop-filter: blur(10px);
+    /* ... и т.д. */
+
+    /* НОВЫЕ СТИЛИ ДЛЯ ФИКСАЦИИ РАЗМЕРА: */
+    min-width: 140px; /* Задает минимальную ширину для всех кнопок */
+    padding: 0.9rem 1.5rem !important; /* Унифицирует внутренние отступы */
+    text-align: center; /* Гарантирует, что текст будет по центру */
+    box-sizing: border-box; /* Учитывает padding и border в общей ширине и высоте */
 }
 
 .nav-link:hover {
