@@ -5,6 +5,7 @@ import re
 import glob
 from groq import Groq
 import requests
+import yaml  # Для безопасного форматирования YAML
 
 types = ["Обзор", "Урок", "Мастер-класс", "Статья"]
 
@@ -59,7 +60,11 @@ if groq_key:
             temperature=0.8
         )
         title = title_completion.choices[0].message.content.strip()
-        title = re.sub(r'^["\']|["\']$', '', title)
+        title = re.sub(r'^["\']|["\']$', '', title)  # Удаление кавычек
+        title = re.sub(r'[:]', ' -', title)  # Замена двоеточий
+        title = re.sub(r'[^\w\s-]', '', title)  # Удаление специальных символов
+        title = re.sub(r'\s+$', '', title)  # Удаление пробелов в конце
+        title = title.rstrip('.')  # Удаление точки в конце
         print(f"Заголовок сгенерирован: {title}")
     except Exception as e:
         print(f"Ошибка генерации заголовка: {str(e)}")
@@ -172,18 +177,25 @@ if clipdrop_key:
 if not image_generated:
     print(f"Не удалось сгенерировать изображение. Сгенерируйте вручную по промпту: {prompt_img}")
 
-# Сохранение поста
+# Формирование YAML фронт-маттера с безопасной сериализацией
+front_matter = {
+    "title": title.rstrip('.'),  # Удаляем точку в конце
+    "date": f"{today} 00:00:00 -0000",
+    "layout": "post",
+    "image": f"/assets/images/posts/post-{post_num}.png",
+    "image_alt": f"ИИ и IoT 2025: {title.lower().rstrip('.')}",  # Удаляем точку и оптимизируем
+    "description": f"{type_.lower()} о трендах ИИ 2025 года: {title.lower().rstrip('.')}",  # Удаляем точку
+    "tags": ["ИИ", "технологии", type_.lower()]
+}
+
+# Сохранение поста с безопасным YAML
 filename = f"{posts_dir}/{today}-{slug}.md"
-with open(filename, "w", encoding="utf-8") as f:
-    f.write(f"""---
-title: "{title}"
-date: {today} 00:00:00 -0000
-layout: post
-image: /assets/images/posts/post-{post_num}.png
-image_alt: "ИИ и IoT 2025: {title}"
-description: "{type_.lower()} о трендах ИИ 2025 года: {title.lower()}"
-tags: [ИИ, технологии, {type_.lower()}]
----
-{content}
-""")
-print(f"Сгенерирован пост: {filename}")
+try:
+    with open(filename, "w", encoding="utf-8") as f:
+        # Сериализуем front_matter в YAML с явным указанием кодировки и стиля
+        f.write(yaml.safe_dump(front_matter, allow_unicode=True, default_flow_style=False, sort_keys=False))
+        f.write("---\n")
+        f.write(content)
+    print(f"Сгенерирован пост: {filename}")
+except Exception as e:
+    print(f"Ошибка сохранения файла: {str(e)}")
