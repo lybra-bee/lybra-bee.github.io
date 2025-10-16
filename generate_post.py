@@ -81,7 +81,7 @@ content = f"# {title}\n\n## {type_}\n\nОшибка генерации текс�
 
 if groq_key:
     try:
-        # Улучшенный system prompt для полезных статей с сохранением SEO
+        # Улучшенный system prompt с новым URL лаборатории и сохранением SEO
         system_prompt = """Ты профессиональный автор технических статей по ИИ с 10-летним опытом. Пиши на русском языке увлекательно, как в Forbes или Habr: используй сторителлинг, аналогии, цитаты экспертов (Elon Musk, Andrew Ng), риторические вопросы. Делай контент полезным: включай actionable insights, реальные кейсы (xAI Grok, OpenAI agents, Yandex AI), статистику из 2025 (Gartner: 'AI market $500B', McKinsey: '70% компаний используют AI'). Избегай шаблонов, повторений и filler-текста. Варьируй стиль: мотивирующий для уроков, аналитический для статей. Оптимизируй для SEO: ключевые слова естественно, ссылки на источники (x.ai, habr.com, yandex.ru/blog, mckinsey.com, forbes.com, gartner.com, ibm.com). Добавь ссылку на https://lybra-ai.ru/lybra-ai-lab/ в введении и заключении как хаб для экспериментов. Для разнообразия: рандомно выбирай подтемы из трендов (Agentic AI, RAG, Sovereign AI, Physical AI, AI ethics, quantum ML, AI in sustainability, edge AI). Избегай кода, фокусируйся на insights."""
 
         # Динамический user prompt в зависимости от type_ с рандомизацией элементов
@@ -93,109 +93,4 @@ if groq_key:
             user_content = f"Напиши урок на тему '{title}' объемом 1500–3000 слов, интегрируя подтемы {subthemes_str}. Структура: H1 — заголовок, H2 — тип статьи, H2 'Введение' (с вопросом, 200 слов), H2 'Подготовка' (2-3 H3 с инструментами, 200 слов), H2 'Шаги урока' (5-8 H3 с практическими инструкциями, примерами, 250 слов каждый), H2 'Сравнение методов' (таблица 3x3), H2 'Практические советы' (5-10 пунктов, 150 слов), H2 'Заключение' (с вопросом, 150 слов). Добавь {unique_elements}. Избегай кода, фокусируйся на шагах."
         elif type_ == "Мастер-класс":
             unique_elements = random.choice(["ролевые сценарии", "реальные кейсы из компаний", "расширенные упражнения"])
-            user_content = f"Напиши мастер-класс на тему '{title}' объемом 1500–3000 слов, интегрируя подтемы {subthemes_str}. Структура: H1 — заголовок, H2 — тип статьи, H2 'Введение' (с вопросом, 200 слов), H2 'Необходимые инструменты' (3-5 H3, 200 слов), H2 'Практические упражнения' (4-6 H3 с сценариями, 300 слов каждый), H2 'Сравнение результатов' (таблица 4x3), H2 'Расширенные техники' (5-7 пунктов, 200 слов), H2 'Заключение' (с вопросом, 150 слов). Добавь {unique_elements}. Используй реальные кейсы."
-        elif type_ == "Статья":
-            unique_elements = random.choice(["дебаты за/против", "статистика с графиками в тексте", "прогнозы с источниками"])
-            user_content = f"Напиши аналитическую статью на тему '{title}' объемом 1500–3000 слов, интегрируя подтемы {subthemes_str}. Структура: H1 — заголовок, H2 — тип статьи, H2 'Введение' (с вопросом, 200 слов), H2 'Анализ трендов' (3-5 H3 с фактами, 300 слов каждый), H2 'Сравнение подходов' (таблица 3x4), H2 'Практические рекомендации' (5-10 пунктов, 200 слов), H2 'Заключение' (с вопросом, 150 слов). Добавь {unique_elements}. Добавь статистику и источники."
-
-        article_completion = client.chat.completions.create(
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_content}
-            ],
-            model="llama-3.1-8b-instant",
-            max_tokens=3000,
-            temperature=0.7
-        )
-        content = article_completion.choices[0].message.content
-        content = re.sub(r'<[^>]+>', '', content)  # Удаление HTML-тегов
-        print("Статья сгенерирована успешно через Groq.")
-    except Exception as e:
-        print(f"Ошибка генерации статьи: {str(e)}")
-
-# Перевод заголовка на английский для промпта изображения
-if groq_key:
-    try:
-        translation = client.chat.completions.create(
-            messages=[
-                {"role": "system", "content": "Ты переводчик. Переводи на английский точно и естественно."},
-                {"role": "user", "content": f"Переведи на английский: {title}"}
-            ],
-            model="llama-3.1-8b-instant",
-            max_tokens=30,
-            temperature=0.1
-        )
-        title_en = translation.choices[0].message.content.strip()
-    except Exception as e:
-        print(f"Ошибка перевода: {str(e)}")
-        title_en = title.lower().replace(" ", "-")
-else:
-    title_en = title.lower().replace(" ", "-")
-
-# Улучшенный промпт для изображения с фотореализмом и разнообразием
-styles = [
-    "photorealistic ultra-detailed photo, 8K, realistic shadows and lighting, cinematic composition",
-    "hyper-realistic render, like a stock photo from Getty Images, diverse people interacting with tech",
-    "conceptual art with real-world elements, high-res, vibrant colors, reflecting 2025 trends",
-    "infographic-style visualization, photo-real elements blended with diagrams, clean and modern",
-    "sci-fi realistic scene, like from a movie poster, dynamic action, diverse environments"
-]
-random_style = random.choice(styles)
-subthemes_keywords = ' '.join([theme.lower() for theme in selected_subthemes])
-prompt_img = f"Photorealistic image of {title_en} in 2025 AI trends, incorporating {subthemes_keywords}, {random_style}, high quality, detailed textures, diverse composition that captures the essence: people using AI agents in daily life or quantum computers in lab. Avoid abstract; make it look like a real photo."
-
-image_path = f"{assets_dir}/post-{post_num}.png"
-image_generated = False
-
-clipdrop_key = os.getenv("CLIPDROP_API_KEY")
-if clipdrop_key:
-    clipdrop_url = "https://clipdrop-api.co/text-to-image/v1"
-    print(f"Генерация изображения для: {title_en}")
-    try:
-        clipdrop_response = requests.post(
-            clipdrop_url,
-            files={'prompt': (None, prompt_img)},
-            headers={'x-api-key': clipdrop_key},
-            timeout=30
-        )
-        print(f"Статус генерации изображения: {clipdrop_response.status_code}")
-        if clipdrop_response.status_code == 200:
-            with open(image_path, "wb") as img_file:
-                img_file.write(clipdrop_response.content)
-            print(f"Изображение успешно сохранено: {image_path}")
-            image_generated = True
-        else:
-            try:
-                error_details = clipdrop_response.json()
-                print(f"Ошибка Clipdrop: {error_details}")
-            except ValueError:
-                print(f"Ошибка Clipdrop: {clipdrop_response.text}")
-    except requests.exceptions.RequestException as e:
-        print(f"Ошибка запроса к Clipdrop API: {str(e)}")
-
-# Fallback для ручной генерации изображения
-if not image_generated:
-    print(f"Не удалось сгенерировать изображение. Сгенерируйте вручную по промпту: {prompt_img}")
-
-# Формирование YAML фронт-маттера с безопасной сериализацией
-front_matter = {
-    "title": title.rstrip('.'),  # Удаляем точку в конце
-    "date": f"{today} 00:00:00 -0000",
-    "layout": "post",
-    "image": f"/assets/images/posts/post-{post_num}.png",
-    "image_alt": f"ИИ и IoT 2025: {title.lower().rstrip('.')}",  # Удаляем точку и оптимизируем
-    "description": f"{type_.lower()} о трендах ИИ 2025 года: {title.lower().rstrip('.')}",  # Удаляем точку
-    "tags": ["ИИ", "технологии", type_.lower()]
-}
-
-# Сохранение поста с безопасным YAML
-filename = f"{posts_dir}/{today}-{slug}.md"
-try:
-    with open(filename, "w", encoding="utf-8") as f:
-        # Сериализуем front_matter в YAML с явным указанием кодировки и стиля
-        f.write(yaml.safe_dump(front_matter, allow_unicode=True, default_flow_style=False, sort_keys=False))
-        f.write("---\n")
-        f.write(content)
-    print(f"Сгенерирован пост: {filename}")
-except Exception as e:
-    print(f"Ошибка сохранения файла: {str(e)}")
+            user_content = f"Напиши мастер-класс на тему '{title}' объемом 1500–3000 слов, интегрируя подтемы {subthemes_str}. Структура: H1 — заголовок, H2 — тип статьи, H2 'Введение' (с вопросом, 200 слов), H2 'Необходимые инструменты' (3-5 H3, 200 слов), H2 'Практические упражнения' (4-6 H3 с
