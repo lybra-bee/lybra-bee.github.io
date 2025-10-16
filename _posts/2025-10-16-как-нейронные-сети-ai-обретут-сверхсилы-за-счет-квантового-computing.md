@@ -14,7 +14,7 @@ tags:
 ---
 **Нейронные сети AI в эпоху квантового вычисления: сверхсилы на горизонте**
 
-https://lybra-bee.github.io/lybra-ai-lab/
+https://lybra-ai.ru/lybra-ai-lab/
 
 **Введение**
 
