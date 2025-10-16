@@ -10,16 +10,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4  # Обновлено до последней версии
+        uses: actions/checkout@v4
       - name: Set up Python
-        uses: actions/setup-python@v5  # Обновлено до последней версии
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install groq requests pyyaml python-telegram-bot==20.7  # Добавлены pyyaml и python-telegram-bot
-          python -c "import groq, requests, yaml, telegram; print('Зависимости установлены:', groq.__version__, requests.__version__, yaml.__version__, telegram.__version__)"
+          pip install groq requests pyyaml  # Добавлен pyyaml
+          python -c "import groq, requests, yaml; print('Зависимости установлены:', groq.__version__, requests.__version__, yaml.__version__)"
       - name: Test network
         run: |
           ping -c 4 clipdrop-api.co || echo "Нет подключения к Clipdrop API"
@@ -30,12 +30,6 @@ jobs:
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           CLIPDROP_API_KEY: ${{ secrets.CLIPDROP_API_KEY }}
-      - name: Post to Telegram
-        run: |
-          python post_to_telegram.py
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       - name: Commit changes
         run: |
           git config --global user.name 'lybra-bee'
