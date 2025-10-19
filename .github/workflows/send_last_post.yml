@@ -1,10 +1,10 @@
-name: Тест отправки последнего поста в Telegram
+name: Отправка последнего поста в Telegram
 
 on:
-  workflow_dispatch:  # Ручной запуск
+  workflow_dispatch:  # Для ручного запуска
 
 jobs:
-  test_send:
+  send_post:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -15,6 +15,7 @@ jobs:
           python-version: '3.11'
       - name: Install dependencies
         run: |
+          python -m pip install --upgrade pip
           pip install pyyaml
       - name: Extract last post data
         run: |
@@ -28,36 +29,32 @@ jobs:
             exit(1)
           with open(post_files[0], 'r', encoding='utf-8') as f:
             content = f.read()
-          # Парсинг YAML
-          parts = content.split('---')
-          if len(parts) < 3:
-            print('Invalid post format')
-            exit(1)
-          front_matter = yaml.safe_load(parts[1])
-          title = front_matter.get('title', 'Unknown Title')
-          date = front_matter.get('date', '').split(' ')[0].replace('-', '/')
-          slug = post_files[0].split('/')[-1].replace('.md', '').split('-', 3)[-1]
-          post_num = front_matter.get('image', '').split('-')[-1].replace('.png', '')
-          body = parts[2].strip()
-          teaser = ' '.join(body.split()[:100]).strip() + '...' if len(body.split()) > 100 else body
-          os.environ['TITLE'] = title
-          os.environ['DATE'] = date
-          os.environ['SLUG'] = slug
-          os.environ['POST_NUM'] = str(post_num)
-          os.environ['TEASER'] = teaser
-          print(f'Title: {title}, Date: {date}, Slug: {slug}, Post Num: {post_num}')
+            front_matter = content.split('---')[1]
+            data = yaml.safe_load(front_matter)
+            title = data['title']
+            date = data['date'].split(' ')[0].replace('-', '/')
+            slug = post_files[0].split('/')[-1].split('-', 3)[-1].replace('.md', '')
+            post_num = data['image'].split('-')[-1].replace('.png', '')
+            body = content.split('---')[2].strip()
+            teaser = ' '.join(body.split()[:100]).strip() + '...' if len(body.split()) > 100 else body
+            os.environ['TITLE'] = title
+            os.environ['DATE'] = date
+            os.environ['SLUG'] = slug
+            os.environ['POST_NUM'] = str(post_num)
+            os.environ['TEASER'] = teaser
+            print(f'Title: {title}, Date: {date}, Slug: {slug}, Post Num: {post_num}')
           "
       - name: Send to Telegram
         uses: appleboy/telegram-action@v0.1.1
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
-          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
           message: |
-            📢 Тест последнего поста: "${{ env.TITLE }}"
+            📢 Новый пост: "${{ env.TITLE }}"
 
-            Тизер: ${{ env.TEASER }}
+            Краткий тизер: ${{ env.TEASER }}
 
-            Читать: https://lybra-ai.ru/${{ env.DATE }}/${{ env.SLUG }}?utm_source=telegram&utm_medium=channel&utm_campaign=test
+            Читать: https://lybra-ai.ru/${{ env.DATE }}/${{ env.SLUG }}?utm_source=telegram&utm_medium=channel&utm_campaign=post
 
             #ИИ #Тренды2025 #LybraAI
           photo: https://lybra-ai.ru/assets/images/posts/post-${{ env.POST_NUM }}.png
