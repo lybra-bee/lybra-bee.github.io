@@ -1,0 +1,11 @@
+name: Тест Workflow
+
+on:
+  push:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Echo message
+        run: echo "Workflow работает!"
