@@ -188,6 +188,12 @@ front_matter = {
     "tags": ["ИИ", "технологии", type_.lower()]
 }
 
+# Экспорт переменных для GitHub Actions
+os.environ['TITLE'] = title
+os.environ['DATE'] = today.strftime('%Y/%m/%d')
+os.environ['SLUG'] = slug
+os.environ['POST_NUM'] = str(post_num)
+
 # Сохранение поста с полным YAML фронт-маттером (явные ---)
 filename = f"{posts_dir}/{today}-{slug}.md"
 try:
