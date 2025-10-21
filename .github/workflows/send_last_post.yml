@@ -23,6 +23,14 @@ jobs:
       - name: Check extract_post_data.py
         run: |
           ls -l extract_post_data.py || echo "extract_post_data.py not found"
+      - name: Check image file
+        run: |
+          IMAGE_PATH="assets/images/posts/post-${{ env.POST_NUM }}.png"
+          ls -l $IMAGE_PATH || echo "Image file $IMAGE_PATH not found in repository"
+      - name: Check image URL
+        run: |
+          IMAGE_URL="https://lybra-ai.ru/assets/images/posts/post-${{ env.POST_NUM }}.png"
+          curl -s -I "$IMAGE_URL" | grep -i HTTP/ || echo "Image URL $IMAGE_URL not accessible"
       - name: Extract last post data
         run: |
           python extract_post_data.py
@@ -57,10 +65,12 @@ jobs:
             Читать: https://lybra-ai.ru/${{ env.DATE }}/${{ env.SLUG }}?utm_source=telegram&utm_medium=channel&utm_campaign=post
 
             #ИИ #Тренды2025 #LybraAI
-          photo: https://lybra-ai.ru/assets/images/posts/post-${{ env.POST_NUM }}.png
+          photo: |
+            ${{ env.POST_NUM != '' && format('https://lybra-ai.ru/assets/images/posts/post-{0}.png', env.POST_NUM) || '' }}
       - name: Log Telegram step
         run: |
           echo "TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}"
           echo "Post title: ${{ env.TITLE }}"
           echo "Teaser escaped: ${{ env.TEASER_ESCAPED }}"
           echo "URL: https://lybra-ai.ru/${{ env.DATE }}/${{ env.SLUG }}"
+          echo "Image URL: https://lybra-ai.ru/assets/images/posts/post-${{ env.POST_NUM }}.png"
