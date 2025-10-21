@@ -25,7 +25,7 @@ jobs:
           import os
           post_files = sorted(glob.glob('_posts/*.md'), reverse=True)
           if not post_files:
-            print('No posts found')
+            print('::error::No posts found')
             exit(1)
           with open(post_files[0], 'r', encoding='utf-8') as f:
             content = f.read()
@@ -34,15 +34,18 @@ jobs:
             title = data['title']
             date = data['date'].split(' ')[0].replace('-', '/')
             slug = post_files[0].split('/')[-1].split('-', 3)[-1].replace('.md', '')
-            post_num = data['image'].split('-')[-1].replace('.png', '')
+            post_num = data.get('image', '').split('-')[-1].replace('.png', '') if data.get('image') else '1'
             body = content.split('---')[2].strip()
-            teaser = ' '.join(body.split()[:100]).strip() + '...' if len(body.split()) > 100 else body
+            # Извлекаем первые 100 слов из тела статьи, исключая заголовки Markdown
+            words = ' '.join([w for w in body.split('\n') if not w.startswith('#')]).split()
+            teaser = ' '.join(words[:100]).strip() + '...' if len(words) > 100 else ' '.join(words).strip()
             os.environ['TITLE'] = title
             os.environ['DATE'] = date
             os.environ['SLUG'] = slug
             os.environ['POST_NUM'] = str(post_num)
             os.environ['TEASER'] = teaser
             print(f'Title: {title}, Date: {date}, Slug: {slug}, Post Num: {post_num}')
+            print(f'Teaser: {teaser}')
           "
       - name: Send to Telegram
         uses: appleboy/telegram-action@v0.1.1
@@ -51,11 +54,11 @@ jobs:
           token: ${{ secrets.TELEGRAM_TOKEN }}
           message: |
             📢 Новый пост: "${{ env.TITLE }}"
-
+            
             Краткий тизер: ${{ env.TEASER }}
-
+            
             Читать: https://lybra-ai.ru/${{ env.DATE }}/${{ env.SLUG }}?utm_source=telegram&utm_medium=channel&utm_campaign=post
-
+            
             #ИИ #Тренды2025 #LybraAI
           photo: https://lybra-ai.ru/assets/images/posts/post-${{ env.POST_NUM }}.png
       - name: Log Telegram step
