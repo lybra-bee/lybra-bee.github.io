@@ -17,12 +17,22 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install pyyaml
+      - name: Check post files
+        run: |
+          ls -l _posts/ || echo "No posts directory found"
+      - name: Check extract_post_data.py
+        run: |
+          ls -l extract_post_data.py || echo "extract_post_data.py not found"
       - name: Extract last post data
         run: |
           python extract_post_data.py
       - name: Escape teaser for MarkdownV2
         run: |
           TEASER="${{ env.TEASER }}"
+          if [ -z "$TEASER" ] || [ "$TEASER" = "Тизер недоступен: проверьте содержимое статьи." ]; then
+            echo "TEASER is empty or default, setting default"
+            TEASER="Тизер недоступен: проверьте содержимое статьи."
+          fi
           TEASER=$(echo "$TEASER" | sed 's/[ _*[]()~`>#+-=|{}.!]/\\\\&/g')
           echo "TEASER_ESCAPED=$TEASER" >> $GITHUB_ENV
       - name: Log extracted data
