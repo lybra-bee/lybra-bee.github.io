@@ -19,10 +19,9 @@ jobs:
           pip install pyyaml
       - name: Extract last post data
         run: |
-          python -c "
+          python <<EOF
 import glob
 import yaml
-import os
 import re
 post_files = sorted(glob.glob('_posts/*.md'), reverse=True)
 if not post_files:
@@ -41,25 +40,22 @@ date = data.get('date', '2025/01/01').split(' ')[0].replace('-', '/')
 slug = post_files[0].split('/')[-1].split('-', 3)[-1].replace('.md', '') if '-' in post_files[0] else 'no-slug'
 post_num = data.get('image', '').split('-')[-1].replace('.png', '') if 'image' in data else '1'
 body = content.split('---')[2].strip() if len(content.split('---')) > 2 else ''
-body = re.sub(r'^#{1,}\s.*$', '', body, flags=re.MULTILINE).strip()
+body = re.sub(r'^#{1,}\s*', '', body, flags=re.MULTILINE).strip()
 body = re.sub(r'\*{1,2}(.*?)\*{1,2}', r'\1', body)
 body = re.sub(r'\n\s*\n', ' ', body).strip()
-words = ' '.join([w for w in body.split() if w]).split()[:50]
+words = [w for w in body.split() if w][:50]
 teaser = ' '.join(words) + ('...' if len(words) == 50 else '') if words else 'Тизер недоступен: проверьте содержимое статьи.'
+print(f'Title: {title}')
+print(f'Date: {date}')
+print(f'Slug: {slug}')
+print(f'Post Num: {post_num}')
+print(f'Teaser: {teaser}')
 os.environ['TITLE'] = title
 os.environ['DATE'] = date
 os.environ['SLUG'] = slug
 os.environ['POST_NUM'] = post_num
 os.environ['TEASER'] = teaser
-print(f'Title: {title}, Date: {date}, Slug: {slug}, Post Num: {post_num}, Teaser: {teaser}')
-"
-      - name: Escape teaser for MarkdownV2
-        run: |
-          TEASER="${{ env.TEASER }}"
-          for char in _ * [ ] \( \) ~ \` \> \# \+ \- \= \| \{ \} \. \!; do
-            TEASER=$(echo "$TEASER" | sed "s/$char/\\\\$char/g")
-          done
-          echo "TEASER=$TEASER" >> $GITHUB_ENV
+EOF
       - name: Log extracted data
         run: |
           echo "TITLE: ${{ env.TITLE }}"
@@ -67,6 +63,11 @@ print(f'Title: {title}, Date: {date}, Slug: {slug}, Post Num: {post_num}, Teaser
           echo "SLUG: ${{ env.SLUG }}"
           echo "POST_NUM: ${{ env.POST_NUM }}"
           echo "TEASER: ${{ env.TEASER }}"
+      - name: Escape teaser for MarkdownV2
+        run: |
+          TEASER="${{ env.TEASER }}"
+          TEASER=$(echo "$TEASER" | sed 's/[ _*[]()~`>#+-=|{}.!]/\\\\&/g')
+          echo "TEASER_ESCAPED=$TEASER" >> $GITHUB_ENV
       - name: Send to Telegram
         uses: appleboy/telegram-action@v0.1.1
         with:
@@ -76,7 +77,7 @@ print(f'Title: {title}, Date: {date}, Slug: {slug}, Post Num: {post_num}, Teaser
           message: |
             📢 Новый пост: "${{ env.TITLE }}"
 
-            Краткий тизер: ${{ env.TEASER }}
+            Краткий тизер: ${{ env.TEASER_ESCAPED }}
 
             Читать: https://lybra-ai.ru/${{ env.DATE }}/${{ env.SLUG }}?utm_source=telegram&utm_medium=channel&utm_campaign=post
 
@@ -86,5 +87,5 @@ print(f'Title: {title}, Date: {date}, Slug: {slug}, Post Num: {post_num}, Teaser
         run: |
           echo "TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}"
           echo "Post title: ${{ env.TITLE }}"
-          echo "Teaser: ${{ env.TEASER }}"
+          echo "Teaser escaped: ${{ env.TEASER_ESCAPED }}"
           echo "URL: https://lybra-ai.ru/${{ env.DATE }}/${{ env.SLUG }}"
