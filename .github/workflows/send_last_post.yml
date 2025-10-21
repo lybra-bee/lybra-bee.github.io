@@ -43,10 +43,14 @@ jobs:
             body = content.split('---')[2].strip() if len(content.split('---')) > 2 else ''
             # Удаляем заголовки Markdown и лишние пробелы
             body = re.sub(r'^#{1,}\s.*$', '', body, flags=re.MULTILINE).strip()
-            body = re.sub(r'\n\s*\n', '\n', body).strip()
+            body = re.sub(r'\n\s*\n', ' ', body).strip()
+            # Удаляем Markdown-форматирование (**)
+            body = re.sub(r'\*{1,2}(.*?)\*{1,2}', r'\1', body)
             # Извлекаем первые 100 слов
             words = ' '.join([w for w in body.split() if w]).split()[:100]
             teaser = ' '.join(words) + ('...' if len(words) == 100 else '') if words else 'Тизер недоступен: проверьте содержимое статьи.'
+            # Экранируем специальные символы для Telegram
+            teaser = teaser.replace('_', r'\_').replace('*', r'\*').replace('[', r'\[').replace(']', r'\]')
             os.environ['TITLE'] = title
             os.environ['DATE'] = date
             os.environ['SLUG'] = slug
@@ -54,11 +58,19 @@ jobs:
             os.environ['TEASER'] = teaser
             print(f'Title: {title}, Date: {date}, Slug: {slug}, Post Num: {post_num}, Teaser: {teaser}')
           "
+      - name: Log extracted data
+        run: |
+          echo "TITLE: ${{ env.TITLE }}"
+          echo "DATE: ${{ env.DATE }}"
+          echo "SLUG: ${{ env.SLUG }}"
+          echo "POST_NUM: ${{ env.POST_NUM }}"
+          echo "TEASER: ${{ env.TEASER }}"
       - name: Send to Telegram
         uses: appleboy/telegram-action@v0.1.1
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_TOKEN }}
+          format: markdown
           message: |
             📢 Новый пост: "${{ env.TITLE }}"
             
