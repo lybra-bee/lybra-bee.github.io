@@ -38,7 +38,7 @@ jobs:
       - name: Check image URL
         run: |
           IMAGE_URL="https://lybra-ai.ru/assets/images/posts/post-${{ env.POST_NUM }}.png"
-          HTTP_STATUS=$(curl -s -I "$IMAGE_URL" | grep -i HTTP/ | awk '{print $2}' || echo "No response")
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$IMAGE_URL")
           echo "Image URL $IMAGE_URL status: HTTP $HTTP_STATUS"
           if [ "$HTTP_STATUS" = "200" ]; then
             echo "IMAGE_URL_ACCESSIBLE=true" >> $GITHUB_ENV
@@ -65,7 +65,7 @@ jobs:
           echo "IMAGE_FOUND: ${{ env.IMAGE_FOUND }}"
           echo "IMAGE_URL_ACCESSIBLE: ${{ env.IMAGE_URL_ACCESSIBLE }}"
       - name: Send to Telegram
-        uses: appleboy/telegram-action@v0.1.2
+        uses: appleboy/telegram-action@v1.0.1
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_TOKEN }}
