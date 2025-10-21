@@ -2,7 +2,7 @@ import glob
 import yaml
 import os
 import re
-from translit import translit  # Для транслитерации slug
+from transliterate import translit  # Используем transliterate вместо translit
 
 # Находим последний пост
 post_files = sorted(glob.glob('_posts/*.md'), reverse=True)
@@ -36,10 +36,13 @@ except yaml.YAMLError as e:
 # Извлекаем метаданные
 title = data.get('title', 'Без заголовка')
 date = data.get('date', '2025/01/01').split(' ')[0].replace('-', '/')
-slug = post_files[0].split('/')[-1].split('-', 3)[-1].replace('.md', '') if '-' in post_files[0] else 'no-slug'
+# Используем slug из front-matter, если есть, иначе генерируем из имени файла
+slug = data.get('slug', post_files[0].split('/')[-1].split('-', 3)[-1].replace('.md', ''))
 # Транслитерация slug для английского URL
-slug = translit(slug, 'ru', reversed=True)  # ru to en, reversed for slug-like format
+slug = translit(slug, 'ru', reversed=True)  # ru to en
 slug = re.sub(r'\s+', '-', slug.lower()).strip('-')  # Заменяем пробелы на дефисы
+# Удаляем лишние дефисы
+slug = re.sub(r'-+', '-', slug)
 post_num = data.get('image', '').split('-')[-1].replace('.png', '') if 'image' in data else '1'
 
 # Извлекаем тело поста
