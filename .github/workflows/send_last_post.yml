@@ -38,13 +38,7 @@ jobs:
       - name: Check image URL
         run: |
           IMAGE_URL="https://lybra-ai.ru/assets/images/posts/post-${{ env.POST_NUM }}.png"
-          if curl -s -I "$IMAGE_URL" | grep -q "HTTP/2 200"; then
-            echo "Image URL $IMAGE_URL is accessible"
-            echo "IMAGE_URL_ACCESSIBLE=true" >> $GITHUB_ENV
-          else
-            echo "Image URL $IMAGE_URL not accessible"
-            echo "IMAGE_URL_ACCESSIBLE=false" >> $GITHUB_ENV
-          fi
+          curl -s -I "$IMAGE_URL" | grep -i HTTP/ || echo "Image URL $IMAGE_URL not accessible"
       - name: Escape teaser for MarkdownV2
         run: |
           TEASER="${{ env.TEASER }}"
@@ -62,10 +56,8 @@ jobs:
           echo "POST_NUM: ${{ env.POST_NUM }}"
           echo "TEASER: ${{ env.TEASER }}"
           echo "TEASER_ESCAPED: ${{ env.TEASER_ESCAPED }}"
-          echo "IMAGE_FOUND: ${{ env.IMAGE_FOUND }}"
-          echo "IMAGE_URL_ACCESSIBLE: ${{ env.IMAGE_URL_ACCESSIBLE }}"
       - name: Send to Telegram
-        uses: appleboy/telegram-action@v1.0.0
+        uses: appleboy/telegram-action@master
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_TOKEN }}
@@ -78,8 +70,7 @@ jobs:
             Читать: https://lybra-ai.ru/${{ env.DATE }}/${{ env.SLUG }}?utm_source=telegram&utm_medium=channel&utm_campaign=post
 
             #ИИ #Тренды2025 #LybraAI
-          photo: |
-            ${{ env.IMAGE_URL_ACCESSIBLE == 'true' && format('https://lybra-ai.ru/assets/images/posts/post-{0}.png', env.POST_NUM) || '' }}
+          photo: https://lybra-ai.ru/assets/images/posts/post-${{ env.POST_NUM }}.png
       - name: Log Telegram step
         run: |
           echo "TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}"
