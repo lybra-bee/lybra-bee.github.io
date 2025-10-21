@@ -41,16 +41,16 @@ jobs:
             slug = post_files[0].split('/')[-1].split('-', 3)[-1].replace('.md', '') if '-' in post_files[0] else 'no-slug'
             post_num = data.get('image', '').split('-')[-1].replace('.png', '') if 'image' in data else '1'
             body = content.split('---')[2].strip() if len(content.split('---')) > 2 else ''
-            # Удаляем заголовки Markdown и лишние пробелы
+            # Удаляем заголовки и Markdown-форматирование
             body = re.sub(r'^#{1,}\s.*$', '', body, flags=re.MULTILINE).strip()
-            body = re.sub(r'\n\s*\n', ' ', body).strip()
-            # Удаляем Markdown-форматирование (**)
             body = re.sub(r'\*{1,2}(.*?)\*{1,2}', r'\1', body)
-            # Извлекаем первые 100 слов
-            words = ' '.join([w for w in body.split() if w]).split()[:100]
-            teaser = ' '.join(words) + ('...' if len(words) == 100 else '') if words else 'Тизер недоступен: проверьте содержимое статьи.'
-            # Экранируем специальные символы для Telegram
-            teaser = teaser.replace('_', r'\_').replace('*', r'\*').replace('[', r'\[').replace(']', r'\]')
+            body = re.sub(r'\n\s*\n', ' ', body).strip()
+            # Извлекаем первые 50 слов (~200 символов)
+            words = ' '.join([w for w in body.split() if w]).split()[:50]
+            teaser = ' '.join(words) + ('...' if len(words) == 50 else '') if words else 'Тизер недоступен: проверьте содержимое статьи.'
+            # Экранируем для MarkdownV2
+            for char in ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']:
+              teaser = teaser.replace(char, f'\\{char}')
             os.environ['TITLE'] = title
             os.environ['DATE'] = date
             os.environ['SLUG'] = slug
@@ -70,14 +70,14 @@ jobs:
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_TOKEN }}
-          format: markdown
+          parse_mode: MarkdownV2
           message: |
             📢 Новый пост: "${{ env.TITLE }}"
-            
+
             Краткий тизер: ${{ env.TEASER }}
-            
+
             Читать: https://lybra-ai.ru/${{ env.DATE }}/${{ env.SLUG }}?utm_source=telegram&utm_medium=channel&utm_campaign=post
-            
+
             #ИИ #Тренды2025 #LybraAI
           photo: https://lybra-ai.ru/assets/images/posts/post-${{ env.POST_NUM }}.png
       - name: Log Telegram step
