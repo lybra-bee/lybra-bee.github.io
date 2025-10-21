@@ -56,12 +56,13 @@ print(f'Words (first 10): {words[:10]}...')
 teaser = ' '.join(words) + ('...' if len(words) == 50 else '') if words else 'Тизер недоступен: проверьте содержимое статьи.'
 print(f'Teaser: {teaser}')
 
-# Экспортируем переменные
-os.environ['TITLE'] = title
-os.environ['DATE'] = date
-os.environ['SLUG'] = slug
-os.environ['POST_NUM'] = post_num
-os.environ['TEASER'] = teaser
+# Экспортируем переменные в $GITHUB_ENV
+with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as f:
+    f.write(f'TITLE={title}\n')
+    f.write(f'DATE={date}\n')
+    f.write(f'SLUG={slug}\n')
+    f.write(f'POST_NUM={post_num}\n')
+    f.write(f'TEASER={teaser}\n')
 
 # Финальный вывод
 print(f'Title: {title}, Date: {date}, Slug: {slug}, Post Num: {post_num}, Teaser: {teaser}')
