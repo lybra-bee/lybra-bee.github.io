@@ -1,7 +1,9 @@
 name: Отправка последнего поста в Telegram
 
 on:
-  workflow_dispatch:  # Для ручного запуска
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *'  # Ежедневно в 00:00 UTC
 
 jobs:
   send_post:
@@ -38,13 +40,7 @@ jobs:
       - name: Check image URL
         run: |
           IMAGE_URL="https://lybra-ai.ru/assets/images/posts/post-${{ env.POST_NUM }}.png"
-          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$IMAGE_URL")
-          echo "Image URL $IMAGE_URL status: HTTP $HTTP_STATUS"
-          if [ "$HTTP_STATUS" = "200" ]; then
-            echo "IMAGE_URL_ACCESSIBLE=true" >> $GITHUB_ENV
-          else
-            echo "IMAGE_URL_ACCESSIBLE=false" >> $GITHUB_ENV
-          fi
+          curl -s -I "$IMAGE_URL" | grep -i HTTP/ || echo "Image URL $IMAGE_URL not accessible"
       - name: Escape teaser for MarkdownV2
         run: |
           TEASER="${{ env.TEASER }}"
@@ -52,19 +48,8 @@ jobs:
             echo "TEASER is empty or default, setting default"
             TEASER="Тизер недоступен: проверьте содержимое статьи."
           fi
-          # Ограничиваем длину тизера до 1000 символов
-          TEASER=$(echo "$TEASER" | head -c 1000)
-          # Экранируем все специальные символы для MarkdownV2
-          TEASER=$(echo "$TEASER" | sed 's/[ _*[\]()~`>#+-=|{}\.!]/\\&/g')
+          TEASER=$(echo "$TEASER" | sed 's/[ _*[]()~`>#+-=|{}.!]/\\\\&/g')
           echo "TEASER_ESCAPED=$TEASER" >> $GITHUB_ENV
-          # Проверяем длину сообщения
-          MESSAGE="📢 Новый пост: \"${{ env.TITLE }}\"\n\nКраткий тизер: $TEASER\n\nЧитать: https://lybra-ai.ru/${{ env.DATE }}/${{ env.SLUG }}?utm_source=telegram&utm_medium=channel&utm_campaign=post\n\n#ИИ #Тренды2025 #LybraAI"
-          MESSAGE_LENGTH=$(echo -n "$MESSAGE" | wc -c)
-          echo "Message length: $MESSAGE_LENGTH"
-          if [ "$MESSAGE_LENGTH" -gt 4096 ]; then
-            echo "::error::Message length ($MESSAGE_LENGTH) exceeds Telegram limit of 4096 characters"
-            exit 1
-          fi
       - name: Log extracted data
         run: |
           echo "TITLE: ${{ env.TITLE }}"
@@ -73,14 +58,12 @@ jobs:
           echo "POST_NUM: ${{ env.POST_NUM }}"
           echo "TEASER: ${{ env.TEASER }}"
           echo "TEASER_ESCAPED: ${{ env.TEASER_ESCAPED }}"
-          echo "IMAGE_FOUND: ${{ env.IMAGE_FOUND }}"
-          echo "IMAGE_URL_ACCESSIBLE: ${{ env.IMAGE_URL_ACCESSIBLE }}"
       - name: Send to Telegram
         uses: appleboy/telegram-action@v1.0.1
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_TOKEN }}
-          parse_mode: MarkdownV2
+          format: markdown
           message: |
             📢 Новый пост: "${{ env.TITLE }}"
 
@@ -90,7 +73,7 @@ jobs:
 
             #ИИ #Тренды2025 #LybraAI
           photo: |
-            ${{ env.IMAGE_URL_ACCESSIBLE == 'true' && format('https://lybra-ai.ru/assets/images/posts/post-{0}.png', env.POST_NUM) || '' }}
+            ${{ env.IMAGE_FOUND == 'true' && format('https://lybra-ai.ru/assets/images/posts/post-{0}.png', env.POST_NUM) || '' }}
       - name: Log Telegram step
         run: |
           echo "TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}"
