@@ -23,17 +23,22 @@ jobs:
       - name: Check extract_post_data.py
         run: |
           ls -l extract_post_data.py || echo "extract_post_data.py not found"
+      - name: Extract last post data
+        run: |
+          python extract_post_data.py
       - name: Check image file
         run: |
           IMAGE_PATH="assets/images/posts/post-${{ env.POST_NUM }}.png"
           ls -l $IMAGE_PATH || echo "Image file $IMAGE_PATH not found in repository"
+          if [ -f "$IMAGE_PATH" ]; then
+            echo "IMAGE_FOUND=true" >> $GITHUB_ENV
+          else
+            echo "IMAGE_FOUND=false" >> $GITHUB_ENV
+          fi
       - name: Check image URL
         run: |
           IMAGE_URL="https://lybra-ai.ru/assets/images/posts/post-${{ env.POST_NUM }}.png"
           curl -s -I "$IMAGE_URL" | grep -i HTTP/ || echo "Image URL $IMAGE_URL not accessible"
-      - name: Extract last post data
-        run: |
-          python extract_post_data.py
       - name: Escape teaser for MarkdownV2
         run: |
           TEASER="${{ env.TEASER }}"
@@ -66,7 +71,7 @@ jobs:
 
             #ИИ #Тренды2025 #LybraAI
           photo: |
-            ${{ env.POST_NUM != '' && format('https://lybra-ai.ru/assets/images/posts/post-{0}.png', env.POST_NUM) || '' }}
+            ${{ env.IMAGE_FOUND == 'true' && format('https://lybra-ai.ru/assets/images/posts/post-{0}.png', env.POST_NUM) || '' }}
       - name: Log Telegram step
         run: |
           echo "TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}"
