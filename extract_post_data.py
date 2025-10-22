@@ -39,8 +39,8 @@ try:
 
     slug = front_matter.get('slug', '')
     if not slug:
-        # Генерируем короткий slug из первых 5 слов заголовка
-        words = title.lower().split()[:5]
+        # Генерируем slug из первых 8 слов заголовка
+        words = title.lower().split()[:8]
         slug = re.sub(r'[^a-z0-9а-я-]', '-', '-'.join(words)).strip('-').replace('--', '-')
         print(f"::warning::Generated slug: {slug}")
 
