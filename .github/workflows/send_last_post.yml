@@ -16,23 +16,23 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pyyaml python-frontmatter
+          pip install pyyaml
       - name: Check post files
         run: |
           ls -l _posts/ || echo "No posts directory found"
+          if [ -z "$(ls -A _posts/)" ]; then
+            echo "::error::No Markdown files found in _posts/"
+            exit 1
+          fi
+      - name: Check extract_post_data.py
+        run: |
+          ls -l extract_post_data.py || echo "::error::extract_post_data.py not found"
+          if [ ! -f extract_post_data.py ]; then
+            exit 1
+          fi
       - name: Extract last post data
         run: |
-          python -c "
-          import frontmatter
-          import os
-          import glob
-          posts = sorted(glob.glob('_posts/*.md'), key=os.path.getmtime, reverse=True)
-          if not posts:
-            print('::error::No posts found in _posts directory')
-            exit(1)
-          post = frontmatter.load(posts[0])
-          print('TITLE=' + post.get('title', '') + '\nDATE=' + str(post.get('date', '')) + '\nSLUG=' + post.get('slug', '') + '\nPOST_NUM=' + post.get('image', '').replace('post-', '').replace('.png', '')) >> $GITHUB_ENV
-          "
+          python extract_post_data.py
       - name: Validate extracted data
         run: |
           if [ -z "${{ env.TITLE }}" ]; then
