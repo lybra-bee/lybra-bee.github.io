@@ -1,75 +1,31 @@
+import os
 import glob
 import yaml
-import os
-import re
-from transliterate import translit  # Используем transliterate вместо translit
 
-# Находим последний пост
-post_files = sorted(glob.glob('_posts/*.md'), reverse=True)
+posts_dir = '_posts'
+post_files = sorted(glob.glob(f"{posts_dir}/*.md"), reverse=True)
 if not post_files:
-    print('::error::No posts found in _posts/')
+    print("No posts found")
     exit(1)
 
-# Выводим имя файла для отладки
-print(f'Found post file: {post_files[0]}')
-
-# Читаем файл
-with open(post_files[0], 'r', encoding='utf-8') as f:
+latest_post = post_files[0]
+with open(latest_post, 'r', encoding='utf-8') as f:
     content = f.read()
-    print(f'File content (first 200 chars): {content[:200]}...')
+    front_matter = yaml.safe_load(content.split('---')[1])
 
-# Извлекаем front-matter
-try:
-    parts = content.split('---')
-    if len(parts) < 3:
-        print('::error::Invalid post structure: missing second ---')
-        exit(1)
-    front_matter = parts[1]
-    data = yaml.safe_load(front_matter) or {}
-except IndexError:
-    print('::error::Invalid YAML front-matter')
-    exit(1)
-except yaml.YAMLError as e:
-    print(f'::error::YAML parsing error: {str(e)}')
-    exit(1)
+title = front_matter.get('title', 'No title')
+date = front_matter.get('date', '2025-10-22').split(' ')[0]
+slug = front_matter.get('slug', '')
+if not slug:
+    slug = title.lower().replace(' ', '-')  # Простая замена пробелов на дефисы
+    slug = slug.replace('---', '-')  # Удаление лишних дефисов
+post_num = front_matter.get('image', '').split('post-')[-1].split('.')[0] if front_matter.get('image') else '1'
+teaser = front_matter.get('description', 'Тизер недоступен: проверьте содержимое статьи.')
 
-# Извлекаем метаданные
-title = data.get('title', 'Без заголовка')
-date = data.get('date', '2025/01/01').split(' ')[0].replace('-', '/')
-# Используем slug из front-matter, если есть, иначе генерируем из имени файла
-slug = data.get('slug', post_files[0].split('/')[-1].split('-', 3)[-1].replace('.md', ''))
-# Транслитерация slug для английского URL
-slug = translit(slug, 'ru', reversed=True)  # ru to en
-slug = re.sub(r'\s+', '-', slug.lower()).strip('-')  # Заменяем пробелы на дефисы
-# Удаляем лишние дефисы
-slug = re.sub(r'-+', '-', slug)
-post_num = data.get('image', '').split('-')[-1].replace('.png', '') if 'image' in data else '1'
+os.environ['TITLE'] = title
+os.environ['DATE'] = date.replace('-', '/')
+os.environ['SLUG'] = slug
+os.environ['POST_NUM'] = post_num
+os.environ['TEASER'] = teaser
 
-# Извлекаем тело поста
-body = parts[2].strip() if len(parts) > 2 else ''
-print(f'Raw body (first 200 chars): {body[:200]}...')
-
-# Очищаем тело от Markdown и заголовков
-body = re.sub(r'^#{1,}\s*.*$', '', body, flags=re.MULTILINE).strip()  # Удаляем заголовки
-body = re.sub(r'\*{1,2}(.*?)\*{1,2}', r'\1', body)  # Удаляем **жирный** текст
-body = re.sub(r'\n\s*\n', ' ', body).strip()  # Удаляем лишние переносы строк
-print(f'Cleaned body (first 200 chars): {body[:200]}...')
-
-# Извлекаем первые 50 слов
-words = [w for w in body.split() if w][:50]
-print(f'Words (first 10): {words[:10]}...')
-
-# Формируем тизер
-teaser = ' '.join(words) + ('...' if len(words) == 50 else '') if words else 'Тизер недоступен: проверьте содержимое статьи.'
-print(f'Teaser: {teaser}')
-
-# Экспортируем переменные в $GITHUB_ENV
-with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as f:
-    f.write(f'TITLE={title}\n')
-    f.write(f'DATE={date}\n')
-    f.write(f'SLUG={slug}\n')
-    f.write(f'POST_NUM={post_num}\n')
-    f.write(f'TEASER={teaser}\n')
-
-# Финальный вывод
-print(f'Title: {title}, Date: {date}, Slug: {slug}, Post Num: {post_num}, Teaser: {teaser}')
+print(f"Extracted: TITLE={title}, DATE={date}, SLUG={slug}, POST_NUM={post_num}, TEASER={teaser}")
