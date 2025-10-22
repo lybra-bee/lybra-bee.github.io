@@ -26,12 +26,26 @@ jobs:
       - name: Extract last post data
         run: |
           python extract_post_data.py
-      - name: Check image file
+      - name: Validate extracted data
         run: |
+          if [ -z "${{ env.TITLE }}" ]; then
+            echo "::error::TITLE is empty"
+            exit 1
+          fi
+          if [ -z "${{ env.DATE }}" ]; then
+            echo "::error::DATE is empty"
+            exit 1
+          fi
+          if [ -z "${{ env.SLUG }}" ]; then
+            echo "::error::SLUG is empty"
+            exit 1
+          fi
           if [ -z "${{ env.POST_NUM }}" ]; then
             echo "::error::POST_NUM is empty, check front-matter 'image' in post"
             exit 1
           fi
+      - name: Check image file
+        run: |
           IMAGE_PATH="assets/images/posts/post-${{ env.POST_NUM }}.png"
           ls -l $IMAGE_PATH || echo "Image file $IMAGE_PATH not found in repository"
           if [ -f "$IMAGE_PATH" ]; then
@@ -51,16 +65,12 @@ jobs:
           fi
       - name: Escape title and teaser for Markdown
         run: |
-          if [ -z "${{ env.TITLE }}" ] || [ -z "${{ env.SLUG }}" ] || [ -z "${{ env.DATE }}" ]; then
-            echo "::error::TITLE, SLUG, or DATE is empty, check extract_post_data.py"
-            exit 1
-          fi
           TITLE="${{ env.TITLE }}"
           TITLE_ESCAPED=$(echo "$TITLE" | sed 's/[ _*[\]()~`>#+-=|{}\.!]/\\&/g')
           echo "TITLE_ESCAPED=$TITLE_ESCAPED" >> $GITHUB_ENV
           TEASER="${{ env.TEASER }}"
-          if [ -z "$TEASER" ] || [ "$TEASER" = "Тизер недоступен: проверьте содержимое статьи." ]; then
-            echo "TEASER is empty or default, setting default"
+          if [ -z "$TEASER" ]; then
+            echo "TEASER is empty, setting default"
             TEASER="Тизер недоступен: проверьте содержимое статьи."
           fi
           TEASER=$(echo "$TEASER" | head -c 1000)
