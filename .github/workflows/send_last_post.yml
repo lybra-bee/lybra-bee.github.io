@@ -45,6 +45,21 @@ jobs:
           else
             echo "IMAGE_URL_ACCESSIBLE=false" >> $GITHUB_ENV
           fi
+      - name: Check default image URL
+        run: |
+          DEFAULT_IMAGE_URL="https://lybra-ai.ru/assets/images/default.png"
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$DEFAULT_IMAGE_URL")
+          echo "Default image URL $DEFAULT_IMAGE_URL status: HTTP $HTTP_STATUS"
+          if [ "$HTTP_STATUS" = "200" ]; then
+            echo "DEFAULT_IMAGE_URL_ACCESSIBLE=true" >> $GITHUB_ENV
+          else
+            echo "DEFAULT_IMAGE_URL_ACCESSIBLE=false" >> $GITHUB_ENV
+          fi
+      - name: Fail if no images accessible
+        if: env.IMAGE_URL_ACCESSIBLE != 'true' && env.DEFAULT_IMAGE_URL_ACCESSIBLE != 'true'
+        run: |
+          echo "::error::Neither image https://lybra-ai.ru/assets/images/posts/post-${{ env.POST_NUM }}.png nor default image https://lybra-ai.ru/assets/images/default.png is accessible"
+          exit 1
       - name: Check post URL
         run: |
           POST_URL="https://lybra-ai.ru/${{ env.DATE }}/${{ env.SLUG }}"
@@ -84,6 +99,7 @@ jobs:
           echo "TEASER_ESCAPED: ${{ env.TEASER_ESCAPED }}"
           echo "IMAGE_FOUND: ${{ env.IMAGE_FOUND }}"
           echo "IMAGE_URL_ACCESSIBLE: ${{ env.IMAGE_URL_ACCESSIBLE }}"
+          echo "DEFAULT_IMAGE_URL_ACCESSIBLE: ${{ env.DEFAULT_IMAGE_URL_ACCESSIBLE }}"
       - name: Send to Telegram
         uses: appleboy/telegram-action@v1.0.1
         with:
@@ -99,7 +115,7 @@ jobs:
 
             #ИИ #Тренды2025 #LybraAI
           photo: |
-            ${{ env.IMAGE_URL_ACCESSIBLE == 'true' && format('https://lybra-ai.ru/assets/images/posts/post-{0}.png', env.POST_NUM) || 'https://lybra-ai.ru/assets/images/default.png' }}
+            ${{ env.IMAGE_URL_ACCESSIBLE == 'true' && format('https://lybra-ai.ru/assets/images/posts/post-{0}.png', env.POST_NUM) || env.DEFAULT_IMAGE_URL_ACCESSIBLE == 'true' && 'https://lybra-ai.ru/assets/images/default.png' || '' }}
       - name: Log Telegram step
         run: |
           echo "TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}"
@@ -107,3 +123,4 @@ jobs:
           echo "Teaser escaped: ${{ env.TEASER_ESCAPED }}"
           echo "URL: https://lybra-ai.ru/${{ env.DATE }}/${{ env.SLUG }}"
           echo "Image URL: https://lybra-ai.ru/assets/images/posts/post-${{ env.POST_NUM }}.png"
+          echo "Default image URL: https://lybra-ai.ru/assets/images/default.png"
