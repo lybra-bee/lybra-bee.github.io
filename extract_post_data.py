@@ -39,7 +39,9 @@ try:
 
     slug = front_matter.get('slug', '')
     if not slug:
-        slug = re.sub(r'[^a-z0-9а-я-]', '-', title.lower()).strip('-').replace('--', '-')
+        # Генерируем короткий slug из первых 5 слов заголовка
+        words = title.lower().split()[:5]
+        slug = re.sub(r'[^a-z0-9а-я-]', '-', '-'.join(words)).strip('-').replace('--', '-')
         print(f"::warning::Generated slug: {slug}")
 
     image = front_matter.get('image', '')
@@ -47,8 +49,8 @@ try:
     if image and 'post-' in image:
         post_num = image.split('post-')[-1].split('.')[0]
     else:
-        print(f"::error::Missing or invalid 'image' in {latest_post}")
-        sys.exit(1)
+        print(f"::warning::Missing or invalid 'image' in {latest_post}, using default")
+        post_num = '1'
 
     teaser = front_matter.get('description', '')
     if not teaser:
