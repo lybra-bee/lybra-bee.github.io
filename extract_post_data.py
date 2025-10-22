@@ -37,12 +37,15 @@ try:
         sys.exit(1)
     date = str(date).split(' ')[0]  # Extract YYYY-MM-DD
 
-    slug = front_matter.get('slug', '')
+    # Извлекаем slug из имени файла, если не задан в front-matter
+    filename = os.path.basename(latest_post)
+    slug_from_file = filename[11:].rsplit('.', 1)[0] if filename.startswith(date.replace('-', '') + '-') else ''
+    slug = front_matter.get('slug', slug_from_file)
     if not slug:
-        # Генерируем slug из первых 8 слов заголовка
-        words = title.lower().split()[:8]
-        slug = re.sub(r'[^a-z0-9а-я-]', '-', '-'.join(words)).strip('-').replace('--', '-')
-        print(f"::warning::Generated slug: {slug}")
+        # Генерируем slug из первых 5 слов, если не удалось извлечь
+        words = re.sub(r'[^a-z0-9а-я ]', ' ', title.lower()).split()[:5]
+        slug = '-'.join(words).replace('--', '-').strip('-')
+        print(f"::warning::Generated slug from title: {slug}")
 
     image = front_matter.get('image', '')
     post_num = ''
