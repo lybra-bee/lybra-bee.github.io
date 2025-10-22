@@ -67,16 +67,17 @@ jobs:
           echo "Image URL $IMAGE_URL status: HTTP $HTTP_STATUS"
           if [ "$HTTP_STATUS" = "200" ]; then
             echo "IMAGE_URL_ACCESSIBLE=true" >> $GITHUB_ENV
+            echo "PHOTO_URL=$IMAGE_URL" >> $GITHUB_ENV
           else
             echo "IMAGE_URL_ACCESSIBLE=false" >> $GITHUB_ENV
+            echo "PHOTO_URL=" >> $GITHUB_ENV
           fi
-      - name: Escape title and teaser for Markdown
+      - name: Prepare Telegram message
         run: |
           TITLE_ESCAPED=$(echo "$TITLE" | sed 's/[ _*[\]()~`>#+-=|{}\.!]/\\&/g')
           echo "TITLE_ESCAPED=$TITLE_ESCAPED" >> $GITHUB_ENV
           TEASER="${TEASER}"
           if [ -z "$TEASER" ]; then
-            echo "TEASER is empty, setting default"
             TEASER="Тизер недоступен: проверьте содержимое статьи."
           fi
           TEASER=$(echo "$TEASER" | head -c 1000)
@@ -84,11 +85,11 @@ jobs:
           echo "TEASER_ESCAPED=$TEASER_ESCAPED" >> $GITHUB_ENV
           MESSAGE="📢 Новый пост: \"$TITLE_ESCAPED\"\n\nКраткий тизер: $TEASER_ESCAPED\n\n[Читать](https://lybra-ai.ru/$DATE/$SLUG?utm_source=telegram&utm_medium=channel&utm_campaign=post)\n\n#ИИ #Тренды2025 #LybraAI"
           MESSAGE_LENGTH=$(echo -n "$MESSAGE" | wc -c)
-          echo "Message length: $MESSAGE_LENGTH"
           if [ "$MESSAGE_LENGTH" -gt 4096 ]; then
             echo "::error::Message length ($MESSAGE_LENGTH) exceeds Telegram limit of 4096 characters"
             exit 1
           fi
+          echo "MESSAGE=$MESSAGE" >> $GITHUB_ENV
       - name: Log extracted data
         run: |
           echo "TITLE: $TITLE"
@@ -100,22 +101,16 @@ jobs:
           echo "TEASER_ESCAPED: $TEASER_ESCAPED"
           echo "IMAGE_FOUND: $IMAGE_FOUND"
           echo "IMAGE_URL_ACCESSIBLE: $IMAGE_URL_ACCESSIBLE"
+          echo "PHOTO_URL: $PHOTO_URL"
+          echo "MESSAGE: $MESSAGE"
       - name: Send to Telegram
         uses: appleboy/telegram-action@v1.0.1
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_TOKEN }}
           format: markdown
-          message: |
-            📢 Новый пост: "$TITLE_ESCAPED"
-
-            Краткий тизер: $TEASER_ESCAPED
-
-            [Читать](https://lybra-ai.ru/$DATE/$SLUG?utm_source=telegram&utm_medium=channel&utm_campaign=post)
-
-            #ИИ #Тренды2025 #LybraAI
-          photo: |
-            ${{ env.IMAGE_URL_ACCESSIBLE == 'true' && format('https://lybra-ai.ru/assets/images/posts/post-{0}.png', env.POST_NUM) || '' }}
+          message: ${{ env.MESSAGE }}
+          photo: ${{ env.PHOTO_URL }}
       - name: Log Telegram step
         run: |
           echo "TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}"
