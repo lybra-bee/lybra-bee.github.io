@@ -42,9 +42,8 @@ try:
     slug_from_file = filename[11:].rsplit('.', 1)[0] if filename.startswith(date.replace('-', '') + '-') else ''
     slug = front_matter.get('slug', slug_from_file)
     if not slug:
-        # Генерируем slug из первых 5 слов, если не удалось извлечь
-        words = re.sub(r'[^a-z0-9а-я ]', ' ', title.lower()).split()[:5]
-        slug = '-'.join(words).replace('--', '-').strip('-')
+        # Генерируем slug из полного заголовка
+        slug = re.sub(r'[^a-z0-9а-я-]', '-', title.lower()).strip('-').replace('--', '-')
         print(f"::warning::Generated slug from title: {slug}")
 
     image = front_matter.get('image', '')
