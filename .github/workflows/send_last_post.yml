@@ -16,7 +16,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pyyaml transliterate
+          pip install pyyaml
       - name: Check post files
         run: |
           ls -l _posts/ || echo "No posts directory found"
@@ -28,6 +28,10 @@ jobs:
           python extract_post_data.py
       - name: Check image file
         run: |
+          if [ -z "${{ env.POST_NUM }}" ]; then
+            echo "::error::POST_NUM is empty, check front-matter 'image' in post"
+            exit 1
+          fi
           IMAGE_PATH="assets/images/posts/post-${{ env.POST_NUM }}.png"
           ls -l $IMAGE_PATH || echo "Image file $IMAGE_PATH not found in repository"
           if [ -f "$IMAGE_PATH" ]; then
@@ -47,6 +51,10 @@ jobs:
           fi
       - name: Escape title and teaser for Markdown
         run: |
+          if [ -z "${{ env.TITLE }}" ] || [ -z "${{ env.SLUG }}" ] || [ -z "${{ env.DATE }}" ]; then
+            echo "::error::TITLE, SLUG, or DATE is empty, check extract_post_data.py"
+            exit 1
+          fi
           TITLE="${{ env.TITLE }}"
           TITLE_ESCAPED=$(echo "$TITLE" | sed 's/[ _*[\]()~`>#+-=|{}\.!]/\\&/g')
           echo "TITLE_ESCAPED=$TITLE_ESCAPED" >> $GITHUB_ENV
@@ -90,7 +98,8 @@ jobs:
             [Читать](https://lybra-ai.ru/${{ env.DATE }}/${{ env.SLUG }}?utm_source=telegram&utm_medium=channel&utm_campaign=post)
 
             #ИИ #Тренды2025 #LybraAI
-          photo: https://lybra-ai.ru/assets/images/posts/post-${{ env.POST_NUM }}.png
+          photo: |
+            ${{ env.IMAGE_URL_ACCESSIBLE == 'true' && format('https://lybra-ai.ru/assets/images/posts/post-{0}.png', env.POST_NUM) || '' }}
       - name: Log Telegram step
         run: |
           echo "TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}"
