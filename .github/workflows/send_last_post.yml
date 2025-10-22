@@ -16,7 +16,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pyyaml
+          pip install pyyaml urllib3
       - name: Check post files
         run: |
           ls -l _posts/ || echo "No posts directory found"
@@ -83,8 +83,16 @@ jobs:
           TEASER=$(echo "$TEASER" | head -c 1000)
           TEASER_ESCAPED=$(echo "$TEASER" | sed 's/[ _*[\]()~`>#+-=|{}\.!]/\\&/g')
           echo "TEASER_ESCAPED=$TEASER_ESCAPED" >> $GITHUB_ENV
-          MESSAGE="📢 Новый пост: \"$TITLE_ESCAPED\"\n\nКраткий тизер: $TEASER_ESCAPED\n\n[Читать](https://lybra-ai.ru/$DATE/$SLUG?utm_source=telegram&utm_medium=channel&utm_campaign=post)\n\n#ИИ #Тренды2025 #LybraAI"
+          # URL-encode SLUG для правильного URL
+          SLUG_ENCODED=$(python -c "import urllib.parse; print(urllib.parse.quote('$SLUG'))")
+          echo "SLUG_ENCODED=$SLUG_ENCODED" >> $GITHUB_ENV
+          # Формируем полный URL
+          FULL_URL="https://lybra-ai.ru/$DATE/$SLUG_ENCODED"
+          echo "FULL_URL=$FULL_URL" >> $GITHUB_ENV
+          # Формируем сообщение с кликабельной ссылкой
+          MESSAGE="📢 Новый пост: \"$TITLE_ESCAPED\"\n\nКраткий тизер: $TEASER_ESCAPED\n\n[Читать]($FULL_URL)\n\n#ИИ #Тренды2025 #LybraAI"
           MESSAGE_LENGTH=$(echo -n "$MESSAGE" | wc -c)
+          echo "Message length: $MESSAGE_LENGTH"
           if [ "$MESSAGE_LENGTH" -gt 4096 ]; then
             echo "::error::Message length ($MESSAGE_LENGTH) exceeds Telegram limit of 4096 characters"
             exit 1
@@ -96,6 +104,8 @@ jobs:
           echo "TITLE_ESCAPED: $TITLE_ESCAPED"
           echo "DATE: $DATE"
           echo "SLUG: $SLUG"
+          echo "SLUG_ENCODED: $SLUG_ENCODED"
+          echo "FULL_URL: $FULL_URL"
           echo "POST_NUM: $POST_NUM"
           echo "TEASER: $TEASER"
           echo "TEASER_ESCAPED: $TEASER_ESCAPED"
@@ -116,5 +126,5 @@ jobs:
           echo "TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}"
           echo "Post title: $TITLE_ESCAPED"
           echo "Teaser escaped: $TEASER_ESCAPED"
-          echo "URL: https://lybra-ai.ru/$DATE/$SLUG"
-          echo "Image URL: https://lybra-ai.ru/assets/images/posts/post-$POST_NUM.png"
+          echo "Full URL: $FULL_URL"
+          echo "Image URL: $PHOTO_URL"
