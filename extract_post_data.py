@@ -2,6 +2,7 @@ import os
 import glob
 import yaml
 import sys
+import re
 
 posts_dir = '_posts'
 post_files = sorted(glob.glob(f"{posts_dir}/*.md"), reverse=True)
@@ -18,21 +19,41 @@ try:
         content = f.read()
         parts = content.split('---')
         if len(parts) < 3:
-            print(f"::error::Invalid front-matter in {latest_post}")
+            print(f"::error::Invalid front-matter in {latest_post}: missing '---' delimiters")
             sys.exit(1)
         front_matter = yaml.safe_load(parts[1])
         if not front_matter:
             print(f"::error::Failed to parse front-matter in {latest_post}")
             sys.exit(1)
 
-    title = front_matter.get('title', 'No title')
-    date = front_matter.get('date', '2025-10-22').split(' ')[0]
+    title = front_matter.get('title', '')
+    if not title:
+        print(f"::error::Missing or empty 'title' in {latest_post}")
+        sys.exit(1)
+
+    date = front_matter.get('date', '')
+    if not date:
+        print(f"::error::Missing or empty 'date' in {latest_post}")
+        sys.exit(1)
+    date = str(date).split(' ')[0]  # Extract YYYY-MM-DD
+
     slug = front_matter.get('slug', '')
     if not slug:
-        slug = title.lower().replace(' ', '-').replace('---', '-')
+        slug = re.sub(r'[^a-z0-9а-я-]', '-', title.lower()).strip('-').replace('--', '-')
+        print(f"Generated slug: {slug}")
+
     image = front_matter.get('image', '')
-    post_num = image.split('post-')[-1].split('.')[0] if image and 'post-' in image else '1'
-    teaser = front_matter.get('description', 'Тизер недоступен: проверьте содержимое статьи.')
+    post_num = ''
+    if image and 'post-' in image:
+        post_num = image.split('post-')[-1].split('.')[0]
+    else:
+        print(f"::warning::Missing or invalid 'image' in {latest_post}, defaulting to '1'")
+        post_num = '1'
+
+    teaser = front_matter.get('description', '')
+    if not teaser:
+        print(f"::warning::Missing or empty 'description' in {latest_post}, using default")
+        teaser = "Тизер недоступен: проверьте содержимое статьи."
 
     os.environ['TITLE'] = title
     os.environ['DATE'] = date.replace('-', '/')
