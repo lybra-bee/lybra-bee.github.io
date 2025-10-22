@@ -1,8 +1,8 @@
-name: Отправка последнего поста в Telegram
-
+name: Send Latest Post to Telegram
 on:
-  workflow_dispatch:
-
+  push:
+    branches:
+      - main
 jobs:
   send_post:
     runs-on: ubuntu-latest
@@ -13,107 +13,30 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Install dependencies
+      - name: Extract front-matter
         run: |
-          python -m pip install --upgrade pip
-          pip install pyyaml
-      - name: Check post files
+          pip install python-frontmatter
+          python -c "
+          import frontmatter
+          post = frontmatter.load('_posts/$(ls -t _posts | head -n 1)')
+          print('TITLE=' + post['title'] + '\nDATE=' + str(post['date']) + '\nSLUG=' + post['slug'] + '\nPOST_NUM=' + post.get('image', '')) >> $GITHUB_ENV
+          "
+      - name: Check variables and send to Telegram
         run: |
-          ls -l _posts/ || echo "No posts directory found"
-      - name: Check extract_post_data.py
-        run: |
-          ls -l extract_post_data.py || echo "extract_post_data.py not found"
-      - name: Extract last post data
-        run: |
-          python extract_post_data.py
-      - name: Validate extracted data
-        run: |
-          if [ -z "${{ env.TITLE }}" ]; then
+          if [ -z "$TITLE" ]; then
             echo "::error::TITLE is empty"
             exit 1
           fi
-          if [ -z "${{ env.DATE }}" ]; then
+          if [ -z "$DATE" ]; then
             echo "::error::DATE is empty"
             exit 1
           fi
-          if [ -z "${{ env.SLUG }}" ]; then
+          if [ -z "$SLUG" ]; then
             echo "::error::SLUG is empty"
             exit 1
           fi
-          if [ -z "${{ env.POST_NUM }}" ]; then
+          if [ -z "$POST_NUM" ]; then
             echo "::error::POST_NUM is empty, check front-matter 'image' in post"
             exit 1
           fi
-      - name: Check image file
-        run: |
-          IMAGE_PATH="assets/images/posts/post-${{ env.POST_NUM }}.png"
-          ls -l $IMAGE_PATH || echo "Image file $IMAGE_PATH not found in repository"
-          if [ -f "$IMAGE_PATH" ]; then
-            echo "IMAGE_FOUND=true" >> $GITHUB_ENV
-          else
-            echo "IMAGE_FOUND=false" >> $GITHUB_ENV
-          fi
-      - name: Check image URL
-        run: |
-          IMAGE_URL="https://lybra-ai.ru/assets/images/posts/post-${{ env.POST_NUM }}.png"
-          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$IMAGE_URL")
-          echo "Image URL $IMAGE_URL status: HTTP $HTTP_STATUS"
-          if [ "$HTTP_STATUS" = "200" ]; then
-            echo "IMAGE_URL_ACCESSIBLE=true" >> $GITHUB_ENV
-          else
-            echo "IMAGE_URL_ACCESSIBLE=false" >> $GITHUB_ENV
-          fi
-      - name: Escape title and teaser for Markdown
-        run: |
-          TITLE="${{ env.TITLE }}"
-          TITLE_ESCAPED=$(echo "$TITLE" | sed 's/[ _*[\]()~`>#+-=|{}\.!]/\\&/g')
-          echo "TITLE_ESCAPED=$TITLE_ESCAPED" >> $GITHUB_ENV
-          TEASER="${{ env.TEASER }}"
-          if [ -z "$TEASER" ]; then
-            echo "TEASER is empty, setting default"
-            TEASER="Тизер недоступен: проверьте содержимое статьи."
-          fi
-          TEASER=$(echo "$TEASER" | head -c 1000)
-          TEASER_ESCAPED=$(echo "$TEASER" | sed 's/[ _*[\]()~`>#+-=|{}\.!]/\\&/g')
-          echo "TEASER_ESCAPED=$TEASER_ESCAPED" >> $GITHUB_ENV
-          MESSAGE="📢 Новый пост: \"$TITLE_ESCAPED\"\n\nКраткий тизер: $TEASER_ESCAPED\n\n[Читать](https://lybra-ai.ru/${{ env.DATE }}/${{ env.SLUG }}?utm_source=telegram&utm_medium=channel&utm_campaign=post)\n\n#ИИ #Тренды2025 #LybraAI"
-          MESSAGE_LENGTH=$(echo -n "$MESSAGE" | wc -c)
-          echo "Message length: $MESSAGE_LENGTH"
-          if [ "$MESSAGE_LENGTH" -gt 4096 ]; then
-            echo "::error::Message length ($MESSAGE_LENGTH) exceeds Telegram limit of 4096 characters"
-            exit 1
-          fi
-      - name: Log extracted data
-        run: |
-          echo "TITLE: ${{ env.TITLE }}"
-          echo "TITLE_ESCAPED: ${{ env.TITLE_ESCAPED }}"
-          echo "DATE: ${{ env.DATE }}"
-          echo "SLUG: ${{ env.SLUG }}"
-          echo "POST_NUM: ${{ env.POST_NUM }}"
-          echo "TEASER: ${{ env.TEASER }}"
-          echo "TEASER_ESCAPED: ${{ env.TEASER_ESCAPED }}"
-          echo "IMAGE_FOUND: ${{ env.IMAGE_FOUND }}"
-          echo "IMAGE_URL_ACCESSIBLE: ${{ env.IMAGE_URL_ACCESSIBLE }}"
-      - name: Send to Telegram
-        uses: appleboy/telegram-action@v1.0.1
-        with:
-          to: ${{ secrets.TELEGRAM_CHAT_ID }}
-          token: ${{ secrets.TELEGRAM_TOKEN }}
-          format: markdown
-          message: |
-            📢 Новый пост: "${{ env.TITLE_ESCAPED }}"
-
-            Краткий тизер: ${{ env.TEASER_ESCAPED }}
-
-            [Читать](https://lybra-ai.ru/${{ env.DATE }}/${{ env.SLUG }}?utm_source=telegram&utm_medium=channel&utm_campaign=post)
-
-            #ИИ #Тренды2025 #LybraAI
-          photo: |
-            ${{ env.IMAGE_URL_ACCESSIBLE == 'true' && format('https://lybra-ai.ru/assets/images/posts/post-{0}.png', env.POST_NUM) || '' }}
-      - name: Log Telegram step
-        run: |
-          echo "TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}"
-          echo "Post title: ${{ env.TITLE_ESCAPED }}"
-          echo "Teaser escaped: ${{ env.TEASER_ESCAPED }}"
-          echo "URL: https://lybra-ai.ru/${{ env.DATE }}/${{ env.SLUG }}"
-          echo "Image URL: https://lybra-ai.ru/assets/images/posts/post-${{ env.POST_NUM }}.png"
+          # Add your Telegram sending logic here
