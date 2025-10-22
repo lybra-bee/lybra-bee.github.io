@@ -1,7 +1,7 @@
 name: Отправка последнего поста в Telegram
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:  # Для ручного запуска
 
 jobs:
   send_post:
@@ -16,7 +16,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install pyyaml
       - name: Check post files
         run: |
           ls -l _posts/ || echo "No posts directory found"
@@ -55,24 +55,8 @@ jobs:
           else
             echo "DEFAULT_IMAGE_URL_ACCESSIBLE=false" >> $GITHUB_ENV
           fi
-      - name: Fail if no images accessible
-        if: env.IMAGE_URL_ACCESSIBLE != 'true' && env.DEFAULT_IMAGE_URL_ACCESSIBLE != 'true'
+      - name: Escape teaser for MarkdownV2
         run: |
-          echo "::error::Neither image https://lybra-ai.ru/assets/images/posts/post-${{ env.POST_NUM }}.png nor default image https://lybra-ai.ru/assets/images/default.png is accessible"
-          exit 1
-      - name: Check post URL
-        run: |
-          POST_URL="https://lybra-ai.ru/${{ env.DATE }}/${{ env.SLUG }}"
-          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$POST_URL")
-          echo "Post URL $POST_URL status: HTTP $HTTP_STATUS"
-          if [ "$HTTP_STATUS" != "200" ]; then
-            echo "::warning::Post URL $POST_URL not accessible (HTTP $HTTP_STATUS)"
-          fi
-      - name: Escape title and teaser for Markdown
-        run: |
-          TITLE="${{ env.TITLE }}"
-          TITLE_ESCAPED=$(echo "$TITLE" | sed 's/[ _*[\]()~`>#+-=|{}\.!]/\\&/g')
-          echo "TITLE_ESCAPED=$TITLE_ESCAPED" >> $GITHUB_ENV
           TEASER="${{ env.TEASER }}"
           if [ -z "$TEASER" ] || [ "$TEASER" = "Тизер недоступен: проверьте содержимое статьи." ]; then
             echo "TEASER is empty or default, setting default"
@@ -81,7 +65,8 @@ jobs:
           TEASER=$(echo "$TEASER" | head -c 1000)
           TEASER_ESCAPED=$(echo "$TEASER" | sed 's/[ _*[\]()~`>#+-=|{}\.!]/\\&/g')
           echo "TEASER_ESCAPED=$TEASER_ESCAPED" >> $GITHUB_ENV
-          MESSAGE="📢 Новый пост: \"$TITLE_ESCAPED\"\n\nКраткий тизер: $TEASER_ESCAPED\n\n[Читать](https://lybra-ai.ru/${{ env.DATE }}/${{ env.SLUG }}?utm_source=telegram&utm_medium=channel&utm_campaign=post)\n\n#ИИ #Тренды2025 #LybraAI"
+          # Проверка длины сообщения
+          MESSAGE="📢 Новый пост: \"${{ env.TITLE }}\"\n\nКраткий тизер: $TEASER_ESCAPED\n\nЧитать: https://lybra-ai.ru/${{ env.DATE }}/${{ env.SLUG }}?utm_source=telegram&utm_medium=channel&utm_campaign=post\n\n#ИИ #Тренды2025 #LybraAI"
           MESSAGE_LENGTH=$(echo -n "$MESSAGE" | wc -c)
           echo "Message length: $MESSAGE_LENGTH"
           if [ "$MESSAGE_LENGTH" -gt 4096 ]; then
@@ -91,7 +76,6 @@ jobs:
       - name: Log extracted data
         run: |
           echo "TITLE: ${{ env.TITLE }}"
-          echo "TITLE_ESCAPED: ${{ env.TITLE_ESCAPED }}"
           echo "DATE: ${{ env.DATE }}"
           echo "SLUG: ${{ env.SLUG }}"
           echo "POST_NUM: ${{ env.POST_NUM }}"
@@ -107,20 +91,19 @@ jobs:
           token: ${{ secrets.TELEGRAM_TOKEN }}
           format: markdown
           message: |
-            📢 Новый пост: "${{ env.TITLE_ESCAPED }}"
+            📢 Новый пост: "${{ env.TITLE }}"
 
             Краткий тизер: ${{ env.TEASER_ESCAPED }}
 
-            [Читать](https://lybra-ai.ru/${{ env.DATE }}/${{ env.SLUG }}?utm_source=telegram&utm_medium=channel&utm_campaign=post)
+            Читать: https://lybra-ai.ru/${{ env.DATE }}/${{ env.SLUG }}?utm_source=telegram&utm_medium=channel&utm_campaign=post
 
             #ИИ #Тренды2025 #LybraAI
           photo: |
-            ${{ env.IMAGE_URL_ACCESSIBLE == 'true' && format('https://lybra-ai.ru/assets/images/posts/post-{0}.png', env.POST_NUM) || env.DEFAULT_IMAGE_URL_ACCESSIBLE == 'true' && 'https://lybra-ai.ru/assets/images/default.png' || '' }}
+            ${{ env.IMAGE_URL_ACCESSIBLE == 'true' && format('https://lybra-ai.ru/assets/images/posts/post-{0}.png', env.POST_NUM) || '' }}
       - name: Log Telegram step
         run: |
           echo "TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}"
-          echo "Post title: ${{ env.TITLE_ESCAPED }}"
+          echo "Post title: ${{ env.TITLE }}"
           echo "Teaser escaped: ${{ env.TEASER_ESCAPED }}"
           echo "URL: https://lybra-ai.ru/${{ env.DATE }}/${{ env.SLUG }}"
           echo "Image URL: https://lybra-ai.ru/assets/images/posts/post-${{ env.POST_NUM }}.png"
-          echo "Default image URL: https://lybra-ai.ru/assets/images/default.png"
