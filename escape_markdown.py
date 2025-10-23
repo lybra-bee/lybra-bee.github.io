@@ -27,4 +27,17 @@ print(f"Escaped TEASER: {teaser_escaped}")
 print(f"Raw HASHTAGS: {hashtags}")
 print(f"Escaped HASHTAGS: {hashtags_escaped}")
 
-message = f'📢 *Новый пост*: \"{title_escaped}\"\\n\\n*Краткий тизер*: {teaser_escaped}\\n\\n[Читать на сайте
+# Формируем сообщение
+message = f'📢 *Новый пост*: \"{title_escaped}\"\\n\\n*Краткий тизер*: {teaser_escaped}\\n\\n[Читать на сайте](https://lybra-ai.ru)\\n\\n{hashtags_escaped}'
+
+# Проверяем длину сообщения
+if len(message) > 4096:
+    print(f"::error::Message length ({len(message)}) exceeds Telegram limit of 4096 characters")
+    exit(1)
+
+with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as f:
+    f.write(f'TITLE_ESCAPED={title_escaped}\n')
+    f.write(f'TEASER_ESCAPED={teaser_escaped}\n')
+    f.write(f'MESSAGE={message}\n')
+
+print(f"Prepared message: {message}")
