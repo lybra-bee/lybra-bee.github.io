@@ -115,7 +115,7 @@ jobs:
           photo: ${{ env.PHOTO_URL }}
       - name: Log Telegram step
         run: |
-          echo "TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}"
+          echo "TELEGRAM_CHAT_ID: ***"  # Скрыто для безопасности
           echo "Post title: $TITLE_ESCAPED"
           echo "Teaser escaped: $TEASER_ESCAPED"
-          echo "URL: https://lybra-ai
+          echo "URL: https://lybra-ai.ru/$DATE/$SLUG?utm_source=telegram&utm_medium=channel&utm_campaign=post"
