@@ -73,11 +73,11 @@ try:
     image = front_matter.get('image', '')
     if not image or image.strip() == '':
         print(f"::warning::Missing or empty 'image' in {latest_post}, using default")
-        image = 'https://lybra-ai.ru/assets/images/default.png'
+        image = 'https://lybra-bee.github.io/assets/images/default.png'
     else:
-        # Если image - относительный путь, добавляем базовый URL
+        # Если image - относительный путь, добавляем базовый URL GitHub Pages
         if not image.startswith('http'):
-            image = f"https://lybra-ai.ru/assets/images/posts/{image.lstrip('/')}"
+            image = f"https://lybra-bee.github.io/assets/images/posts/{image.lstrip('/')}"
         print(f"Image URL from front-matter: {image}")
 
     teaser = front_matter.get('description', '')
