@@ -1,102 +1,84 @@
 name: 📢 Publish Last Post to Telegram
 
 on:
-  workflow_dispatch:      # 👉 запуск вручную
-  schedule:
-    - cron: '0 8 * * *'   # 👉 ежедневно в 8:00 UTC (11:00 МСК)
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "_posts/**"
 
 jobs:
-  send_post:
-    name: 🚀 Extract Last Post and Send to Telegram
+  publish:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Клонируем репозиторий
-      - name: 🧩 Checkout repository
+      - name: 📥 Checkout repository
         uses: actions/checkout@v4
 
-      # 2️⃣ Устанавливаем Python
-      - name: 🐍 Set up Python
+      - name: 🐍 Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.x"
 
-      # 3️⃣ Устанавливаем зависимости
       - name: 📦 Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install pyyaml transliterate
+        run: pip install PyYAML
 
-      # 4️⃣ Проверяем наличие файлов
-      - name: 🔍 Check files
+      - name: 🚀 Extract Last Post and Send to Telegram
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
-          ls -l _posts/ || echo "No posts directory found"
-          if [ -z "$(ls -A _posts/)" ]; then
-            echo "::error::No Markdown files found in _posts/"
-            exit 1
-          fi
-          for f in extract_post_data.py escape_markdown.py; do
-            if [ ! -f "$f" ]; then
-              echo "::error::$f not found"
-              exit 1
-            fi
-          done
+          import os, glob, yaml, re, requests
 
-      # 5️⃣ Извлекаем данные последнего поста
-      - name: 🧠 Extract last post data
-        run: |
-          python extract_post_data.py
+          posts = sorted(glob.glob('_posts/*.md'), reverse=True)
+          last_post = posts[0]
 
-      # 6️⃣ Проверяем извлечённые данные
-      - name: ✅ Validate extracted data
-        run: |
-          if [ -z "$TITLE" ]; then echo "::error::TITLE is empty"; exit 1; fi
-          if [ -z "$DATE" ]; then echo "::error::DATE is empty"; exit 1; fi
-          if [ -z "$SLUG" ]; then echo "::error::SLUG is empty"; exit 1; fi
-          if [ -z "$IMAGE_URL" ]; then echo "::error::IMAGE_URL is empty"; exit 1; fi
+          with open(last_post, encoding='utf-8') as f:
+              content = f.read()
 
-      # 7️⃣ Проверяем доступность изображения
-      - name: 🖼️ Check image URL
-        run: |
-          echo "Checking image URL: $IMAGE_URL"
-          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --location --connect-timeout 5 "$IMAGE_URL")
-          echo "Image URL $IMAGE_URL status: HTTP $HTTP_STATUS"
-          if [ "$HTTP_STATUS" = "200" ]; then
-            echo "PHOTO_URL=$IMAGE_URL" >> $GITHUB_ENV
-          else
-            echo "::warning::Image not accessible, using default"
-            echo "PHOTO_URL=https://lybra-bee.github.io/assets/images/default.png" >> $GITHUB_ENV
-          fi
+          front_matter = re.search(r'^---(.*?)---', content, re.S)
+          meta = yaml.safe_load(front_matter.group(1))
+          title = meta.get('title', 'Без названия')
+          date = str(meta.get('date', ''))
+          slug = os.path.splitext(os.path.basename(last_post))[0].split('-', 3)[-1]
+          teaser = meta.get('excerpt', '') or re.sub(r'<.*?>', '', content.split('---')[-1]).strip().split('\n')[0]
+          teaser = teaser[:200] + '…' if len(teaser) > 200 else teaser
 
-      # 8️⃣ Формируем Telegram-сообщение
-      - name: ✏️ Prepare Telegram message
-        run: |
-          python escape_markdown.py
-          MESSAGE_LENGTH=$(echo -n "$MESSAGE" | wc -c)
-          echo "Message length: $MESSAGE_LENGTH"
-          if [ "$MESSAGE_LENGTH" -gt 4096 ]; then
-            echo "::error::Message exceeds Telegram limit"
-            exit 1
-          fi
+          # Изображение
+          base_url = "https://lybra-bee.github.io/assets/images/posts/"
+          image_name = f"post-{len(posts)}.png"
+          image_url = base_url + image_name
 
-      # 9️⃣ Отправляем в Telegram
-      - name: 📬 Send to Telegram
-        uses: appleboy/telegram-action@v1.0.1
-        with:
-          to: ${{ secrets.TELEGRAM_CHAT_ID }}
-          token: ${{ secrets.TELEGRAM_TOKEN }}
-          format: markdownv2
-          message: ${{ env.MESSAGE }}
-          photo: ${{ env.PHOTO_URL }}
+          # Формируем URL поста
+          url = f"https://lybra-bee.github.io/{date[:10].replace('-', '/')}/{slug}.html"
 
-      # 🔟 Логирование для отладки
-      - name: 🧾 Debug info
-        if: always()
-        run: |
-          echo "TITLE: $TITLE"
-          echo "DATE: $DATE"
-          echo "SLUG: $SLUG"
-          echo "IMAGE_URL: $IMAGE_URL"
-          echo "PHOTO_URL: $PHOTO_URL"
-          echo "MESSAGE:"
-          echo "$MESSAGE"
+          # Экранирование Markdown
+          def esc(t):
+              return re.sub(r'([_*\[\]()~`>#+\-=|{}.!])', r'\\\1', t)
+
+          title_esc = esc(title)
+          teaser_esc = esc(teaser)
+
+          message = f"📢 *Новый пост*: \"{title_esc}\"\n\n*Краткий тизер*: {teaser_esc}\n\n[Читать статью]({url})\n\n#ИИ #LybraAI"
+
+          token = os.getenv('TELEGRAM_BOT_TOKEN')
+          chat_id = os.getenv('TELEGRAM_CHAT_ID')
+
+          if not token or not chat_id:
+              raise SystemExit("❌ Нет TELEGRAM_BOT_TOKEN или TELEGRAM_CHAT_ID")
+
+          # Отправляем фото с подписью
+          resp = requests.post(
+              f"https://api.telegram.org/bot{token}/sendPhoto",
+              data={
+                  "chat_id": chat_id,
+                  "photo": image_url,
+                  "caption": message,
+                  "parse_mode": "MarkdownV2"
+              }
+          )
+
+          print(f"✅ Отправлено: {resp.status_code} — {resp.text[:200]}")
+
+        shell: python
