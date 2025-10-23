@@ -41,42 +41,31 @@ jobs:
           with open(last_post, encoding='utf-8') as f:
               content = f.read()
 
-          # Front-matter
-          front_matter = re.search(r'^---(.*?)---', content, re.S)
-          if not front_matter:
-              raise SystemExit("❌ Не найден front matter в последнем посте")
-          meta = yaml.safe_load(front_matter.group(1))
+          # Контент без front-matter
+          parts = content.split('---')
+          body = parts[-1].strip() if len(parts) > 1 else content.strip()
 
-          title = meta.get('title', 'Без названия')
-          date = str(meta.get('date', ''))
-          slug = os.path.splitext(os.path.basename(last_post))[0].split('-', 3)[-1]
-
-          # Тизер
-          teaser = meta.get('description', '').strip()
-          if not teaser:
-              # Берём первое предложение контента
-              body = content.split('---')[-1].strip()
-              first_sentence = re.split(r'[.!?]', body)[0].strip()
-              teaser = first_sentence if len(first_sentence) > 30 else "Читайте новую статью о трендах ИИ 2025 года на нашем сайте!"
-          teaser = teaser[:200] + '…' if len(teaser) > 200 else teaser
-
-          # Картинка
-          base_url = "https://lybra-bee.github.io/assets/images/posts/"
-          image_name = f"{os.path.basename(meta.get('image', 'post-1.png'))}"
-          image_url = base_url + image_name
-
-          # URL поста
-          url = f"https://lybra-bee.github.io/{date[:10].replace('-', '/')}/{slug}.html"
+          # Тизер: первые 30 слов
+          words = body.split()
+          teaser = ' '.join(words[:30]) + ('…' if len(words) > 30 else '')
 
           # Экранирование MarkdownV2
           def esc(text):
               return re.sub(r'([_*\[\]()~`>#+\-=|{}.!])', r'\\\1', text)
 
-          title_esc = esc(title)
           teaser_esc = esc(teaser)
           hashtags_esc = esc("#ИИ #LybraAI")
 
-          message = f"📢 *Новый пост*: \"{title_esc}\"\n\n*Краткий тизер*: {teaser_esc}\n\n[Читать статью]({url})\n\n{hashtags_esc}"
+          # Картинка
+          front_matter = yaml.safe_load(parts[1]) if len(parts) > 1 else {}
+          image_name = os.path.basename(front_matter.get('image', 'post-1.png'))
+          image_url = f"https://lybra-bee.github.io/assets/images/posts/{image_name}"
+
+          # Статическая ссылка на сайт
+          site_url = "https://lybra-ai.ru"
+
+          # Сообщение
+          message = f"*Новая статья*\n\n{teaser_esc}\n\n[Читать на сайте]({site_url})\n\n{hashtags_esc}"
 
           # Проверка токена и чата
           token = os.getenv('TELEGRAM_BOT_TOKEN')
