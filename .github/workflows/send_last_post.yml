@@ -58,13 +58,13 @@ jobs:
             echo "::error::SLUG is empty"
             exit 1
           fi
-          if [ -z "$POST_NUM" ]; then
-            echo "::error::POST_NUM is empty, check front-matter 'image' in post"
+          if [ -z "$IMAGE_URL" ]; then
+            echo "::error::IMAGE_URL is empty, check front-matter 'image' in post"
             exit 1
           fi
       - name: Check image file
         run: |
-          IMAGE_PATH="assets/images/posts/post-$POST_NUM.png"
+          IMAGE_PATH="assets/images/posts/$(basename $IMAGE_URL)"
           echo "Checking image path in repository: $IMAGE_PATH"
           ls -l $IMAGE_PATH || echo "Image file $IMAGE_PATH not found in repository"
           if [ -f "$IMAGE_PATH" ]; then
@@ -75,7 +75,6 @@ jobs:
           fi
       - name: Check image URL
         run: |
-          IMAGE_URL="https://lybra-ai.ru/assets/images/posts/post-$POST_NUM.png"
           echo "Checking image URL: $IMAGE_URL"
           HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$IMAGE_URL")
           echo "Image URL $IMAGE_URL status: HTTP $HTTP_STATUS"
@@ -111,7 +110,7 @@ jobs:
           echo "TITLE_ESCAPED: $TITLE_ESCAPED"
           echo "DATE: $DATE"
           echo "SLUG: $SLUG"
-          echo "POST_NUM: $POST_NUM"
+          echo "IMAGE_URL: $IMAGE_URL"
           echo "TEASER: $TEASER"
           echo "TEASER_ESCAPED: $TEASER_ESCAPED"
           echo "IMAGE_FOUND: $IMAGE_FOUND"
