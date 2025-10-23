@@ -1,108 +1,122 @@
-import os
-import glob
-import yaml
-import sys
-import re
-from datetime import datetime
-from transliterate import translit
+name: Отправка последнего поста в Telegram
 
-posts_dir = '_posts'
-post_files = glob.glob(f"{posts_dir}/*.md")
-if not post_files:
-    print("::error::No posts found in _posts/")
-    sys.exit(1)
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 8 * * *'  # Ежедневно в 8:00 UTC (11:00 МСК)
 
-def get_post_date(file_path):
-    try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-            parts = content.split('---')
-            if len(parts) < 3:
-                return datetime.min
-            front_matter = yaml.safe_load(parts[1])
-            date_str = front_matter.get('date', '')
-            if date_str:
-                return datetime.strptime(str(date_str).split(' ')[0], '%Y-%m-%d')
-    except Exception as e:
-        print(f"::warning::Error parsing date in {file_path}: {str(e)}")
-    filename = os.path.basename(file_path)
-    date_part = filename[:8]
-    try:
-        return datetime.strptime(date_part, '%Y%m%d')
-    except ValueError:
-        return datetime.min
+env:
+  ACTIONS_STEP_DEBUG: true  # Глобальная отладка
 
-post_files = sorted(post_files, key=get_post_date, reverse=True)
-print(f"Found posts: {post_files}")
-latest_post = post_files[0]
-print(f"Processing latest post: {latest_post}")
+jobs:
+  send_post:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🧾 Checkout репозитория
+        uses: actions/checkout@v4
 
-try:
-    with open(latest_post, 'r', encoding='utf-8') as f:
-        content = f.read()
-        parts = content.split('---')
-        if len(parts) < 3:
-            print(f"::error::Invalid front-matter in {latest_post}: missing '---' delimiters")
-            sys.exit(1)
-        front_matter = yaml.safe_load(parts[1])
-        if not isinstance(front_matter, dict):
-            print(f"::error::Failed to parse front-matter in {latest_post}: invalid YAML")
-            sys.exit(1)
-        print(f"Front-matter: {front_matter}")
+      - name: 🐍 Установка Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
-    title = front_matter.get('title', '').strip()
-    if not title:
-        print(f"::error::Missing or empty 'title' in {latest_post}")
-        sys.exit(1)
+      - name: 📦 Установка зависимостей
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyyaml transliterate requests
 
-    date = front_matter.get('date', '')
-    if not date:
-        print(f"::error::Missing or empty 'date' in {latest_post}")
-        sys.exit(1)
-    date = str(date).split(' ')[0]
+      - name: 🔍 Проверка наличия файлов
+        run: |
+          if [ ! -d "_posts" ]; then
+            echo "::error::_posts directory missing"
+            exit 1
+          fi
+          ls -l _posts/ || echo "::warning::_posts directory is empty"
+          for file in extract_post_data.py escape_markdown.py; do
+            if [ ! -f "$file" ]; then
+              echo "::error::Missing $file"
+              exit 1
+            fi
+          done
 
-    filename = os.path.basename(latest_post)
-    slug_from_file = filename[11:].rsplit('.', 1)[0] if filename.startswith(date.replace('-', '') + '-') else ''
-    slug = front_matter.get('slug', slug_from_file)
-    if not slug:
-        slug = translit(title.lower(), 'ru', reversed=True)
-        slug = re.sub(r'[^a-z0-9-]', '-', slug).strip('-').replace('--', '-')
-        print(f"::warning::Generated slug from title: {slug}")
+      - name: 🧠 Извлечение данных последнего поста
+        run: python extract_post_data.py
 
-    image = front_matter.get('image', '').strip()
-    if not image:
-        print(f"::warning::Missing or empty 'image' in {latest_post}, using default")
-        image = 'https://lybra-bee.github.io/assets/images/default.png'
-    else:
-        clean_image = image.lstrip('/')
-        if not clean_image.startswith('http'):
-            if clean_image.startswith('assets/images/posts/'):
-                image = f"https://lybra-bee.github.io/{clean_image}"
-            else:
-                image = f"https://lybra-bee.github.io/assets/images/posts/{clean_image}"
-    print(f"Image URL from front-matter: {image}")
+      - name: 🧩 Проверка извлечённых данных
+        run: |
+          if [ -z "$TITLE" ]; then
+            echo "::error::TITLE is empty"
+            exit 1
+          fi
+          if [ -z "$DATE" ]; then
+            echo "::error::DATE is empty"
+            exit 1
+          fi
+          if [ -z "$SLUG" ]; then
+            echo "::error::SLUG is empty"
+            exit 1
+          fi
+          if [ -z "$IMAGE_URL" ]; then
+            echo "::error::IMAGE_URL is empty"
+            exit 1
+          fi
+          echo "✅ Проверка данных прошла успешно"
 
-    teaser = front_matter.get('description', '').strip()
-    normalized_teaser = re.sub(r'^(?:урокs+оs+трендахs+ИИs+2025s+годаs*:s*)?', '', teaser.lower()).strip()
-    normalized_title = title.lower().strip()
-    if not teaser or teaser == '' or normalized_teaser == normalized_title:
-        teaser = "Читайте новую статью о трендах ИИ 2025 года на нашем сайте!"
-    print(f"Teaser used: {teaser}")
+      - name: 🖼️ Проверка доступности изображения
+        run: |
+          echo "Проверка URL изображения: $IMAGE_URL"
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --location --connect-timeout 8 "$IMAGE_URL")
+          echo "HTTP статус: $STATUS"
+          if [ "$STATUS" = "200" ]; then
+            echo "PHOTO_URL=$IMAGE_URL" >> $GITHUB_ENV
+            echo "IMAGE_OK=true" >> $GITHUB_ENV
+          else
+            echo "::warning::Изображение недоступно, используем резервное"
+            FALLBACK="https://lybra-ai.ru/assets/images/default.png"
+            STATUS2=$(curl -s -o /dev/null -w "%{http_code}" --location "$FALLBACK")
+            if [ "$STATUS2" = "200" ]; then
+              echo "PHOTO_URL=$FALLBACK" >> $GITHUB_ENV
+            else
+              echo "::error::Даже резервное изображение недоступно"
+              echo "PHOTO_URL=" >> $GITHUB_ENV
+            fi
+            echo "IMAGE_OK=false" >> $GITHUB_ENV
+          fi
 
-    with open(os.environ.get('GITHUB_ENV', '/dev/null'), 'a', encoding='utf-8') as env_file:
-        env_file.write(f"TITLE={title}
-")
-        env_file.write(f"DATE={date.replace('-', '/')}
-")
-        env_file.write(f"SLUG={slug}
-")
-        env_file.write(f"IMAGE_URL={image}
-")
-        env_file.write(f"TEASER={teaser}
-")
+      - name: 🧰 Подготовка сообщения для Telegram
+        run: |
+          python escape_markdown.py
+          echo "Сообщение подготовлено, длина:"
+          echo "$MESSAGE" | wc -c
 
-    print(f"Extracted: TITLE={title}, DATE={date.replace('-', '/')}, SLUG={slug}, IMAGE_URL={image}, TEASER={teaser}")
+      - name: 🪵 Логирование переменных окружения
+        run: |
+          echo "TITLE: $TITLE"
+          echo "TITLE_ESCAPED: $TITLE_ESCAPED"
+          echo "DATE: $DATE"
+          echo "SLUG: $SLUG"
+          echo "IMAGE_URL: $IMAGE_URL"
+          echo "TEASER: $TEASER"
+          echo "TEASER_ESCAPED: $TEASER_ESCAPED"
+          echo "PHOTO_URL: $PHOTO_URL"
+          echo "MESSAGE:"
+          echo "$MESSAGE"
 
-except Exception as e:
-    print(f"::error::Error processing {latest_post}: {str(e)}")
-    sys.exit(1)
+      - name: 📤 Отправка поста в Telegram
+        uses: appleboy/telegram-action@v1.0.1
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          format: markdownv2
+          message: ${{ env.MESSAGE }}
+          photo: ${{ env.PHOTO_URL }}
+        env:
+          DEBUG: true
+
+      - name: 🧾 Итоговый лог
+        run: |
+          echo "✅ Публикация завершена."
+          echo "📅 Дата: $DATE"
+          echo "📰 Заголовок: $TITLE"
+          echo "🌐 Ссылка: https://lybra-ai.ru"
+          echo "🖼️ Изображение: $PHOTO_URL"
