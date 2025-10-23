@@ -30,7 +30,7 @@ def get_post_date(file_path):
     date_part = filename[:8]
     try:
         return datetime.strptime(date_part, '%Y%m%d')
-    except ValueError:
+    except ValueValueError:
         return datetime.min
 
 post_files = sorted(post_files, key=get_post_date, reverse=True)
