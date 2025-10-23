@@ -84,7 +84,7 @@ jobs:
           else
             echo "IMAGE_URL_ACCESSIBLE=false" >> $GITHUB_ENV
             echo "::warning::Image URL $IMAGE_URL not accessible (HTTP $HTTP_STATUS)"
-            DEFAULT_IMAGE_URL="https://lybra-ai.ru/assets/images/default.png"
+            DEFAULT_IMAGE_URL="https://lybra-bee.github.io/assets/images/default.png"
             echo "Checking default image URL: $DEFAULT_IMAGE_URL"
             DEFAULT_HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$DEFAULT_IMAGE_URL" --connect-timeout 5)
             echo "Default image status: HTTP $DEFAULT_HTTP_STATUS"
