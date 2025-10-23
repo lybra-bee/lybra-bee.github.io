@@ -73,11 +73,18 @@ jobs:
           else
             echo "IMAGE_URL_ACCESSIBLE=false" >> $GITHUB_ENV
             echo "PHOTO_URL=https://lybra-ai.ru/assets/images/default.png" >> $GITHUB_ENV
+            # Проверка резервного изображения
+            DEFAULT_HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://lybra-ai.ru/assets/images/default.png")
+            echo "Default image status: HTTP $DEFAULT_HTTP_STATUS"
+            if [ "$DEFAULT_HTTP_STATUS" != "200" ]; then
+              echo "PHOTO_URL=" >> $GITHUB_ENV
+              echo "::warning::Default image not accessible, skipping photo"
+            fi
           fi
       - name: Prepare Telegram message
         run: |
           # Экранирование для MarkdownV2
-          TITLE_ESCAPED=$(echo "$TITLE" | sed 's/[_*[\]()~`>#+-=|{}\.!]/\\&/g')
+          TITLE_ESCAPED=$(echo "$TITLE" | sed 's/[_*[\]()~`>#+-=|{}\.!-]/\\&/g')
           echo "TITLE_ESCAPED=$TITLE_ESCAPED" >> $GITHUB_ENV
           TEASER="${TEASER}"
           if [ -z "$TEASER" ]; then
@@ -85,7 +92,7 @@ jobs:
             TEASER="Читайте новую статью о трендах ИИ 2025 года на нашем сайте!"
           fi
           TEASER=$(echo "$TEASER" | head -c 200)
-          TEASER_ESCAPED=$(echo "$TEASER" | sed 's/[_*[\]()~`>#+-=|{}\.!]/\\&/g')
+          TEASER_ESCAPED=$(echo "$TEASER" | sed 's/[_*[\]()~`>#+-=|{}\.!-]/\\&/g')
           echo "TEASER_ESCAPED=$TEASER_ESCAPED" >> $GITHUB_ENV
           MESSAGE="📢 *Новый пост*: \"$TITLE_ESCAPED\"\n\n*Краткий тизер*: $TEASER_ESCAPED\n\n[Читать на сайте](https://lybra-ai.ru)\n\n#ИИ #Тренды2025 #LybraAI"
           MESSAGE_LENGTH=$(echo -n "$MESSAGE" | wc -c)
@@ -115,7 +122,7 @@ jobs:
           token: ${{ secrets.TELEGRAM_TOKEN }}
           format: markdownv2
           message: ${{ env.MESSAGE }}
-          photo: ${{ env.IMAGE_URL_ACCESSIBLE == 'true' && env.PHOTO_URL || '' }}
+          photo: ${{ env.PHOTO_URL }}
         env:
           DEBUG: true
       - name: Log Telegram step
