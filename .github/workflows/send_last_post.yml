@@ -22,7 +22,8 @@ jobs:
           python-version: "3.x"
 
       - name: 📦 Install dependencies
-        run: pip install PyYAML
+        run: |
+          pip install PyYAML requests
 
       - name: 🚀 Extract Last Post and Send to Telegram
         env:
@@ -32,12 +33,17 @@ jobs:
           import os, glob, yaml, re, requests
 
           posts = sorted(glob.glob('_posts/*.md'), reverse=True)
+          if not posts:
+              raise SystemExit("❌ Нет файлов в _posts/")
           last_post = posts[0]
 
           with open(last_post, encoding='utf-8') as f:
               content = f.read()
 
           front_matter = re.search(r'^---(.*?)---', content, re.S)
+          if not front_matter:
+              raise SystemExit("❌ Не найден front matter в последнем посте")
+
           meta = yaml.safe_load(front_matter.group(1))
           title = meta.get('title', 'Без названия')
           date = str(meta.get('date', ''))
@@ -47,7 +53,8 @@ jobs:
 
           # Изображение
           base_url = "https://lybra-bee.github.io/assets/images/posts/"
-          image_name = f"post-{len(posts)}.png"
+          post_index = len(posts)
+          image_name = f"post-{post_index}.png"
           image_url = base_url + image_name
 
           # Формируем URL поста
@@ -68,7 +75,6 @@ jobs:
           if not token or not chat_id:
               raise SystemExit("❌ Нет TELEGRAM_BOT_TOKEN или TELEGRAM_CHAT_ID")
 
-          # Отправляем фото с подписью
           resp = requests.post(
               f"https://api.telegram.org/bot{token}/sendPhoto",
               data={
@@ -79,6 +85,6 @@ jobs:
               }
           )
 
-          print(f"✅ Отправлено: {resp.status_code} — {resp.text[:200]}")
+          print(f"✅ Telegram ответ: {resp.status_code} — {resp.text[:200]}")
 
         shell: python
