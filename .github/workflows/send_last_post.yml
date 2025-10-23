@@ -76,7 +76,6 @@ jobs:
       - name: Check image URL
         run: |
           echo "Checking image URL: $IMAGE_URL"
-          # Проверяем с учётом редиректа
           HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --location --connect-timeout 5 "$IMAGE_URL")
           echo "Image URL $IMAGE_URL status: HTTP $HTTP_STATUS"
           if [ "$HTTP_STATUS" = "200" ]; then
