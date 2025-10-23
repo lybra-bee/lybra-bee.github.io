@@ -2,6 +2,8 @@ name: Отправка последнего поста в Telegram
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '0 8 * * *'  # Ежедневно в 8:00 UTC (11:00 МСК)
 
 jobs:
   send_post:
@@ -16,7 +18,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pyyaml
+          pip install pyyaml transliterate
       - name: Check post files
         run: |
           ls -l _posts/ || echo "No posts directory found"
@@ -70,7 +72,7 @@ jobs:
             echo "PHOTO_URL=$IMAGE_URL" >> $GITHUB_ENV
           else
             echo "IMAGE_URL_ACCESSIBLE=false" >> $GITHUB_ENV
-            echo "PHOTO_URL=" >> $GITHUB_ENV
+            echo "PHOTO_URL=https://lybra-ai.ru/assets/images/default.png" >> $GITHUB_ENV
           fi
       - name: Prepare Telegram message
         run: |
@@ -112,10 +114,12 @@ jobs:
           token: ${{ secrets.TELEGRAM_TOKEN }}
           format: markdown
           message: ${{ env.MESSAGE }}
-          photo: ${{ env.PHOTO_URL }}
+          photo: ${{ env.IMAGE_URL_ACCESSIBLE == 'true' && env.PHOTO_URL || '' }}
+        env:
+          DEBUG: true
       - name: Log Telegram step
         run: |
-          echo "TELEGRAM_CHAT_ID: ***"  # Скрыто для безопасности
+          echo "TELEGRAM_CHAT_ID: ***"
           echo "Post title: $TITLE_ESCAPED"
           echo "Teaser escaped: $TEASER_ESCAPED"
           echo "URL: https://lybra-ai.ru/$DATE/$SLUG?utm_source=telegram&utm_medium=channel&utm_campaign=post"
