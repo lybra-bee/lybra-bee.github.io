@@ -76,9 +76,8 @@ try:
         image = 'https://lybra-bee.github.io/assets/images/default.png'
     else:
         # Если image - относительный путь, добавляем базовый URL, избегая дублирования
-        if not image.startswith('http'):
-            # Удаляем начальные слеши и проверяем, не содержит ли путь уже assets/images/posts/
-            clean_image = image.lstrip('/')
+        clean_image = image.lstrip('/')
+        if not clean_image.startswith('http'):
             if clean_image.startswith('assets/images/posts/'):
                 image = f"https://lybra-bee.github.io/{clean_image}"
             else:
@@ -86,7 +85,7 @@ try:
         print(f"Image URL from front-matter: {image}")
 
     teaser = front_matter.get('description', '').strip()
-    # Удаляем префиксы вроде "урок о трендах ИИ 2025 года:" и нормализуем
+    # Удаляем префикс "урок о трендах ИИ 2025 года:" и нормализуем
     normalized_teaser = re.sub(r'^(?:урок\s+о\s+трендах\s+ИИ\s+2025\s+года\s*:\s*)?', '', teaser.lower()).strip()
     normalized_title = title.lower().strip()
     if not teaser or teaser == '' or normalized_teaser == normalized_title:
