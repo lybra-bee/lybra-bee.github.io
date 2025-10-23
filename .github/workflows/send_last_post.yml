@@ -65,15 +65,18 @@ jobs:
       - name: Check image file
         run: |
           IMAGE_PATH="assets/images/posts/post-$POST_NUM.png"
+          echo "Checking image path in repository: $IMAGE_PATH"
           ls -l $IMAGE_PATH || echo "Image file $IMAGE_PATH not found in repository"
           if [ -f "$IMAGE_PATH" ]; then
             echo "IMAGE_FOUND=true" >> $GITHUB_ENV
           else
             echo "IMAGE_FOUND=false" >> $GITHUB_ENV
+            echo "::warning::Image file $IMAGE_PATH not found in repository"
           fi
       - name: Check image URL
         run: |
           IMAGE_URL="https://lybra-ai.ru/assets/images/posts/post-$POST_NUM.png"
+          echo "Checking image URL: $IMAGE_URL"
           HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$IMAGE_URL")
           echo "Image URL $IMAGE_URL status: HTTP $HTTP_STATUS"
           if [ "$HTTP_STATUS" = "200" ]; then
@@ -81,12 +84,16 @@ jobs:
             echo "PHOTO_URL=$IMAGE_URL" >> $GITHUB_ENV
           else
             echo "IMAGE_URL_ACCESSIBLE=false" >> $GITHUB_ENV
-            echo "PHOTO_URL=https://lybra-ai.ru/assets/images/default.png" >> $GITHUB_ENV
-            DEFAULT_HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://lybra-ai.ru/assets/images/default.png")
+            echo "::warning::Image URL $IMAGE_URL not accessible (HTTP $HTTP_STATUS)"
+            DEFAULT_IMAGE_URL="https://lybra-ai.ru/assets/images/default.png"
+            echo "Checking default image URL: $DEFAULT_IMAGE_URL"
+            DEFAULT_HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$DEFAULT_IMAGE_URL")
             echo "Default image status: HTTP $DEFAULT_HTTP_STATUS"
-            if [ "$DEFAULT_HTTP_STATUS" != "200" ]; then
+            if [ "$DEFAULT_HTTP_STATUS" = "200" ]; then
+              echo "PHOTO_URL=$DEFAULT_IMAGE_URL" >> $GITHUB_ENV
+            else
               echo "PHOTO_URL=" >> $GITHUB_ENV
-              echo "::warning::Default image not accessible, skipping photo"
+              echo "::warning::Default image $DEFAULT_IMAGE_URL not accessible (HTTP $DEFAULT_HTTP_STATUS), skipping photo"
             fi
           fi
       - name: Prepare Telegram message
@@ -127,3 +134,4 @@ jobs:
           echo "Post title: $TITLE_ESCAPED"
           echo "Teaser escaped: $TEASER_ESCAPED"
           echo "URL: https://lybra-ai.ru"
+          echo "Photo URL sent: $PHOTO_URL"
