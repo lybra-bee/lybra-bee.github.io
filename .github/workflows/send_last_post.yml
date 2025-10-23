@@ -76,17 +76,18 @@ jobs:
           fi
       - name: Prepare Telegram message
         run: |
-          TITLE_ESCAPED=$(echo "$TITLE" | sed 's/[ _*[\]()~`>#+-=|{}\.!]/\\&/g')
+          # Экранирование для MarkdownV2
+          TITLE_ESCAPED=$(echo "$TITLE" | sed 's/[_*[\]()~`>#+-=|{}\.!]/\\&/g')
           echo "TITLE_ESCAPED=$TITLE_ESCAPED" >> $GITHUB_ENV
           TEASER="${TEASER}"
           if [ -z "$TEASER" ]; then
             echo "TEASER is empty, setting default"
-            TEASER="Тизер недоступен: проверьте содержимое статьи."
+            TEASER="Читайте новую статью о трендах ИИ 2025 года на нашем сайте!"
           fi
           TEASER=$(echo "$TEASER" | head -c 200)
-          TEASER_ESCAPED=$(echo "$TEASER" | sed 's/[ _*[\]()~`>#+-=|{}\.!]/\\&/g')
+          TEASER_ESCAPED=$(echo "$TEASER" | sed 's/[_*[\]()~`>#+-=|{}\.!]/\\&/g')
           echo "TEASER_ESCAPED=$TEASER_ESCAPED" >> $GITHUB_ENV
-          MESSAGE="📢 Новый пост: \"$TITLE_ESCAPED\"\n\nКраткий тизер: $TEASER_ESCAPED\n\n[Читать](https://lybra-ai.ru/$DATE/$SLUG?utm_source=telegram&utm_medium=channel&utm_campaign=post)\n\n#ИИ #Тренды2025 #LybraAI"
+          MESSAGE="📢 *Новый пост*: \"$TITLE_ESCAPED\"\n\n*Краткий тизер*: $TEASER_ESCAPED\n\n[Читать на сайте](https://lybra-ai.ru)\n\n#ИИ #Тренды2025 #LybraAI"
           MESSAGE_LENGTH=$(echo -n "$MESSAGE" | wc -c)
           echo "Message length: $MESSAGE_LENGTH"
           if [ "$MESSAGE_LENGTH" -gt 4096 ]; then
@@ -112,7 +113,7 @@ jobs:
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_TOKEN }}
-          format: markdown
+          format: markdownv2
           message: ${{ env.MESSAGE }}
           photo: ${{ env.IMAGE_URL_ACCESSIBLE == 'true' && env.PHOTO_URL || '' }}
         env:
@@ -122,4 +123,4 @@ jobs:
           echo "TELEGRAM_CHAT_ID: ***"
           echo "Post title: $TITLE_ESCAPED"
           echo "Teaser escaped: $TEASER_ESCAPED"
-          echo "URL: https://lybra-ai.ru/$DATE/$SLUG?utm_source=telegram&utm_medium=channel&utm_campaign=post"
+          echo "URL: https://lybra-ai.ru"
