@@ -5,6 +5,9 @@ on:
   schedule:
     - cron: '0 8 * * *'  # Ежедневно в 8:00 UTC (11:00 МСК)
 
+env:
+  ACTIONS_STEP_DEBUG: true  # Включаем отладку для всех шагов
+
 jobs:
   send_post:
     runs-on: ubuntu-latest
@@ -73,7 +76,6 @@ jobs:
           else
             echo "IMAGE_URL_ACCESSIBLE=false" >> $GITHUB_ENV
             echo "PHOTO_URL=https://lybra-ai.ru/assets/images/default.png" >> $GITHUB_ENV
-            # Проверка резервного изображения
             DEFAULT_HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://lybra-ai.ru/assets/images/default.png")
             echo "Default image status: HTTP $DEFAULT_HTTP_STATUS"
             if [ "$DEFAULT_HTTP_STATUS" != "200" ]; then
@@ -83,7 +85,7 @@ jobs:
           fi
       - name: Prepare Telegram message
         run: |
-          # Экранирование для MarkdownV2
+          # Экранирование всех специальных символов для MarkdownV2
           TITLE_ESCAPED=$(echo "$TITLE" | sed 's/[_*[\]()~`>#+-=|{}\.!-]/\\&/g')
           echo "TITLE_ESCAPED=$TITLE_ESCAPED" >> $GITHUB_ENV
           TEASER="${TEASER}"
