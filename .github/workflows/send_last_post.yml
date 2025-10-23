@@ -35,6 +35,12 @@ jobs:
           if [ ! -f extract_post_data.py ]; then
             exit 1
           fi
+      - name: Check escape_markdown.py
+        run: |
+          ls -l escape_markdown.py || echo "::error::escape_markdown.py not found"
+          if [ ! -f escape_markdown.py ]; then
+            exit 1
+          fi
       - name: Extract last post data
         run: |
           python extract_post_data.py
@@ -85,11 +91,6 @@ jobs:
           fi
       - name: Prepare Telegram message
         run: |
-          # Проверяем наличие escape_markdown.py
-          ls -l escape_markdown.py || echo "::error::escape_markdown.py not found"
-          if [ ! -f escape_markdown.py ]; then
-            exit 1
-          fi
           python escape_markdown.py
           MESSAGE_LENGTH=$(echo -n "$MESSAGE" | wc -c)
           echo "Message length: $MESSAGE_LENGTH"
