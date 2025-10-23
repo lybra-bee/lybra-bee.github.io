@@ -71,26 +71,30 @@ try:
         print(f"::warning::Generated slug from title: {slug}")
 
     image = front_matter.get('image', '')
-    post_num = ''
-    if image and 'post-' in image:
-        post_num = image.split('post-')[-1].split('.')[0]
-    else:
-        print(f"::warning::Missing or invalid 'image' in {latest_post}, using default")
-        post_num = 'default'
+    if not image:
+        print(f"::warning::Missing or empty 'image' in {latest_post}, using default")
+        image = 'default.png'
+    # Если image - относительный путь, добавляем базовый URL
+    if not image.startswith('http'):
+        image = f"https://lybra-ai.ru/assets/images/posts/{image}"
+    print(f"Image URL from front-matter: {image}")
 
     teaser = front_matter.get('description', '')
-    if not teaser:
+    if not teaser or teaser.strip() == '':
         print(f"::warning::Missing or empty 'description' in {latest_post}, using default")
+        teaser = "Читайте новую статью о трендах ИИ 2025 года на нашем сайте!"
+    elif teaser.lower() == title.lower():
+        print(f"::warning::'description' matches 'title' in {latest_post}, using default to avoid duplication")
         teaser = "Читайте новую статью о трендах ИИ 2025 года на нашем сайте!"
 
     with open(os.environ.get('GITHUB_ENV', '/dev/null'), 'a', encoding='utf-8') as env_file:
         env_file.write(f"TITLE={title}\n")
         env_file.write(f"DATE={date.replace('-', '/')}\n")
         env_file.write(f"SLUG={slug}\n")
-        env_file.write(f"POST_NUM={post_num}\n")
+        env_file.write(f"IMAGE_URL={image}\n")
         env_file.write(f"TEASER={teaser}\n")
 
-    print(f"Extracted: TITLE={title}, DATE={date.replace('-', '/')}, SLUG={slug}, POST_NUM={post_num}, TEASER={teaser}")
+    print(f"Extracted: TITLE={title}, DATE={date.replace('-', '/')}, SLUG={slug}, IMAGE_URL={image}, TEASER={teaser}")
 
 except Exception as e:
     print(f"::error::Error processing {latest_post}: {str(e)}")
