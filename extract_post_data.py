@@ -71,20 +71,18 @@ try:
         print(f"::warning::Generated slug from title: {slug}")
 
     image = front_matter.get('image', '')
-    if not image:
+    if not image or image.strip() == '':
         print(f"::warning::Missing or empty 'image' in {latest_post}, using default")
-        image = 'default.png'
-    # Если image - относительный путь, добавляем базовый URL
-    if not image.startswith('http'):
-        image = f"https://lybra-ai.ru/assets/images/posts/{image}"
-    print(f"Image URL from front-matter: {image}")
+        image = 'https://lybra-ai.ru/assets/images/default.png'
+    else:
+        # Если image - относительный путь, добавляем базовый URL
+        if not image.startswith('http'):
+            image = f"https://lybra-ai.ru/assets/images/posts/{image.lstrip('/')}"
+        print(f"Image URL from front-matter: {image}")
 
     teaser = front_matter.get('description', '')
-    if not teaser or teaser.strip() == '':
-        print(f"::warning::Missing or empty 'description' in {latest_post}, using default")
-        teaser = "Читайте новую статью о трендах ИИ 2025 года на нашем сайте!"
-    elif teaser.lower() == title.lower():
-        print(f"::warning::'description' matches 'title' in {latest_post}, using default to avoid duplication")
+    if not teaser or teaser.strip() == '' or teaser.lower().strip() == title.lower().strip():
+        print(f"::warning::'description' missing, empty, or matches 'title' in {latest_post}, using default")
         teaser = "Читайте новую статью о трендах ИИ 2025 года на нашем сайте!"
 
     with open(os.environ.get('GITHUB_ENV', '/dev/null'), 'a', encoding='utf-8') as env_file:
