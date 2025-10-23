@@ -1,13 +1,13 @@
-name: 📢 Publish Post and Send Telegram
+name: 📢 Publish Last Post to Telegram
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:      # 👉 запуск вручную
+  schedule:
+    - cron: '0 8 * * *'   # 👉 ежедневно в 8:00 UTC (11:00 МСК)
 
 jobs:
-  publish:
-    name: 🚀 Publish and Notify
+  send_post:
+    name: 🚀 Extract Last Post and Send to Telegram
     runs-on: ubuntu-latest
 
     steps:
@@ -19,56 +19,84 @@ jobs:
       - name: 🐍 Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.x'
+          python-version: '3.11'
 
-      # 3️⃣ Устанавливаем зависимости (если есть requirements.txt)
+      # 3️⃣ Устанавливаем зависимости
       - name: 📦 Install dependencies
         run: |
-          if [ -f requirements.txt ]; then
-            pip install -r requirements.txt
+          python -m pip install --upgrade pip
+          pip install pyyaml transliterate
+
+      # 4️⃣ Проверяем наличие файлов
+      - name: 🔍 Check files
+        run: |
+          ls -l _posts/ || echo "No posts directory found"
+          if [ -z "$(ls -A _posts/)" ]; then
+            echo "::error::No Markdown files found in _posts/"
+            exit 1
+          fi
+          for f in extract_post_data.py escape_markdown.py; do
+            if [ ! -f "$f" ]; then
+              echo "::error::$f not found"
+              exit 1
+            fi
+          done
+
+      # 5️⃣ Извлекаем данные последнего поста
+      - name: 🧠 Extract last post data
+        run: |
+          python extract_post_data.py
+
+      # 6️⃣ Проверяем извлечённые данные
+      - name: ✅ Validate extracted data
+        run: |
+          if [ -z "$TITLE" ]; then echo "::error::TITLE is empty"; exit 1; fi
+          if [ -z "$DATE" ]; then echo "::error::DATE is empty"; exit 1; fi
+          if [ -z "$SLUG" ]; then echo "::error::SLUG is empty"; exit 1; fi
+          if [ -z "$IMAGE_URL" ]; then echo "::error::IMAGE_URL is empty"; exit 1; fi
+
+      # 7️⃣ Проверяем доступность изображения
+      - name: 🖼️ Check image URL
+        run: |
+          echo "Checking image URL: $IMAGE_URL"
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --location --connect-timeout 5 "$IMAGE_URL")
+          echo "Image URL $IMAGE_URL status: HTTP $HTTP_STATUS"
+          if [ "$HTTP_STATUS" = "200" ]; then
+            echo "PHOTO_URL=$IMAGE_URL" >> $GITHUB_ENV
+          else
+            echo "::warning::Image not accessible, using default"
+            echo "PHOTO_URL=https://lybra-bee.github.io/assets/images/default.png" >> $GITHUB_ENV
           fi
 
-      # 4️⃣ Получаем данные из последнего коммита
-      - name: 📝 Extract post data
-        id: extract
+      # 8️⃣ Формируем Telegram-сообщение
+      - name: ✏️ Prepare Telegram message
         run: |
-          TITLE=$(git log -1 --pretty=%s)
-          TEASER=$(git log -1 --pretty=%b | head -n 1)
-          DATE=$(date +'%Y-%m-%d')
-          SLUG=$(echo "$TITLE" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -dc 'a-z0-9-')
-          echo "TITLE=$TITLE" >> $GITHUB_ENV
-          echo "TEASER=$TEASER" >> $GITHUB_ENV
-          echo "DATE=$DATE" >> $GITHUB_ENV
-          echo "SLUG=$SLUG" >> $GITHUB_ENV
-          echo "✅ Extracted TITLE='$TITLE' SLUG='$SLUG'"
+          python escape_markdown.py
+          MESSAGE_LENGTH=$(echo -n "$MESSAGE" | wc -c)
+          echo "Message length: $MESSAGE_LENGTH"
+          if [ "$MESSAGE_LENGTH" -gt 4096 ]; then
+            echo "::error::Message exceeds Telegram limit"
+            exit 1
+          fi
 
-      # 5️⃣ Запускаем Python-скрипт для экранирования Markdown и формирования сообщения
-      - name: 🧠 Escape Markdown for Telegram
-        id: escape
-        run: |
-          python3 escape_markdown.py
-        env:
-          GITHUB_ENV: ${{ env.GITHUB_ENV }}
-          TITLE: ${{ env.TITLE }}
-          TEASER: ${{ env.TEASER }}
-          DATE: ${{ env.DATE }}
-          SLUG: ${{ env.SLUG }}
-
-      # 6️⃣ Отправляем уведомление в Telegram
-      - name: 📬 Send Telegram notification
-        uses: appleboy/telegram-action@master
+      # 9️⃣ Отправляем в Telegram
+      - name: 📬 Send to Telegram
+        uses: appleboy/telegram-action@v1.0.1
         with:
-          to: ${{ secrets.TELEGRAM_TO }}
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_TOKEN }}
+          format: markdownv2
           message: ${{ env.MESSAGE }}
+          photo: ${{ env.PHOTO_URL }}
 
-      # 7️⃣ Для отладки (необязательно)
+      # 🔟 Логирование для отладки
       - name: 🧾 Debug info
         if: always()
         run: |
           echo "TITLE: $TITLE"
-          echo "TEASER: $TEASER"
           echo "DATE: $DATE"
           echo "SLUG: $SLUG"
+          echo "IMAGE_URL: $IMAGE_URL"
+          echo "PHOTO_URL: $PHOTO_URL"
           echo "MESSAGE:"
           echo "$MESSAGE"
