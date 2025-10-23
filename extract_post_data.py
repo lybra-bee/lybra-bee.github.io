@@ -51,7 +51,7 @@ try:
             sys.exit(1)
         print(f"Front-matter: {front_matter}")
 
-    title = front_matter.get('title', '')
+    title = front_matter.get('title', '').strip()
     if not title:
         print(f"::error::Missing or empty 'title' in {latest_post}")
         sys.exit(1)
@@ -70,18 +70,26 @@ try:
         slug = re.sub(r'[^a-z0-9-]', '-', slug).strip('-').replace('--', '-')
         print(f"::warning::Generated slug from title: {slug}")
 
-    image = front_matter.get('image', '')
-    if not image or image.strip() == '':
+    image = front_matter.get('image', '').strip()
+    if not image:
         print(f"::warning::Missing or empty 'image' in {latest_post}, using default")
         image = 'https://lybra-bee.github.io/assets/images/default.png'
     else:
-        # Если image - относительный путь, добавляем базовый URL GitHub Pages
+        # Если image - относительный путь, добавляем базовый URL, избегая дублирования
         if not image.startswith('http'):
-            image = f"https://lybra-bee.github.io/assets/images/posts/{image.lstrip('/')}"
+            # Удаляем начальные слеши и проверяем, не содержит ли путь уже assets/images/posts/
+            clean_image = image.lstrip('/')
+            if clean_image.startswith('assets/images/posts/'):
+                image = f"https://lybra-bee.github.io/{clean_image}"
+            else:
+                image = f"https://lybra-bee.github.io/assets/images/posts/{clean_image}"
         print(f"Image URL from front-matter: {image}")
 
-    teaser = front_matter.get('description', '')
-    if not teaser or teaser.strip() == '' or teaser.lower().strip() == title.lower().strip():
+    teaser = front_matter.get('description', '').strip()
+    # Удаляем префиксы вроде "урок о трендах ИИ 2025 года:" и нормализуем
+    normalized_teaser = re.sub(r'^(?:урок\s+о\s+трендах\s+ИИ\s+2025\s+года\s*:\s*)?', '', teaser.lower()).strip()
+    normalized_title = title.lower().strip()
+    if not teaser or teaser == '' or normalized_teaser == normalized_title:
         print(f"::warning::'description' missing, empty, or matches 'title' in {latest_post}, using default")
         teaser = "Читайте новую статью о трендах ИИ 2025 года на нашем сайте!"
 
