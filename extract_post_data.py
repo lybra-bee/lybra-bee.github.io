@@ -26,7 +26,6 @@ def get_post_date(file_path):
                 return datetime.strptime(str(date_str).split(' ')[0], '%Y-%m-%d')
     except Exception:
         pass
-    # Извлечение даты из имени файла (YYYYMMDD)
     filename = os.path.basename(file_path)
     date_part = filename[:8]
     try:
@@ -60,9 +59,8 @@ try:
     if not date:
         print(f"::error::Missing or empty 'date' in {latest_post}")
         sys.exit(1)
-    date = str(date).split(' ')[0]  # Extract YYYY-MM-DD
+    date = str(date).split(' ')[0]
 
-    # Извлекаем slug из имени файла, если не задан
     filename = os.path.basename(latest_post)
     slug_from_file = filename[11:].rsplit('.', 1)[0] if filename.startswith(date.replace('-', '') + '-') else ''
     slug = front_matter.get('slug', slug_from_file)
@@ -84,7 +82,6 @@ try:
         print(f"::warning::Missing or empty 'description' in {latest_post}, using default")
         teaser = "Читайте новую статью о трендах ИИ 2025 года на нашем сайте!"
 
-    # Запись переменных в $GITHUB_ENV
     with open(os.environ.get('GITHUB_ENV', '/dev/null'), 'a', encoding='utf-8') as env_file:
         env_file.write(f"TITLE={title}\n")
         env_file.write(f"DATE={date.replace('-', '/')}\n")
