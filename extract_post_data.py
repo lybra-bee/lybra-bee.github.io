@@ -3,13 +3,38 @@ import glob
 import yaml
 import sys
 import re
+from datetime import datetime
+from transliterate import translit
 
 posts_dir = '_posts'
-post_files = sorted(glob.glob(f"{posts_dir}/*.md"), key=os.path.getmtime, reverse=True)
+post_files = glob.glob(f"{posts_dir}/*.md")
 if not post_files:
     print("::error::No posts found in _posts/")
     sys.exit(1)
 
+# Сортировка по дате из имени файла или front-matter
+def get_post_date(file_path):
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+            parts = content.split('---')
+            if len(parts) < 3:
+                return datetime.min  # Неверный формат
+            front_matter = yaml.safe_load(parts[1])
+            date_str = front_matter.get('date', '')
+            if date_str:
+                return datetime.strptime(str(date_str).split(' ')[0], '%Y-%m-%d')
+    except Exception:
+        pass
+    # Если дата в front-matter отсутствует, извлекаем из имени файла
+    filename = os.path.basename(file_path)
+    date_part = filename[:8]  # YYYYMMDD
+    try:
+        return datetime.strptime(date_part, '%Y%m%d')
+    except ValueError:
+        return datetime.min
+
+post_files = sorted(post_files, key=get_post_date, reverse=True)
 print(f"Found posts: {post_files}")
 latest_post = post_files[0]
 print(f"Processing latest post: {latest_post}")
@@ -42,8 +67,9 @@ try:
     slug_from_file = filename[11:].rsplit('.', 1)[0] if filename.startswith(date.replace('-', '') + '-') else ''
     slug = front_matter.get('slug', slug_from_file)
     if not slug:
-        # Генерируем slug из полного заголовка
-        slug = re.sub(r'[^a-z0-9а-я-]', '-', title.lower()).strip('-').replace('--', '-')
+        # Генерируем slug с транслитерацией
+        slug = translit(title.lower(), 'ru', reversed=True)
+        slug = re.sub(r'[^a-z0-9-]', '-', slug).strip('-').replace('--', '-')
         print(f"::warning::Generated slug from title: {slug}")
 
     image = front_matter.get('image', '')
@@ -52,7 +78,7 @@ try:
         post_num = image.split('post-')[-1].split('.')[0]
     else:
         print(f"::warning::Missing or invalid 'image' in {latest_post}, using default")
-        post_num = '1'
+        post_num = 'default'
 
     teaser = front_matter.get('description', '')
     if not teaser:
