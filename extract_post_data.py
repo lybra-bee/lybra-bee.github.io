@@ -24,13 +24,13 @@ def get_post_date(file_path):
             date_str = front_matter.get('date', '')
             if date_str:
                 return datetime.strptime(str(date_str).split(' ')[0], '%Y-%m-%d')
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"::warning::Error parsing date in {file_path}: {str(e)}")
     filename = os.path.basename(file_path)
     date_part = filename[:8]
     try:
         return datetime.strptime(date_part, '%Y%m%d')
-    except ValueValueError:
+    except ValueError:
         return datetime.min
 
 post_files = sorted(post_files, key=get_post_date, reverse=True)
@@ -49,6 +49,7 @@ try:
         if not isinstance(front_matter, dict):
             print(f"::error::Failed to parse front-matter in {latest_post}: invalid YAML")
             sys.exit(1)
+        print(f"Front-matter: {front_matter}")
 
     title = front_matter.get('title', '')
     if not title:
