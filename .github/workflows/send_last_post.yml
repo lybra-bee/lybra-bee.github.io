@@ -76,7 +76,8 @@ jobs:
       - name: Check image URL
         run: |
           echo "Checking image URL: $IMAGE_URL"
-          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$IMAGE_URL" --connect-timeout 5)
+          # Проверяем с учётом редиректа
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --location --connect-timeout 5 "$IMAGE_URL")
           echo "Image URL $IMAGE_URL status: HTTP $HTTP_STATUS"
           if [ "$HTTP_STATUS" = "200" ]; then
             echo "IMAGE_URL_ACCESSIBLE=true" >> $GITHUB_ENV
@@ -86,7 +87,7 @@ jobs:
             echo "::warning::Image URL $IMAGE_URL not accessible (HTTP $HTTP_STATUS)"
             DEFAULT_IMAGE_URL="https://lybra-bee.github.io/assets/images/default.png"
             echo "Checking default image URL: $DEFAULT_IMAGE_URL"
-            DEFAULT_HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$DEFAULT_IMAGE_URL" --connect-timeout 5)
+            DEFAULT_HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --location --connect-timeout 5 "$DEFAULT_IMAGE_URL")
             echo "Default image status: HTTP $DEFAULT_HTTP_STATUS"
             if [ "$DEFAULT_HTTP_STATUS" = "200" ]; then
               echo "PHOTO_URL=$DEFAULT_IMAGE_URL" >> $GITHUB_ENV
