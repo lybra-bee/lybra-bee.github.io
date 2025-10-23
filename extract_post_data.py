@@ -79,11 +79,8 @@ try:
         post_num = 'default'
 
     teaser = front_matter.get('description', '')
-    if not teaser or teaser.strip() == '':
+    if not teaser:
         print(f"::warning::Missing or empty 'description' in {latest_post}, using default")
-        teaser = "Читайте новую статью о трендах ИИ 2025 года на нашем сайте!"
-    elif teaser.lower() == title.lower():
-        print(f"::warning::'description' matches 'title' in {latest_post}, using default to avoid duplication")
         teaser = "Читайте новую статью о трендах ИИ 2025 года на нашем сайте!"
 
     with open(os.environ.get('GITHUB_ENV', '/dev/null'), 'a', encoding='utf-8') as env_file:
