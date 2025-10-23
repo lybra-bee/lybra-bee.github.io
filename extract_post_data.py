@@ -12,7 +12,6 @@ if not post_files:
     print("::error::No posts found in _posts/")
     sys.exit(1)
 
-# Сортировка по дате из front-matter или имени файла
 def get_post_date(file_path):
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
@@ -75,29 +74,32 @@ try:
         print(f"::warning::Missing or empty 'image' in {latest_post}, using default")
         image = 'https://lybra-bee.github.io/assets/images/default.png'
     else:
-        # Если image - относительный путь, добавляем базовый URL, избегая дублирования
         clean_image = image.lstrip('/')
         if not clean_image.startswith('http'):
             if clean_image.startswith('assets/images/posts/'):
                 image = f"https://lybra-bee.github.io/{clean_image}"
             else:
                 image = f"https://lybra-bee.github.io/assets/images/posts/{clean_image}"
-        print(f"Image URL from front-matter: {image}")
+    print(f"Image URL from front-matter: {image}")
 
     teaser = front_matter.get('description', '').strip()
-    # Удаляем префикс "урок о трендах ИИ 2025 года:" и нормализуем
-    normalized_teaser = re.sub(r'^(?:урок\s+о\s+трендах\s+ИИ\s+2025\s+года\s*:\s*)?', '', teaser.lower()).strip()
+    normalized_teaser = re.sub(r'^(?:урокs+оs+трендахs+ИИs+2025s+годаs*:s*)?', '', teaser.lower()).strip()
     normalized_title = title.lower().strip()
     if not teaser or teaser == '' or normalized_teaser == normalized_title:
-        print(f"::warning::'description' missing, empty, or matches 'title' in {latest_post}, using default")
         teaser = "Читайте новую статью о трендах ИИ 2025 года на нашем сайте!"
+    print(f"Teaser used: {teaser}")
 
     with open(os.environ.get('GITHUB_ENV', '/dev/null'), 'a', encoding='utf-8') as env_file:
-        env_file.write(f"TITLE={title}\n")
-        env_file.write(f"DATE={date.replace('-', '/')}\n")
-        env_file.write(f"SLUG={slug}\n")
-        env_file.write(f"IMAGE_URL={image}\n")
-        env_file.write(f"TEASER={teaser}\n")
+        env_file.write(f"TITLE={title}
+")
+        env_file.write(f"DATE={date.replace('-', '/')}
+")
+        env_file.write(f"SLUG={slug}
+")
+        env_file.write(f"IMAGE_URL={image}
+")
+        env_file.write(f"TEASER={teaser}
+")
 
     print(f"Extracted: TITLE={title}, DATE={date.replace('-', '/')}, SLUG={slug}, IMAGE_URL={image}, TEASER={teaser}")
 
