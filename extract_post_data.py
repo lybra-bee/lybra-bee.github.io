@@ -12,23 +12,23 @@ if not post_files:
     print("::error::No posts found in _posts/")
     sys.exit(1)
 
-# Сортировка по дате из имени файла или front-matter
+# Сортировка по дате из front-matter или имени файла
 def get_post_date(file_path):
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
             parts = content.split('---')
             if len(parts) < 3:
-                return datetime.min  # Неверный формат
+                return datetime.min
             front_matter = yaml.safe_load(parts[1])
             date_str = front_matter.get('date', '')
             if date_str:
                 return datetime.strptime(str(date_str).split(' ')[0], '%Y-%m-%d')
     except Exception:
         pass
-    # Если дата в front-matter отсутствует, извлекаем из имени файла
+    # Извлечение даты из имени файла (YYYYMMDD)
     filename = os.path.basename(file_path)
-    date_part = filename[:8]  # YYYYMMDD
+    date_part = filename[:8]
     try:
         return datetime.strptime(date_part, '%Y%m%d')
     except ValueError:
@@ -62,12 +62,11 @@ try:
         sys.exit(1)
     date = str(date).split(' ')[0]  # Extract YYYY-MM-DD
 
-    # Извлекаем slug из имени файла, если не задан в front-matter
+    # Извлекаем slug из имени файла, если не задан
     filename = os.path.basename(latest_post)
     slug_from_file = filename[11:].rsplit('.', 1)[0] if filename.startswith(date.replace('-', '') + '-') else ''
     slug = front_matter.get('slug', slug_from_file)
     if not slug:
-        # Генерируем slug с транслитерацией
         slug = translit(title.lower(), 'ru', reversed=True)
         slug = re.sub(r'[^a-z0-9-]', '-', slug).strip('-').replace('--', '-')
         print(f"::warning::Generated slug from title: {slug}")
@@ -83,7 +82,7 @@ try:
     teaser = front_matter.get('description', '')
     if not teaser:
         print(f"::warning::Missing or empty 'description' in {latest_post}, using default")
-        teaser = "Тизер недоступен: проверьте содержимое статьи."
+        teaser = "Читайте новую статью о трендах ИИ 2025 года на нашем сайте!"
 
     # Запись переменных в $GITHUB_ENV
     with open(os.environ.get('GITHUB_ENV', '/dev/null'), 'a', encoding='utf-8') as env_file:
