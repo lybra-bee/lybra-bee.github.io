@@ -27,8 +27,8 @@ print(f"Escaped TEASER: {teaser_escaped}")
 print(f"Raw HASHTAGS: {hashtags}")
 print(f"Escaped HASHTAGS: {hashtags_escaped}")
 
-# Формируем сообщение
-message = f'📢 *Новый пост*: \"{title_escaped}\"\\n\\n*Краткий тизер*: {teaser_escaped}\\n\\n[Читать на сайте](https://lybra-ai.ru)\\n\\n{hashtags_escaped}'
+# Формируем сообщение с одинарными \n для MarkdownV2
+message = f'📢 *Новый пост*: \"{title_escaped}\"\n\n*Краткий тизер*: {teaser_escaped}\n\n[Читать на сайте](https://lybra-ai.ru)\n\n{hashtags_escaped}'
 
 # Проверяем длину сообщения
 if len(message) > 4096:
