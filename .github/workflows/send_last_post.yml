@@ -1,88 +1,44 @@
-name: 📢 Publish Last Post to Telegram
+name: Send Last Post to Telegram
 
 on:
-  workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - "_posts/**"
+  workflow_run:
+    workflows: ["Генерация ежедневного поста"]
+    types:
+      - completed
 
 jobs:
-  publish:
+  send_to_telegram:
     runs-on: ubuntu-latest
-
     steps:
-      - name: 📥 Checkout repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: 🐍 Setup Python
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.x"
+          python-version: '3.11'
 
-      - name: 📦 Install dependencies
+      - name: Install dependencies
         run: |
-          pip install PyYAML requests
+          python -m pip install --upgrade pip
+          pip install pyyaml requests
+          python -c "import requests, yaml; print('Зависимости установлены:', requests.__version__, yaml.__version__)"
 
-      - name: 🚀 Extract Last Post and Send to Telegram
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      - name: Send to Telegram
         run: |
-          import os, glob, yaml, re, requests
+          export POST_DATE=${{ env.DATE }}
+          export POST_SLUG=${{ env.SLUG }}
+          export POST_IMAGE="https://lybra-ai.ru/assets/images/posts/post-${{ env.POST_NUM }}.png"
+          
+          MESSAGE="📢 Новый пост: \"${{ env.TITLE }}\"
 
-          # Находим последний пост
-          posts = sorted(glob.glob('_posts/*.md'), reverse=True)
-          if not posts:
-              raise SystemExit("❌ Нет файлов в _posts/")
-          last_post = posts[0]
+          Краткий тизер: $(head -n 30 "${{ github.workspace }}/_posts/${POST_DATE}-${POST_SLUG}.md" | tail -n 1)
 
-          with open(last_post, encoding='utf-8') as f:
-              content = f.read()
+          Читать статью: https://lybra-ai.ru/${POST_DATE}/${POST_SLUG}
 
-          # Контент без front-matter
-          parts = content.split('---')
-          body = parts[-1].strip() if len(parts) > 1 else content.strip()
-
-          # Тизер: первые 30 слов
-          words = body.split()
-          teaser = ' '.join(words[:30]) + ('…' if len(words) > 30 else '')
-
-          # Экранирование MarkdownV2
-          def esc(text):
-              return re.sub(r'([_*\[\]()~`>#+\-=|{}.!])', r'\\\1', text)
-
-          teaser_esc = esc(teaser)
-          hashtags_esc = esc("#ИИ #LybraAI")
-
-          # Картинка
-          front_matter = yaml.safe_load(parts[1]) if len(parts) > 1 else {}
-          image_name = os.path.basename(front_matter.get('image', 'post-1.png'))
-          image_url = f"https://lybra-bee.github.io/assets/images/posts/{image_name}"
-
-          # Статическая ссылка на сайт
-          site_url = "https://lybra-ai.ru"
-
-          # Сообщение
-          message = f"*Новая статья*\n\n{teaser_esc}\n\n[Читать на сайте]({site_url})\n\n{hashtags_esc}"
-
-          # Проверка токена и чата
-          token = os.getenv('TELEGRAM_BOT_TOKEN')
-          chat_id = os.getenv('TELEGRAM_CHAT_ID')
-          if not token or not chat_id:
-              raise SystemExit("❌ Нет TELEGRAM_BOT_TOKEN или TELEGRAM_CHAT_ID")
-
-          # Отправка фото с подписью
-          resp = requests.post(
-              f"https://api.telegram.org/bot{token}/sendPhoto",
-              data={
-                  "chat_id": chat_id,
-                  "photo": image_url,
-                  "caption": message,
-                  "parse_mode": "MarkdownV2"
-              }
-          )
-
-          print(f"✅ Telegram ответ: {resp.status_code} — {resp.text[:200]}")
-        shell: python
+          #ИИ #Тренды2025 #LybraAI"
+          
+          curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d "text=${MESSAGE}" \
+            -d "parse_mode=Markdown"
