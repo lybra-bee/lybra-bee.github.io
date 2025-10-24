@@ -56,40 +56,15 @@ jobs:
           teaser_esc = esc(teaser)
           hashtags_esc = esc("#ИИ #LybraAI")
 
-          # Пытаемся правильно парсить front-matter
-          front_matter = {}
-          if len(parts) > 1:
-              try:
-                  front_matter = yaml.safe_load(parts[1])
-              except yaml.YAMLError as e:
-                  print(f"❌ Ошибка в front-matter: {e}")
-          
-          # Отладка: Проверка содержимого front-matter
-          print("Front-matter:", front_matter)
-
-          # Изображение из front-matter
+          # Картинка
+          front_matter = yaml.safe_load(parts[1]) if len(parts) > 1 else {}
           image_name = os.path.basename(front_matter.get('image', 'post-1.png'))
           image_url = f"https://lybra-bee.github.io/assets/images/posts/{image_name}"
-
-          # Проверка доступности изображения
-          try:
-              image_check = requests.get(image_url)
-              if image_check.status_code == 200:
-                  print(f"✅ Изображение доступно: {image_url}")
-              else:
-                  print(f"❌ Изображение недоступно: {image_url}")
-          except requests.exceptions.RequestException as e:
-              print(f"❌ Ошибка при проверке изображения: {str(e)}")
-
-          # Проверка расширения изображения (должно быть .png или .jpg)
-          allowed_extensions = ['.jpg', '.jpeg', '.png']
-          if not any(image_url.endswith(ext) for ext in allowed_extensions):
-              raise SystemExit(f"❌ Неверный формат изображения: {image_url}")
 
           # Статическая ссылка на сайт
           site_url = "https://lybra-ai.ru"
 
-          # Формируем сообщение
+          # Сообщение
           message = f"*Новая статья*\n\n{teaser_esc}\n\n[Читать на сайте]({site_url})\n\n{hashtags_esc}"
 
           # Проверка токена и чата
@@ -98,17 +73,16 @@ jobs:
           if not token or not chat_id:
               raise SystemExit("❌ Нет TELEGRAM_BOT_TOKEN или TELEGRAM_CHAT_ID")
 
-          # Отправка изображения как файл, а не URL
-          with open(f"_posts/{image_name}", 'rb') as image_file:
-              resp = requests.post(
-                  f"https://api.telegram.org/bot{token}/sendPhoto",
-                  data={
-                      "chat_id": chat_id,
-                      "caption": message,
-                      "parse_mode": "MarkdownV2"
-                  },
-                  files={"photo": image_file}
-              )
+          # Отправка фото с подписью
+          resp = requests.post(
+              f"https://api.telegram.org/bot{token}/sendPhoto",
+              data={
+                  "chat_id": chat_id,
+                  "photo": image_url,  # Используем URL изображения
+                  "caption": message,
+                  "parse_mode": "MarkdownV2"
+              }
+          )
 
           print(f"✅ Telegram ответ: {resp.status_code} — {resp.text[:200]}")
         shell: python
