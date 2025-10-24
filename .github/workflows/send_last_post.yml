@@ -78,9 +78,11 @@ jobs:
               f"https://api.telegram.org/bot{token}/sendPhoto",
               data={
                   "chat_id": chat_id,
-                  "photo": image_url,  # Используем URL изображения
                   "caption": message,
                   "parse_mode": "MarkdownV2"
+              },
+              files={
+                  "photo": requests.get(image_url).content  # Загрузка изображения через URL
               }
           )
 
