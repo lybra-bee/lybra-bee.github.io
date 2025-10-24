@@ -56,15 +56,22 @@ jobs:
           teaser_esc = esc(teaser)
           hashtags_esc = esc("#ИИ #LybraAI")
 
-          # Картинка
-          front_matter = yaml.safe_load(parts[1]) if len(parts) > 1 else {}
+          # Пытаемся правильно парсить front-matter
+          front_matter = {}
+          if len(parts) > 1:
+              try:
+                  front_matter = yaml.safe_load(parts[1])
+              except yaml.YAMLError as e:
+                  print(f"❌ Ошибка в front-matter: {e}")
+          
+          # Изображение из front-matter
           image_name = os.path.basename(front_matter.get('image', 'post-1.png'))
           image_url = f"https://lybra-bee.github.io/assets/images/posts/{image_name}"
 
           # Статическая ссылка на сайт
           site_url = "https://lybra-ai.ru"
 
-          # Сообщение
+          # Формируем сообщение
           message = f"*Новая статья*\n\n{teaser_esc}\n\n[Читать на сайте]({site_url})\n\n{hashtags_esc}"
 
           # Проверка токена и чата
@@ -73,7 +80,7 @@ jobs:
           if not token or not chat_id:
               raise SystemExit("❌ Нет TELEGRAM_BOT_TOKEN или TELEGRAM_CHAT_ID")
 
-          # Отправка фото с подписью
+          # Отправка фото с подписью в Telegram
           resp = requests.post(
               f"https://api.telegram.org/bot{token}/sendPhoto",
               data={
