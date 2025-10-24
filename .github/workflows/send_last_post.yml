@@ -41,9 +41,12 @@ jobs:
           with open(last_post, encoding='utf-8') as f:
               content = f.read()
 
+          # Front-matter
+          front_matter = re.search(r'^---(.*?)---', content, re.S)
+          meta = yaml.safe_load(front_matter.group(1)) if front_matter else {}
+
           # Контент без front-matter
-          parts = content.split('---')
-          body = parts[-1].strip() if len(parts) > 1 else content.strip()
+          body = content.split('---')[-1].strip()
 
           # Тизер: первые 30 слов
           words = body.split()
@@ -56,23 +59,17 @@ jobs:
           teaser_esc = esc(teaser)
           hashtags_esc = esc("#ИИ #LybraAI")
 
-          # Пытаемся правильно парсить front-matter
-          front_matter = {}
-          if len(parts) > 1:
-              try:
-                  front_matter = yaml.safe_load(parts[1])
-              except yaml.YAMLError as e:
-                  print(f"❌ Ошибка в front-matter: {e}")
-          
-          # Изображение из front-matter
-          image_name = os.path.basename(front_matter.get('image', 'post-1.png'))
+          # Картинка
+          image_name = os.path.basename(meta.get('image', 'post-1.png'))
           image_url = f"https://lybra-bee.github.io/assets/images/posts/{image_name}"
 
-          # Статическая ссылка на сайт
-          site_url = "https://lybra-ai.ru"
+          # URL поста
+          date = str(meta.get('date', ''))
+          slug = os.path.splitext(os.path.basename(last_post))[0].split('-', 3)[-1]
+          url = f"https://lybra-bee.github.io/{date[:10].replace('-', '/')}/{slug}.html"
 
-          # Формируем сообщение
-          message = f"*Новая статья*\n\n{teaser_esc}\n\n[Читать на сайте]({site_url})\n\n{hashtags_esc}"
+          # Сообщение
+          message = f"*Новая статья*\n\n{teaser_esc}\n\n[Читать на сайте]({url})\n\n{hashtags_esc}"
 
           # Проверка токена и чата
           token = os.getenv('TELEGRAM_BOT_TOKEN')
@@ -80,7 +77,7 @@ jobs:
           if not token or not chat_id:
               raise SystemExit("❌ Нет TELEGRAM_BOT_TOKEN или TELEGRAM_CHAT_ID")
 
-          # Отправка фото с подписью в Telegram
+          # Отправка фото с подписью
           resp = requests.post(
               f"https://api.telegram.org/bot{token}/sendPhoto",
               data={
