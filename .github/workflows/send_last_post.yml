@@ -1,4 +1,4 @@
-name: Отправка ежедневного поста
+name: Генерация ежедневного поста
 
 on:
   workflow_dispatch:  # Ручной запуск workflow
@@ -58,19 +58,31 @@ jobs:
 
       - name: Send to Telegram
         run: |
-          export POST_DATE=${{ env.DATE }}
-          export POST_SLUG=${{ env.SLUG }}
-          export POST_IMAGE="https://lybra-ai.ru/assets/images/posts/post-${{ env.POST_NUM }}.png"
+          # Загрузка переменных из GitHub Actions
+          POST_DATE=${{ env.DATE }}
+          POST_SLUG=${{ env.SLUG }}
+          POST_IMAGE="https://lybra-ai.ru/assets/images/posts/post-${{ env.POST_NUM }}.png"
           
+          # Тизер: читаем первые 30 слов из статьи
+          TEASER=$(head -n 30 "${{ github.workspace }}/_posts/${POST_DATE}-${POST_SLUG}.md" | tail -n 1)
+
+          # Формируем сообщение для Telegram
           MESSAGE="📢 Новый пост: \"${{ env.TITLE }}\"
 
-          Краткий тизер: $(head -n 30 "${{ github.workspace }}/_posts/${POST_DATE}-${POST_SLUG}.md" | tail -n 1)
+          Краткий тизер: ${TEASER}
 
           Читать статью: https://lybra-ai.ru/${POST_DATE}/${POST_SLUG}
 
           #ИИ #Тренды2025 #LybraAI"
           
+          # Отправляем в Telegram
           curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
             -d "text=${MESSAGE}" \
             -d "parse_mode=Markdown"
+
+          # Отправка изображения
+          curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendPhoto" \
+            -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d "photo=${POST_IMAGE}" \
+            -d "caption=${MESSAGE}"
