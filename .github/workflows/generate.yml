@@ -44,6 +44,11 @@ jobs:
           git commit -m "Обновление поста от $(date -u +'%Y-%m-%d %H:%M:%S UTC')" || echo "Нет изменений для коммита"
           git push
 
+      - name: ⏳ Wait 5 minutes before posting
+        run: |
+          echo "Waiting 5 minutes before posting to Telegram..."
+          sleep 300
+          
       - name: Trigger send_last_post workflow
         uses: benc-uk/workflow-dispatch@v1
         with:
