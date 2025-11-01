@@ -144,7 +144,7 @@ description: Эксперт по запуску нейросетей на бюд
         <h3>📞 Связаться со мной</h3>
         <p>Есть вопросы или предложения? Хотите сотрудничать? Буду рад общению!</p>
         <div class="contact-links">
-          <a href="mailto:Lybra1167@gmaul.com" class="btn btn-outline-primary me-2">📧 Email</a>
+          <a href="mailto:Lybra1167@gmail.com" class="btn btn-outline-primary me-2">📧 Email</a>
           <a href="https://t.me/Lybra777" class="btn btn-outline-primary me-2">📱 Telegram</a>
           <a href="https://github.com/Lybra-bee" class="btn btn-outline-primary">💻 GitHub</a>
         </div>
