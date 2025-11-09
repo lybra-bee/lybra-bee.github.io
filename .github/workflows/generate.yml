@@ -1,56 +1,126 @@
-name: Генерация ежедневного поста
+name: 🤖 Generate & Publish AI Post
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 0 * * *'  # Ежедневно в 00:00 UTC
+    - cron: '0 0 * * *'  # Каждый день в 00:00 UTC
+
+permissions:
+  contents: write
 
 jobs:
-  generate:
+  generate-and-publish:
     runs-on: ubuntu-latest
-
+    
     steps:
-      - name: Checkout repository
+      - name: 📥 Checkout repository
         uses: actions/checkout@v4
-
-      - name: Set up Python
+        
+      - name: 🐍 Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
-      - name: Install dependencies
+          cache: 'pip'  # Экономит до 60 секунд на каждом запуске
+      
+      - name: 📦 Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install groq requests pyyaml
-          python -c "import groq, requests, yaml; print('Зависимости установлены:', groq.__version__, requests.__version__, yaml.__version__)"
-
-      - name: Test network
+          pip install --upgrade pip
+          pip install groq requests pyyaml feedparser matplotlib
+      
+      - name: 🧹 Clean old files
         run: |
-          ping -c 4 clipdrop-api.co || echo "Нет подключения к Clipdrop API"
-
-      - name: Run generate_post.py
+          find _posts -name "*.md" -mtime +50 -delete || true
+          find assets/images/posts -name "*.png" -mtime +50 -delete || true
+      
+      - name: 🤖 Generate AI content
+        id: generator
         run: |
-          export PYTHONUNBUFFERED=1
-          python generate_post.py
+          python generate_post.py > generation.log 2>&1
+          # Сохраняем данные для Telegram
+          echo "title=$(grep 'Заголовок:' generation.log | cut -d' ' -f2-)" >> $GITHUB_OUTPUT
+          echo "trend=$(grep 'Тренд:' generation.log | cut -d' ' -f2-)" >> $GITHUB_OUTPUT
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
+          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
           CLIPDROP_API_KEY: ${{ secrets.CLIPDROP_API_KEY }}
-
-      - name: Commit changes
+      
+      - name: ✅ Validate generation
+        run: |
+          if [ ! -f "_posts/$(date +%Y-%m-%d)*.md" ]; then
+            echo "❌ Пост не создан"
+            exit 1
+          fi
+          echo "✅ Пост создан успешно"
+      
+      - name: 📊 Upload logs (для отладки)
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: generation-log-${{ github.run_id }}
+          path: generation.log
+          retention-days: 7
+      
+      - name: 💾 Commit and push
         run: |
           git config --global user.name 'lybra-bee'
           git config --global user.email 'lybra1167@gmail.com'
           git add .
-          git commit -m "Обновление поста от $(date -u +'%Y-%m-%d %H:%M:%S UTC')" || echo "Нет изменений для коммита"
+          git commit -m "🤖 Daily AI: $(date +%Y-%m-%d) - ${{ steps.generator.outputs.trend }}"
           git push
-
-      - name: ⏳ Wait 5 minutes before posting
+      
+      - name: ⏱️ Wait for GitHub CDN
         run: |
-          echo "Waiting 5 minutes before posting to Telegram..."
-          sleep 300
+          POST_NUM=$(ls assets/images/posts/*.png | tail -1 | grep -o 'post-[0-9]*' | grep -o '[0-9]*')
+          IMAGE_URL="https://raw.githubusercontent.com/${{ github.repository }}/main/assets/images/posts/post-${POST_NUM}.png"
           
-      - name: Trigger send_last_post workflow
-        uses: benc-uk/workflow-dispatch@v1
-        with:
-          workflow: send_last_post.yml
-          ref: main
+          echo "🔍 Проверяем изображение: $IMAGE_URL"
+          for i in {1..30}; do
+            if curl -s -o /dev/null -w "%{http_code}" "$IMAGE_URL" | grep -q "200"; then
+              echo "✅ Изображение доступно (попытка $i)"
+              echo "image_url=$IMAGE_URL" >> $GITHUB_ENV
+              exit 0
+            fi
+            echo "⏳ Попытка $i/30..."
+            sleep 10
+          done
+          echo "⚠️ Таймаут, используем заглушку"
+          echo "image_url=https://lybra-ai.ru/assets/images/default.png" >> $GITHUB_ENV
+      
+      - name: 📢 Send to Telegram
+        run: |
+          python - << 'PYEOF'
+          import os, re, requests
+          from datetime import datetime
+
+          # Данные
+          title = "${{ steps.generator.outputs.title }}"
+          image_url = os.getenv('image_url')
+          
+          # Генерируем тизер из поста
+          post_file = "_posts/$(date +%Y-%m-%d)*.md"
+          with open(os.path.expandvars(post_file), 'r', encoding='utf-8') as f:
+              content = f.read().split('---')[-1]
+              teaser = ' '.join(content.split()[:30]) + '…'
+
+          # Экранирование MarkdownV2
+          def esc(text):
+              return re.sub(r'([_*\[\]\(\)~`>#+\-=|{}.!])', r'\\\1', text)
+
+          message = f"*Новая статья*\n\n{esc(teaser)}\n\n[Читать на сайте](https://lybra-ai.ru)\n\n{esc('#ИИ #LybraAI')}"
+
+          # Отправка
+          resp = requests.post(
+              f"https://api.telegram.org/bot{os.getenv('TELEGRAM_BOT_TOKEN')}/sendPhoto",
+              data={
+                  "chat_id": os.getenv('TELEGRAM_CHAT_ID'),
+                  "caption": message,
+                  "parse_mode": "MarkdownV2"
+              },
+              files={"photo": requests.get(image_url).content}
+          )
+          print(f"✅ Telegram: {resp.status_code}")
+          PYEOF
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
