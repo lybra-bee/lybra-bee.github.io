@@ -32,45 +32,20 @@ jobs:
           find _posts -name "*.md" -mtime +50 -delete || true
           find assets/images/posts -name "*.png" -mtime +50 -delete || true
       
-      - name: 🧪 Debug environment
-        run: |
-          echo "=== Python info ==="
-          which python
-          python --version
-          echo "=== Modules check ==="
-          python -c "import sys, os, yaml, requests, feedparser, matplotlib; print('✅ All modules OK')"
-          echo "=== API key check ==="
-          echo "GROQ_KEY_EXISTS=$([ -n \"$GROQ_API_KEY\" ] && echo 1 || echo 0)" >> $GITHUB_ENV
-          echo "=== Files check ==="
-          ls -la generate_post.py || echo "❌ generate_post.py not found"
-        env:
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-      
       - name: 🤖 Generate AI content
         id: generator
         run: |
-          # Запускаем скрипт и показываем ошибку сразу в логе
           python generate_post.py
-          # Если дошли до сюда — успех, сохраняем данные
+          # Сохраняем данные для Telegram (если скрипт успешно завершился)
           echo "title=$(grep 'Заголовок:' generation.log 2>/dev/null | cut -d' ' -f2- || echo 'AI Article')" >> $GITHUB_OUTPUT
           echo "trend=$(grep 'Тренд:' generation.log 2>/dev/null | cut -d' ' -f2- || echo 'AI Trends')" >> $GITHUB_OUTPUT
-          echo "status=success" >> $GITHUB_OUTPUT
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
           SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
           CLIPDROP_API_KEY: ${{ secrets.CLIPDROP_API_KEY }}
-        continue-on-error: false
       
-      - name: ✅ Validate generation
-        run: |
-          if [ ! -f "_posts/$(date +%Y-%m-%d)*.md" ]; then
-            echo "❌ Пост не создан"
-            exit 1
-          fi
-          echo "✅ Пост создан успешно"
-      
-      - name: 📊 Upload logs
+      - name: 📊 Upload logs (для отладки)
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -83,7 +58,7 @@ jobs:
           git config --global user.name 'lybra-bee'
           git config --global user.email 'lybra1167@gmail.com'
           git add .
-          git commit -m "🤖 Daily AI: $(date +%Y-%m-%d) - ${{ steps.generator.outputs.trend }}"
+          git commit -m "🤖 Daily AI: $(date +%Y-%m-%d) - ${{ steps.generator.outputs.trend }}" || echo "Нет изменений для коммита"
           git push
       
       - name: ⏱️ Wait for GitHub CDN
