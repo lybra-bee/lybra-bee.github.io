@@ -45,7 +45,7 @@ jobs:
           SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
           CLIPDROP_API_KEY: ${{ secrets.CLIPDROP_API_KEY }}
       
-      - name: 📊 Upload logs (для отладки)
+      - name: 📊 Upload logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -79,6 +79,15 @@ jobs:
           echo "⚠️ Таймаут, используем заглушку"
           echo "image_url=https://lybra-ai.ru/assets/images/default.png" >> $GITHUB_ENV
       
+      - name: 🗓️ Export post path
+        run: |
+          TODAY=$(date +%Y-%m-%d)
+          POST_FILE=$(ls -t _posts/${TODAY}-*.md 2>/dev/null | head -n1)
+          if [ -z "$POST_FILE" ]; then
+            POST_FILE=$(ls -t _posts/*.md | head -n1)
+          fi
+          echo "POST_FILE=$POST_FILE" >> $GITHUB_ENV
+      
       - name: 📢 Send to Telegram
         run: |
           python - << 'PYEOF'
@@ -87,9 +96,13 @@ jobs:
 
           title = "${{ steps.generator.outputs.title }}"
           image_url = os.getenv('image_url')
-          
-          post_file = "_posts/$(date +%Y-%m-%d)*.md"
-          with open(os.path.expandvars(post_file), 'r', encoding='utf-8') as f:
+          post_file = os.getenv('POST_FILE')
+
+          if not post_file or not os.path.exists(post_file):
+              print("⚠️ Файл поста не найден, пропускаем Telegram")
+              exit(0)
+
+          with open(post_file, 'r', encoding='utf-8') as f:
               content = f.read().split('---')[-1]
               teaser = ' '.join(content.split()[:30]) + '…'
 
