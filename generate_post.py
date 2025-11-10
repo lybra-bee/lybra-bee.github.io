@@ -322,7 +322,13 @@ def main():
     
     # 7. Сохранение
     slug = re.sub(r'[^а-яА-Яa-zA-Z0-9-]', '-', title.lower().replace(" ", "-"))[:50]
-    filename = f"{posts_dir}/{today}-{slug}.md"
+     from slugify import slugify
+     from transliterate import transliterate
+
+     safe_title = transliterate(title, 'ru', reversed=True)   # «Урок 1 …» → "Urok 1 ..."
+     slug = slugify(safe_title, max_length=60, word_boundary=True)
+     filename = f"_posts/{date.today()}-{slug}.md"
+
     
     try:
         with open(filename, "w", encoding="utf-8") as f:
