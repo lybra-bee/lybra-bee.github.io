@@ -20,7 +20,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip'  # Экономит до 60 секунд на каждом запуске
+          cache: 'pip'
       
       - name: 📦 Install dependencies
         run: |
@@ -36,7 +36,6 @@ jobs:
         id: generator
         run: |
           python generate_post.py > generation.log 2>&1
-          # Сохраняем данные для Telegram
           echo "title=$(grep 'Заголовок:' generation.log | cut -d' ' -f2-)" >> $GITHUB_OUTPUT
           echo "trend=$(grep 'Тренд:' generation.log | cut -d' ' -f2-)" >> $GITHUB_OUTPUT
         env:
@@ -55,7 +54,7 @@ jobs:
       
       - name: 📊 Upload logs (для отладки)
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4  # ← ИСПРАВЛЕНО: v3 → v4
         with:
           name: generation-log-${{ github.run_id }}
           path: generation.log
