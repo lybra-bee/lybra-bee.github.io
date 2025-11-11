@@ -220,8 +220,13 @@ def refine_content(content: str, trend: Dict) -> str:
 def generate_image(client: Groq, title: str, trend: Dict, post_num: int) -> bool:
     """Генерирует изображение (Clipdrop + fallback)"""
     
-    # Создаём промпт
-    prompt = f"Technical illustration: {' '.join(trend['keywords'][:2])}. Style: {random.choice(['infographic', 'isometric', '3d render'])}. Professional, 16:9"
+        # Фотореалистичный промпт для Clipdrop
+    prompt = (
+        f"Ultra-realistic 3D render of {trend['keywords'][0]} hardware, "
+        f"professional studio lighting, shallow depth of field, "
+        f"dark background, high detail, 8K resolution, photorealistic"
+    )
+    
     
     clipdrop_key = os.getenv("CLIPDROP_API_KEY")
     if clipdrop_key:
