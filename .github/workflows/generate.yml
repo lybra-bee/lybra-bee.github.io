@@ -1,11 +1,10 @@
 # .github/workflows/daily-publish.yml
-# Полностью исправлен: фотореалистичные изображения, точное ожидание CDN, корректный путь в Telegram
 name: 🤖 Generate & Publish AI Post
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 0 * * *'          # 00:00 UTC каждый день
+    - cron: '0 0 * * *'
 
 permissions:
   contents: write
@@ -71,9 +70,13 @@ jobs:
 
       - name: ⏱️ Wait for exact image CDN
         run: |
-          # номер поста из свежесозданного PNG
-          POST_NUM=$(ls assets/images/posts/post-*.png | tail -1 | grep -o '[0-9]\+' | tail -1)
-          IMAGE_URL="https://raw.githubusercontent.com/${{ github.repository }}/main/assets/images/posts/post-${POST_NUM}.png"
+          # вытягиваем номер из имени файла, а не по времени
+          TODAY=$(date +%Y-%m-%d)
+          PNG_NUM=$(ls _posts/${TODAY}-*.md 2>/dev/null | head -1 | sed 's/.*post-//' | sed 's/\..*//' || echo "")
+          if [ -z "$PNG_NUM" ]; then
+            PNG_NUM=$(ls assets/images/posts/post-*.png 2>/dev/null | tail -1 | grep -o '[0-9]\+' | tail -1)
+          fi
+          IMAGE_URL="https://raw.githubusercontent.com/${{ github.repository }}/main/assets/images/posts/post-${PNG_NUM}.png"
 
           echo "⏳ Ждём CDN: $IMAGE_URL"
           for i in {1..60}; do
