@@ -70,12 +70,8 @@ jobs:
 
       - name: ⏱️ Wait for exact image CDN
         run: |
-          # вытягиваем номер из имени файла, а не по времени
-          TODAY=$(date +%Y-%m-%d)
-          PNG_NUM=$(ls _posts/${TODAY}-*.md 2>/dev/null | head -1 | sed 's/.*post-//' | sed 's/\..*//' || echo "")
-          if [ -z "$PNG_NUM" ]; then
-            PNG_NUM=$(ls assets/images/posts/post-*.png 2>/dev/null | tail -1 | grep -o '[0-9]\+' | tail -1)
-          fi
+          # Берём номер из свежесозданного PNG (последний по времени)
+          PNG_NUM=$(ls -t assets/images/posts/post-*.png | head -1 | grep -o '[0-9]\+' | head -1)
           IMAGE_URL="https://raw.githubusercontent.com/${{ github.repository }}/main/assets/images/posts/post-${PNG_NUM}.png"
 
           echo "⏳ Ждём CDN: $IMAGE_URL"
