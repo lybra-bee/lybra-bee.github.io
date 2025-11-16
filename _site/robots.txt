@@ -1,0 +1,21 @@
+User-agent: *
+Allow: /
+
+# Основные разделы главного сайта
+Allow: /about/
+Allow: /articles/
+Allow: /gallery/
+Allow: /assets/css/
+Allow: /assets/js/
+Allow: /assets/images/
+
+# Раздел лаборатории
+Allow: /lybra-ai-lab/
+Allow: /lybra-ai-lab/experiments/
+Allow: /lybra-ai-lab/assets/css/
+Allow: /lybra-ai-lab/assets/js/
+Allow: /lybra-ai-lab/assets/images/
+Allow: /lybra-ai-lab/assets/videos/
+
+# Sitemap
+Sitemap: https://lybra-ai.ru/sitemap.xml

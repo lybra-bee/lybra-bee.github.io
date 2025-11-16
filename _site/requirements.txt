@@ -1,0 +1,6 @@
+transliterate
+groq>=0.11.0
+PyYAML>=6.0
+requests>=2.31.0
+feedparser>=6.0.10
+matplotlib>=3.8.0

@@ -14,6 +14,9 @@ paginate: 5
 paginate_path: "/articles/page:num/"
 
 collections:
+  lessons:
+    output: true
+    permalink: /lessons/:title/
   pages:
     output: true
     permalink: /:path/

@@ -1,0 +1,13 @@
+---
+layout: default
+title: Уроки
+---
+
+<h1>Уроки</h1>
+<ul>
+  {% for lesson in site.pages %}
+    {% if lesson.url contains '/lessons/' %}
+      <li><a href="{{ lesson.url }}">{{ lesson.title }}</a></li>
+    {% endif %}
+  {% endfor %}
+</ul>

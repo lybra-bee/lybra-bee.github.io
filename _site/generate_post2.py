@@ -1,0 +1,210 @@
+import datetime
+import random
+import os
+import re
+import glob
+from groq import Groq
+import requests
+import yaml  # Для безопасного форматирования YAML
+
+types = ["Обзор", "Урок", "Мастер-класс", "Статья"]
+
+today = datetime.date.today()
+type_ = random.choice(types)
+
+posts_dir = '_posts'
+assets_dir = 'assets/images/posts'
+os.makedirs(assets_dir, exist_ok=True)
+os.makedirs(posts_dir, exist_ok=True)
+
+# Определение следующего номера изображения
+image_files = glob.glob(f"{assets_dir}/*.png") + glob.glob(f"{assets_dir}/*.jpg")
+post_num = len(image_files) + 1 if image_files else 1
+
+post_files = sorted(glob.glob(f"{posts_dir}/*.md"), reverse=True)
+if len(post_files) > 39:
+    for old_file in post_files[40:]:
+        os.remove(old_file)
+
+# Генерация заголовка через Groq API
+groq_key = os.getenv("GROQ_API_KEY")
+title = "Современные тенденции в искусственном интеллекте"  # заголовок по умолчанию
+
+if groq_key:
+    try:
+        client = Groq(api_key=groq_key)
+        
+        # Рандомизация стилей заголовков для разнообразия
+        title_styles = [
+            "С вопросом для вовлечения: 'Как [тренд] изменит [отрасль] в 2025?'",
+            "С цифрой: 'Топ-5 [трендов] в [теме] для 2025 года'",
+            "Провокационный: '[Шокирующий факт]: почему [тренд] — будущее ИИ?'",
+            "Сторителлинг: 'От [старого] к [новому]: эволюция [темы] в 2025'",
+            "Юмористический: 'ИИ в 2025: [смешной сценарий] или реальность?'"
+        ]
+        random_style = random.choice(title_styles)
+        
+        title_completion = client.chat.completions.create(
+            messages=[
+                {
+                    "role": "system", 
+                    "content": "Ты эксперт по ИИ и высоким технологиям. Создай креативные заголовки на русском языке (5-10 слов) на основе последних трендов в области искусственного интеллекта, машинного обучения и высоких технологий на октябрь 2025 года. Создавай заголовки, которые провоцируют любопытство, используют эмоциональный хук (удивление, страх, вдохновение) и адаптированы под тип статьи (обзор — аналитический, урок — практический). Избегай шаблонов, делай их уникальными каждый раз."
+                },
+                {
+                    "role": "user", 
+                    "content": f"Придумай один заголовок {type_.lower()} (5-10 слов) на актуальную тему в области ИИ и высоких технологий. Используй стиль: {random_style}. Добавь элемент сюрприза или уникальный угол. Только заголовок, без пояснений."
+                }
+            ],
+            model="llama-3.1-8b-instant",
+            max_tokens=50,
+            temperature=0.8
+        )
+        title = title_completion.choices[0].message.content.strip()
+        title = re.sub(r'^["\']|["\']$', '', title)  # Удаление кавычек
+        title = re.sub(r'[:]', ' -', title)  # Замена двоеточий
+        title = re.sub(r'[^\w\s-]', '', title)  # Удаление специальных символов
+        title = re.sub(r'\s+$', '', title)  # Удаление пробелов в конце
+        title = title.rstrip('.')  # Удаление точки в конце
+        print(f"Заголовок сгенерирован: {title}")
+    except Exception as e:
+        print(f"Ошибка генерации заголовка: {str(e)}")
+
+slug = re.sub(r'[^а-яА-Яa-zA-Z0-9-]', '-', title.lower().replace(" ", "-"))
+
+# Выбор подтем для разнообразия статей
+subthemes = ["Agentic AI и автономные агенты", "RAG для улучшения генерации", "Sovereign AI и национальные модели", "Physical AI в робототехнике", "Этика ИИ и регуляции", "Квантовое машинное обучение", "AI для устойчивого развития", "Edge AI в IoT"]
+selected_subthemes = random.sample(subthemes, random.randint(3, 5))
+subthemes_str = ', '.join(selected_subthemes)
+
+# Генерация полного текста статьи
+content = f"# {title}\n\n## {type_}\n\nОшибка генерации текста. Сгенерируйте вручную."
+
+if groq_key:
+    try:
+        # Улучшенный system prompt с новым URL лаборатории и сохранением SEO
+        system_prompt = """Ты инженер Lybra AI Lab с 10-летним опытом. Твоя специализация — запуск AI на бюджетном железе. Пиши на русском языке увлекательно, как эксперт, который делится личным опытом. Используй сленг (OOM, VRAM, костыли, бутлнек), аналогии и риторические вопросы. Внедряй личные истории, сомнения и типичные ошибки, которые могут возникнуть только при реальном эксперименте. Обязательно указывай, что эксперимент проведен на конкретном оборудовании (например, "на моем P102-100" или "на Xeon E5"). Делай контент полезным: включай actionable insights, реальные кейсы, статистику. Избегай шаблонов, повторений и filler-текста. Варьируй стиль: мотивирующий для уроков, аналитический для статей. Оптимизируй для SEO: ключевые слова естественно, ссылки на источники. Добавь ссылку на https://lybra-ai.ru/lybra-ai-lab/ в введении и заключении как хаб для экспериментов. Для разнообразия: рандомно выбирай подтемы из трендов (Agentic AI, RAG, Sovereign AI, Physical AI, AI ethics, quantum ML, AI in sustainability, edge AI). Избегай кода, фокусируйся на insights и личном опыте."""
+
+        # Динамический user prompt в зависимости от type_ с рандомизацией элементов
+        if type_ == "Обзор":
+            unique_elements = random.choice(["Личный опыт использования", "Сравнение с ожиданиями", "Сценарий, где что-то пошло не так"])
+            user_content = f"Напиши обзор на тему '{title}' объемом 1500–3000 слов, интегрируя подтемы {subthemes_str}. Структура: H1 — заголовок, H2 — тип статьи, H2 'Введение' (с хуком-историей, 200 слов), H2 'Ключевые тренды' (4-6 H3 с кейсами, статистикой, аналогиями, 300 слов каждый), H2 'Сравнение технологий' (таблица 4x4 с плюсами/минусами), H2 'Прогнозы на 2026' (3-5 сценариев с обоснованиями, 200 слов), H2 'Заключение' (с вызовом к действию, 150 слов). Добавь элемент: {unique_elements}. Используй реальные примеры, избегай кода."
+        elif type_ == "Урок":
+            unique_elements = random.choice(["Типичные ошибки новичков", "Лайфхаки от инженера", "Сленг и термины, которые нужно знать"])
+            user_content = f"Напиши урок на тему '{title}' объемом 1500–3000 слов, интегрируя подтемы {subthemes_str}. Структура: H1 — заголовок, H2 — тип статьи, H2 'Введение' (с вопросом, 200 слов), H2 'Подготовка' (2-3 H3 с инструментами, 200 слов), H2 'Шаги урока' (5-8 H3 с практическими инструкциями, примерами, 250 слов каждый), H2 'Сравнение методов' (таблица 3x3), H2 'Практические советы' (5-10 пунктов, 150 слов), H2 'Заключение' (с вопросом, 150 слов). Добавь элемент: {unique_elements}. Избегай кода, фокусируйся на шагах."
+        elif type_ == "Мастер-класс":
+            unique_elements = random.choice(["Сценарий, где что-то пошло не так", "Решение проблемы в реальном времени", "Расширенные упражнения для экспертов"])
+            user_content = f"Напиши мастер-класс на тему '{title}' объемом 1500–3000 слов, интегрируя подтемы {subthemes_str}. Структура: H1 — заголовок, H2 — тип статьи, H2 'Введение' (с вопросом, 200 слов), H2 'Необходимые инструменты' (3-5 H3, 200 слов), H2 'Практические упражнения' (4-6 H3 с сценариями, 300 слов каждый), H2 'Сравнение результатов' (таблица 4x3), H2 'Расширенные техники' (5-7 пунктов, 200 слов), H2 'Заключение' (с вопросом, 150 слов). Добавь элемент: {unique_elements}. Используй реальные кейсы, избегай кода."
+        elif type_ == "Статья":
+            unique_elements = random.choice(["Дебаты за/против", "Статистика с графиками в тексте", "Прогнозы с источниками"])
+            user_content = f"Напиши аналитическую статью на тему '{title}' объемом 1500–3000 слов, интегрируя подтемы {subthemes_str}. Структура: H1 — заголовок, H2 — тип статьи, H2 'Введение' (с вопросом, 200 слов), H2 'Анализ трендов' (3-5 H3 с фактами, 300 слов каждый), H2 'Сравнение подходов' (таблица 3x4), H2 'Практические рекомендации' (5-10 пунктов, 200 слов), H2 'Заключение' (с вопросом, 150 слов). Добавь элемент: {unique_elements}. Добавь статистику и источники."
+
+        article_completion = client.chat.completions.create(
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_content}
+            ],
+            model="llama-3.1-8b-instant",
+            max_tokens=3000,
+            temperature=0.7
+        )
+        content = article_completion.choices[0].message.content
+        content = re.sub(r'<[^>]+>', '', content)  # Удаление HTML-тегов
+        print("Статья сгенерирована успешно через Groq.")
+    except Exception as e:
+        print(f"Ошибка генерации статьи: {str(e)}")
+
+# Перевод заголовка на английский для промпта изображения
+if groq_key:
+    try:
+        translation = client.chat.completions.create(
+            messages=[
+                {"role": "system", "content": "Ты переводчик. Переводи на английский точно и естественно."},
+                {"role": "user", "content": f"Переведи на английский: {title}"}
+            ],
+            model="llama-3.1-8b-instant",
+            max_tokens=30,
+            temperature=0.1
+        )
+        title_en = translation.choices[0].message.content.strip()
+    except Exception as e:
+        print(f"Ошибка перевода: {str(e)}")
+        title_en = title.lower().replace(" ", "-")
+else:
+    title_en = title.lower().replace(" ", "-")
+
+# Улучшенный промпт для изображения с технической релевантностью
+styles = [
+    "Detailed technical infographic showing VRAM usage on a P102-100 card, clean lines, data visualization",
+    "Photorealistic 3D render of a server rack with a mining GPU (P102-100) running Stable Diffusion, cinematic lighting",
+    "Conceptual diagram of an Agentic AI loop with RAG integration, schematic, modern design, blue and orange color palette",
+    "Data visualization: line graph showing performance (it/s) vs VRAM consumption for different AI models, professional chart style",
+    "Close-up photo of a circuit board with glowing AI core, ultra-detailed, macro lens, sci-fi realistic"
+]
+random_style = random.choice(styles)
+subthemes_keywords = ' '.join([theme.lower() for theme in selected_subthemes])
+prompt_img = f"Technical illustration for the article: {title_en}. Focus on: {subthemes_keywords}. Style: {random_style}. High quality, detailed textures, professional look, suitable for an expert blog."
+
+image_path = f"{assets_dir}/post-{post_num}.png"
+image_generated = False
+
+clipdrop_key = os.getenv("CLIPDROP_API_KEY")
+if clipdrop_key:
+    clipdrop_url = "https://clipdrop-api.co/text-to-image/v1"
+    print(f"Генерация изображения для: {title_en}")
+    try:
+        clipdrop_response = requests.post(
+            clipdrop_url,
+            files={'prompt': (None, prompt_img)},
+            headers={'x-api-key': clipdrop_key},
+            timeout=30
+        )
+        print(f"Статус генерации изображения: {clipdrop_response.status_code}")
+        if clipdrop_response.status_code == 200:
+            with open(image_path, "wb") as img_file:
+                img_file.write(clipdrop_response.content)
+            print(f"Изображение успешно сохранено: {image_path}")
+            image_generated = True
+        else:
+            try:
+                error_details = clipdrop_response.json()
+                print(f"Ошибка Clipdrop: {error_details}")
+            except ValueError:
+                print(f"Ошибка Clipdrop: {clipdrop_response.text}")
+    except requests.exceptions.RequestException as e:
+        print(f"Ошибка запроса к Clipdrop API: {str(e)}")
+
+# Fallback для ручной генерации изображения
+if not image_generated:
+    print(f"Не удалось сгенерировать изображение. Сгенерируйте вручную по промпту: {prompt_img}")
+
+# Формирование YAML фронт-маттера с безопасной сериализацией
+front_matter = {
+    "title": title.rstrip('.'),
+    "date": f"{today} 00:00:00 -0000",
+    "layout": "post",
+    "image": f"/assets/images/posts/post-{post_num}.png",
+    "image_alt": f"ИИ и высокие технологии: {title.lower().rstrip('.')}",
+    "description": f"{type_.lower()} о трендах ИИ 2025 года: {title.lower().rstrip('.')}",
+    "tags": ["ИИ", "технологии", type_.lower()]
+}
+
+# Экспорт переменных для GitHub Actions
+os.environ['TITLE'] = title
+os.environ['DATE'] = today.strftime('%Y/%m/%d')
+os.environ['SLUG'] = slug
+os.environ['POST_NUM'] = str(post_num)
+
+# Сохранение поста с полным YAML фронт-маттером (явные ---)
+filename = f"{posts_dir}/{today}-{slug}.md"
+try:
+    with open(filename, "w", encoding="utf-8") as f:
+        # Явно добавляем начальный ---
+        f.write("---\n")
+        # Сериализуем front_matter в YAML
+        f.write(yaml.safe_dump(front_matter, allow_unicode=True, default_flow_style=False, sort_keys=False))
+        # Явно добавляем конечный ---
+        f.write("---\n")
+        f.write(content)
+    print(f"Сгенерирован пост: {filename}")
+except Exception as e:
+    print(f"Ошибка сохранения файла: {str(e)}")
