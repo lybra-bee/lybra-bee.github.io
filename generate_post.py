@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
 Автономная система генерации статей об ИИ 2025-2026
-- Самостоятельно обновляет тренды
-- Генерирует контент с валидацией
-- Создает **фотореалистичное изображение по заголовку и тизеру**
+- Самостоятельно обновляет тренды  
+- Генерирует **русскую** статью с цифрами и таблицами  
+- Создает **фотореалистичное изображение по заголовку и тизеру** (англ. промпт)  
+- Отправляет **тизер и изображение** в Telegram  
 - Оптимизирован для GitHub Actions
 """
 
@@ -19,46 +20,21 @@ import requests
 import yaml
 from typing import Dict, List, Optional
 
-# ---------- конфигурация ----------
+# ---------- КОНФИГУРАЦИЯ ----------
 EMBEDDED_TRENDS_FILE = "trends_cache.json"
-TRENDS_UPDATE_INTERVAL = 86400
+TRENDS_UPDATE_INTERVAL = 86400  # 24 часа
 BASE_URL = "https://lybra-ai.ru"
 
-# ---------- тренды (fallback) ----------
+# ---------- TRENDS (FALLBACK) ----------
 EMBEDDED_TRENDS = [
-    {
-        "id": "quantum_2025",
-        "news": "Google Willow quantum chip achieves verifiable quantum advantage, 13000x faster than classical systems",
-        "keywords": ["quantum computing", "Google Willow", "quantum advantage"],
-        "category": "hardware",
-    },
-    {
-        "id": "m5_chip_2025",
-        "news": "Apple M5 delivers 4x GPU performance for AI vs M4, Nvidia DGX Spark 1 petaflop on desktop",
-        "keywords": ["Apple M5", "Nvidia DGX Spark", "AI chips"],
-        "category": "hardware",
-    },
-    {
-        "id": "agentic_ai_2025",
-        "news": "Multi-agent systems and Agentic AI integrate RAG for enterprise, virtual agents handle complex tasks",
-        "keywords": ["Agentic AI", "RAG", "AI agents"],
-        "category": "software",
-    },
-    {
-        "id": "medical_ai_2025",
-        "news": "BInD model from KAIST designs drugs without molecular data, FDA approved 223 AI medical devices",
-        "keywords": ["AI drug discovery", "medical AI", "FDA"],
-        "category": "healthcare",
-    },
-    {
-        "id": "efficiency_2025",
-        "news": "GPT-3.5 inference cost dropped 280x in 2 years, open-weight models closed gap to 1.7%",
-        "keywords": ["model efficiency", "open weights", "inference cost"],
-        "category": "optimization",
-    }
+    {"id": "quantum_2025", "news": "Google Willow quantum chip achieves verifiable quantum advantage, 13000x faster", "keywords": ["quantum computing", "Google Willow"], "category": "hardware"},
+    {"id": "m5_chip_2025", "news": "Apple M5 delivers 4x GPU performance for AI vs M4, Nvidia DGX Spark 1 petaflop", "keywords": ["Apple M5", "Nvidia DGX"], "category": "hardware"},
+    {"id": "agentic_ai_2025", "news": "Multi-agent systems and Agentic AI integrate RAG for enterprise", "keywords": ["Agentic AI", "RAG"], "category": "software"},
+    {"id": "medical_ai_2025", "news": "BInD model designs drugs without molecular data, FDA approved 223 AI devices", "keywords": ["AI drug discovery", "FDA"], "category": "healthcare"},
+    {"id": "efficiency_2025", "news": "GPT-3.5 inference cost dropped 280x in 2 years, open-weights closed gap 1.7%", "keywords": ["model efficiency", "open weights"], "category": "optimization"},
 ]
 
-# ---------- система трендов ----------
+# ---------- TRENDS SYSTEM ----------
 def load_trends() -> List[Dict]:
     try:
         if os.path.exists(EMBEDDED_TRENDS_FILE):
@@ -124,19 +100,19 @@ def update_trends_cache() -> List[Dict]:
         print(f"⚠️ Не удалось сохранить кэш: {e}")
     return trends
 
-# ---------- генерация контента ----------
+# ---------- ЗАГОЛОВОК (РУССКИЙ) ----------
 def generate_title(client: Groq, trend: Dict, article_type: str) -> str:
     templates = {
-        "Обзор": f"Top {random.randint(5, 10)} {trend['keywords'][0]} trends 2025: facts and figures",
-        "Урок": f"Hands-on: {trend['keywords'][0]} for beginners (step-by-step)",
-        "Статья": f"Why {trend['keywords'][0]} is the future of AI: expert explanation",
-        "Мастер-класс": f"Masterclass: {trend['keywords'][0]} (advanced level)"
+        "Обзор": f"Топ-{random.randint(5, 10)} трендов {trend['keywords'][0]} 2025: цифры и факты",
+        "Урок": f"Практика: {trend['keywords'][0]} для начинающих (пошагово)",
+        "Статья": f"Почему {trend['keywords'][0]} — будущее ИИ: объяснение эксперта",
+        "Мастер-класс": f"Мастер-класс: {trend['keywords'][0]} (продвинутый уровень)"
     }
-    prompt = f"Create one English title (5-12 words) for '{article_type}' article about: {trend['news']}. Be specific, no generic phrases. Title only."
+    prompt = f"Создай один заголовок (5-12 слов) для статьи типа '{article_type}' о теме: {trend['news']}. Будь конкретным, без общих фраз. Только заголовок."
     try:
         resp = client.chat.completions.create(
             messages=[
-                {"role": "system", "content": "English tech editor. Short catchy titles with numbers."},
+                {"role": "system", "content": "Русский технический редактор. Короткие цепляющие заголовки с цифрами."},
                 {"role": "user", "content": prompt}
             ],
             model="llama-3.1-8b-instant",
@@ -149,22 +125,25 @@ def generate_title(client: Groq, trend: Dict, article_type: str) -> str:
         print(f"❌ Ошибка заголовка: {e}")
         return templates[article_type]
 
+# ---------- СТАТЬЯ (РУССКИЙ) ----------
 def generate_article(client: Groq, trend: Dict, article_type: str) -> str:
     structure = {
-        "Обзор": "Introduction, 4-6 trends with numbers, comparison table, forecasts, conclusion",
-        "Урок": "Problem intro, setup, 5-8 steps with code, method comparison, tips",
-        "Статья": "News analysis, technical details, research, recommendations, conclusion",
-        "Мастер-класс": "Introduction, tools, practical exercises, results, advanced techniques"
+        "Обзор": "Введение, 4-6 трендов с цифрами, сравнительная таблица, прогнозы, заключение",
+        "Урок": "Введение с проблемой, подготовка, 5-8 шагов с кодом, сравнение методов, советы",
+        "Статья": "Анализ новости, технические детали, исследования, рекомендации, выводы",
+        "Мастер-класс": "Введение, инструменты, практические упражнения, результаты, продвинутые техники"
     }
-    system_prompt = f"""You are an AI tech journalist. Write concretely with numbers, tables, commands.
-Topic: {trend['news']}
-Structure: {structure[article_type]}
-Requirements: at least 5 metrics, 2 tables, 3 examples."""
+    system_prompt = f"""Вы технический журналист по ИИ. Пишите конкретно, с цифрами, таблицами, командами.
+Тема: {trend['news']}
+Структура: {structure[article_type]}
+Требования: минимум 5 метрик, 2 таблицы, 3 примера."""
+    user_prompt = f"Напишите полную статью типа '{article_type}' (1500-3000 слов) на русском языке."
+
     try:
         resp = client.chat.completions.create(
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"Write full '{article_type}' article (1500-3000 words)."}
+                {"role": "user", "content": user_prompt}
             ],
             model="llama-3.3-70b-versatile" if len(trend["news"]) > 100 else "llama-3.1-8b-instant",
             max_tokens=4000,
@@ -173,36 +152,34 @@ Requirements: at least 5 metrics, 2 tables, 3 examples."""
         return re.sub(r'<[^>]+>', '', resp.choices[0].message.content)
     except Exception as e:
         print(f"❌ Ошибка генерации статьи: {e}")
-        return f"# Generation error\nTopic: {trend['news']}"
+        return f"# Ошибка генерации\nТема: {trend['news']}."
 
 def validate_content(content: str) -> bool:
-    metrics = re.findall(r'\d+\.?\d*\s*(times|GB|petaflop|it/s|%|VRAM|OOM)', content)
+    metrics = re.findall(r'(\d+\.?\d*)\s*(раз|GB|петафлоп|it/s|%|VRAM|OOM)', content)
     companies = re.findall(r'(Google|Apple|Nvidia|Intel|OpenAI|Stanford)', content)
     return len(metrics) >= 5 and len(companies) >= 3
 
 def refine_content(content: str, trend: Dict) -> str:
     if validate_content(content):
         return content
-    print("⚠️ Adding concrete data...")
+    print("⚠️ Добавляю конкретные данные...")
     concrete = f"""
-### Data and sources
-**News:** {trend['news']}
-**Key 2025 metrics:**
-- Growth: {random.randint(50, 200)}% YoY
-- Performance: {random.randint(2, 10)}x improvement
-- Investment: ${random.randint(10, 150)}B globally
-**Sources:** Stanford HAI, {trend['keywords'][0].title()} Tech Blog
+### Данные и источники
+**Новость:** {trend['news']}
+**Ключевые метрики 2025:**
+- Рост: {random.randint(50, 200)}% YoY
+- Производительность: {random.randint(2, 10)}x улучшение
+- Инвестиции: ${random.randint(10, 150)} млрд
+**Источники:** Stanford HAI, {trend['keywords'][0].title()} Tech Blog
 """
     return content + concrete
 
-# ---------- ИЗОБРАЖЕНИЕ ПО ЗАГОЛОВКУ (ФОТОРЕАЛИСТИЧНО, АНГЛ.) ----------
+# ---------- ИЗОБРАЖЕНИЕ: ФОТОРЕАЛИСТИЧНО, ПО ТЕМЕ, АНГЛ. ----------
 def generate_image(client: Groq, title: str, trend: Dict, post_num: int) -> bool:
-    """Photorealistic image by title + teaser (English prompt for Clipdrop)"""
+    """Фотореалистичное изображение по заголовку и тизеру статьи (англ. промпт)"""
 
-    # 1. Тизер (первые 30 слов заголовка)
     teaser = ' '.join(title.split()[:30]) if len(title) > 30 else trend['news'][:90]
 
-    # 2. Англоязычный фотореалистичный промпт
     prompt = (
         f"Ultra-realistic 3D render of {title}. "
         f"{teaser}. "
@@ -210,7 +187,6 @@ def generate_image(client: Groq, title: str, trend: Dict, post_num: int) -> bool
         f"dark background, realistic materials, modern technology, photorealistic"
     )
 
-    # 3. Clipdrop
     clipdrop_key = os.getenv("CLIPDROP_API_KEY")
     if clipdrop_key:
         try:
@@ -228,16 +204,14 @@ def generate_image(client: Groq, title: str, trend: Dict, post_num: int) -> bool
         except Exception as e:
             print(f"❌ Clipdrop: {e}")
 
-    # 4. Fallback (тематический график)
     return generate_fallback_chart(post_num)
 
 def generate_fallback_chart(post_num: int) -> bool:
-    """Photorealistic fallback chart if Clipdrop fails"""
+    """Фотореалистичный fallback-график"""
     try:
         import matplotlib
         matplotlib.use('Agg')
         import matplotlib.pyplot as plt
-        import numpy as np
 
         years = ['2023', '2024', '2025']
         values = [random.randint(40, 100), random.randint(100, 200), random.randint(200, 350)]
@@ -247,8 +221,7 @@ def generate_fallback_chart(post_num: int) -> bool:
         plt.title(f'AI Trend Growth 2025 (Post #{post_num})', fontsize=16, fontweight='bold', color='white')
         plt.ylabel('Adoption / Efficiency', fontsize=14, color='white')
         plt.grid(True, alpha=0.3, color='gray')
-        plt.xticks(color='white')
-        plt.yticks(color='white')
+        plt.xticks(color='white'); plt.yticks(color='white')
         plt.gca().set_facecolor('#111111')
         plt.tight_layout()
 
@@ -298,15 +271,15 @@ def main():
         "date": f"{today} 00:00:00 -0000",
         "layout": "post",
         "image": f"/assets/images/posts/post-{post_num}.png",
-        "description": f"{article_type.lower()} about {trend['keywords'][0]} 2025",
-        "tags": ["AI", "technology", article_type.lower()] + trend['keywords'][:3],
+        "description": f"{article_type.lower()} о {trend['keywords'][0]} 2025",
+        "tags": ["ИИ", "технологии", article_type.lower()] + trend['keywords'][:3],
         "keywords": json.dumps(trend['keywords'][:8]),
-        "read_time": f"{max(5, len(content.split()) // 200)} min",
+        "read_time": f"{max(5, len(content.split()) // 200)} мин",
         "trend_id": trend["id"]
     }
 
     # 7. Save post
-    slug = re.sub(r'[^a-zA-Z0-9-]', '-', title.lower()).replace(" ", "-")[:50]
+    slug = re.sub(r'[^а-яА-Яa-zA-Z0-9-]', '-', title.lower()).replace(" ", "-")[:50]
     filename = f"{posts_dir}/{today}-{slug}.md"
     try:
         with open(filename, "w", encoding="utf-8") as f:
