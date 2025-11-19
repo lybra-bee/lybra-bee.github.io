@@ -426,4 +426,42 @@ table {
 table, th, td {
   border: 1px solid black;
 }
+/* Дополняем стили для таблиц сеткой */
+
+table {
+  border-collapse: collapse; /* Убираем двойные линии, объединяя границы */
+  width: 100%; /* Ширина на всю доступную область */
+  margin-bottom: 1.5rem; /* Отступ снизу */
+  font-family: Arial, sans-serif;
+  font-size: 16px;
+  color: #fff !important; /* Цвет текста в таблицах для тёмной темы */
+}
+
+th, td {
+  border: 1px solid rgba(255, 255, 255, 0.3); /* Полупрозрачная белая рамка */
+  padding: 12px 15px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+th {
+  background-color: rgba(255, 255, 255, 0.1); /* Тёмный полупрозрачный фон для заголовков */
+  font-weight: 700;
+  color: #fff !important;
+}
+
+tbody tr:nth-child(even) {
+  background-color: rgba(255, 255, 255, 0.05); /* Легкая заливка для чётных строк */
+}
+
+tbody tr:hover {
+  background-color: rgba(255, 255, 255, 0.15); /* Подсветка строки при наведении */
+}
+
+/* Адаптивная прокрутка таблиц, если не помещаются */
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 1.5rem;
+}
 
