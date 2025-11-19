@@ -420,3 +420,10 @@ body::before {
   content: "CSS Loaded - Fixed Navigation Buttons";
   display: none;
 }
+table {
+  border-collapse: collapse;
+}
+table, th, td {
+  border: 1px solid black;
+}
+
