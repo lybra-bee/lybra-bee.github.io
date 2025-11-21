@@ -8,7 +8,7 @@ level: Новичок
 duration: 35–45 минут
 goal: "Понять, как работает самый простой искусственный нейрон, и своими руками обучить перцептрон Розенблатта 1958 года, который разделит точки двух цветов"
 result: "Работающий Google Colab с живой анимацией обучения + твоя первая обученная нейросеть"
-image: /assets/images/lessons/lesson-01-cover.jpg
+image: /assets/images/lessons/image-4.jpg
 image_alt: "Первая в твоей жизни обученная нейросеть — перцептрон разделяет синие и красные точки"
 tags: [основы, нейрон, перцептрон, python, colab, история ИИ]
 ---
@@ -57,7 +57,7 @@ tags: [основы, нейрон, перцептрон, python, colab, исто
 
     входы → умножаем на веса → складываем → функция активации (порог)
 
-<img src="/assets/images/lessons/lesson-01-neuron.png" alt="Схема одного искусственного нейрона" class="img-fluid rounded shadow">
+<img src="/assets/images/lessons/image-5.png" alt="Схема одного искусственного нейрона" class="img-fluid rounded shadow">
 
 <br>
 
