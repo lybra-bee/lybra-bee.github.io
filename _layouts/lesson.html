@@ -14,41 +14,5 @@ layout: default
 
     <a href="/lessons/" class="btn btn-primary">← Назад к списку уроков</a>
   </article>
-  <div id="comments">
-  <h2>💬 Обсуждение урока</h2>
-  <form id="comment-form" method="POST" action="https://your-staticman-app.herokuapp.com/v3/entry/github/lybra-bee/lybra-ai-lab/main/comments">
-    <input type="hidden" name="options[slug]" value="{{ page.id }}">
-    <input type="hidden" name="options[fields][page]" value="{{ page.id }}">
-    <input type="text" name="fields[name]" placeholder="Ваше имя" required>
-    <input type="email" name="fields[email]" placeholder="Email (не публикуется)" required>
-    <textarea name="fields[comment]" placeholder="Ваш вопрос или отзыв по уроку" required></textarea>
-    <button type="submit">Отправить комментарий</button>
-  </form>
-  
-  <div id="comments-list">
-    {% assign page_comments = site.data.comments[page.id] | sort: 'date' %}
-    {% if page_comments.size > 0 %}
-      {% for comment in page_comments %}
-        <div class="comment">
-          <p><strong>{{ comment.fields.name }}</strong> ({{ comment.date | date: "%d.%m.%Y %H:%M" }}):</p>
-          <p>{{ comment.fields.comment }}</p>
-        </div>
-      {% endfor %}
-    {% else %}
-      <p>Будьте первым! Поделитесь своим результатом ДЗ.</p>
-    {% endif %}
-  </div>
-</div>
 
-<script>
-// AJAX для формы (опционально, чтобы не релоадить)
-document.getElementById('comment-form').addEventListener('submit', function(e) {
-  e.preventDefault();
-  // Fetch POST, обработка успеха/ошибки
-  fetch(this.action, { method: 'POST', body: new FormData(this) })
-    .then(res => res.json())
-    .then(data => { if (data.success) location.reload(); })
-    .catch(err => alert('Ошибка: ' + err));
-});
-</script>
 </main>
