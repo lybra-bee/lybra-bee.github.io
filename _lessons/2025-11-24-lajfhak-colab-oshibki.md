@@ -5,7 +5,7 @@ title: "Лайфхак-понедельник: 7 ошибок в Google Colab, �
 date: 2025-11-24
 categories: lajfhaki
 tags: [colab, ошибки, лайфхаки, python, 2025]
-image: /assets/images/lajfhaki/collab-mistakes-cover.jpg
+image: /assets/images/lajfhaki/image-7.jpg
 image_alt: "Грустный робот и куча ошибок в Colab"
 ---
 
