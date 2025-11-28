@@ -8,7 +8,7 @@ level: Новичок
 duration: 60–90 минут
 goal: "Научиться запускать Stable Diffusion в Google Colab, понять, как работает диффузионная модель, и сгенерировать свои первые 10–20 ИИ-картинок"
 result: "Работающий вечный генератор изображений + понимание магии под капотом"
-image: /assets/images/lessons/assets/images/lessons/grok_image_xi8ifbq.jpg
+image: /assets/images/lessons/grok_image_xi8ifbq.jpg
 image_alt: "Первое изображение, созданное тобой с помощью Stable Diffusion"
 tags: [stable-diffusion, генерация изображений, google-colab, diffusers, flux, нейросети, искусство]
 ---
@@ -79,7 +79,6 @@ Stable Diffusion — это нейросеть, обученная на милл
 
 ### 4. Полный код урока (одна ячейка — просто нажми ▶️)
 
-```python
 # ╔════════════════════════════════════════════════════════════════════╗
 # ║   STABLE DIFFUSION В COLAB — УРОК 2 (полная версия, ноябрь 2025)   ║
 # ╚════════════════════════════════════════════════════════════════════╝
