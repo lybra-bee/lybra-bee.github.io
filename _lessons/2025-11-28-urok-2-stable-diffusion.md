@@ -28,43 +28,6 @@ tags: [stable-diffusion, colab, генерация, искусство]
   <strong>Шаг 3.</strong> Вставь код ниже и нажми ▶️
 </div>
 
-```python
-# STABLE DIFFUSION — УРОК 2 (работает в 2025 году на бесплатном GPU)
-
-!pip install -q diffusers transformers accelerate ftfy bitsandbytes==0.43.3
-!pip install -q torch==2.3.0+cu121 torchvision --extra-index-url https://download.pytorch.org/whl/cu121
-
-import torch
-from diffusers import StableDiffusionPipeline
-from IPython.display import display
-
-print("Загружаем модель... (2–3 минуты один раз)")
-
-pipe = StableDiffusionPipeline.from_pretrained(
-    "runwayml/stable-diffusion-v1-5",
-    torch_dtype=torch.float16,
-    safety_checker=None,
-    requires_safety_checker=False
-).to("cuda")
-
-pipe.enable_attention_slicing()  # экономим память
-```
-
-# ←←← ТВОЙ ПРОМПТ ЗДЕСЬ (меняй сколько угодно!)
-prompt = "красивая русская девушка в киберпанк-городе ночью, неоновые вывески на кириллице, дождь, отражения в лужах, кинематографично, 8k, шедевр"
-negative_prompt = "размыто, уродливо, артефакты, лишние пальцы, плохая анатомия"
-
-image = pipe(
-    prompt,
-    negative_prompt=negative_prompt,
-    num_inference_steps=30,
-    guidance_scale=7.5
-).images[0]
-
-display(image)
-print("Готово! Сохрани картинку и пробуй новый промпт")
-<br>
-
 ### Полный код урока (одна ячейка — просто нажми ▶️)
 
 ```python
@@ -124,7 +87,7 @@ image = pipe(
 
 display(image)
 print("Готово! Меняй prompt и запускай снова — без ограничений")
----
+```
 Как это работает (по-человечески, без формул)
 
 Модель начинает с чистого телевизионного шума
