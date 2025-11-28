@@ -2,12 +2,7 @@
 layout: post
 title: "Урок 2. Stable Diffusion от А до Я — первое изображение за 10 минут"
 date: 2025-11-28 
-categories: uroki
-lesson_number: 2
-level: Новичок
-duration: 60–90 минут
-goal: "Запустить Stable Diffusion в браузере и создать свои первые ИИ-картинки"
-result: "Вечный генератор изображений в твоём Google Drive"
+author: "Lybra77"
 image: /assets/images/lessons/image-8.jpg
 image_alt: "Первое изображение, созданное тобой"
 tags: [stable-diffusion, colab, генерация, искусство]
