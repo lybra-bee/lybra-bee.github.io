@@ -13,7 +13,6 @@ image_alt: "Первое изображение, созданное тобой"
 tags: [stable-diffusion, colab, генерация, искусство]
 ---
 
-{% include lesson-header.html %}
 
 # Урок 2. Stable Diffusion от А до Я  
 Самый полный гайд 2025 года для новичков и не только
