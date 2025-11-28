@@ -1,9 +1,9 @@
 ---
-layout: post
-title: post
+layout: lesson
 title: "Лайфхак-понедельник: 7 ошибок в Google Colab, которые крадут у тебя часы (и как их убить за 30 секунд)"
 date: 2025-11-24
 categories: lajfhaki
+author: "Lybra77"
 tags: [colab, ошибки, лайфхаки, python, 2025]
 image: /assets/images/lessons/image-7.png
 image_alt: "Грустный робот и куча ошибок в Colab"
