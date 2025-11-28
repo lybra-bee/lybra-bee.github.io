@@ -1,5 +1,5 @@
 ---
-layout: post
+layout: lesson
 title: "Урок 2. Stable Diffusion от А до Я — первое изображение за 10 минут"
 date: 2025-11-28 
 author: "Lybra77"
