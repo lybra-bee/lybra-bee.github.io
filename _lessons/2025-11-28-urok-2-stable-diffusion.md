@@ -15,15 +15,53 @@ tags: [stable-diffusion, colab, генерация, искусство]
 Сегодня ты получишь в руки самую мощную открытую модель генерации изображений, которая работает бесплатно и без установки.
 
 <br>
+<br>
 
-### Готовая кнопка — запуск одной кликом
+### Запуск Stable Diffusion прямо сейчас — без установки и ссылок
 
-<a href="https://colab.research.google.com/drive/1T5f5iN7d2rK8v9mXz1pQb3cR4sT6uV7w?usp=sharing" target="_blank" class="btn btn-success btn-lg mb-4">
-  Запустить Stable Diffusion в Google Colab прямо сейчас (вечная ссылка)
-</a>
+Создай новый ноутбук в Google Colab (бесплатно) и вставь код ниже в первую ячейку.  
+Всё заработает за 2–5 минут на видеокарте Google (T4 16 ГБ).
 
-(или копируй код ниже в любой новый ноутбук)
+<div class="alert alert-success">
+  <strong>Шаг 1.</strong> Перейди: <a href="https://colab.research.google.com" target="_blank">colab.research.google.com</a> → «New notebook»<br>
+  <strong>Шаг 2.</strong> Runtime → Change runtime type → Hardware accelerator → <strong>GPU</strong> → Save<br>
+  <strong>Шаг 3.</strong> Вставь код ниже и нажми ▶️
+</div>
 
+```python
+# STABLE DIFFUSION — УРОК 2 (работает в 2025 году на бесплатном GPU)
+
+!pip install -q diffusers transformers accelerate ftfy bitsandbytes==0.43.3
+!pip install -q torch==2.3.0+cu121 torchvision --extra-index-url https://download.pytorch.org/whl/cu121
+
+import torch
+from diffusers import StableDiffusionPipeline
+from IPython.display import display
+
+print("Загружаем модель... (2–3 минуты один раз)")
+
+pipe = StableDiffusionPipeline.from_pretrained(
+    "runwayml/stable-diffusion-v1-5",
+    torch_dtype=torch.float16,
+    safety_checker=None,
+    requires_safety_checker=False
+).to("cuda")
+
+pipe.enable_attention_slicing()  # экономим память
+
+# ←←← ТВОЙ ПРОМПТ ЗДЕСЬ (меняй сколько угодно!)
+prompt = "красивая русская девушка в киберпанк-городе ночью, неоновые вывески на кириллице, дождь, отражения в лужах, кинематографично, 8k, шедевр"
+negative_prompt = "размыто, уродливо, артефакты, лишние пальцы, плохая анатомия"
+
+image = pipe(
+    prompt,
+    negative_prompt=negative_prompt,
+    num_inference_steps=30,
+    guidance_scale=7.5
+).images[0]
+
+display(image)
+print("Готово! Сохрани картинку и пробуй новый промпт")
 <br>
 
 ### Полный код урока (одна ячейка — просто нажми ▶️)
