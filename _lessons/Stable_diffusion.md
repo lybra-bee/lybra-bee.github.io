@@ -32,29 +32,29 @@ tags: [stable-diffusion, генерация изображений, colab, diffu
 [Открыть готовый ноутбук в Google Colab](https://colab.research.google.com/drive/1T5f5iN7d2rK8v9mXz1pQb3cR4sT6uV7w?usp=sharing)
 
 (или скопируй код ниже в новый Colab)
-
 ### Полный код урока (всё в одной ячейке — просто запусти)
 
-    # ╔══════════════════════════════════════════════════════════╗
-    # ║   STABLE DIFFUSION В COLAB — УРОК 2 (2025)               ║
-    # ╚══════════════════════════════════════════════════════════╝
+```python
+# ╔══════════════════════════════════════════════════════════╗
+# ║   STABLE DIFFUSION В COLAB — УРОК 2 (2025)               ║
+# ╚══════════════════════════════════════════════════════════╝
 
-    # 1. Установка (один раз, ~2 минуты)
-    !pip install -q diffusers transformers accelerate ftfy bitsandbytes==0.43.3
-    !pip install -q torch==2.3.0+cu121 torchvision --extra-index-url https://download.pytorch.org/whl/cu121
+# 1. Установка (один раз, ~2 минуты)
+!pip install -q diffusers transformers accelerate ftfy bitsandbytes==0.43.3
+!pip install -q torch==2.3.0+cu121 torchvision --extra-index-url https://download.pytorch.org/whl/cu121
 
-    import torch
-    from diffusers import StableDiffusionPipeline, StableDiffusionXLPipeline, FluxPipeline
-    from IPython.display import display
-    import time
+import torch
+from diffusers import StableDiffusionPipeline, StableDiffusionXLPipeline, FluxPipeline
+from IPython.display import display
+import time
 
-    # 2. Выбирай модель (раскомментируй нужную)
-    # Вариант А — классика (быстро и красиво)
-    pipe = StableDiffusionPipeline.from_pretrained(
-        "runwayml/stable-diffusion-v1-5",
-        torch_dtype=torch.float16,
-        safety_checker=None
-    )
+# 2. Выбирай модель (раскомментируй нужную)
+# Вариант А — классика (быстро и красиво)
+pipe = StableDiffusionPipeline.from_pretrained(
+    "runwayml/stable-diffusion-v1-5",
+    torch_dtype=torch.float16,
+    safety_checker=None
+)
 
     # Вариант Б — SDXL (ещё красивее, но чуть медленнее)
     # pipe = StableDiffusionXLPipeline.from_pretrained(
