@@ -28,12 +28,6 @@ tags: [controlnet, openpose, canny, depth, scribble, ip-adapter, stable-diffusio
 
 <br>
 
-### Готовый ноутбук — запуск одной кнопкой
-
-<a href="https://colab.research.google.com/drive/1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7?usp=sharing" target="_blank" class="btn btn-success btn-lg mb-4">
-  Запустить ControlNet прямо сейчас (вечная ссылка)
-</a>
-
 <br>
 
 ### Полный код урока (одна ячейка — просто запусти)
