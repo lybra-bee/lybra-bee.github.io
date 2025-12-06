@@ -64,7 +64,14 @@ document.addEventListener('DOMContentLoaded', function() {
 <main class="lesson container py-5">
   <article class="lesson-content">
     <h1 class="mb-4">{{ page.title }}</h1>
-
+{% if page.image %}
+  <div class="text-center mb-5">
+    <img src="{{ page.image | relative_url }}" 
+         alt="{{ page.image_alt | default: page.title }}" 
+         class="img-fluid rounded shadow-lg" 
+         style="max-width: 100%; height: auto; border-radius: 16px;">
+  </div>
+{% endif %}
     <div class="lesson-body">
       {{ content }}
     </div>
