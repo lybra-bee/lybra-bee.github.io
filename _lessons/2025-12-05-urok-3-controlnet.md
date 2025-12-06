@@ -9,7 +9,6 @@ duration: 60–90 минут
 goal: "Научиться управлять Stable Diffusion как профессиональный художник — по фото, позе, скетчу и даже видео"
 result: "Ты сможешь превращать селфи в аниме, скетч в шедевр и любое фото в любой стиль"
 image: /assets/images/lessons/lesson-03-cover.jpg
-image_alt: "Твоё селфи → аниме-персонаж за 30 секунд"
 tags: [controlnet, openpose, canny, depth, scribble, ip-adapter, stable-diffusion, 2025]
 ---
 
