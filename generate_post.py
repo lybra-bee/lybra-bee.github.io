@@ -112,7 +112,16 @@ def generate_title(client: Groq, trend: Dict, article_type: str) -> str:
     try:
         resp = client.chat.completions.create(
             messages=[
-                {"role": "system", "content": "Русский технический редактор. Короткие цепляющие заголовки с цифрами."},
+                {
+                    "role": "system",
+                    "content": (
+                        "Ты русский технический редактор. "
+                        "Пишешь короткие цепляющие заголовки с цифрами. "
+                        "Строго избегай политики: не упоминай политиков, партии, выборы, революции, "
+                        "войны, санкции, геополитические конфликты, политические лозунги и идеологии. "
+                        "Фокус только на технологиях, бизнесе и применении ИИ."
+                    ),
+                },
                 {"role": "user", "content": prompt}
             ],
             model="llama-3.1-8b-instant",
@@ -120,7 +129,7 @@ def generate_title(client: Groq, trend: Dict, article_type: str) -> str:
             temperature=0.9
         )
         title = resp.choices[0].message.content.strip()
-        return re.sub(r'[^\w\s-]', '', title).strip()[:80]
+        return re.sub(r'[^ws-]', '', title).strip()[:80]
     except Exception as e:
         print(f"❌ Ошибка заголовка: {e}")
         return templates[article_type]
@@ -136,7 +145,10 @@ def generate_article(client: Groq, trend: Dict, article_type: str) -> str:
     system_prompt = f"""Вы технический журналист по ИИ. Пишите конкретно, с цифрами, таблицами, командами.
 Тема: {trend['news']}
 Структура: {structure[article_type]}
-Требования: минимум 5 метрик, 2 таблицы, 3 примера."""
+Требования: минимум 5 метрик, 2 таблицы, 3 примера.
+Жёсткое ограничение: никакой политики. Не упоминайте политиков, политические партии, выборы, голосования,
+революции, войны, санкции, геополитические конфликты, политические лозунги и идеологии. Фокус только
+на технологиях, бизнес-метриках, рынках, исследованиях и практическом применении ИИ."""
     user_prompt = f"Напишите полную статью типа '{article_type}' (1500-3000 слов) на русском языке."
 
     try:
@@ -152,10 +164,11 @@ def generate_article(client: Groq, trend: Dict, article_type: str) -> str:
         return re.sub(r'<[^>]+>', '', resp.choices[0].message.content)
     except Exception as e:
         print(f"❌ Ошибка генерации статьи: {e}")
-        return f"# Ошибка генерации\nТема: {trend['news']}."
+        return f"# Ошибка генерации
+Тема: {trend['news']}."
 
 def validate_content(content: str) -> bool:
-    metrics = re.findall(r'(\d+\.?\d*)\s*(раз|GB|петафлоп|it/s|%|VRAM|OOM)', content)
+    metrics = re.findall(r'(d+.?d*)s*(раз|GB|петафлоп|it/s|%|VRAM|OOM)', content)
     companies = re.findall(r'(Google|Apple|Nvidia|Intel|OpenAI|Stanford)', content)
     return len(metrics) >= 5 and len(companies) >= 3
 
@@ -235,9 +248,11 @@ def generate_fallback_chart(post_num: int) -> bool:
 
 # ---------- ГЛАВНАЯ ФУНКЦИЯ ----------
 def main():
-    print(f"\n{'='*60}")
+    print(f"
+{'='*60}")
     print(f"🤖 AI Blog Generator | {datetime.datetime.now()}")
-    print(f"{'='*60}\n")
+    print(f"{'='*60}
+")
 
     if not os.getenv("GROQ_API_KEY"):
         print("❌ GROQ_API_KEY not found")
@@ -283,11 +298,15 @@ def main():
     filename = f"{posts_dir}/{today}-{slug}.md"
     try:
         with open(filename, "w", encoding="utf-8") as f:
-            f.write("---\n")
+            f.write("---
+")
             yaml.dump(front_matter, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
-            f.write("---\n\n")
+            f.write("---
+
+")
             f.write(content)
-        print(f"\n✅ Post saved: {filename}")
+        print(f"
+✅ Post saved: {filename}")
         print(f"   Size: {len(content)//1024}KB | Words: {len(content.split())}")
         return True
     except Exception as e:
