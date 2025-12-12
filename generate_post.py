@@ -254,8 +254,7 @@ def generate_fallback_chart(post_num: int) -> bool:
 def main() -> bool:
     print(" " + "=" * 60)
     print(f"🤖 AI Blog Generator | {datetime.datetime.now()}")
-    print("=" * 60 + "
-")
+    print("=" * 60 + " ")
 
     if not os.getenv("GROQ_API_KEY"):
         print("❌ GROQ_API_KEY not found")
