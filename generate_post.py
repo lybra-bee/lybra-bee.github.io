@@ -168,8 +168,7 @@ def generate_article(client: Groq, trend: Dict, article_type: str) -> str:
         return re.sub(r"<[^>]+>", "", resp.choices[0].message.content)
     except Exception as e:
         print(f"❌ Ошибка генерации статьи: {e}")
-        return "# Ошибка генерации
-Тема: не удалось получить контент от модели."
+        return "# Ошибка генерации Тема: не удалось получить контент от модели."
 
 def validate_content(content: str) -> bool:
     metrics = re.findall(r"(d+.?d*)s*(раз|GB|петафлоп|it/s|%|VRAM|OOM)", content)
