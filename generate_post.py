@@ -97,9 +97,8 @@ def update_trends_cache() -> List[Dict]:
         with open(EMBEDDED_TRENDS_FILE, "w", encoding="utf-8") as f:
             json.dump({"last_update": int(time.time()), "trends": trends}, f)
     except Exception as e:
-        print(f"❌ Ошибка генерации статьи: {e}")
-        return f"""# Ошибка генерации
-Тема: {trend['news']}."""
+        print(f"⚠️ Не удалось сохранить кэш: {e}")
+    return trends
 
 # ---------- ЗАГОЛОВОК (РУССКИЙ) ----------
 def generate_title(client: Groq, trend: Dict, article_type: str) -> str:
