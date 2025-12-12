@@ -1,7 +1,7 @@
 ---
-layout: post
+layout: lesson
 title: "Урок 4. IP-Adapter + FaceID — делаем идеальные портреты по одному селфи (лучшее в 2025)"
-date: 2025-12-12 11:00:00 +0300
+date: 2025-12-12
 categories: uroki
 lesson_number: 4
 level: Средний → Продвинутый
