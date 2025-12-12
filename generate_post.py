@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
 Автономная система генерации статей об ИИ 2025-2026
-- Самостоятельно обновляет тренды  
-- Генерирует **русскую** статью с цифрами и таблицами  
-- Создает **фотореалистичное изображение по заголовку и тизеру** (англ. промпт)  
-- Отправляет **тизер и изображение** в Telegram  
+- Самостоятельно обновляет тренды
+- Генерирует **русскую** статью с цифрами и таблицами
+- Создает **фотореалистичное изображение по заголовку и тизеру** (англ. промпт)
+- Отправляет **тизер и изображение** в Telegram
 - Оптимизирован для GitHub Actions
 """
 
@@ -93,11 +93,12 @@ def update_trends_cache() -> List[Dict]:
             if resp.status_code == 200:
                 data = resp.json()
                 for i, a in enumerate(data.get("articles", [])[:10]):
+                    title = a.get("title", "")
                     trends.append(
                         {
                             "id": f"news_{i}_{int(time.time())}",
-                            "news": a.get("title", "") + ". " + (a.get("description") or ""),
-                            "keywords": a.get("title", "").lower().split()[:5],
+                            "news": title + ". " + (a.get("description") or ""),
+                            "keywords": title.lower().split()[:5],
                             "category": "news",
                         }
                     )
@@ -117,11 +118,12 @@ def update_trends_cache() -> List[Dict]:
             for url in feeds:
                 feed = feedparser.parse(url)
                 for i, e in enumerate(feed.entries[:5]):
+                    title = e.get("title", "")
                     trends.append(
                         {
                             "id": f"rss_{i}_{ts}",
-                            "news": e.get("title", "") + ". " + e.get("description", "")[:200],
-                            "keywords": e.get("title", "").lower().split()[:5],
+                            "news": title + ". " + e.get("description", "")[:200],
+                            "keywords": title.lower().split()[:5],
                             "category": "rss",
                         }
                     )
@@ -215,8 +217,8 @@ def generate_article(client: Groq, trend: Dict, article_type: str) -> str:
         return content
     except Exception as e:
         print(f"❌ Ошибка генерации статьи: {e}")
-        return """# Ошибка генерации
-Тема: не удалось получить контент от модели."""
+        return "# Ошибка генерации
+Тема: не удалось получить контент от модели."
 
 def validate_content(content: str) -> bool:
     metrics = re.findall(r"(d+.?d*)s*(раз|GB|петафлоп|it/s|%|VRAM|OOM)", content)
@@ -322,10 +324,10 @@ def generate_fallback_chart(post_num: int) -> bool:
 
 # ---------- ГЛАВНАЯ ФУНКЦИЯ ----------
 def main() -> bool:
-    print(f"
-{'=' * 60}")
+    print("
+" + "=" * 60)
     print(f"🤖 AI Blog Generator | {datetime.datetime.now()}")
-    print(f"{'=' * 60}
+    print("=" * 60 + "
 ")
 
     if not os.getenv("GROQ_API_KEY"):
@@ -366,9 +368,7 @@ def main() -> bool:
         "trend_id": trend["id"],
     }
 
-    slug = (
-        re.sub(r"[^а-яА-Яa-zA-Z0-9-]", "-", title.lower()).replace(" ", "-")[:50]
-    )
+    slug = re.sub(r"[^а-яА-Яa-zA-Z0-9-]", "-", title.lower()).replace(" ", "-")[:50]
     filename = f"{posts_dir}/{today}-{slug}.md"
     try:
         with open(filename, "w", encoding="utf-8") as f:
