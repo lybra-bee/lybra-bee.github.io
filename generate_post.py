@@ -82,11 +82,7 @@ def update_trends_cache() -> List[Dict]:
             resp = requests.get(
                 "https://newsapi.org/v2/everything",
                 headers={"X-Api-Key": api_key},
-                params={
-                    "q": "artificial intelligence",
-                    "language": "en",
-                    "pageSize": 10,
-                },
+                params={"q": "artificial intelligence", "language": "en", "pageSize": 10},
                 timeout=10,
             )
             if resp.status_code == 200:
@@ -147,21 +143,21 @@ def generate_title(client: Groq, trend: Dict, article_type: str) -> str:
         "Статья": f"Почему {trend['keywords'][0]} — будущее ИИ: объяснение эксперта",
         "Мастер-класс": f"Мастер-класс: {trend['keywords'][0]} (продвинутый уровень)",
     }
+
     prompt = (
-        f"Создай один заголовок (5-12 слов) для статьи типа '{article_type}' "
-        f"о теме: {trend['news']}. Будь конкретным, без общих фраз. Только заголовок."
+        f"Создай один заголовок (5-12 слов) для статьи типа '{article_type}' о теме: "
+        f"{trend['news']}. Будь конкретным, без общих фраз. Только заголовок."
     )
+
     try:
         resp = client.chat.completions.create(
             messages=[
                 {
                     "role": "system",
                     "content": (
-                        "Ты русский технический редактор. "
-                        "Пишешь короткие цепляющие заголовки с цифрами. "
-                        "Строго избегай политики: не упоминай политиков, партии, выборы, революции, "
-                        "войны, санкции, геополитические конфликты, политические лозунги и идеологии. "
-                        "Фокус только на технологиях, бизнесе и применении ИИ."
+                        "Русский технический редактор. Короткие цепляющие заголовки с цифрами. "
+                        "Запрещено упоминать политику: политиков, партии, выборы, войны, санкции, "
+                        "геополитику, идеологии, лозунги. Только технологии и ИИ."
                     ),
                 },
                 {"role": "user", "content": prompt},
@@ -171,8 +167,7 @@ def generate_title(client: Groq, trend: Dict, article_type: str) -> str:
             temperature=0.9,
         )
         title = resp.choices[0].message.content.strip()
-        title = re.sub(r"[^ws-]", "", title).strip()
-        return title[:80]
+        return re.sub(r"[^ws-]", "", title).strip()[:80]
     except Exception as e:
         print(f"❌ Ошибка заголовка: {e}")
         return templates[article_type]
@@ -185,16 +180,20 @@ def generate_article(client: Groq, trend: Dict, article_type: str) -> str:
         "Статья": "Анализ новости, технические детали, исследования, рекомендации, выводы",
         "Мастер-класс": "Введение, инструменты, практические упражнения, результаты, продвинутые техники",
     }
-    system_prompt = f"""Вы технический журналист по ИИ. Пишите конкретно, с цифрами, таблицами, командами.
-Тема: {trend['news']}
-Структура: {structure[article_type]}
-Требования: минимум 5 метрик, 2 таблицы, 3 примера.
-Жёсткое ограничение: никакой политики. Не упоминайте политиков, политические партии, выборы, голосования,
-революции, войны, санкции, геополитические конфликты, политические лозунги и идеологии. Фокус только
-на технологиях, бизнес-метриках, рынках, исследованиях и практическом применении ИИ."""
-    user_prompt = (
-        f"Напишите полную статью типа '{article_type}' (1500-3000 слов) на русском языке."
+
+    system_prompt = (
+        "Вы технический журналист по ИИ. Пишите конкретно, с цифрами, таблицами, командами.
+"
+        f"Тема: {trend['news']}
+"
+        f"Структура: {structure[article_type]}
+"
+        "Требования: минимум 5 метрик, 2 таблицы, 3 примера.
+"
+        "Жёсткое ограничение: никакой политики. Не упоминайте политиков, партии, выборы, "
+        "революции, войны, санкции, геополитику, идеологии и лозунги."
     )
+    user_prompt = f"Напишите полную статью типа '{article_type}' (1500-3000 слов) на русском языке."
 
     try:
         resp = client.chat.completions.create(
@@ -202,17 +201,11 @@ def generate_article(client: Groq, trend: Dict, article_type: str) -> str:
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
-            model=(
-                "llama-3.3-70b-versatile"
-                if len(trend.get("news", "")) > 100
-                else "llama-3.1-8b-instant"
-            ),
+            model="llama-3.3-70b-versatile" if len(trend.get("news", "")) > 100 else "llama-3.1-8b-instant",
             max_tokens=4000,
             temperature=0.75,
         )
-        content = resp.choices[0].message.content
-        content = re.sub(r"<[^>]+>", "", content)
-        return content
+        return re.sub(r"<[^>]+>", "", resp.choices[0].message.content)
     except Exception as e:
         print(f"❌ Ошибка генерации статьи: {e}")
         return "# Ошибка генерации
@@ -227,15 +220,23 @@ def refine_content(content: str, trend: Dict) -> str:
     if validate_content(content):
         return content
     print("⚠️ Добавляю конкретные данные...")
-    concrete = f"""
+    concrete = (
+        "
 ### Данные и источники
-**Новость:** {trend['news']}
-**Ключевые метрики 2025:**
-- Рост: {random.randint(50, 200)}% YoY
-- Производительность: {random.randint(2, 10)}x улучшение
-- Инвестиции: ${random.randint(10, 150)} млрд
-**Источники:** Stanford HAI, {trend['keywords'][0].title()} Tech Blog
-"""
+"
+        f"**Новость:** {trend['news']}
+"
+        "**Ключевые метрики 2025:**
+"
+        f"- Рост: {random.randint(50, 200)}% YoY
+"
+        f"- Производительность: {random.randint(2, 10)}x улучшение
+"
+        f"- Инвестиции: ${random.randint(10, 150)} млрд
+"
+        f"**Источники:** Stanford HAI, {trend['keywords'][0].title()} Tech Blog
+"
+    )
     return content + concrete
 
 # ---------- ИЗОБРАЖЕНИЕ: ФОТОРЕАЛИСТИЧНО, ПО ТЕМЕ, АНГЛ. ----------
@@ -279,27 +280,11 @@ def generate_fallback_chart(post_num: int) -> bool:
         import matplotlib.pyplot as plt
 
         years = ["2023", "2024", "2025"]
-        values = [
-            random.randint(40, 100),
-            random.randint(100, 200),
-            random.randint(200, 350),
-        ]
+        values = [random.randint(40, 100), random.randint(100, 200), random.randint(200, 350)]
 
         plt.figure(figsize=(12, 6))
-        plt.plot(
-            years,
-            values,
-            marker="o",
-            linewidth=3,
-            markersize=8,
-            color="#00BFFF",
-        )
-        plt.title(
-            f"AI Trend Growth 2025 (Post #{post_num})",
-            fontsize=16,
-            fontweight="bold",
-            color="white",
-        )
+        plt.plot(years, values, marker="o", linewidth=3, markersize=8, color="#00BFFF")
+        plt.title(f"AI Trend Growth 2025 (Post #{post_num})", fontsize=16, fontweight="bold", color="white")
         plt.ylabel("Adoption / Efficiency", fontsize=14, color="white")
         plt.grid(True, alpha=0.3, color="gray")
         plt.xticks(color="white")
@@ -307,12 +292,7 @@ def generate_fallback_chart(post_num: int) -> bool:
         plt.gca().set_facecolor("#111111")
         plt.tight_layout()
 
-        plt.savefig(
-            f"{assets_dir}/post-{post_num}.png",
-            dpi=150,
-            bbox_inches="tight",
-            facecolor="#111111",
-        )
+        plt.savefig(f"{assets_dir}/post-{post_num}.png", dpi=150, bbox_inches="tight", facecolor="#111111")
         plt.close()
         print(f"✅ Fallback chart: post-{post_num}.png (themed)")
         return True
@@ -340,7 +320,7 @@ def main() -> bool:
 
     trend = random.choice(trends)
     article_type = random.choice(["Обзор", "Урок", "Статья", "Мастер-класс"])
-    print(f"📈 Trend: {trend['keywords'][0]} ({trend['category']})")
+    print(f"📈 Trend: {trend['keywords'][0]} ({trend.get('category', 'unknown')})")
     print(f"📝 Type: {article_type}")
 
     title = generate_title(client, trend, article_type)
@@ -372,13 +352,7 @@ def main() -> bool:
         with open(filename, "w", encoding="utf-8") as f:
             f.write("---
 ")
-            yaml.dump(
-                front_matter,
-                f,
-                allow_unicode=True,
-                default_flow_style=False,
-                sort_keys=False,
-            )
+            yaml.dump(front_matter, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
             f.write("---
 
 ")
@@ -401,9 +375,7 @@ if __name__ == "__main__":
     image_files = glob.glob(f"{assets_dir}/*.png") + glob.glob(f"{assets_dir}/*.jpg")
     post_num = len(image_files) + 1
 
-    for old_file in sorted(
-        glob.glob(f"{posts_dir}/*.md"), key=os.path.getctime, reverse=True
-    )[50:]:
+    for old_file in sorted(glob.glob(f"{posts_dir}/*.md"), key=os.path.getctime, reverse=True)[50:]:
         try:
             os.remove(old_file)
             print(f"🗑️ Deleted old post: {old_file}")
@@ -411,5 +383,5 @@ if __name__ == "__main__":
             pass
 
     today = datetime.date.today()
-    ok = main()
-    raise SystemExit(0 if ok else 1)
+    success = main()
+    raise SystemExit(0 if success else 1)
