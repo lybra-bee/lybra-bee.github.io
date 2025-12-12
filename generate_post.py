@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
 Автономная система генерации статей об ИИ 2025-2026
-- Самостоятельно обновляет тренды
-- Генерирует **русскую** статью с цифрами и таблицами
-- Создает **фотореалистичное изображение по заголовку и тизеру** (англ. промпт)
-- Отправляет **тизер и изображение** в Telegram
-- Оптимизирован для GitHub Actions
+- Самостоятельно обновляет тренды  
+- Генерирует **русскую** статью с цифрами и таблицами  
+- Создает **фотореалистичное изображение по заголовку и тизеру** (англ. промпт)  
+- Отправляет **тизер и изображение** в Telegram  
+- Отоптимизирован для GitHub Actions
 """
 
 import datetime
@@ -27,36 +27,11 @@ BASE_URL = "https://lybra-ai.ru"
 
 # ---------- TRENDS (FALLBACK) ----------
 EMBEDDED_TRENDS = [
-    {
-        "id": "quantum_2025",
-        "news": "Google Willow quantum chip achieves verifiable quantum advantage, 13000x faster",
-        "keywords": ["quantum computing", "Google Willow"],
-        "category": "hardware",
-    },
-    {
-        "id": "m5_chip_2025",
-        "news": "Apple M5 delivers 4x GPU performance for AI vs M4, Nvidia DGX Spark 1 petaflop",
-        "keywords": ["Apple M5", "Nvidia DGX"],
-        "category": "hardware",
-    },
-    {
-        "id": "agentic_ai_2025",
-        "news": "Multi-agent systems and Agentic AI integrate RAG for enterprise",
-        "keywords": ["Agentic AI", "RAG"],
-        "category": "software",
-    },
-    {
-        "id": "medical_ai_2025",
-        "news": "BInD model designs drugs without molecular data, FDA approved 223 AI devices",
-        "keywords": ["AI drug discovery", "FDA"],
-        "category": "healthcare",
-    },
-    {
-        "id": "efficiency_2025",
-        "news": "GPT-3.5 inference cost dropped 280x in 2 years, open-weights closed gap 1.7%",
-        "keywords": ["model efficiency", "open weights"],
-        "category": "optimization",
-    },
+    {"id": "quantum_2025", "news": "Google Willow quantum chip achieves verifiable quantum advantage, 13000x faster", "keywords": ["quantum computing", "Google Willow"], "category": "hardware"},
+    {"id": "m5_chip_2025", "news": "Apple M5 delivers 4x GPU performance for AI vs M4, Nvidia DGX Spark 1 petaflop", "keywords": ["Apple M5", "Nvidia DGX"], "category": "hardware"},
+    {"id": "agentic_ai_2025", "news": "Multi-agent systems and Agentic AI integrate RAG for enterprise", "keywords": ["Agentic AI", "RAG"], "category": "software"},
+    {"id": "medical_ai_2025", "news": "BInD model designs drugs without molecular data, FDA approved 223 AI devices", "keywords": ["AI drug discovery", "FDA"], "category": "healthcare"},
+    {"id": "efficiency_2025", "news": "GPT-3.5 inference cost dropped 280x in 2 years, open-weights closed gap 1.7%", "keywords": ["model efficiency", "open weights"], "category": "optimization"},
 ]
 
 # ---------- TRENDS SYSTEM ----------
@@ -74,8 +49,7 @@ def load_trends() -> List[Dict]:
 
 def update_trends_cache() -> List[Dict]:
     print("🔄 Обновление трендов...")
-    trends: List[Dict] = []
-
+    trends = []
     # NewsAPI
     api_key = os.getenv("NEWSAPI_KEY")
     if api_key:
@@ -83,25 +57,16 @@ def update_trends_cache() -> List[Dict]:
             resp = requests.get(
                 "https://newsapi.org/v2/everything",
                 headers={"X-Api-Key": api_key},
-                params={
-                    "q": "artificial intelligence",
-                    "language": "en",
-                    "pageSize": 10,
-                },
-                timeout=10,
+                params={"q": "artificial intelligence", "language": "en", "pageSize": 10},
+                timeout=10
             )
             if resp.status_code == 200:
-                data = resp.json()
-                for i, a in enumerate(data.get("articles", [])[:10]):
-                    title = a.get("title", "")
-                    trends.append(
-                        {
-                            "id": f"news_{i}_{int(time.time())}",
-                            "news": title + ". " + (a.get("description") or ""),
-                            "keywords": title.lower().split()[:5],
-                            "category": "news",
-                        }
-                    )
+                trends = [{
+                    "id": f"news_{i}_{int(time.time())}",
+                    "news": a["title"] + ". " + (a.get("description") or ""),
+                    "keywords": a["title"].lower().split()[:5],
+                    "category": "news"
+                } for i, a in enumerate(resp.json().get("articles", [])[:10])]
         except Exception as e:
             print(f"❌ NewsAPI: {e}")
 
@@ -109,24 +74,18 @@ def update_trends_cache() -> List[Dict]:
     if not trends:
         try:
             import feedparser
-
             feeds = [
                 "https://www.artificialintelligence-news.com/feed/",
-                "https://venturebeat.com/ai/feed/",
+                "https://venturebeat.com/ai/feed/"
             ]
-            ts = int(time.time())
             for url in feeds:
                 feed = feedparser.parse(url)
-                for i, e in enumerate(feed.entries[:5]):
-                    title = e.get("title", "")
-                    trends.append(
-                        {
-                            "id": f"rss_{i}_{ts}",
-                            "news": title + ". " + e.get("description", "")[:200],
-                            "keywords": title.lower().split()[:5],
-                            "category": "rss",
-                        }
-                    )
+                trends.extend([{
+                    "id": f"rss_{i}_{int(time.time())}",
+                    "news": e.get("title", "") + ". " + e.get("description", "")[:200],
+                    "keywords": e.get("title", "").lower().split()[:5],
+                    "category": "rss"
+                } for i, e in enumerate(feed.entries[:5])])
         except Exception as e:
             print(f"❌ RSS: {e}")
 
@@ -147,12 +106,9 @@ def generate_title(client: Groq, trend: Dict, article_type: str) -> str:
         "Обзор": f"Топ-{random.randint(5, 10)} трендов {trend['keywords'][0]} 2025: цифры и факты",
         "Урок": f"Практика: {trend['keywords'][0]} для начинающих (пошагово)",
         "Статья": f"Почему {trend['keywords'][0]} — будущее ИИ: объяснение эксперта",
-        "Мастер-класс": f"Мастер-класс: {trend['keywords'][0]} (продвинутый уровень)",
+        "Мастер-класс": f"Мастер-класс: {trend['keywords'][0]} (продвинутый уровень)"
     }
-    prompt = (
-        f"Создай один заголовок (5-12 слов) для статьи типа '{article_type}' "
-        f"о теме: {trend['news']}. Будь конкретным, без общих фраз. Только заголовок."
-    )
+    prompt = f"Создай один заголовок (5-12 слов) для статьи типа '{article_type}' о теме: {trend['news']}. Будь конкретным, без общих фраз. Только заголовок."
     try:
         resp = client.chat.completions.create(
             messages=[
@@ -166,15 +122,14 @@ def generate_title(client: Groq, trend: Dict, article_type: str) -> str:
                         "Фокус только на технологиях, бизнесе и применении ИИ."
                     ),
                 },
-                {"role": "user", "content": prompt},
+                {"role": "user", "content": prompt}
             ],
             model="llama-3.1-8b-instant",
             max_tokens=30,
-            temperature=0.9,
+            temperature=0.9
         )
         title = resp.choices[0].message.content.strip()
-        title = re.sub(r"[^ws-]", "", title).strip()
-        return title[:80]
+        return re.sub(r'[^ws-]', '', title).strip()[:80]
     except Exception as e:
         print(f"❌ Ошибка заголовка: {e}")
         return templates[article_type]
@@ -185,7 +140,7 @@ def generate_article(client: Groq, trend: Dict, article_type: str) -> str:
         "Обзор": "Введение, 4-6 трендов с цифрами, сравнительная таблица, прогнозы, заключение",
         "Урок": "Введение с проблемой, подготовка, 5-8 шагов с кодом, сравнение методов, советы",
         "Статья": "Анализ новости, технические детали, исследования, рекомендации, выводы",
-        "Мастер-класс": "Введение, инструменты, практические упражнения, результаты, продвинутые техники",
+        "Мастер-класс": "Введение, инструменты, практические упражнения, результаты, продвинутые техники"
     }
     system_prompt = f"""Вы технический журналист по ИИ. Пишите конкретно, с цифрами, таблицами, командами.
 Тема: {trend['news']}
@@ -194,35 +149,29 @@ def generate_article(client: Groq, trend: Dict, article_type: str) -> str:
 Жёсткое ограничение: никакой политики. Не упоминайте политиков, политические партии, выборы, голосования,
 революции, войны, санкции, геополитические конфликты, политические лозунги и идеологии. Фокус только
 на технологиях, бизнес-метриках, рынках, исследованиях и практическом применении ИИ."""
-    user_prompt = (
-        f"Напишите полную статью типа '{article_type}' (1500-3000 слов) на русском языке."
-    )
+    user_prompt = f"Напишите полную статью типа '{article_type}' (1500-3000 слов) на русском языке."
 
     try:
         resp = client.chat.completions.create(
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
+                {"role": "user", "content": user_prompt}
             ],
-            model=(
-                "llama-3.3-70b-versatile"
-                if len(trend.get("news", "")) > 100
-                else "llama-3.1-8b-instant"
-            ),
+            model="llama-3.3-70b-versatile" if len(trend["news"]) > 100 else "llama-3.1-8b-instant",
             max_tokens=4000,
-            temperature=0.75,
+            temperature=0.75
         )
-        content = resp.choices[0].message.content
-        content = re.sub(r"<[^>]+>", "", content)
-        return content
+        return re.sub(r'<[^>]+>', '', resp.choices[0].message.content)
     except Exception as e:
         print(f"❌ Ошибка генерации статьи: {e}")
-        return "# Ошибка генерации
-Тема: не удалось получить контент от модели."
+        # ВАЖНО: одна строка, 
+ внутри кавычек
+        return f"# Ошибка генерации
+Тема: {trend['news']}."
 
 def validate_content(content: str) -> bool:
-    metrics = re.findall(r"(d+.?d*)s*(раз|GB|петафлоп|it/s|%|VRAM|OOM)", content)
-    companies = re.findall(r"(Google|Apple|Nvidia|Intel|OpenAI|Stanford)", content)
+    metrics = re.findall(r'(d+.?d*)s*(раз|GB|петафлоп|it/s|%|VRAM|OOM)', content)
+    companies = re.findall(r'(Google|Apple|Nvidia|Intel|OpenAI|Stanford)', content)
     return len(metrics) >= 5 and len(companies) >= 3
 
 def refine_content(content: str, trend: Dict) -> str:
@@ -244,13 +193,13 @@ def refine_content(content: str, trend: Dict) -> str:
 def generate_image(client: Groq, title: str, trend: Dict, post_num: int) -> bool:
     """Фотореалистичное изображение по заголовку и тизеру статьи (англ. промпт)"""
 
-    teaser = " ".join(title.split()[:30]) if len(title) > 30 else trend["news"][:90]
+    teaser = ' '.join(title.split()[:30]) if len(title) > 30 else trend['news'][:90]
 
     prompt = (
         f"Ultra-realistic 3D render of {title}. "
         f"{teaser}. "
-        "Professional studio lighting, high detail, 8K resolution, "
-        "dark background, realistic materials, modern technology, photorealistic"
+        f"Professional studio lighting, high detail, 8K resolution, "
+        f"dark background, realistic materials, modern technology, photorealistic"
     )
 
     clipdrop_key = os.getenv("CLIPDROP_API_KEY")
@@ -258,9 +207,9 @@ def generate_image(client: Groq, title: str, trend: Dict, post_num: int) -> bool
         try:
             resp = requests.post(
                 "https://clipdrop-api.co/text-to-image/v1",
-                files={"prompt": (None, prompt)},
-                headers={"x-api-key": clipdrop_key},
-                timeout=90,
+                files={'prompt': (None, prompt)},
+                headers={'x-api-key': clipdrop_key},
+                timeout=90
             )
             if resp.status_code == 200:
                 with open(f"{assets_dir}/post-{post_num}.png", "wb") as f:
@@ -276,45 +225,22 @@ def generate_fallback_chart(post_num: int) -> bool:
     """Фотореалистичный fallback-график"""
     try:
         import matplotlib
-
-        matplotlib.use("Agg")
+        matplotlib.use('Agg')
         import matplotlib.pyplot as plt
 
-        years = ["2023", "2024", "2025"]
-        values = [
-            random.randint(40, 100),
-            random.randint(100, 200),
-            random.randint(200, 350),
-        ]
+        years = ['2023', '2024', '2025']
+        values = [random.randint(40, 100), random.randint(100, 200), random.randint(200, 350)]
 
         plt.figure(figsize=(12, 6))
-        plt.plot(
-            years,
-            values,
-            marker="o",
-            linewidth=3,
-            markersize=8,
-            color="#00BFFF",
-        )
-        plt.title(
-            f"AI Trend Growth 2025 (Post #{post_num})",
-            fontsize=16,
-            fontweight="bold",
-            color="white",
-        )
-        plt.ylabel("Adoption / Efficiency", fontsize=14, color="white")
-        plt.grid(True, alpha=0.3, color="gray")
-        plt.xticks(color="white")
-        plt.yticks(color="white")
-        plt.gca().set_facecolor("#111111")
+        plt.plot(years, values, marker='o', linewidth=3, markersize=8, color='#00BFFF')
+        plt.title(f'AI Trend Growth 2025 (Post #{post_num})', fontsize=16, fontweight='bold', color='white')
+        plt.ylabel('Adoption / Efficiency', fontsize=14, color='white')
+        plt.grid(True, alpha=0.3, color='gray')
+        plt.xticks(color='white'); plt.yticks(color='white')
+        plt.gca().set_facecolor('#111111')
         plt.tight_layout()
 
-        plt.savefig(
-            f"{assets_dir}/post-{post_num}.png",
-            dpi=150,
-            bbox_inches="tight",
-            facecolor="#111111",
-        )
+        plt.savefig(f"{assets_dir}/post-{post_num}.png", dpi=150, bbox_inches='tight', facecolor='#111111')
         plt.close()
         print(f"✅ Fallback chart: post-{post_num}.png (themed)")
         return True
@@ -323,11 +249,11 @@ def generate_fallback_chart(post_num: int) -> bool:
         return False
 
 # ---------- ГЛАВНАЯ ФУНКЦИЯ ----------
-def main() -> bool:
-    print("
-" + "=" * 60)
+def main():
+    print(f"
+{'='*60}")
     print(f"🤖 AI Blog Generator | {datetime.datetime.now()}")
-    print("=" * 60 + "
+    print(f"{'='*60}
 ")
 
     if not os.getenv("GROQ_API_KEY"):
@@ -356,38 +282,34 @@ def main() -> bool:
     if not image_generated:
         print("⚠️ Image not generated, will use fallback")
 
+    # 6. Front matter
     front_matter = {
         "title": title,
         "date": f"{today} 00:00:00 -0000",
         "layout": "post",
         "image": f"/assets/images/posts/post-{post_num}.png",
         "description": f"{article_type.lower()} о {trend['keywords'][0]} 2025",
-        "tags": ["ИИ", "технологии", article_type.lower()] + trend["keywords"][:3],
-        "keywords": json.dumps(trend["keywords"][:8]),
+        "tags": ["ИИ", "технологии", article_type.lower()] + trend['keywords'][:3],
+        "keywords": json.dumps(trend['keywords'][:8]),
         "read_time": f"{max(5, len(content.split()) // 200)} мин",
-        "trend_id": trend["id"],
+        "trend_id": trend["id"]
     }
 
-    slug = re.sub(r"[^а-яА-Яa-zA-Z0-9-]", "-", title.lower()).replace(" ", "-")[:50]
+    # 7. Save post
+    slug = re.sub(r'[^а-яА-Яa-zA-Z0-9-]', '-', title.lower()).replace(" ", "-")[:50]
     filename = f"{posts_dir}/{today}-{slug}.md"
     try:
         with open(filename, "w", encoding="utf-8") as f:
             f.write("---
 ")
-            yaml.dump(
-                front_matter,
-                f,
-                allow_unicode=True,
-                default_flow_style=False,
-                sort_keys=False,
-            )
+            yaml.dump(front_matter, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
             f.write("---
 
 ")
             f.write(content)
         print(f"
 ✅ Post saved: {filename}")
-        print(f"   Size: {len(content) // 1024}KB | Words: {len(content.split())}")
+        print(f"   Size: {len(content)//1024}KB | Words: {len(content.split())}")
         return True
     except Exception as e:
         print(f"❌ Save error: {e}")
@@ -395,23 +317,21 @@ def main() -> bool:
 
 # ---------- ИНИЦИАЛИЗАЦИЯ ----------
 if __name__ == "__main__":
-    posts_dir = "_posts"
-    assets_dir = "assets/images/posts"
+    posts_dir = '_posts'
+    assets_dir = 'assets/images/posts'
     os.makedirs(assets_dir, exist_ok=True)
     os.makedirs(posts_dir, exist_ok=True)
 
     image_files = glob.glob(f"{assets_dir}/*.png") + glob.glob(f"{assets_dir}/*.jpg")
     post_num = len(image_files) + 1
 
-    for old_file in sorted(
-        glob.glob(f"{posts_dir}/*.md"), key=os.path.getctime, reverse=True
-    )[50:]:
+    for old_file in sorted(glob.glob(f"{posts_dir}/*.md"), key=os.path.getctime, reverse=True)[50:]:
         try:
             os.remove(old_file)
             print(f"🗑️ Deleted old post: {old_file}")
-        except Exception:
+        except:
             pass
 
     today = datetime.date.today()
-    ok = main()
-    raise SystemExit(0 if ok else 1)
+    success = main()
+    exit(0 if success else 1)
