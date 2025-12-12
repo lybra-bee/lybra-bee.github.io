@@ -58,8 +58,7 @@ def update_trends_cache() -> List[Dict]:
                 "https://newsapi.org/v2/everything",
                 headers={"X-Api-Key": api_key},
                 params={"q": "artificial intelligence", "language": "en", "pageSize": 10},
-                timeout=10
-            )
+                timeout=10)
             if resp.status_code == 200:
                 data = resp.json()
                 for i, a in enumerate(data.get("articles", [])[:10]):
@@ -122,8 +121,7 @@ def generate_title(client: Groq, trend: Dict, article_type: str) -> str:
                     "content": (
                         "Русский технический редактор. Короткие цепляющие заголовки с цифрами. "
                         "Запрещено упоминать политику: политиков, партии, выборы, войны, санкции, "
-                        "геополитику, идеологии и лозунги. Только технологии и ИИ."
-                    ),
+                        "геополитику, идеологии и лозунги. Только технологии и ИИ."),
                 },
                 {"role": "user", "content": prompt},
             ],
