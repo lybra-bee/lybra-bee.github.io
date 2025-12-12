@@ -298,15 +298,11 @@ def main() -> bool:
     filename = f"{posts_dir}/{today}-{slug}.md"
     try:
         with open(filename, "w", encoding="utf-8") as f:
-            f.write("---
-")
+            f.write("---")
             yaml.dump(front_matter, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
-            f.write("---
-
-")
+            f.write("---")
             f.write(content)
-        print(f"
-✅ Post saved: {filename}")
+        print(f"✅ Post saved: {filename}")
         print(f"   Size: {len(content) // 1024}KB | Words: {len(content.split())}")
         return True
     except Exception as e:
