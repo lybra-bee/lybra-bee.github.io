@@ -5,7 +5,7 @@
 - Генерирует **русскую** статью с цифрами и таблицами  
 - Создает **фотореалистичное изображение по заголовку и тизеру** (англ. промпт)  
 - Отправляет **тизер и изображение** в Telegram  
-- Оптимизирован для GitHub Actions
+- Отоптимизирован для GitHub Actions
 """
 
 import datetime
@@ -164,6 +164,8 @@ def generate_article(client: Groq, trend: Dict, article_type: str) -> str:
         return re.sub(r'<[^>]+>', '', resp.choices[0].message.content)
     except Exception as e:
         print(f"❌ Ошибка генерации статьи: {e}")
+        # ВАЖНО: одна строка, 
+ внутри кавычек
         return f"# Ошибка генерации
 Тема: {trend['news']}."
 
