@@ -252,8 +252,7 @@ def generate_fallback_chart(post_num: int) -> bool:
 
 # ---------- ГЛАВНАЯ ФУНКЦИЯ ----------
 def main() -> bool:
-    print("
-" + "=" * 60)
+    print(" " + "=" * 60)
     print(f"🤖 AI Blog Generator | {datetime.datetime.now()}")
     print("=" * 60 + "
 ")
