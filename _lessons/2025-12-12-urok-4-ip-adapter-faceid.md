@@ -8,7 +8,7 @@ level: Средний → Продвинутый
 duration: 70–120 минут
 goal: "Научиться создавать идеальные портреты любого человека по одному фото — в любом стиле, возрасте и образе"
 result: "Твой личный «голливудский гримёр» + 50+ портретов себя и друзей"
-image: /assets/images/lessons/lesson-04-cover.jpg
+image: /assets/images/lessons/grok_image_x8rafoe.jpg
 image_alt: "Одно селфи → 1000 идеальных портретов"
 tags: [ip-adapter, faceid, portrait, lora, stable-diffusion, 2025]
 ---
