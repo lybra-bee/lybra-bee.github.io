@@ -32,11 +32,11 @@ def normalize_markdown(md: str) -> str:
     if not md:
         return md
 
-    md = re.sub(r"<[^>]+>", "", md)  # убрать HTML
-    md = re.sub(r"(#+\s.*)", r"\n\1\n", md)  # заголовки
-    md = re.sub(r"\n([*-]\s)", r"\n\n\1", md)  # списки
-    md = re.sub(r"\n(\|.*\|)\n(\|[-: ]+\|)", r"\n\n\1\n\2", md)  # таблицы
-    md = re.sub(r"\n{3,}", "\n\n", md)  # лишние переносы
+    md = re.sub(r"<[^>]+>", "", md)
+    md = re.sub(r"(#+\s.*)", r"\n\1\n", md)
+    md = re.sub(r"\n([*-]\s)", r"\n\n\1", md)
+    md = re.sub(r"\n(\|.*\|)\n(\|[-: ]+\|)", r"\n\n\1\n\2", md)
+    md = re.sub(r"\n{3,}", "\n\n", md)
 
     return md.strip() + "\n"
 
@@ -122,21 +122,22 @@ def update_trends_cache() -> List[Dict]:
 # ---------- ЗАГОЛОВОК ----------
 def generate_title(client: Groq, trend: Dict, article_type: str) -> str:
     prompt = (
-        f"Создай один заголовок (5–12 слов) для статьи типа '{article_type}'. "
+        f"Создай ОДИН цепляющий заголовок (5–12 слов) для статьи типа '{article_type}'.\n"
         f"Тема: {trend['news']}.\n"
-        "Запрещено: политика, законы, указы, страны, правительства, лидеры.\n"
-        "Разрешено: ИИ, технологии, исследования, рынок, продукты, метрики.\n"
-        "Только заголовок."
+        "Стиль: конкретно, полезно, интригующе, с цифрами или результатом.\n"
+        "Запрещено: политика, страны, регуляторы, законы, указы, лидеры.\n"
+        "Разрешено: ИИ, технологии, продукты, исследования, рынок, метрики.\n"
+        "Только заголовок, без кавычек."
     )
 
     resp = client.chat.completions.create(
         messages=[
-            {"role": "system", "content": "Русский технический редактор по ИИ. Строго без политики."},
+            {"role": "system", "content": "Русский тех-редактор. Делай заголовки, которые хочется открыть."},
             {"role": "user", "content": prompt},
         ],
         model="llama-3.1-8b-instant",
         max_tokens=30,
-        temperature=0.9
+        temperature=1.0
     )
     title = resp.choices[0].message.content.strip()
     return re.sub(r"[^\w\s-]", "", title)[:80]
@@ -144,14 +145,36 @@ def generate_title(client: Groq, trend: Dict, article_type: str) -> str:
 # ---------- СТАТЬЯ ----------
 def generate_article(client: Groq, trend: Dict, article_type: str) -> str:
     system_prompt = f"""
-Вы технический журналист по ИИ и высоким технологиям.
-Фокус: модели ИИ, вычисления, рынок, инструменты, исследования.
-СТРОГО ЗАПРЕЩЕНО: политика, законы, указы, страны, правительства, лидеры.
-Пишите в Markdown, используйте ##, списки и таблицы.
+Вы — опытный технический журналист по ИИ и высоким технологиям.
+Аудитория: разработчики, инженеры, фаундеры, тех-энтузиасты.
+
+Фокус:
+- как это работает
+- зачем это нужно
+- цифры, сравнения, реальные кейсы
+- практическая польза
+
+СТРОГО ЗАПРЕЩЕНО:
+политика, страны, регуляторы, законы, указы, лидеры, ведомства.
+
+Формат:
+- Markdown
+- ## подзаголовки
+- списки
+- таблицы
+- примеры использования
+
 Тема: {trend['news']}
 """
 
-    user_prompt = f"Напишите полную статью типа '{article_type}' (1500–3000 слов) на русском языке."
+    user_prompt = (
+        f"Напишите полную статью типа '{article_type}' (1500–3000 слов).\n"
+        "Добавьте:\n"
+        "- минимум 2 таблицы\n"
+        "- реальные метрики\n"
+        "- практические примеры\n"
+        "- выводы и прогнозы\n"
+    )
 
     resp = client.chat.completions.create(
         messages=[
@@ -160,17 +183,20 @@ def generate_article(client: Groq, trend: Dict, article_type: str) -> str:
         ],
         model="llama-3.3-70b-versatile",
         max_tokens=4000,
-        temperature=0.75
+        temperature=0.85
     )
     return normalize_markdown(resp.choices[0].message.content)
 
 # ---------- ИЗОБРАЖЕНИЕ ----------
 def generate_image(client: Groq, title: str, trend: Dict, post_num: int) -> bool:
     teaser = trend["news"][:120]
+
     prompt = (
-        f"Ultra-realistic 3D render of {title}. {teaser}. "
-        "No politics, no flags, no leaders. "
-        "Professional studio lighting, photorealistic, 8K."
+        f"Ultra-realistic photo illustration of: {title}. {teaser}. "
+        "Scene-based, cinematic, real-world environment, modern technology.\n"
+        "NO charts, NO graphs, NO diagrams, NO infographics, NO plots, NO text overlays.\n"
+        "NO politics, NO flags, NO leaders.\n"
+        "Professional photography, shallow depth of field, 8K, photorealistic."
     )
 
     clipdrop_key = os.getenv("CLIPDROP_API_KEY")
@@ -183,8 +209,17 @@ def generate_image(client: Groq, title: str, trend: Dict, post_num: int) -> bool
                 timeout=90
             )
             if resp.status_code == 200:
-                with open(f"{assets_dir}/post-{post_num}.png", "wb") as f:
+                path = f"{assets_dir}/post-{post_num}.png"
+                with open(path, "wb") as f:
                     f.write(resp.content)
+
+                try:
+                    from PIL import Image
+                    img = Image.open(path)
+                    img.save(path, optimize=True)
+                except Exception:
+                    pass
+
                 return True
         except Exception:
             pass
@@ -268,4 +303,3 @@ if __name__ == "__main__":
     today = datetime.date.today()
     success = main()
     raise SystemExit(0 if success else 1)
-    
