@@ -20,38 +20,34 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
-      - name: 📦 Install deps
+      - name: 📦 Install dependencies
         run: |
-          pip install --upgrade pip
           pip install groq requests pyyaml feedparser pillow
 
-      - name: 🧹 Clean old
-        run: |
-          find _posts -name "*.md" -mtime +50 -delete || true
-          find assets/images/posts -name "*.jpg" -mtime +50 -delete || true
-
-      - name: 🤖 Generate
+      - name: 🤖 Generate AI content
         run: python generate_post.py
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
-          CLIPDROP_API_KEY: ${{ secrets.CLIPDROP_API_KEY }}
-          STABILITYAI_KEY: ${{ secrets.STABILITYAI_KEY }}
           HF_API_TOKEN: ${{ secrets.HF_API_TOKEN }}
+          CLIPDROP_API_KEY: ${{ secrets.CLIPDROP_API_KEY }}
 
-      - name: 💾 Commit
+      - name: 📊 Upload logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: generation-log
+          path: generation.log
+
+      - name: 💾 Commit and push
         run: |
-          git config --global user.name 'lybra-bee'
-          git config --global user.email 'lybra1167@gmail.com'
+          git config user.name "lybra-bee"
+          git config user.email "lybra1167@gmail.com"
           git add .
-          git commit -m "🤖 Daily AI $(date +%F)" || true
+          git commit -m "🤖 Daily AI $(date +%F)" || echo "No changes"
           git push
 
-      - name: ⏱️ Wait CDN
+      - name: 📢 Send to Telegram
         run: |
-          IMG=$(ls -t assets/images/posts/post-* | head -1 | xargs basename)
-          URL="https://raw.githubusercontent.com/${{ github.repository }}/main/assets/images/posts/$IMG"
-          for i in {1..30}; do
-            [ "$(curl -s -o /dev/null -w "%{http_code}" "$URL")" = "200" ] && exit 0
-            sleep 5
-          done
+          python send_telegram.py
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
