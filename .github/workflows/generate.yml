@@ -1,10 +1,9 @@
-# .github/workflows/daily-publish.yml
 name: 🤖 Generate & Publish AI Post
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 0 * * *'
+    - cron: "0 7 * * *"   # каждый день в 07:00 UTC
 
 permissions:
   contents: write
@@ -13,17 +12,6 @@ jobs:
   generate-and-publish:
     runs-on: ubuntu-latest
 
-    env:
-      # проброс секретов на уровне job, чтобы все шаги могли их видеть
-      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-      NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
-      SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
-      CLIPDROP_API_KEY: ${{ secrets.CLIPDROP_API_KEY }}
-      STABILITYAI_KEY: ${{ secrets.STABILITYAI_KEY }}
-      HF_API_TOKEN: ${{ secrets.HF_API_TOKEN }}
-      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-
     steps:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
@@ -31,169 +19,26 @@ jobs:
       - name: 🐍 Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          cache: 'pip'
+          python-version: "3.11"
 
       - name: 📦 Install dependencies
         run: |
-          pip install --upgrade pip
-          pip install groq requests pyyaml feedparser matplotlib Pillow
+          python -m pip install --upgrade pip
+          pip install requests pillow pyyaml python-dotenv
 
-      - name: 🧹 Clean old files
-        run: |
-          find _posts -name "*.md" -mtime +50 -delete || true
-          find assets/images/posts -name "*.png" -mtime +50 -delete || true
-
-      - name: 🤖 Generate AI content
-        id: generator
-        run: |
-          set -euo pipefail
-
-          # Запускаем генерацию (должен создать generation.log и файлы)
-          python generate_post.py
-
-          # Берём заголовок и тренд из логов — безопасно, даже с кириллицей и переносами
-          TITLE=$(grep '📰 Заголовок:' generation.log 2>/dev/null | sed -E 's/.*📰 Заголовок:[[:space:]]*//' | head -n1 || echo 'AI Article')
-          TREND=$(grep 'Тренд:' generation.log 2>/dev/null | sed -E 's/.*Тренд:[[:space:]]*//' | head -n1 || echo 'AI Trend')
-
-          # Записываем outputs безопасно (heredoc) — поддерживает новые строки и любые символы
-          echo "title<<EOF" >> $GITHUB_OUTPUT
-          echo "$TITLE" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-          echo "trend<<EOF" >> $GITHUB_OUTPUT
-          echo "$TREND" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-        # env перенесены на уровень job — не обязаны тут повторять
-
-      - name: 📊 Upload logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: generation-log-${{ github.run_id }}
-          path: generation.log
-          retention-days: 7
-
-      - name: 💾 Commit and push
-        run: |
-          git config --global user.name 'lybra-bee'
-          git config --global user.email 'lybra1167@gmail.com'
-          git add .
-          git commit -m "🤖 Daily AI: $(date +%Y-%m-%d) - ${{ steps.generator.outputs.trend }}" || echo "No changes"
-          git push
-
-      - name: 🗓️ Export post path
-        run: |
-          TODAY=$(date +%Y-%m-%d)
-          POST_FILE=$(ls -t _posts/${TODAY}-*.md 2>/dev/null | head -n1)
-          [ -z "$POST_FILE" ] && POST_FILE=$(ls -t _posts/*.md | head -n1)
-          echo "POST_FILE=$POST_FILE" >> $GITHUB_ENV
-
-      - name: ⏱️ Wait for exact image CDN
-        run: |
-          set -euo pipefail
-          # Берём точное имя последнего изображения (png)
-          LATEST_IMG=$(ls -t assets/images/posts/post-*.png 2>/dev/null | head -n1 || true)
-          if [ -z "$LATEST_IMG" ]; then
-            echo "image_url=https://lybra-ai.ru/assets/images/default.png" >> $GITHUB_ENV
-            echo "⚠️ Нет локальных изображений, используем заглушку"
-            exit 0
-          fi
-          IMG_NAME=$(basename "$LATEST_IMG")
-          IMAGE_URL="https://raw.githubusercontent.com/${{ github.repository }}/main/assets/images/posts/${IMG_NAME}"
-
-          echo "⏳ Ждём CDN: $IMAGE_URL"
-          for i in {1..60}; do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$IMAGE_URL" || echo "000")
-            if [ "$STATUS" = "200" ]; then
-              echo "✅ Изображение доступно (попытка $i)"
-              echo "image_url=$IMAGE_URL" >> $GITHUB_ENV
-              exit 0
-            fi
-            sleep 5
-          done
-
-          echo "⚠️ Таймаут, используем заглушку"
-          echo "image_url=https://lybra-ai.ru/assets/images/default.png" >> $GITHUB_ENV
-
-      - name: 📢 Send to Telegram
-        if: always()
-        run: |
-          python - <<'PYCODE'
-import os, re, requests, sys, time
-from urllib.parse import urlparse
-
-post_file = os.getenv("POST_FILE")
-img_url = os.getenv("image_url")
-bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
-chat_id = os.getenv("TELEGRAM_CHAT_ID")
-
-def log(s): 
-    print(s)
-
-if not post_file or not os.path.exists(post_file):
-    log("⚠️ Пост не найден, пропускаем Telegram")
-    sys.exit(0)
-if not bot_token or not chat_id:
-    log("⚠️ Telegram ключи отсутствуют, пропускаем")
-    sys.exit(0)
-
-with open(post_file, encoding='utf-8') as f:
-    content = f.read().split('---')[-1].strip()
-    teaser = ' '.join(content.split()[:30]) + '…'
-
-def escape_md_v2(text):
-    # Экранируем символы MarkdownV2
-    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!])', r'\\\1', text)
-
-caption = f"*Новая статья*\n\n{escape_md_v2(teaser)}\n\n[Читать на сайте](https://lybra-ai.ru)\n\n{escape_md_v2('#ИИ #LybraAI')}"
-
-# Попытка скачать изображение
-photo_bytes = None
-if img_url:
-    try:
-        r = requests.get(img_url, timeout=20)
-        if r.status_code == 200:
-            photo_bytes = r.content
-        else:
-            log(f"⚠️ Не удалось скачать изображение, HTTP {r.status_code}")
-    except Exception as e:
-        log(f"⚠️ Ошибка скачивания изображения: {e}")
-
-# Отправляем photo, если есть, иначе посылаем текстовую ссылку
-send_success = False
-if photo_bytes:
-    files = {
-        "photo": ("post.png", photo_bytes, "image/png")
-    }
-    data = {
-        "chat_id": chat_id,
-        "caption": caption,
-        "parse_mode": "MarkdownV2"
-    }
-    try:
-        resp = requests.post(f"https://api.telegram.org/bot{bot_token}/sendPhoto", data=data, files=files, timeout=30)
-        log(f"📢 Telegram (sendPhoto) status: {resp.status_code}")
-        if resp.status_code == 200:
-            send_success = True
-    except Exception as e:
-        log(f"⚠️ Ошибка sendPhoto: {e}")
-
-if not send_success:
-    # fallback: отправляем простое сообщение с ссылкой на изображение
-    try:
-        msg = f"Новая статья\n\n{teaser}\n\nЧитать на сайте: https://lybra-ai.ru\n\nИзображение: {img_url or 'none'}"
-        resp = requests.post(f"https://api.telegram.org/bot{bot_token}/sendMessage", data={
-            "chat_id": chat_id,
-            "text": msg
-        }, timeout=15)
-        log(f"📢 Telegram (sendMessage) status: {resp.status_code}")
-    except Exception as e:
-        log(f"⚠️ Ошибка sendMessage: {e}")
-PYCODE
-
+      - name: 🚀 Generate article, image and publish
         env:
-          # job-level env already provides these, but we can be explicit here (optional)
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          HF_API_KEY: ${{ secrets.HF_API_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python generate_post.py
+
+      - name: 💾 Commit & push changes
+        run: |
+          git config --global user.name "lybra-bee"
+          git config --global user.email "actions@github.com"
+          git add .
+          git commit -m "🤖 Daily AI: $(date +'%Y-%m-%d')" || echo "No changes"
+          git push
