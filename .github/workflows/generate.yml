@@ -1,3 +1,4 @@
+# .github/workflows/daily-publish.yml
 name: 🤖 Generate & Publish AI Post
 
 on:
@@ -13,41 +14,111 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
 
       - name: 📦 Install dependencies
         run: |
-          pip install groq requests pyyaml feedparser pillow
+          pip install --upgrade pip
+          pip install groq requests pyyaml feedparser matplotlib Pillow
+
+      - name: 🧹 Clean old files
+        run: |
+          find _posts -name "*.md" -mtime +50 -delete || true
+          find assets/images/posts -name "*.png" -mtime +50 -delete || true
 
       - name: 🤖 Generate AI content
-        run: python generate_post.py
+        id: generator
+        run: |
+          python generate_post.py
+          echo "title=$(grep '📰 Заголовок:' generation.log 2>/dev/null | cut -d' ' -f2- || echo 'AI Article')" >> $GITHUB_OUTPUT
+          echo "trend=$(grep 'Тренд:' generation.log 2>/dev/null | cut -d' ' -f2- || echo 'AI Trends')" >> $GITHUB_OUTPUT
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          HF_API_TOKEN: ${{ secrets.HF_API_TOKEN }}
+          NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
+          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
           CLIPDROP_API_KEY: ${{ secrets.CLIPDROP_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          STABILITYAI_KEY: ${{ secrets.STABILITYAI_KEY }}
+          HF_API_TOKEN: ${{ secrets.HF_API_TOKEN }}
 
       - name: 📊 Upload logs
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: generation-log
+          name: generation-log-${{ github.run_id }}
           path: generation.log
+          retention-days: 7
 
       - name: 💾 Commit and push
         run: |
-          git config user.name "lybra-bee"
-          git config user.email "lybra1167@gmail.com"
+          git config --global user.name 'lybra-bee'
+          git config --global user.email 'lybra1167@gmail.com'
           git add .
-          git commit -m "🤖 Daily AI $(date +%F)" || echo "No changes"
+          git commit -m "🤖 Daily AI: $(date +%Y-%m-%d) - ${{ steps.generator.outputs.trend }}" || echo "No changes"
           git push
+
+      - name: 🗓️ Export post path
+        run: |
+          TODAY=$(date +%Y-%m-%d)
+          POST_FILE=$(ls -t _posts/${TODAY}-*.md 2>/dev/null | head -n1)
+          [ -z "$POST_FILE" ] && POST_FILE=$(ls -t _posts/*.md | head -n1)
+          echo "POST_FILE=$POST_FILE" >> $GITHUB_ENV
+
+      - name: ⏱️ Wait for exact image CDN
+        run: |
+          PNG_NUM=$(ls -t assets/images/posts/post-*.png | head -1 | grep -o '[0-9]\+' | head -1)
+          IMAGE_URL="https://raw.githubusercontent.com/${{ github.repository }}/main/assets/images/posts/post-${PNG_NUM}.png"
+
+          echo "⏳ Ждём CDN: $IMAGE_URL"
+          for i in {1..60}; do
+            [ "$(curl -s -o /dev/null -w "%{http_code}" "$IMAGE_URL")" = "200" ] && \
+              echo "✅ Изображение доступно (попытка $i)" && \
+              echo "image_url=$IMAGE_URL" >> $GITHUB_ENV && exit 0
+            sleep 10
+          done
+          echo "⚠️ Таймаут, используем заглушку" && \
+          echo "image_url=https://lybra-ai.ru/assets/images/default.png" >> $GITHUB_ENV
 
       - name: 📢 Send to Telegram
         run: |
-          python send_telegram.py
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          python - << 'PYEOF'
+          import os, re, requests
+
+          post_file = os.getenv('POST_FILE')
+          img_url = os.getenv('image_url')
+          bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
+          chat_id   = os.getenv('TELEGRAM_CHAT_ID')
+
+          if not post_file or not os.path.exists(post_file):
+              print("⚠️ Пост не найден, пропускаем Telegram")
+              exit(0)
+          if not bot_token or not chat_id:
+              print("⚠️ Telegram ключи отсутствуют, пропускаем")
+              exit(0)
+
+          with open(post_file, encoding='utf-8') as f:
+              content = f.read().split('---')[-1]
+              teaser  = ' '.join(content.split()[:30]) + '…'
+
+          def esc(text):
+              return re.sub(r'([_*\[\]\(\)~`>#+\-=|{}.!])', r'\\\1', text)
+
+          message = f"*Новая статья*\n\n{esc(teaser)}\n\n[Читать на сайте](https://lybra-ai.ru)\n\n{esc('#ИИ #LybraAI')}"
+
+          resp = requests.post(
+              f"https://api.telegram.org/bot{bot_token}/sendPhoto",
+              data={"chat_id": chat_id,
+                    "caption": message,
+                    "parse_mode": "MarkdownV2"},
+              files={"photo": requests.get(img_url).content}
+          )
+          print(f"✅ Telegram: {resp.status_code}")
+          PYEOF
