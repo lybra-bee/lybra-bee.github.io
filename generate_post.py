@@ -1,188 +1,204 @@
 #!/usr/bin/env python3
-"""
-Автономная система генерации статей об ИИ 2025-2026
-- Самостоятельно обновляет тренды
-- Генерирует русскую статью с цифрами и таблицами
-- Создает фотореалистичное изображение (PNG)
-- Публикует пост для Jekyll
-- Отправляет тизер и изображение в Telegram
-- Оптимизировано для GitHub Actions
-"""
+# -*- coding: utf-8 -*-
 
-import datetime
-import random
 import os
 import re
+import sys
 import json
 import time
-import glob
-from typing import Dict, List
-
-import requests
 import yaml
-from groq import Groq
+import uuid
+import math
+import shutil
+import random
+import string
+import logging
+import datetime
+import requests
+from pathlib import Path
+from typing import List
 
+from groq import Groq
+from PIL import Image
+from io import BytesIO
+
+# ================== НАСТРОЙКИ ==================
+
+POSTS_DIR = Path("_posts")
+IMAGES_DIR = Path("assets/images/posts")
 LOG_FILE = "generation.log"
 
+POSTS_DIR.mkdir(parents=True, exist_ok=True)
+IMAGES_DIR.mkdir(parents=True, exist_ok=True)
+
+MODEL = "llama-3.3-70b-versatile"
+
+MAX_ARTICLE_TRIES = 2
+
+# ================== ЛОГИ ==================
+
 def log(msg: str):
-    ts = datetime.datetime.utcnow().isoformat()
-    with open(LOG_FILE, "a", encoding="utf-8") as f:
-        f.write(f"[{ts}] {msg}\n")
     print(msg)
+    with open(LOG_FILE, "a", encoding="utf-8") as f:
+        f.write(msg + "\n")
 
-# ---------- КОНФИГУРАЦИЯ ----------
-EMBEDDED_TRENDS_FILE = "trends_cache.json"
-TRENDS_UPDATE_INTERVAL = 86400
-BASE_URL = "https://lybra-ai.ru"
+# ================== АНТИ-ПОЛИТИКА ==================
 
-# ---------- MARKDOWN NORMALIZER ----------
-def normalize_markdown(md: str) -> str:
-    if not md:
-        return md
-    md = re.sub(r"<[^>]+>", "", md)
-    md = re.sub(r"\n{3,}", "\n\n", md)
-    return md.strip() + "\n"
-
-# ---------- TRENDS ----------
-EMBEDDED_TRENDS = [
-    {"id": "quantum_2025", "news": "New quantum processors reach practical speedups in optimization tasks", "keywords": ["quantum", "processors"], "category": "hardware"},
-    {"id": "agentic_ai_2025", "news": "Agentic AI systems coordinate multiple models for enterprise workflows", "keywords": ["agentic ai", "automation"], "category": "software"},
-    {"id": "ai_efficiency", "news": "Inference costs drop by 200x with sparse and low-rank models", "keywords": ["efficiency", "inference"], "category": "optimization"},
+POLITICAL_PATTERNS = [
+    r"\bвыбор",
+    r"\bпрезидент",
+    r"\bправитель",
+    r"\bгос",
+    r"\bсанкц",
+    r"\bзакон",
+    r"\bуказ",
+    r"\bминистер",
+    r"\bпарламент",
+    r"\bпарт",
+    r"\bстрана\b",
+    r"\bвойн",
 ]
 
-def load_trends() -> List[Dict]:
-    try:
-        if os.path.exists(EMBEDDED_TRENDS_FILE):
-            with open(EMBEDDED_TRENDS_FILE, encoding="utf-8") as f:
-                cache = json.load(f)
-                if time.time() - cache.get("last_update", 0) < TRENDS_UPDATE_INTERVAL:
-                    log("✅ Тренды загружены из кэша")
-                    return cache["trends"]
-    except Exception as e:
-        log(f"⚠️ Ошибка кэша: {e}")
-    return EMBEDDED_TRENDS
+def detect_politics(text: str) -> bool:
+    text = text.lower()
+    return any(re.search(p, text) for p in POLITICAL_PATTERNS)
 
-# ---------- АНТИПОЛИТИКА ----------
-POLITICAL_RE = re.compile(
-    r"\b(государств|закон|регулятор|министр|президент|страна|санкц)\b",
-    re.I
-)
+# ================== ТРЕНДЫ ==================
 
-def is_political(text: str) -> bool:
-    return bool(POLITICAL_RE.search(text))
+SAFE_TRENDS = [
+    "Практическое применение генеративного ИИ в бизнесе",
+    "Инструменты автоматизации с использованием LLM",
+    "Как инженеры используют ИИ для ускорения разработки",
+    "Будущее мультимодальных моделей",
+    "AI-агенты и автономные системы",
+    "Open Source модели и их применение",
+]
 
-# ---------- ЗАГОЛОВОК ----------
-def generate_title(client: Groq, trend: Dict, article_type: str) -> str:
-    prompt = (
-        f"Создай ОДИН цепляющий заголовок (5–12 слов).\n"
-        f"Тема: {trend['news']}.\n"
-        "Только ИИ и технологии. Без политики.\n"
-        "Только заголовок."
-    )
-    resp = client.chat.completions.create(
-        messages=[
-            {"role": "system", "content": "Русский tech-редактор"},
-            {"role": "user", "content": prompt}
-        ],
-        model="llama-3.1-8b-instant",
-        temperature=1.0,
-        max_tokens=40
-    )
-    title = resp.choices[0].message.content.strip()
-    log(f"📰 Заголовок: {title}")
-    return re.sub(r"[^\w\s-]", "", title)[:80]
+def get_trend() -> str:
+    trend = random.choice(SAFE_TRENDS)
+    log(f"📰 Тренд: {trend}")
+    return trend
 
-# ---------- СТАТЬЯ ----------
-def generate_article(client: Groq, trend: Dict, article_type: str) -> str:
-    system_prompt = (
-        "Ты технический журналист по ИИ.\n"
-        "СТРОГО запрещена политика, законы, страны.\n"
-        "Фокус: технологии, цифры, практика."
-    )
-    user_prompt = (
-        f"Напиши статью типа '{article_type}' (1500–2500 слов).\n"
-        f"Тема: {trend['news']}\n"
-        "Markdown, таблицы, метрики."
-    )
+# ================== LLM ==================
 
-    resp = client.chat.completions.create(
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
-        ],
-        model="llama-3.3-70b-versatile",
+def build_article_prompt(trend: str) -> str:
+    return f"""
+Ты — профессиональный технический автор.
+
+СТРОГО ЗАПРЕЩЕНО:
+- политика
+- государства
+- законы
+- указы
+- страны
+- руководители стран
+- выборы
+- войны
+- санкции
+
+РАЗРЕШЕНО ТОЛЬКО:
+- искусственный интеллект
+- LLM
+- генеративные модели
+- инструменты
+- инженерные подходы
+- бизнес-применение
+- стартапы
+- исследования
+- Open Source
+
+Тема статьи:
+{trend}
+
+Требования:
+- интересная подача
+- практическая польза
+- живой язык
+- без упоминаний политики в любом виде
+
+Формат:
+- Заголовок
+- 4–6 абзацев
+"""
+
+def generate_article(client: Groq, trend: str) -> str:
+    prompt = build_article_prompt(trend)
+
+    completion = client.chat.completions.create(
+        model=MODEL,
+        messages=[{"role": "user", "content": prompt}],
         temperature=0.8,
-        max_tokens=4000
-    )
-    content = resp.choices[0].message.content
-    if is_political(content):
-        raise ValueError("Политика обнаружена")
-    log("📄 Статья сгенерирована")
-    return normalize_markdown(content)
-
-# ---------- PNG PLACEHOLDER ----------
-def generate_placeholder_png(path: str):
-    from PIL import Image, ImageDraw
-    img = Image.new("RGB", (1280, 720), (18, 22, 28))
-    draw = ImageDraw.Draw(img)
-    draw.text((640, 360), "AI • High Tech • 2025", fill=(200, 200, 200), anchor="mm")
-    img.save(path, "PNG", optimize=True)
-
-# ---------- ИЗОБРАЖЕНИЕ ----------
-def generate_image(title: str, trend: Dict, post_num: int) -> bool:
-    path = f"{assets_dir}/post-{post_num}.png"
-    prompt = (
-        f"Ultra realistic photo of {title}. {trend['news']}. "
-        "Photorealistic, cinematic, real world, no text, no charts."
     )
 
-    for name, url, headers in [
-        ("CLIPDROP", "https://clipdrop-api.co/text-to-image/v1",
-         {"x-api-key": os.getenv("CLIPDROP_API_KEY")}),
-        ("HF", "https://api-inference.huggingface.co/models/stabilityai/sdxl-turbo",
-         {"Authorization": f"Bearer {os.getenv('HF_API_TOKEN')}"})
-    ]:
-        if not list(headers.values())[0]:
-            continue
+    article = completion.choices[0].message.content.strip()
+    return article
+
+# ================== ИЗОБРАЖЕНИЕ ==================
+
+def generate_image(prompt: str) -> Path:
+    image_path = IMAGES_DIR / f"post-{int(time.time())}.png"
+
+    # ---- Stability AI ----
+    stab_key = os.getenv("STABILITYAI_KEY")
+    if stab_key:
         try:
-            r = requests.post(url,
-                headers=headers,
-                files={"prompt": (None, prompt)} if "clipdrop" in url else None,
-                json={"inputs": prompt} if "huggingface" in url else None,
-                timeout=90)
-            if r.status_code == 200 and r.headers.get("content-type","").startswith("image"):
-                open(path, "wb").write(r.content)
-                log(f"🖼 Изображение создано: {name}")
-                return True
+            r = requests.post(
+                "https://api.stability.ai/v2beta/stable-image/generate/core",
+                headers={
+                    "Authorization": f"Bearer {stab_key}",
+                    "Accept": "image/png"
+                },
+                files={
+                    "prompt": (None, prompt),
+                    "output_format": (None, "png")
+                },
+                timeout=60
+            )
+            if r.status_code == 200:
+                with open(image_path, "wb") as f:
+                    f.write(r.content)
+                log("🖼️ Изображение: Stability AI")
+                return image_path
         except Exception as e:
-            log(f"❌ {name}: {e}")
+            log(f"⚠️ Stability AI ошибка: {e}")
 
-    generate_placeholder_png(path)
-    log("🟨 Использована PNG-заглушка")
-    return True
+    # ---- HuggingFace ----
+    hf_token = os.getenv("HF_API_TOKEN")
+    if hf_token:
+        try:
+            r = requests.post(
+                "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0",
+                headers={"Authorization": f"Bearer {hf_token}"},
+                json={"inputs": prompt},
+                timeout=60
+            )
+            if r.status_code == 200:
+                img = Image.open(BytesIO(r.content))
+                img.save(image_path, format="PNG")
+                log("🖼️ Изображение: HuggingFace")
+                return image_path
+        except Exception as e:
+            log(f"⚠️ HF ошибка: {e}")
 
-# ---------- MAIN ----------
-def main() -> bool:
-    client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-    trends = load_trends()
-    trend = random.choice(trends)
-    article_type = random.choice(["Обзор", "Мастер-класс", "Аналитика"])
+    # ---- FALLBACK ----
+    img = Image.new("RGB", (1024, 1024), (30, 30, 30))
+    img.save(image_path, format="PNG")
+    log("🖼️ Изображение: fallback")
+    return image_path
 
-    title = generate_title(client, trend, article_type)
-    content = generate_article(client, trend, article_type)
-    generate_image(title, trend, post_num)
+# ================== СОХРАНЕНИЕ ==================
+
+def save_post(title: str, content: str, image_name: str):
+    today = datetime.date.today()
+    slug = re.sub(r"[^a-zA-Z0-9]+", "-", title.lower()).strip("-")
+    filename = POSTS_DIR / f"{today}-{slug}.md"
 
     front_matter = {
-        "title": title,
-        "date": f"{today} 00:00:00 +0000",
         "layout": "post",
-        "image": f"/assets/images/posts/post-{post_num}.png",
-        "description": trend["news"],
-        "tags": ["ИИ", "технологии"] + trend["keywords"],
+        "title": title,
+        "image": f"/assets/images/posts/{image_name}",
+        "date": today.isoformat()
     }
-
-    slug = re.sub(r"[^\w-]", "-", title.lower())[:50]
-    filename = f"{posts_dir}/{today}-{slug}.md"
 
     with open(filename, "w", encoding="utf-8") as f:
         f.write("---\n")
@@ -190,18 +206,49 @@ def main() -> bool:
         f.write("---\n\n")
         f.write(content)
 
-    log(f"✅ Пост опубликован: {filename}")
+    log(f"💾 Пост сохранён: {filename}")
+
+# ================== MAIN ==================
+
+def main() -> bool:
+    log("🚀 Запуск генерации")
+
+    client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+
+    trend = get_trend()
+
+    article = None
+    for attempt in range(MAX_ARTICLE_TRIES):
+        article = generate_article(client, trend)
+
+        if detect_politics(article):
+            log("⚠️ Обнаружена политика, регенерация")
+            trend = random.choice(SAFE_TRENDS)
+            continue
+
+        break
+
+    if not article:
+        log("❌ Не удалось сгенерировать статью")
+        return False
+
+    lines = article.splitlines()
+    title = lines[0].replace("Заголовок:", "").strip()
+    body = "\n".join(lines[1:]).strip()
+
+    log(f"📰 Заголовок: {title}")
+
+    img_prompt = f"Photorealistic illustration about: {trend}, ultra realistic, cinematic light"
+    image_path = generate_image(img_prompt)
+
+    save_post(title, body, image_path.name)
+
+    log("✅ Генерация завершена")
     return True
 
-# ---------- INIT ----------
+# ================== ENTRY ==================
+
 if __name__ == "__main__":
-    posts_dir = "_posts"
-    assets_dir = "assets/images/posts"
-    os.makedirs(posts_dir, exist_ok=True)
-    os.makedirs(assets_dir, exist_ok=True)
-
-    post_num = len(glob.glob(f"{assets_dir}/*.png")) + 1
     today = datetime.date.today()
-
     success = main()
     raise SystemExit(0 if success else 1)
