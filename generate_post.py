@@ -38,7 +38,33 @@ def has_politics(text: str) -> bool:
     return any(w in t for w in POLITICAL_WORDS)
 
 # =========================
-# ГЕНЕРАЦИЯ СТАТЬИ (Groq)
+# НАДЁЖНЫЙ ПАРСЕР
+# =========================
+def parse_article(raw: str) -> tuple[str, str]:
+    raw = raw.strip()
+
+    title = None
+    body = None
+
+    m_title = re.search(r"ЗАГОЛОВОК[:\-]?\s*(.+)", raw, re.IGNORECASE)
+    m_body = re.search(r"ТЕКСТ[:\-]?\s*(.+)", raw, re.IGNORECASE | re.S)
+
+    if m_title:
+        title = m_title.group(1).strip()
+    else:
+        # fallback — первая строка
+        title = raw.splitlines()[0][:120]
+
+    if m_body:
+        body = m_body.group(1).strip()
+    else:
+        # fallback — всё кроме первой строки
+        body = "\n".join(raw.splitlines()[1:]).strip()
+
+    return title, body
+
+# =========================
+# ГЕНЕРАЦИЯ СТАТЬИ
 # =========================
 def generate_article(topic: str) -> tuple[str, str]:
     prompt = f"""
@@ -51,7 +77,7 @@ def generate_article(topic: str) -> tuple[str, str]:
 
 Тема: {topic}
 
-Верни:
+Формат желателен:
 ЗАГОЛОВОК:
 ТЕКСТ:
 """
@@ -70,10 +96,8 @@ def generate_article(topic: str) -> tuple[str, str]:
         timeout=60
     )
 
-    data = r.json()["choices"][0]["message"]["content"]
-    title = re.search(r"ЗАГОЛОВОК:\s*(.+)", data).group(1).strip()
-    body = re.split(r"ТЕКСТ:\s*", data)[1].strip()
-    return title, body
+    raw = r.json()["choices"][0]["message"]["content"]
+    return parse_article(raw)
 
 # =========================
 # STABLE HORDE
@@ -89,7 +113,7 @@ def horde_generate_async(prompt: str) -> str:
         "prompt": prompt,
         "params": {
             "sampler_name": "k_euler",
-            "steps": 30,
+            "steps": 28,
             "cfg_scale": 7,
             "width": 768,
             "height": 512
@@ -109,41 +133,36 @@ def horde_generate_async(prompt: str) -> str:
     return r.json()["id"]
 
 def horde_wait_and_download(tid: str) -> bytes:
-    while True:
+    for _ in range(40):
         r = requests.get(
             f"https://stablehorde.net/api/v2/generate/status/{tid}",
             headers=HORDE_HEADERS,
             timeout=30
         )
         data = r.json()
-        if data.get("done"):
-            img_url = data["generations"][0]["img"]
-            return requests.get(img_url, timeout=30).content
+        if data.get("done") and data.get("generations"):
+            return requests.get(data["generations"][0]["img"], timeout=30).content
         time.sleep(3)
+    raise TimeoutError("Stable Horde timeout")
 
-def generate_image_horde(title: str) -> Path:
-    logging.info("🎨 Stable Horde генерация изображения")
-    prompt = f"Photorealistic, ultra-detailed, cinematic lighting, {title}"
-    tid = horde_generate_async(prompt)
-    img_bytes = horde_wait_and_download(tid)
+def generate_image(title: str) -> Path:
+    try:
+        logging.info("🎨 Stable Horde генерация изображения")
+        prompt = f"Photorealistic, ultra-detailed, cinematic lighting, {title}"
+        tid = horde_generate_async(prompt)
+        img = horde_wait_and_download(tid)
 
-    img_path = IMG_DIR / f"post-{int(time.time())}.png"
-    with open(img_path, "wb") as f:
-        f.write(img_bytes)
-
-    return img_path
-
-# =========================
-# ФОЛБЭК ИЗОБРАЖЕНИЕ
-# =========================
-def generate_fallback_image(title: str) -> Path:
-    logging.warning("🧯 Фолбэк изображение")
-    img = Image.new("RGB", (768, 512), "#111")
-    d = ImageDraw.Draw(img)
-    d.text((40, 240), title[:80], fill="white")
-    path = IMG_DIR / f"fallback-{int(time.time())}.png"
-    img.save(path)
-    return path
+        path = IMG_DIR / f"post-{int(time.time())}.png"
+        with open(path, "wb") as f:
+            f.write(img)
+        return path
+    except Exception as e:
+        logging.error(f"❌ Horde ошибка: {e}")
+        img = Image.new("RGB", (768, 512), "#111")
+        ImageDraw.Draw(img).text((40, 240), title[:80], fill="white")
+        path = IMG_DIR / f"fallback-{int(time.time())}.png"
+        img.save(path)
+        return path
 
 # =========================
 # MAIN
@@ -167,16 +186,11 @@ def main():
         if has_politics(body):
             logging.warning("⚠️ Обнаружена политика — регенерация")
             continue
-
         break
     else:
-        raise RuntimeError("Не удалось сгенерировать аполитичную статью")
+        raise RuntimeError("Не удалось получить аполитичную статью")
 
-    try:
-        img_path = generate_image_horde(title)
-    except Exception as e:
-        logging.error(f"❌ Horde ошибка: {e}")
-        img_path = generate_fallback_image(title)
+    img_path = generate_image(title)
 
     date = datetime.now().strftime("%Y-%m-%d")
     slug = re.sub(r"[^\w]+", "-", title.lower())
