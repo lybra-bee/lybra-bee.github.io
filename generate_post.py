@@ -1,463 +1,187 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
-"""
-generate_post.py
-Robust generation: Groq article + Stable Horde images + fallbacks.
-Фикс: groq max_tokens ограничение и авто-retry при 400.
-"""
-
-import os
-import re
-import time
-import json
-import base64
-import random
-import logging
-import requests
-import glob
-from pathlib import Path
+import os, re, time, json, random, logging, requests
 from datetime import datetime
-from typing import Optional
+from pathlib import Path
 
-# ========== CONFIG / ENV ==========
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-GROQ_MODEL_ENV = os.getenv("GROQ_MODEL")  # опционально
-HORDE_API_KEY = os.getenv("HORDE_API_KEY")
-HF_API_TOKEN = os.getenv("HF_API_TOKEN")
-CLIPDROP_API_KEY = os.getenv("CLIPDROP_API_KEY")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
 
+# -------------------- Папки --------------------
 POSTS_DIR = Path("_posts")
 IMAGES_DIR = Path("assets/images/posts")
-POSTS_DIR.mkdir(parents=True, exist_ok=True)
-IMAGES_DIR.mkdir(parents=True, exist_ok=True)
+POSTS_DIR.mkdir(exist_ok=True)
+IMAGES_DIR.mkdir(exist_ok=True)
 
-MAX_HORDE_POLL = 180
-HORDE_POLL_INTERVAL = 3
-
-# ========== LOGGING ==========
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(message)s",
-    handlers=[logging.FileHandler("generation.log", encoding="utf-8"), logging.StreamHandler()]
-)
-log = logging.getLogger("gen")
-
-# ========== UTILITIES ==========
-BANNED_WORDS = [
-    "президент", "правительство", "партия", "выбор", "страна",
-    "закон", "лидер", "санкц", "война", "войн"
-]
-
-def contains_politics(text: str) -> bool:
-    t = (text or "").lower()
-    return any(b in t for b in BANNED_WORDS)
-
-def slugify(s: str) -> str:
-    s = s.lower()
-    s = re.sub(r"[^\wа-яё0-9]+", "-", s)
-    return s.strip("-")[:60]
-
-# ========== GROQ: dynamic model selection ==========
-def get_active_groq_model() -> str:
-    if not GROQ_API_KEY:
-        raise RuntimeError("GROQ_API_KEY не задан")
-    if GROQ_MODEL_ENV:
-        log.info("Используем GROQ_MODEL из env: %s", GROQ_MODEL_ENV)
-        return GROQ_MODEL_ENV
-
-    url = "https://api.groq.com/openai/v1/models"
-    headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
-    try:
-        r = requests.get(url, headers=headers, timeout=10)
-    except Exception as e:
-        log.exception("Ошибка при запросе списка моделей Groq: %s", e)
-        raise
-
-    if r.status_code != 200:
-        log.error("Groq /models HTTP %s: %s", r.status_code, r.text[:1000])
-        raise RuntimeError("Ошибка получения списка моделей Groq")
-
-    data = r.json()
-    models = []
-    if isinstance(data, dict) and "data" in data:
-        for el in data["data"]:
-            mid = el.get("id") or el.get("model") or el.get("name")
-            if mid:
-                models.append(mid)
-    elif isinstance(data, list):
-        for el in data:
-            mid = el.get("id") or el.get("model") or el.get("name")
-            if mid:
-                models.append(mid)
-
-    if not models:
-        raise RuntimeError("Нет доступных моделей у Groq")
-
-    priority_keys = ["llama3", "llama-guard", "mixtral", "gemma", "llama"]
-    for key in priority_keys:
-        for m in models:
-            if key in m.lower():
-                log.info("Выбрана модель Groq: %s (matched %s)", m, key)
-                return m
-
-    chosen = models[0]
-    log.info("Выбрана первая доступная модель Groq: %s", chosen)
-    return chosen
-
-def groq_chat_completion(model: str, system: str, user: str,
-                        max_tokens:int=1024, temperature:float=0.8) -> str:
-    """
-    Посылает запрос в Groq. Если Groq вернёт ошибку про max_tokens, автоматически уменьшает
-    max_tokens и пробует ещё (1024 -> 512 -> 256).
-    """
-    url = "https://api.groq.com/openai/v1/chat/completions"
-    headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
-
-    # допустимый предел по опыту: 1024 — безопасно
-    allowed_tokens_sequence = [min(max_tokens, 1024), 512, 256]
-    tried = set()
-    last_exception = None
-
-    for tokens in allowed_tokens_sequence:
-        if tokens in tried:
-            continue
-        tried.add(tokens)
-        payload = {
-            "model": model,
-            "messages": [
-                {"role": "system", "content": system},
-                {"role": "user", "content": user}
-            ],
-            "temperature": temperature,
-            "max_tokens": tokens
-        }
-        log.info("Groq request: model=%s max_tokens=%d", model, tokens)
-        try:
-            r = requests.post(url, headers=headers, json=payload, timeout=60)
-        except Exception as e:
-            log.exception("Groq request exception: %s", e)
-            last_exception = e
-            time.sleep(1)
-            continue
-
-        if r.status_code == 200:
-            return r.json()["choices"][0]["message"]["content"]
-        else:
-            body = r.text or ""
-            log.error("Groq chat HTTP %s: %s", r.status_code, body[:1000])
-            # если в теле есть подсказку про max_tokens, попробуем меньший токен
-            if r.status_code == 400 and "max_tokens" in body:
-                log.warning("Groq rejected max_tokens=%d — пробуем меньший", tokens)
-                last_exception = RuntimeError(f"Groq max_tokens rejected: {body[:200]}")
-                time.sleep(1)
-                continue
-            else:
-                # для других ошибок — не пробуем дальше по токенам, выбрасываем
-                r.raise_for_status()
-
-    # если дошли сюда — все попытки неуспешны
-    if last_exception:
-        raise last_exception
-    raise RuntimeError("Не удалось получить ответ от Groq")
-
-# ========== ARTICLE GENERATION ==========
-def generate_article_via_groq(topic: str, groq_model: str) -> tuple[str,str]:
-    system = (
-        "Вы — опытный технический журналист по ИИ. Пишите на русском.\n"
-        "СТРОГО: не упоминайте политику, правительства, лидеров, санкции, войны.\n"
-        "Пишите конкретно, с цифрами и практическими примерами.\n"
-        "Формат ответа ОБЯЗАТЕЛЕН: сначала 'ЗАГОЛОВОК: <текст>' в одной строке, затем 'ТЕКСТ:' и текст статьи."
-    )
-    user = f"Тема: {topic}\n\nПожалуйста, отдайте строго в формате:\nЗАГОЛОВОК: ...\nТЕКСТ:\n..."
-    raw = groq_chat_completion(groq_model, system, user, max_tokens=1024, temperature=0.75)
-
-    # robust parsing
-    title = None
-    body = None
-    m_title = re.search(r"ЗАГОЛОВОК[:\-]\s*(.+)", raw, flags=re.IGNORECASE)
-    m_body = re.search(r"ТЕКСТ[:\-]\s*([\s\S]+)", raw, flags=re.IGNORECASE)
-    if m_title:
-        title = m_title.group(1).strip()
-    else:
-        first_line = next((ln for ln in [l.strip() for l in raw.splitlines()] if ln), "")
-        title = first_line[:120] if first_line else "AI Article"
-
-    if m_body:
-        body = m_body.group(1).strip()
-    else:
-        lines = [l for l in raw.splitlines() if l.strip()]
-        body = "\n".join(lines[1:]) if len(lines) > 1 else "\n".join(lines)
-
-    return title, body
-
-# ========== IMAGE HELPERS ==========
-def build_image_prompt_from_title(title: str) -> dict:
-    positive = (
-        f"photorealistic photograph, real world scene, cinematic lighting, "
-        f"shallow depth of field, ultra detailed, 35mm lens, studio lighting, modern technology, {title}"
-    )
-    negative = (
-        "chart, graph, diagram, infographic, table, plot, numbers, text overlays, watermark, logo, "
-        "illustration, drawing, cartoon, anime, schematic, blueprint"
-    )
-    return {"positive": positive, "negative": negative}
-
-# ========== HORDE ==========
-HORDE_BASE = "https://stablehorde.net/api/v2"
-
-def horde_send_async(prompt: str, negative: str, width:int=1024, height:int=1024, steps:int=30) -> Optional[str]:
-    if not HORDE_API_KEY:
-        log.info("HORDE_API_KEY не задан — пропускаем Horde")
-        return None
-    url = f"{HORDE_BASE}/generate/async"
-    headers = {"apikey": HORDE_API_KEY, "Content-Type": "application/json"}
-    body = {
-        "prompt": prompt,
-        "params": {
-            "width": width,
-            "height": height,
-            "steps": steps,
-            "sampler_name": "k_euler",
-            "cfg_scale": 7,
-            "negative_prompt": negative
-        },
-        "models": ["Realistic Vision", "Juggernaut XL", "Absolute Reality"],
-        "nsfw": False
-    }
-    try:
-        r = requests.post(url, headers=headers, json=body, timeout=30)
-    except Exception as e:
-        log.exception("Horde async request failed: %s", e)
-        return None
-
-    if r.status_code in (200, 201, 202):
-        j = r.json()
-        tid = j.get("id") or j.get("task_id") or j.get("uuid")
-        log.info("Horde task created: %s", tid)
-        return tid
-    else:
-        log.warning("Horde async returned HTTP %s: %s", r.status_code, r.text[:1000])
-        return None
-
-def horde_poll_and_save(task_id: str, out_path: Path, timeout:int=MAX_HORDE_POLL) -> bool:
-    if not task_id:
-        return False
-    url_template = f"{HORDE_BASE}/generate/status/{task_id}"
-    start = time.time()
-    while time.time() - start < timeout:
-        try:
-            r = requests.get(url_template, headers={"apikey": HORDE_API_KEY}, timeout=15)
-            if r.status_code != 200:
-                log.warning("Horde status HTTP %s: %s", r.status_code, r.text[:800])
-                time.sleep(HORDE_POLL_INTERVAL)
-                continue
-            st = r.json()
-            if st.get("done") or st.get("status") == "done":
-                gens = st.get("generations") or st.get("images") or st.get("generations_data") or []
-                if not gens:
-                    log.warning("Horde done but no images in response: %s", st)
-                    return False
-                first = gens[0]
-                img_b64 = None
-                img_url = None
-                if isinstance(first, dict):
-                    img_b64 = first.get("img") or first.get("b64") or first.get("base64")
-                    img_url = first.get("url") or first.get("image") or first.get("img")
-                elif isinstance(first, str):
-                    if first.startswith("http"):
-                        img_url = first
-                    else:
-                        img_b64 = first
-                if img_url:
-                    try:
-                        r2 = requests.get(img_url, timeout=30)
-                        if r2.status_code == 200:
-                            out_path.write_bytes(r2.content)
-                            log.info("Saved Horde image from url to %s", out_path)
-                            return True
-                    except Exception as e:
-                        log.warning("Failed to download Horde image URL: %s", e)
-                if img_b64:
-                    try:
-                        b = base64.b64decode(img_b64)
-                        out_path.write_bytes(b)
-                        log.info("Saved Horde image (base64) to %s", out_path)
-                        return True
-                    except Exception as e:
-                        log.warning("Failed to decode Horde base64 image: %s", e)
-                log.warning("No usable image found in Horde response")
-                return False
-        except Exception as e:
-            log.exception("Horde poll exception: %s", e)
-        time.sleep(HORDE_POLL_INTERVAL)
-    log.warning("Horde polling timed out after %s seconds", timeout)
-    return False
-
-# ========== HF / ClipDrop / fallback ==========
-def hf_generate(prompt: str):
-    if not HF_API_TOKEN:
-        return None
-    model = "stabilityai/stable-diffusion-xl-base-1.0"
-    url = f"https://api-inference.huggingface.co/models/{model}"
-    headers = {"Authorization": f"Bearer {HF_API_TOKEN}"}
-    try:
-        r = requests.post(url, headers=headers, json={"inputs": prompt}, timeout=60)
-        if r.status_code == 200 and r.headers.get("content-type","").startswith("image"):
-            out = IMAGES_DIR / f"hf-{int(time.time())}.png"
-            out.write_bytes(r.content)
-            log.info("Saved HF image to %s", out)
-            return out
-        else:
-            log.warning("HF returned %s: %s", r.status_code, r.text[:400])
-    except Exception as e:
-        log.exception("HF exception: %s", e)
-    return None
-
-def clipdrop_generate(prompt: str):
-    if not CLIPDROP_API_KEY:
-        return None
-    url = "https://clipdrop-api.co/text-to-image/v1"
-    try:
-        r = requests.post(url, headers={"x-api-key": CLIPDROP_API_KEY}, files={"prompt": (None, prompt)}, timeout=90)
-        if r.status_code == 200:
-            out = IMAGES_DIR / f"clipdrop-{int(time.time())}.png"
-            out.write_bytes(r.content)
-            log.info("Saved ClipDrop image to %s", out)
-            return out
-        else:
-            log.warning("ClipDrop returned %s: %s", r.status_code, r.text[:400])
-    except Exception as e:
-        log.exception("ClipDrop exception: %s", e)
-    return None
-
-def fallback_random_image():
-    try:
-        url = "https://picsum.photos/1024/1024"
-        r = requests.get(url, timeout=20)
-        out = IMAGES_DIR / f"fallback-{int(time.time())}.jpg"
-        out.write_bytes(r.content)
-        log.info("Saved fallback random photo to %s", out)
-        return out
-    except Exception as e:
-        log.exception("Fallback random image failed: %s", e)
-        out = IMAGES_DIR / f"blank-{int(time.time())}.png"
-        out.write_bytes(b"")
-        return out
-
-# ========== SMART IMAGE GENERATION ==========
-def generate_image_for_title(title: str):
-    p = build_image_prompt_from_title(title)
-    positive = p["positive"]
-    negative = p["negative"]
-
-    # Horde
-    if HORDE_API_KEY:
-        tid = horde_send_async(positive, negative)
-        if tid:
-            out_path = IMAGES_DIR / f"post-{int(time.time())}.png"
-            ok = horde_poll_and_save(tid, out_path)
-            if ok:
-                return out_path
-            log.warning("Horde failed → fallback flows")
-
-    # HF
-    hf = hf_generate(positive)
-    if hf:
-        return hf
-
-    # ClipDrop
-    cd = clipdrop_generate(positive)
-    if cd:
-        return cd
-
-    # final fallback
-    return fallback_random_image()
-
-# ========== TELEGRAM ==========
+# -------------------- API ключи --------------------
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+HORDE_API_KEY = os.getenv("HORDE_API_KEY")
+HF_API_KEY = os.getenv("HF_API_KEY")
+CLIPDROP_API_KEY = os.getenv("CLIPDROP_API_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-def send_to_telegram(title: str, image_path: Path, text: str):
-    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-        log.info("Telegram not configured, skipping")
-        return
-    caption = f"*Новая статья*\n\n{title}\n\n{' '.join(text.split()[:30])}…"
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
-    try:
-        with open(image_path, "rb") as ph:
-            r = requests.post(url, data={"chat_id": TELEGRAM_CHAT_ID, "caption": caption, "parse_mode": "Markdown"}, files={"photo": ph}, timeout=30)
-        log.info("Telegram status %s", r.status_code)
-    except Exception as e:
-        log.exception("Telegram send failed: %s", e)
+FALLBACK_IMAGES = [
+    "https://picsum.photos/800/600?random=1",
+    "https://picsum.photos/800/600?random=2",
+    "https://picsum.photos/800/600?random=3",
+]
 
-# ========== MAIN ==========
-def main():
-    log.info("=== START ===")
-    # select groq model
-    try:
-        groq_model = get_active_groq_model()
-    except Exception as e:
-        log.exception("Cannot select Groq model: %s", e)
-        raise
+# -------------------- Статья --------------------
+def generate_article(topic):
+    groq_model = "meta-llama/llama-guard-4-12b"
+    system_prompt = f"Напиши статью на тему '{topic}' без политики, скандалов, морали. Заголовок должен быть уникальным."
+    user_prompt = "Пожалуйста, сформируй текст: ЗАГОЛОВОК: ... ТЕКСТ: ..."
 
-    topics = [
-        "Практическое применение генеративного ИИ в 2025 году",
-        "Как LLM ускоряют разработку ПО",
-        "Мультимодальные модели и реальные кейсы",
-        "ИИ в автоматизации контента",
-        "Эффективность инференса и оптимизация"
-    ]
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
+    payload = {
+        "model": groq_model,
+        "messages": [{"role": "system", "content": system_prompt},
+                     {"role": "user", "content": user_prompt}],
+        "max_tokens": 1024,
+        "temperature": 0.8,
+    }
 
-    title = None
-    body = None
-    for attempt in range(1, 4):
-        topic = random.choice(topics)
-        log.info("Article attempt %d: %s", attempt, topic)
+    for attempt in range(5):
+        logging.info(f"Article attempt {attempt+1}: {topic}")
         try:
-            title, body = generate_article_via_groq(topic, groq_model)
-        except Exception as e:
-            log.exception("Groq article generation failed: %s", e)
-            time.sleep(1)
+            r = requests.post(url, headers=headers, json=payload)
+            r.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Groq error: {e}")
+            time.sleep(2)
             continue
-
-        if contains_politics((title or "") + "\n" + (body or "")):
-            log.warning("Politics detected — retrying")
-            time.sleep(1)
+        data = r.json()
+        text = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+        if not text:
             continue
-        break
+        if "политика" in text.lower():
+            logging.warning("Обнаружена политика — регенерация")
+            continue
+        title_match = re.search(r"ЗАГОЛОВОК:\s*(.+)", text)
+        body_match = re.search(r"ТЕКСТ:\s*(.+)", text, re.DOTALL)
+        if not title_match or not body_match:
+            continue
+        return title_match.group(1).strip(), body_match.group(1).strip()
+    raise RuntimeError("Groq article generation failed")
 
-    if not title or not body:
-        raise RuntimeError("Не удалось сгенерировать статью")
+# -------------------- Изображение --------------------
+def generate_image_horde(prompt, timeout=180):
+    url = "https://stablehorde.net/api/v2/generate/async"
+    headers = {"apikey": HORDE_API_KEY}
+    payload = {"prompt": prompt, "params": {"width":512, "height":512, "steps":25}}
 
-    # image
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        r = requests.post(url, headers=headers, json=payload)
+        if r.status_code == 429:
+            logging.warning("Horde limit reached, ждем 7 секунд")
+            time.sleep(7)
+            continue
+        if r.status_code != 200:
+            logging.warning(f"Horde returned {r.status_code}: {r.text}")
+            break
+        task_id = r.json().get("id")
+        # Polling
+        for _ in range(30):
+            resp = requests.get(f"https://stablehorde.net/api/v2/generate/check/{task_id}", headers=headers)
+            if resp.status_code != 200:
+                time.sleep(3)
+                continue
+            result = resp.json()
+            if result.get("done"):
+                img_data = result["generations"][0]["img"]
+                img_path = IMAGES_DIR / f"post-{int(time.time())}.png"
+                with open(img_path, "wb") as f:
+                    f.write(bytes.fromhex(img_data))
+                return str(img_path)
+            time.sleep(3)
+    logging.warning("Horde failed → fallback")
+    return None
+
+def generate_image_hf(prompt):
+    url = "https://router.huggingface.co/models/CompVis/stable-diffusion-v1-4"
+    headers = {"Authorization": f"Bearer {HF_API_KEY}"}
+    payload = {"inputs": prompt}
     try:
-        image_path = generate_image_for_title(title)
+        r = requests.post(url, headers=headers, json=payload)
+        if r.status_code != 200:
+            logging.warning(f"HF returned {r.status_code}: {r.text}")
+            return None
+        img_path = IMAGES_DIR / f"post-{int(time.time())}.png"
+        with open(img_path, "wb") as f:
+            f.write(r.content)
+        return str(img_path)
     except Exception as e:
-        log.exception("Image generation failed: %s", e)
-        image_path = fallback_random_image()
+        logging.warning(f"HF error: {e}")
+        return None
 
-    # save post
-    today = datetime.utcnow().date().isoformat()
-    slug = slugify(title)
-    post_file = POSTS_DIR / f"{today}-{slug}.md"
-    with open(post_file, "w", encoding="utf-8") as f:
-        f.write("---\n")
-        f.write(f"title: \"{title}\"\n")
-        f.write(f"date: {today}\n")
-        f.write(f"image: /{image_path.as_posix()}\n")
-        f.write("---\n\n")
-        f.write(body)
-    log.info("Saved post: %s", post_file)
-
-    # telegram
+def generate_image_clipdrop(prompt):
+    url = "https://clipdrop-api.co/scene-latest"
+    headers = {"x-api-key": CLIPDROP_API_KEY}
+    payload = {"prompt": prompt}
     try:
-        send_to_telegram(title, image_path, body)
+        r = requests.post(url, headers=headers, json=payload)
+        if r.status_code != 200:
+            logging.warning(f"ClipDrop returned {r.status_code}: {r.text}")
+            return None
+        img_path = IMAGES_DIR / f"post-{int(time.time())}.png"
+        with open(img_path, "wb") as f:
+            f.write(r.content)
+        return str(img_path)
     except Exception as e:
-        log.exception("Telegram send exception: %s", e)
+        logging.warning(f"ClipDrop error: {e}")
+        return None
 
-    log.info("=== DONE ===")
-    return True
+def generate_image(prompt):
+    img = generate_image_horde(prompt)
+    if img:
+        return img
+    img = generate_image_hf(prompt)
+    if img:
+        return img
+    img = generate_image_clipdrop(prompt)
+    if img:
+        return img
+    return random.choice(FALLBACK_IMAGES)
+
+# -------------------- Сохранение --------------------
+def save_post(title, body):
+    today = datetime.now().strftime("%Y-%m-%d")
+    filename = POSTS_DIR / f"{today}-{re.sub(r'[^a-zA-Z0-9]+','-',title.lower())}.md"
+    with open(filename, "w", encoding="utf-8") as f:
+        f.write(f"---\ntitle: {title}\ndate: {today}\n---\n\n{body}\n")
+    logging.info(f"Saved post: {filename}")
+    return filename
+
+# -------------------- Telegram --------------------
+def send_to_telegram(title, body, image_path):
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        logging.warning("Telegram ключи отсутствуют, пропускаем")
+        return
+    teaser = ' '.join(body.split()[:30]) + '…'
+    def esc(text): return re.sub(r'([_*\[\]\(\)~`>#+\-=|{}.!])', r'\\\1', text)
+    message = f"*Новая статья*\n\n{esc(teaser)}\n\n[Читать на сайте](https://lybra-ai.ru)\n\n{esc('#ИИ #LybraAI')}"
+    try:
+        resp = requests.post(
+            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto",
+            data={"chat_id": TELEGRAM_CHAT_ID, "caption": message, "parse_mode": "MarkdownV2"},
+            files={"photo": open(image_path, "rb")}
+        )
+        logging.info(f"Telegram status {resp.status_code}")
+    except Exception as e:
+        logging.warning(f"Telegram error: {e}")
+
+# -------------------- MAIN --------------------
+def main():
+    topics = ["ИИ в автоматизации контента", "Мультимодальные модели", "Генеративные модели 2025"]
+    topic = random.choice(topics)
+
+    title, body = generate_article(topic)
+    img_path = generate_image(title)
+    post_file = save_post(title, body)
+    send_to_telegram(title, body, img_path)
+    logging.info("=== DONE ===")
 
 if __name__ == "__main__":
     main()
