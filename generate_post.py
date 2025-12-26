@@ -1,72 +1,69 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""
-Автогенерация статьи + изображения + Telegram
-Stable / GitHub Actions ready
-"""
-
 import os
 import re
-import json
 import time
-import yaml
+import json
 import glob
 import random
 import logging
 import datetime
-from io import BytesIO
-from typing import List, Dict
-
+from typing import Dict, List
 import requests
+import yaml
 from groq import Groq
 
-# =======================
-# CONFIG
-# =======================
+# ---------------------------------------
+# LOGGER
+# ---------------------------------------
+
+logging.basicConfig(
+    filename="generation.log",
+    level=logging.INFO,
+    format="%(asctime)s | %(message)s"
+)
+log = logging.getLogger()
+
+# ---------------------------------------
+# DIRECTORIES
+# ---------------------------------------
 
 POSTS_DIR = "_posts"
 ASSETS_DIR = "assets/images/posts"
-TRENDS_FILE = "trends_cache.json"
+os.makedirs(POSTS_DIR, exist_ok=True)
+os.makedirs(ASSETS_DIR, exist_ok=True)
 
-MAX_RETRIES_ARTICLE = 3
-
-# =======================
-# LOGGING
-# =======================
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(message)s",
-)
-log = logging.getLogger("GEN")
-
-# =======================
-# EMBEDDED TRENDS
-# =======================
+# ---------------------------------------
+# TRENDS
+# ---------------------------------------
 
 EMBEDDED_TRENDS = [
-    {
-        "news": "Large Language Models accelerate software development workflows",
-        "keywords": ["LLM", "software", "engineering"],
-    },
-    {
-        "news": "Multimodal AI systems combine vision, audio and text",
-        "keywords": ["multimodal AI", "vision models"],
-    },
-    {
-        "news": "AI inference efficiency improves by 200 percent in two years",
-        "keywords": ["AI efficiency", "inference"],
-    },
+    {"id": "ai2025", "news": "Multimodal AI adoption accelerates in 2025", "keywords": ["multimodal", "AI"]},
+    {"id": "efficiency2025", "news": "LLM inference becomes 300x cheaper", "keywords": ["LLM", "economics"]},
+    {"id": "agentic2025", "news": "Agentic AI adoption in enterprise", "keywords": ["agentic", "AI"]},
 ]
 
-# =======================
-# HELPERS
-# =======================
+def load_trends() -> List[Dict]:
+    try:
+        if os.path.exists("trends_cache.json"):
+            with open("trends_cache.json", "r", encoding="utf-8") as f:
+                cache = json.load(f)
+                if time.time() - cache.get("last_update", 0) < 86400:
+                    log.info("Loaded trends from cache")
+                    return cache.get("trends", [])
+    except Exception as e:
+        log.warning(f"Cache error: {e}")
+    log.info("Using embedded trends")
+    return EMBEDDED_TRENDS
+
+# ---------------------------------------
+# TEXT GENERATION (Groq)
+# ---------------------------------------
 
 POLITICAL_WORDS = [
-    "президент", "правительство", "государств", "политик",
-    "выбор", "партия", "закон", "указ", "санкц"
+    "президент", "правительство", "политик",
+    "выбор", "страна", "лидер", "санкц"
 ]
 
 def contains_politics(text: str) -> bool:
@@ -74,247 +71,140 @@ def contains_politics(text: str) -> bool:
     return any(w in t for w in POLITICAL_WORDS)
 
 def slugify(text: str) -> str:
-    text = re.sub(r"[^\w\s-]", "", text.lower())
-    return re.sub(r"\s+", "-", text)[:60]
-
-def normalize_md(md: str) -> str:
-    md = re.sub(r"<[^>]+>", "", md)
-    md = re.sub(r"\n{3,}", "\n\n", md)
-    return md.strip() + "\n"
-
-# =======================
-# TRENDS
-# =======================
-
-def load_trends() -> List[Dict]:
-    if os.path.exists(TRENDS_FILE):
-        try:
-            with open(TRENDS_FILE, "r", encoding="utf-8") as f:
-                cache = json.load(f)
-                if time.time() - cache.get("ts", 0) < 86400:
-                    log.info("✅ Тренды из кэша")
-                    return cache["trends"]
-        except Exception as e:
-            log.warning(f"Cache error: {e}")
-
-    log.info("⚠️ Используем встроенные тренды")
-    return EMBEDDED_TRENDS
-
-# =======================
-# TEXT GENERATION
-# =======================
+    return re.sub(r"[^\wа-я0-9]+", "-", text.lower()).strip("-")
 
 def generate_title(client: Groq, trend: Dict) -> str:
-    prompt = f"""
-Создай один технический заголовок (5–10 слов).
-Тема: {trend['news']}
-СТРОГО запрещено: политика, страны, лидеры, правительства.
-"""
-
+    prompt = (
+        f"Создай цепляющий заголовок (5–10 слов) на тему: {trend['news']}. "
+        "Запрещено: политика, страны, лидеры."
+    )
     r = client.chat.completions.create(
         model="llama-3.1-8b-instant",
         messages=[
-            {"role": "system", "content": "Русский техредактор по ИИ"},
-            {"role": "user", "content": prompt},
+            {"role":"system","content":"Русский техредактор"},
+            {"role":"user","content":prompt}
         ],
         max_tokens=40,
-        temperature=0.8,
+        temperature=0.9
     )
     return r.choices[0].message.content.strip()
 
 def generate_article(client: Groq, trend: Dict) -> str:
-    prompt = f"""
-Напиши техническую статью (1000–1500 слов) на русском языке.
-Тема: {trend['news']}
-
-СТРОГО ЗАПРЕЩЕНО:
-- политика
-- страны
-- лидеры
-- правительства
-
-Формат Markdown, таблицы приветствуются.
-"""
-
+    prompt = (
+        f"Напишите статью (1200–2000 слов).\nТема: {trend['news']}\n"
+        "Запрещено: политика, страны, лидеры.\nMarkdown."
+    )
     r = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=[
-            {"role": "system", "content": "Технический журналист по ИИ"},
-            {"role": "user", "content": prompt},
+            {"role":"system","content":"Технический журналист по ИИ"},
+            {"role":"user","content":prompt}
         ],
         max_tokens=3500,
-        temperature=0.7,
+        temperature=0.8
     )
+    return re.sub(r"\n{3,}", "\n\n", r.choices[0].message.content.strip())
 
-    return normalize_md(r.choices[0].message.content)
+# ---------------------------------------
+# IMAGE GENERATION VIA HORDE
+# ---------------------------------------
 
-# =======================
-# IMAGE GENERATION
-# =======================
+HORDE_BASE = "https://stablehorde.net/api/v2"
+HORDE_KEY = os.getenv("HORDE_API_KEY")
 
-def image_from_huggingface(prompt: str, out_path: str) -> bool:
-    token = os.getenv("HF_API_TOKEN")
-    if not token:
-        return False
+def horde_generate_async(prompt: str) -> str:
+    """
+    Отправляет async задачу на Horde, возвращает task id
+    """
+    url = f"{HORDE_BASE}/generate/async"
+    headers = {
+        "apikey": HORDE_KEY or "0000000000",
+        "Content-Type": "application/json"
+    }
+    body = {
+        "prompt": prompt,
+        "params": {"width":1024, "height":1024, "steps":30}
+    }
+    r = requests.post(url, headers=headers, json=body, timeout=10)
+    r.raise_for_status()
+    data = r.json()
+    return data.get("id") or data.get("task_id")
 
-    try:
-        r = requests.post(
-            "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2-1",
-            headers={"Authorization": f"Bearer {token}"},
-            json={"inputs": prompt},
-            timeout=60,
-        )
-        img = BytesIO(r.content)
-        from PIL import Image
-        Image.open(img).save(out_path)
-        log.info("🖼 HF OK")
-        return True
-    except Exception as e:
-        log.warning(f"HF fail: {e}")
-        return False
+def horde_check_status(task_id: str) -> dict:
+    url = f"{HORDE_BASE}/generate/status/{task_id}"
+    headers = {"apikey": HORDE_KEY or "0000000000"}
+    r = requests.get(url, headers=headers, timeout=10)
+    r.raise_for_status()
+    return r.json()
 
-def image_from_stability(prompt: str, out_path: str) -> bool:
-    key = os.getenv("STABILITYAI_KEY")
-    if not key:
-        return False
+def generate_image_horde(title: str) -> str:
+    prompt = f"Photorealistic image of {title}, modern AI theme, 8k, cinematic"
+    log.info("Horde generate async prompt")
+    tid = horde_generate_async(prompt)
+    log.info(f"Task ID: {tid}")
+    for i in range(60):
+        time.sleep(3)
+        status = horde_check_status(tid)
+        if status.get("done", False):
+            image_b64 = status["images"][0]["img"]
+            img_bytes = requests.utils.unquote(image_b64).encode() if "%" in image_b64 else status["images"][0]["img"].encode()
+            path = f"{ASSETS_DIR}/post-{len(glob.glob(f'{ASSETS_DIR}/*.png'))+1}.png"
+            with open(path, "wb") as f:
+                f.write(requests.utils.unquote_to_bytes(image_b64))
+            log.info(f"Image saved: {path}")
+            return path
+    log.warning("Horde generation timed out")
+    return ""
 
-    try:
-        r = requests.post(
-            "https://api.stability.ai/v2beta/stable-image/generate/sd3",
-            headers={
-                "Authorization": f"Bearer {key}",
-                "Accept": "image/png",
-            },
-            files={"prompt": (None, prompt)},
-            timeout=60,
-        )
-        if r.status_code == 200:
-            with open(out_path, "wb") as f:
-                f.write(r.content)
-            log.info("🖼 Stability OK")
-            return True
-    except Exception as e:
-        log.warning(f"Stability fail: {e}")
-    return False
-
-def image_fallback_chart(out_path: str) -> bool:
-    try:
-        import matplotlib
-        matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
-
-        years = ["2023", "2024", "2025"]
-        values = [80, 150, 260]
-
-        plt.figure(figsize=(10, 5))
-        plt.plot(years, values, marker="o")
-        plt.title("AI Technology Growth")
-        plt.tight_layout()
-        plt.savefig(out_path, dpi=150)
-        plt.close()
-
-        log.info("📊 Fallback chart")
-        return True
-    except Exception as e:
-        log.error(f"Chart fail: {e}")
-        return False
-
-def generate_image(title: str, out_path: str) -> None:
-    prompt = f"Ultra realistic illustration of {title}, futuristic AI technology, 8k"
-
-    generators = [
-        image_from_huggingface,
-        image_from_stability,
-        lambda p, o: image_fallback_chart(o),
-    ]
-
-    for gen in generators:
-        if gen(prompt, out_path):
-            return
-
-    raise RuntimeError("Image generation failed")
-
-# =======================
+# ---------------------------------------
 # TELEGRAM
-# =======================
+# ---------------------------------------
 
-def send_telegram(title: str, image_path: str, url: str) -> None:
+def send_telegram(title: str, image_path: str):
     token = os.getenv("TELEGRAM_BOT_TOKEN")
     chat = os.getenv("TELEGRAM_CHAT_ID")
-
     if not token or not chat:
-        log.warning("⚠️ Telegram пропущен (нет ключей)")
+        log.info("No Telegram keys")
         return
-
-    with open(image_path, "rb") as f:
+    with open(image_path, "rb") as ph:
         requests.post(
             f"https://api.telegram.org/bot{token}/sendPhoto",
-            data={
-                "chat_id": chat,
-                "caption": f"*Новая статья*\n\n{title}\n\n{url}",
-                "parse_mode": "Markdown",
-            },
-            files={"photo": f},
-            timeout=30,
+            data={"chat_id":chat, "caption": title, "parse_mode":"Markdown"},
+            files={"photo":ph}
         )
 
-    log.info("📢 Telegram отправлен")
-
-# =======================
+# ---------------------------------------
 # MAIN
-# =======================
+# ---------------------------------------
 
 def main():
-    log.info("🚀 Запуск генерации")
-
-    os.makedirs(POSTS_DIR, exist_ok=True)
-    os.makedirs(ASSETS_DIR, exist_ok=True)
-
     client = Groq(api_key=os.getenv("GROQ_API_KEY"))
     trends = load_trends()
     trend = random.choice(trends)
 
-    for attempt in range(1, MAX_RETRIES_ARTICLE + 1):
-        log.info(f"✍️ Попытка {attempt}")
-        title = generate_title(client, trend)
-        article = generate_article(client, trend)
+    title = generate_title(client, trend)
+    content = generate_article(client, trend)
 
-        if not contains_politics(title + article):
-            break
-        log.warning("⚠️ Политика обнаружена — реген")
-    else:
-        raise RuntimeError("Не удалось убрать политику")
+    img_path = generate_image_horde(title)
 
     today = datetime.date.today().isoformat()
     slug = slugify(title)
-    post_path = f"{POSTS_DIR}/{today}-{slug}.md"
-
-    img_index = len(glob.glob(f"{ASSETS_DIR}/*.png")) + 1
-    img_path = f"{ASSETS_DIR}/post-{img_index}.png"
-
-    generate_image(title, img_path)
-
-    front = {
+    fname = f"{POSTS_DIR}/{today}-{slug}.md"
+    fm = {
         "title": title,
         "date": f"{today} 00:00:00 +0000",
         "layout": "post",
-        "image": f"/assets/images/posts/post-{img_index}.png",
-        "tags": ["ИИ", "технологии"],
+        "image": f"/{img_path}",
+        "tags": trend.get("keywords", []),
     }
-
-    with open(post_path, "w", encoding="utf-8") as f:
+    with open(fname, "w", encoding="utf-8") as f:
         f.write("---\n")
-        yaml.dump(front, f, allow_unicode=True)
+        yaml.dump(fm, f, allow_unicode=True)
         f.write("---\n\n")
-        f.write(article)
+        f.write(content)
 
-    log.info(f"💾 Статья сохранена: {post_path}")
-
-    send_telegram(title, img_path, "https://lybra-ai.ru")
-
-    log.info("✅ Успешно завершено")
-
-# =======================
+    send_telegram(title, img_path)
+    log.info("Post saved: " + fname)
 
 if __name__ == "__main__":
     main()
