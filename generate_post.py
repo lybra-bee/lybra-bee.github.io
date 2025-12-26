@@ -1,9 +1,9 @@
 import os
 import re
-import json
 import time
-import logging
+import json
 import random
+import logging
 import datetime
 import requests
 
@@ -11,8 +11,8 @@ import requests
 # CONFIG
 # =========================
 
-HORDE_API_KEY = os.getenv("HORDE_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+HORDE_API_KEY = os.getenv("HORDE_API_KEY")
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
@@ -21,7 +21,7 @@ POSTS_DIR = "_posts"
 IMAGES_DIR = "assets/images/posts"
 
 MAX_ARTICLE_ATTEMPTS = 3
-MAX_IMAGE_WAIT = 180  # seconds
+MAX_IMAGE_WAIT = 180
 
 os.makedirs(POSTS_DIR, exist_ok=True)
 os.makedirs(IMAGES_DIR, exist_ok=True)
@@ -42,7 +42,7 @@ logging.basicConfig(
 log = logging.getLogger()
 
 # =========================
-# UTILS
+# HELPERS
 # =========================
 
 def contains_politics(text: str) -> bool:
@@ -53,92 +53,84 @@ def contains_politics(text: str) -> bool:
     t = text.lower()
     return any(b in t for b in banned)
 
-def slugify(text):
+def slugify(text: str) -> str:
     text = text.lower()
     text = re.sub(r"[^\wа-яё]+", "-", text)
     return text.strip("-")[:60]
 
 # =========================
-# ARTICLE GENERATION
+# ARTICLE (GROQ SAFE)
 # =========================
 
 def generate_article(topic: str):
-    prompt = f"""
-Ты — профессиональный техно-журналист.
+    system_prompt = (
+        "Ты профессиональный технический журналист по ИИ.\n"
+        "ПИШИ СТРОГО БЕЗ ПОЛИТИКИ, СТРАН, ГОСУДАРСТВ, ЗАКОНОВ.\n"
+        "Фокус: ИИ, генеративные модели, LLM, реальные кейсы, технологии.\n"
+        "Формат ОБЯЗАТЕЛЕН."
+    )
 
-ЗАПРЕЩЕНО:
-- политика
-- государства
-- законы
-- регуляторы
-- страны
-- лидеры
-- конфликты
-
-РАЗРЕШЕНО ТОЛЬКО:
-- искусственный интеллект
-- генеративные модели
-- LLM
-- computer vision
-- практическое применение
-- реальные кейсы
-- тренды 2025
-
-Формат строго:
-
-ЗАГОЛОВОК: ...
-ТЕКСТ:
-...
-
-Тема: {topic}
-"""
+    user_prompt = (
+        f"Тема: {topic}\n\n"
+        "Формат ответа СТРОГО такой:\n\n"
+        "ЗАГОЛОВОК: ...\n"
+        "ТЕКСТ:\n"
+        "...\n\n"
+        "Запрещено:\n"
+        "- политика\n"
+        "- государства\n"
+        "- лидеры\n"
+        "- регулирование\n"
+    )
 
     r = requests.post(
         "https://api.groq.com/openai/v1/chat/completions",
-        headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+        headers={
+            "Authorization": f"Bearer {GROQ_API_KEY}",
+            "Content-Type": "application/json"
+        },
         json={
             "model": "llama-3.1-70b-versatile",
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.9
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            "temperature": 0.8,
+            "max_tokens": 1800
         },
         timeout=60
     )
-    r.raise_for_status()
 
-    data = r.json()["choices"][0]["message"]["content"]
+    if r.status_code != 200:
+        log.error(f"❌ Groq HTTP {r.status_code}: {r.text}")
+        r.raise_for_status()
 
-    title_match = re.search(r"ЗАГОЛОВОК:\s*(.+)", data)
-    body_match = re.search(r"ТЕКСТ:\s*([\s\S]+)", data)
+    content = r.json()["choices"][0]["message"]["content"]
+
+    title_match = re.search(r"ЗАГОЛОВОК:\s*(.+)", content)
+    body_match = re.search(r"ТЕКСТ:\s*([\s\S]+)", content)
 
     if not title_match or not body_match:
-        raise ValueError("Неверный формат статьи")
+        raise ValueError("❌ Неверный формат ответа от LLM")
 
     return title_match.group(1).strip(), body_match.group(1).strip()
 
 # =========================
-# IMAGE PROMPT BUILDER
+# IMAGE (STABLE HORDE)
 # =========================
 
-def build_image_prompt(title: str) -> dict:
+def build_image_prompt(title: str):
     return {
-        "prompt": f"""
-photorealistic photograph, real world scene,
-cinematic lighting, shallow depth of field,
-DSLR photo, 35mm lens, ultra detailed,
-people, technology, realistic materials,
-NO text, NO charts, NO graphs,
-concept: {title}
-""",
+        "prompt": (
+            "photorealistic photo, real world scene, cinematic lighting, "
+            "DSLR photograph, shallow depth of field, ultra detailed, "
+            f"concept: {title}"
+        ),
         "negative": (
-            "chart, graph, diagram, infographic, scheme, ui, interface, "
-            "text, letters, numbers, logo, watermark, illustration, "
-            "drawing, cartoon, anime"
+            "chart, graph, diagram, infographic, scheme, text, letters, "
+            "numbers, logo, ui, interface, illustration, cartoon, anime"
         )
     }
-
-# =========================
-# STABLE HORDE
-# =========================
 
 def horde_generate_async(prompt, negative):
     r = requests.post(
@@ -151,7 +143,7 @@ def horde_generate_async(prompt, negative):
             "prompt": prompt,
             "params": {
                 "sampler_name": "k_euler",
-                "steps": 30,
+                "steps": 28,
                 "cfg_scale": 7,
                 "width": 768,
                 "height": 512,
@@ -167,10 +159,9 @@ def horde_generate_async(prompt, negative):
         timeout=30
     )
 
-    if r.status_code == 403:
-        raise RuntimeError("Horde: 403 Forbidden (ключ или лимит)")
+    if r.status_code != 200:
+        raise RuntimeError(f"Horde error {r.status_code}: {r.text}")
 
-    r.raise_for_status()
     return r.json()["id"]
 
 def horde_wait_and_download(task_id, out_path):
@@ -187,7 +178,7 @@ def horde_wait_and_download(task_id, out_path):
         if data.get("done"):
             gens = data.get("generations")
             if not gens:
-                raise RuntimeError("Horde: пустая генерация")
+                raise RuntimeError("Horde вернул пустой результат")
 
             img_url = gens[0]["img"]
             img = requests.get(img_url, timeout=30).content
@@ -199,19 +190,18 @@ def horde_wait_and_download(task_id, out_path):
 
         time.sleep(5)
 
-    raise TimeoutError("Horde: таймаут генерации")
+    raise TimeoutError("Horde timeout")
 
 # =========================
 # TELEGRAM
 # =========================
 
-def send_telegram(title, text, image_path):
+def send_telegram(title, body, image_path):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-        log.warning("⚠️ Telegram ключи отсутствуют, пропускаем")
+        log.warning("⚠️ Telegram ключи отсутствуют, пропуск")
         return
 
-    teaser = " ".join(text.split()[:30]) + "…"
-
+    teaser = " ".join(body.split()[:30]) + "…"
     msg = f"*Новая статья*\n\n{teaser}\n\n#ИИ #LybraAI"
 
     r = requests.post(
@@ -235,11 +225,11 @@ def main():
     log.info("🚀 Запуск генерации")
 
     topics = [
-        "Практическое применение генеративного ИИ в 2025",
-        "Как LLM меняют разработку ПО",
-        "Мультимодальные модели в реальных продуктах",
         "ИИ в автоматизации контента",
-        "Будущее компьютерного зрения"
+        "Практическое применение генеративных моделей",
+        "Как LLM используются в реальных продуктах",
+        "Мультимодальные модели в 2025 году",
+        "ИИ для создания и анализа контента"
     ]
 
     for attempt in range(1, MAX_ARTICLE_ATTEMPTS + 1):
@@ -255,33 +245,24 @@ def main():
         log.info(f"📰 Заголовок: {title}")
         break
     else:
-        raise RuntimeError("Не удалось сгенерировать допустимую статью")
+        raise RuntimeError("Не удалось получить допустимую статью")
 
     today = datetime.date.today().isoformat()
     slug = slugify(title)
     post_path = f"{POSTS_DIR}/{today}-{slug}.md"
 
-    image_prompt = build_image_prompt(title)
-    img_id = horde_generate_async(
-        image_prompt["prompt"],
-        image_prompt["negative"]
-    )
+    img_prompt = build_image_prompt(title)
+    img_id = horde_generate_async(img_prompt["prompt"], img_prompt["negative"])
 
-    img_num = int(time.time())
-    img_path = f"{IMAGES_DIR}/post-{img_num}.png"
-
-    try:
-        horde_wait_and_download(img_id, img_path)
-    except Exception as e:
-        log.error(f"❌ Изображение не создано: {e}")
-        img_path = None
+    img_path = f"{IMAGES_DIR}/post-{int(time.time())}.png"
+    horde_wait_and_download(img_id, img_path)
 
     with open(post_path, "w", encoding="utf-8") as f:
         f.write(f"""---
 layout: post
 title: "{title}"
 date: {today}
-image: /{img_path if img_path else 'assets/images/default.png'}
+image: /{img_path}
 ---
 
 {body}
@@ -289,13 +270,11 @@ image: /{img_path if img_path else 'assets/images/default.png'}
 
     log.info(f"💾 Статья сохранена: {post_path}")
 
-    if img_path:
-        send_telegram(title, body, img_path)
+    send_telegram(title, body, img_path)
 
     log.info("✅ Успешно завершено")
-    return True
 
+# =========================
 
 if __name__ == "__main__":
-    success = main()
-    raise SystemExit(0 if success else 1)
+    main()
