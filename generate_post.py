@@ -12,20 +12,7 @@ from datetime import datetime
 from pathlib import Path
 import tempfile
 import requests
-import io
-from PIL import Image
-
-# 🔥 АВТОУСТАНОВКА
-def install_requirements():
-    required = ['requests', 'Pillow']
-    for package in required:
-        try:
-            __import__(package.replace('-', '_'))
-        except ImportError:
-            logging.info(f"Installing {package}...")
-            subprocess.check_call([sys.executable, "-m", "pip", "install", package])
-
-install_requirements()
+import hashlib
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
 
@@ -40,18 +27,11 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-FALLBACK_IMAGES = [
-    "https://picsum.photos/800/600?random=1",
-    "https://picsum.photos/800/600?random=2",
-    "https://picsum.photos/800/600?random=3",
-]
-
-# -------------------- Telegram экранирование (ИСПРАВЛЕНО) --------------------
+# -------------------- Telegram экранирование --------------------
 def telegram_escape(text):
     """Правильное экранирование MarkdownV2"""
     if not text:
         return ""
-    # Заменяем каждый спецсимвол на символ
     escaped = ""
     for char in text:
         if char in r'_*[]()~`>#+=|{}.!-':
@@ -59,6 +39,24 @@ def telegram_escape(text):
         else:
             escaped += char
     return escaped
+
+# -------------------- AI-генерация изображения по хэшу заголовка --------------------
+def generate_deterministic_image(title):
+    """Детерминированное изображение по хэшу заголовка — всегда одно и то же"""
+    # Хэш заголовка → seed для picsum
+    title_hash = hashlib.md5(title.encode()).hexdigest()
+    seed = int(title_hash[:8], 16) % 1000  # 0-999
+    
+    # Lorem Picsum — тематические изображения (природа, абстракция, tech)
+    themes = [
+        f"https://picsum.photos/seed/{seed}/1024/1024",  # Основное
+        f"https://picsum.photos/seed/ai-{seed}/1024/1024",  # AI-тема
+        f"https://source.unsplash.com/1024x1024/?abstract,tech&sig={seed}",  # Unsplash tech
+    ]
+    
+    img_url = random.choice(themes)
+    logging.info(f"🖼️ Deterministic image: {img_url}")
+    return img_url
 
 # -------------------- Шаг 1: Генерация заголовка --------------------
 def generate_title(topic):
@@ -129,57 +127,6 @@ def generate_body(title):
             time.sleep(3)
     raise RuntimeError("Failed to generate article body")
 
-# 🔥 Шаг 3: Hugging Face (БЕСПЛАТНО БЕЗ КЛЮЧЕЙ) --------------------
-def generate_image_huggingface(prompt):
-    """Hugging Face Inference API — 1+ изображение/день БЕСПЛАТНО"""
-    logging.info(f"HF: generating '{prompt[:50]}...'")
-    
-    # Публичная модель FLUX.1-dev (работает без ключей)
-    API_URL = "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-dev"
-    
-    headers = {"Content-Type": "application/json"}
-    
-    payload = {
-        "inputs": prompt + ", realistic, high quality, professional photography",
-        "parameters": {
-            "num_inference_steps": 20,
-            "guidance_scale": 7.5,
-            "width": 1024,
-            "height": 1024
-        }
-    }
-    
-    try:
-        response = requests.post(API_URL, headers=headers, json=payload, timeout=180)
-        
-        if response.status_code == 200:
-            image_bytes = response.content
-            image = Image.open(io.BytesIO(image_bytes))
-            
-            img_path = IMAGES_DIR / f"post-{int(time.time())}.png"
-            image.save(img_path, "PNG")
-            logging.info(f"✅ HF FLUX.1: {img_path}")
-            return str(img_path)
-        elif response.status_code == 503:
-            logging.warning("HF: модель загружается, ждём...")
-            time.sleep(10)
-            return generate_image_huggingface(prompt)  # Retry
-        else:
-            logging.warning(f"HF: {response.status_code} (rate limit OK)")
-            return None
-            
-    except Exception as e:
-        logging.warning(f"HF error: {e}")
-        return None
-
-def generate_image(title):
-    """HF → fallback"""
-    img = generate_image_huggingface(title)
-    if img:
-        return img
-    logging.warning("HF failed → fallback")
-    return random.choice(FALLBACK_IMAGES)
-
 # -------------------- Сохранение --------------------
 def save_post(title, body):
     today = datetime.now().strftime("%Y-%m-%d")
@@ -217,17 +164,16 @@ def send_to_telegram(title, body, image_path):
 {telegram_escape('#ИИ #LybraAI')}"
 
     try:
-        if image_path.startswith('http'):
-            r = requests.get(image_path, timeout=10)
-            if not r.ok:
-                logging.warning(f"Fallback download failed")
-                return
-            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.jpg')
-            temp_file.write(r.content)
-            temp_file.close()
-            image_file = temp_file.name
-        else:
-            image_file = image_path
+        # Скачиваем изображение
+        r = requests.get(image_path, timeout=10)
+        if not r.ok:
+            logging.warning(f"Image download failed: {r.status_code}")
+            return
+            
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.jpg')
+        temp_file.write(r.content)
+        temp_file.close()
+        image_file = temp_file.name
 
         with open(image_file, "rb") as photo:
             resp = requests.post(
@@ -242,8 +188,7 @@ def send_to_telegram(title, body, image_path):
         else:
             logging.warning(f"Telegram error {resp.status_code}")
 
-        if image_path.startswith('http'):
-            os.unlink(image_file)
+        os.unlink(image_file)
     except Exception as e:
         logging.warning(f"Telegram error: {e}")
 
@@ -254,7 +199,7 @@ def main():
 
     title = generate_title(topic)
     body = generate_body(title)
-    img_path = generate_image(title)
+    img_path = generate_deterministic_image(title)  # ✅ Детерминированное изображение
     save_post(title, body)
     send_to_telegram(title, body, img_path)
     logging.info("=== DONE ===")
