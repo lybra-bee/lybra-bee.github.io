@@ -3,6 +3,7 @@
 import os, re, time, json, random, logging, requests
 from datetime import datetime
 from pathlib import Path
+import base64
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
 
@@ -28,7 +29,7 @@ FALLBACK_IMAGES = [
 
 # -------------------- Статья --------------------
 def generate_article(topic):
-    groq_model = "meta-llama/llama-guard-4-12b"
+    groq_model = "llama3-70b-8192"
     system_prompt = f"Напиши статью на тему '{topic}' без политики, скандалов, морали. Заголовок должен быть уникальным."
     user_prompt = "Пожалуйста, сформируй текст: ЗАГОЛОВОК: ... ТЕКСТ: ..."
 
@@ -41,6 +42,8 @@ def generate_article(topic):
         "max_tokens": 1024,
         "temperature": 0.8,
     }
+
+    forbidden_words = ["политика", "скандал", "мораль", "регуляция", "политик", "политический"]
 
     for attempt in range(5):
         logging.info(f"Article attempt {attempt+1}: {topic}")
@@ -55,8 +58,8 @@ def generate_article(topic):
         text = data.get("choices", [{}])[0].get("message", {}).get("content", "")
         if not text:
             continue
-        if "политика" in text.lower():
-            logging.warning("Обнаружена политика — регенерация")
+        if any(word in text.lower() for word in forbidden_words):
+            logging.warning("Обнаружен запрещенный контент — регенерация")
             continue
         title_match = re.search(r"ЗАГОЛОВОК:\s*(.+)", text)
         body_match = re.search(r"ТЕКСТ:\s*(.+)", text, re.DOTALL)
@@ -69,7 +72,7 @@ def generate_article(topic):
 def generate_image_horde(prompt, timeout=180):
     url = "https://stablehorde.net/api/v2/generate/async"
     headers = {"apikey": HORDE_API_KEY}
-    payload = {"prompt": prompt, "params": {"width":512, "height":512, "steps":25}}
+    payload = {"prompt": prompt + ", photorealistic, high resolution, detailed, relevant to article content", "params": {"width":512, "height":512, "steps":25}}
 
     start_time = time.time()
     while time.time() - start_time < timeout:
@@ -90,10 +93,15 @@ def generate_image_horde(prompt, timeout=180):
                 continue
             result = resp.json()
             if result.get("done"):
-                img_data = result["generations"][0]["img"]
+                status_resp = requests.get(f"https://stablehorde.net/api/v2/generate/status/{task_id}", headers=headers)
+                if status_resp.status_code != 200:
+                    time.sleep(3)
+                    continue
+                status_result = status_resp.json()
+                img_data = status_result["generations"][0]["img"]
                 img_path = IMAGES_DIR / f"post-{int(time.time())}.png"
                 with open(img_path, "wb") as f:
-                    f.write(bytes.fromhex(img_data))
+                    f.write(base64.b64decode(img_data))
                 return str(img_path)
             time.sleep(3)
     logging.warning("Horde failed → fallback")
@@ -102,7 +110,7 @@ def generate_image_horde(prompt, timeout=180):
 def generate_image_hf(prompt):
     url = "https://router.huggingface.co/models/CompVis/stable-diffusion-v1-4"
     headers = {"Authorization": f"Bearer {HF_API_KEY}"}
-    payload = {"inputs": prompt}
+    payload = {"inputs": prompt + ", photorealistic, high resolution, detailed, relevant to article content"}
     try:
         r = requests.post(url, headers=headers, json=payload)
         if r.status_code != 200:
@@ -119,7 +127,7 @@ def generate_image_hf(prompt):
 def generate_image_clipdrop(prompt):
     url = "https://clipdrop-api.co/scene-latest"
     headers = {"x-api-key": CLIPDROP_API_KEY}
-    payload = {"prompt": prompt}
+    payload = {"prompt": prompt + ", photorealistic, high resolution, detailed, relevant to article content"}
     try:
         r = requests.post(url, headers=headers, json=payload)
         if r.status_code != 200:
