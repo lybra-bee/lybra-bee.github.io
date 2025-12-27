@@ -3,7 +3,7 @@ name: Generate & Publish AI Post
 on:
   schedule:
     - cron: '0 10 * * *'  # Каждый день в 10:00 UTC (13:00 по Москве)
-  workflow_dispatch:  # Ручной запуск
+  workflow_dispatch:
 
 jobs:
   generate:
@@ -20,14 +20,14 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install requests  # Только requests — всё, что нужно для DeepAI
+        pip install requests
     
     - name: Generate post
       env:
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-        DEEPAI_API_KEY: ${{ secrets.DEEPAI_API_KEY }}  # ← Новый обязательный секрет
+        FAL_API_KEY: ${{ secrets.FAL_API_KEY }}  # ← Новый секрет
       run: python generate_post.py
     
     - name: Commit changes
