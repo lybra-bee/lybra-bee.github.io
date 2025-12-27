@@ -199,4 +199,102 @@ def save_post(title, body, img_path=None):
 
     if img_path and not img_path.startswith('http'):
         image_name = Path(img_path).name
-        content
+        content += f"![{title}]({{{{ site.baseurl }}}}/assets/images/posts/{image_name})\n\n"
+
+    content += body
+
+    with open(filename, "w", encoding="utf-8") as f:
+        f.write(content)
+
+    logging.info(f"Пост сохранён: {filename}")
+    return filename
+
+
+# -------------------- Telegram (полное экранирование) --------------------
+def send_to_telegram(title, body, image_path):
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        return
+
+    teaser = ' '.join(body.split()[:40]) + '…'
+
+    def esc(text):
+        return (text.replace('\\', '\\\\')
+                    .replace('_', '\\_')
+                    .replace('*', '\\*')
+                    .replace('[', '\\[')
+                    .replace(']', '\\]')
+                    .replace('(', '\\(')
+                    .replace(')', '\\)')
+                    .replace('~', '\\~')
+                    .replace('`', '\\`')
+                    .replace('>', '\\>')
+                    .replace('#', '\\#')
+                    .replace('+', '\\+')
+                    .replace('-', '\\-')
+                    .replace('=', '\\=')
+                    .replace('|', '\\|')
+                    .replace('{', '\\{')
+                    .replace('}', '\\}')
+                    .replace('.', '\\.')
+                    .replace('!', '\\!'))
+
+    message = f"*Новая статья в блоге\\!*\n\n*{esc(title)}*\n\n{esc(teaser)}\n\n[Читать полностью →](https://lybra-ai.ru)\n\n\\#ИИ \\#LybraAI \\#искусственный_интеллект"
+
+    try:
+        if image_path.startswith('http'):
+            r = requests.get(image_path, timeout=30)
+            if not r.ok:
+                return
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.jpg')
+            temp_file.write(r.content)
+            temp_file.close()
+            image_file = temp_file.name
+        else:
+            image_file = image_path
+
+        with open(image_file, "rb") as photo:
+            resp = requests.post(
+                f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto",
+                data={"chat_id": TELEGRAM_CHAT_ID, "caption": message, "parse_mode": "MarkdownV2"},
+                files={"photo": photo},
+                timeout=60
+            )
+
+        if image_path.startswith('http'):
+            os.unlink(image_file)
+
+        if resp.status_code != 200:
+            logging.warning(f"Telegram ошибка: {resp.status_code} {resp.text}")
+        else:
+            logging.info("Пост успешно отправлен в Telegram")
+
+    except Exception as e:
+        logging.warning(f"Ошибка отправки в Telegram: {e}")
+
+
+# -------------------- MAIN --------------------
+def main():
+    topics = [
+        "ИИ в автоматизации контента",
+        "Мультимодальные модели ИИ",
+        "Генеративный ИИ в 2025 году",
+        "Автономные ИИ-агенты",
+        "ИИ в креативных профессиях",
+        "Будущее нейросетей и AGI",
+        "ИИ и обработка естественного языка"
+    ]
+    topic = random.choice(topics)
+    logging.info(f"Тема дня: {topic}")
+
+    title = generate_title(topic)
+    body = generate_body(title)
+    img_path = generate_image(title)
+
+    save_post(title, body, img_path)
+    send_to_telegram(title, body, img_path)
+
+    logging.info("=== Пост успешно создан и опубликован ===")
+
+
+if __name__ == "__main__":
+    main()
