@@ -13,8 +13,9 @@ from pathlib import Path
 import base64
 import tempfile
 import uuid
+import ssl
 
-# 🔥 АВТОУСТАНОВКА ЗАВИСИМОСТЕЙ (1 раз)
+# 🔥 АВТОУСТАНОВКА ЗАВИСИМОСТЕЙ
 def install_requirements():
     required = ['requests', 'beautifulsoup4']
     for package in required:
@@ -26,7 +27,6 @@ def install_requirements():
 
 install_requirements()
 
-# Теперь импортируем после установки
 import requests
 from bs4 import BeautifulSoup
 
@@ -52,6 +52,12 @@ FALLBACK_IMAGES = [
     "https://picsum.photos/800/600?random=2",
     "https://picsum.photos/800/600?random=3",
 ]
+
+# -------------------- Telegram экранирование (ИСПРАВЛЕНО) --------------------
+def telegram_escape(text):
+    """Правильное экранирование для MarkdownV2"""
+    chars_to_escape = r'_*[]()~`>#+=|{}.!-'
+    return re.sub(f'([{re.escape(chars_to_escape)}])', r'\\\u0001', text)
 
 # -------------------- Шаг 1: Генерация заголовка --------------------
 def generate_title(topic):
@@ -91,7 +97,7 @@ def generate_title(topic):
             time.sleep(2)
     raise RuntimeError("Failed to generate valid title")
 
-# -------------------- Шаг 2: Генерация статьи по заголовку --------------------
+# -------------------- Шаг 2: Генерация статьи --------------------
 def generate_body(title):
     if not GROQ_API_KEY:
         raise RuntimeError("GROQ_API_KEY required")
@@ -124,14 +130,17 @@ def generate_body(title):
             time.sleep(3)
     raise RuntimeError("Failed to generate article body")
 
-# 🔥 Шаг 3: GigaChat Kandinsky --------------------
+# 🔥 Шаг 3: GigaChat (ИСПРАВЛЕНО SSL) --------------------
 def generate_image_gigachat(prompt, timeout=300):
-    """GigaChat API: 100+ изображений/сутки БЕСПЛАТНО"""
+    """GigaChat API с отключением SSL верификации для GitHub Actions"""
     logging.info(f"GigaChat: generating '{prompt[:50]}...'")
     
     start_time = time.time()
     try:
-        # 1. Токен (30 мин)
+        # 1. Токен (30 мин) - БЕЗ SSL верификации
+        session = requests.Session()
+        session.verify = False  # ✅ GitHub Actions SSL fix
+        
         token_url = "https://gigachat.devices.sberbank.ru/api/v1/oauth"
         token_data = {"scope": SCOPE}
         token_headers = {
@@ -139,7 +148,7 @@ def generate_image_gigachat(prompt, timeout=300):
             "Content-Type": "application/x-www-form-urlencoded",
             "RqUID": re.sub(r"[^0-9a-f-]", "", str(uuid.uuid4()))
         }
-        token_resp = requests.post(token_url, data=token_data, headers=token_headers, timeout=30)
+        token_resp = session.post(token_url, data=token_data, headers=token_headers, timeout=30)
         token_resp.raise_for_status()
         access_token = token_resp.json()["access_token"]
         
@@ -160,7 +169,7 @@ def generate_image_gigachat(prompt, timeout=300):
             "Content-Type": "application/json",
             "RqUID": re.sub(r"[^0-9a-f-]", "", str(uuid.uuid4()))
         }
-        chat_resp = requests.post(chat_url, json=chat_payload, headers=chat_headers, timeout=120)
+        chat_resp = session.post(chat_url, json=chat_payload, headers=chat_headers, timeout=120)
         chat_resp.raise_for_status()
         
         content = chat_resp.json()["choices"][0]["message"]["content"]
@@ -176,7 +185,7 @@ def generate_image_gigachat(prompt, timeout=300):
         # 3. Скачиваем
         img_url = f"https://gigachat.devices.sberbank.ru/api/v1/files/{file_id}/content"
         img_headers = {"Authorization": f"Bearer {access_token}", "Accept": "image/jpeg"}
-        img_resp = requests.get(img_url, headers=img_headers, timeout=30)
+        img_resp = session.get(img_url, headers=img_headers, timeout=30)
         img_resp.raise_for_status()
         
         img_path = IMAGES_DIR / f"post-{int(time.time())}.jpg"
@@ -190,7 +199,6 @@ def generate_image_gigachat(prompt, timeout=300):
         return None
 
 def generate_image(title):
-    """Приоритет: GigaChat → fallback"""
     img = generate_image_gigachat(title)
     if img:
         return img
@@ -213,27 +221,25 @@ date: {today}
 """
     
     content = frontmatter + body
-    with open(filename, "w", encoding="utf-8") as f:
+    with open(filename, "w", "utf-8") as f:
         f.write(content)
     logging.info(f"Saved post: {filename}")
     return filename
 
-# -------------------- Telegram --------------------
+# -------------------- Telegram (ИСПРАВЛЕНО) --------------------
 def send_to_telegram(title, body, image_path):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         logging.warning("Telegram keys absent, skipping")
         return
 
     teaser = ' '.join(body.split()[:30]) + '...'
-    def esc(text): 
-        return re.sub(r'([_*[]()~`>#+-=|{}.!])', r'\\\u0001', text)
     message = f"*Новая статья*\
 \
-{esc(teaser)}\
+{telegram_escape(teaser)}\
 \
 [Читать на сайте](https://lybra-ai.ru)\
 \
-{esc('#ИИ #LybraAI')}"
+{telegram_escape('#ИИ #LybraAI')}"
 
     try:
         if image_path.startswith('http'):
@@ -259,7 +265,7 @@ def send_to_telegram(title, body, image_path):
         if resp.status_code != 200:
             logging.warning(f"Telegram error {resp.status_code}: {resp.text}")
         else:
-            logging.info(f"Telegram status {resp.status_code}")
+            logging.info(f"Telegram OK: {resp.status_code}")
 
         if image_path.startswith('http'):
             os.unlink(image_file)
