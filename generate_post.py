@@ -25,7 +25,7 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 FUSIONBRAIN_API_KEY = os.getenv("FUSIONBRAIN_API_KEY")
-FUSION_SECRET_KEY = os.getenv("FUSION_SECRET_KEY")  # Именно так, как у вас в secrets
+FUSION_SECRET_KEY = os.getenv("FUSION_SECRET_KEY")
 
 FALLBACK_IMAGES = [
     "https://picsum.photos/800/600?random=1",
@@ -36,8 +36,15 @@ FALLBACK_IMAGES = [
 # -------------------- Статья --------------------
 def generate_article(topic):
     groq_model = "llama-3.3-70b-versatile"
-    system_prompt = f"Напиши статью на тему '{topic}' без политики, скандалов, морали. Заголовок должен быть уникальным."
-    user_prompt = "Пожалуйста, сформируй текст: ЗАГОЛОВОК: ... ТЕКСТ: ..."
+    system_prompt = f"""Ты пишешь увлекательную статью на тему '{topic}' для блога об ИИ. 
+    Статья должна быть информативной, без политики, скандалов, морали или регуляций.
+    Обязательно сделай заголовок ярким, кликабельным, SMM-дружелюбным: используй цифры, вопросы, слова вроде "Как", "Почему", "Топ", "Будущее", "Революция" и т.д., чтобы привлекать внимание.
+    Заголовок должен быть уникальным и отражать суть статьи.
+    Формат ответа строго:
+    ЗАГОЛОВОК: [твой заголовок]
+    ТЕКСТ: [полный текст статьи, 600-800 слов, с абзацами]"""
+
+    user_prompt = "Сформируй статью в указанном формате."
 
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
@@ -45,20 +52,20 @@ def generate_article(topic):
         "model": groq_model,
         "messages": [{"role": "system", "content": system_prompt},
                      {"role": "user", "content": user_prompt}],
-        "max_tokens": 1024,
-        "temperature": 0.8,
+        "max_tokens": 1500,
+        "temperature": 0.9,
     }
 
     forbidden_words = ["политика", "скандал", "мораль", "регуляция", "политик", "политический", "регулирование", "скандальный", "моральный"]
 
-    for attempt in range(5):
+    for attempt in range(7):
         logging.info(f"Article attempt {attempt+1}: {topic}")
         try:
             r = requests.post(url, headers=headers, json=payload)
             r.raise_for_status()
         except requests.exceptions.RequestException as e:
             logging.error(f"Groq error: {e}")
-            time.sleep(2)
+            time.sleep(3)
             continue
         data = r.json()
         text = data.get("choices", [{}])[0].get("message", {}).get("content", "")
@@ -67,12 +74,17 @@ def generate_article(topic):
         if any(word in text.lower() for word in forbidden_words):
             logging.warning("Обнаружен запрещенный контент — регенерация")
             continue
-        title_match = re.search(r"ЗАГОЛОВОК:\s*(.+)", text)
-        body_match = re.search(r"ТЕКСТ:\s*(.+)", text, re.DOTALL)
+        title_match = re.search(r"ЗАГОЛОВОК:\s*(.+)", text, re.IGNORECASE)
+        body_match = re.search(r"ТЕКСТ:\s*(.+)", text, re.DOTALL | re.IGNORECASE)
         if not title_match or not body_match:
+            logging.warning("Неправильный формат — регенерация")
             continue
-        return title_match.group(1).strip(), body_match.group(1).strip()
-    raise RuntimeError("Groq article generation failed")
+        title = title_match.group(1).strip()
+        body = body_match.group(1).strip()
+        if len(title) < 10:
+            continue
+        return title, body
+    raise RuntimeError("Groq article generation failed after attempts")
 
 # -------------------- Изображение: Kandinsky --------------------
 def generate_image_kandinsky(prompt, timeout=600):
@@ -92,7 +104,7 @@ def generate_image_kandinsky(prompt, timeout=600):
             logging.warning(f"Kandinsky pipelines error {r.status_code}: {r.text}")
             return None
         models = r.json()
-        model_id = models[0]["id"]  # Обычно Kandinsky 3.x
+        model_id = models[0]["id"]
     except Exception as e:
         logging.warning(f"Kandinsky model fetch error: {e}")
         return None
@@ -160,8 +172,8 @@ def generate_image(prompt):
 def save_post(title, body):
     today = datetime.now().strftime("%Y-%m-%d")
     slug = re.sub(r'[^a-zA-Z0-9]+', '-', title.lower()).strip('-')
-    if not slug:
-        slug = "ai-post"
+    if not slug or len(slug) < 5:
+        slug = "future-of-ai-" + today.replace("-", "")
     filename = POSTS_DIR / f"{today}-{slug}.md"
     with open(filename, "w", encoding="utf-8") as f:
         f.write(f"---\ntitle: {title}\ndate: {today}\n---\n\n{body}\n")
