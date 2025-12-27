@@ -11,6 +11,8 @@ from datetime import datetime
 from pathlib import Path
 import base64
 import tempfile
+import uuid
+from bs4 import BeautifulSoup
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
 
@@ -26,6 +28,10 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 FUSIONBRAIN_API_KEY = os.getenv("FUSIONBRAIN_API_KEY")
 FUSION_SECRET_KEY = os.getenv("FUSION_SECRET_KEY")
+
+# 🔥 GIGACHAT КЛЮЧИ (твои данные)
+GIGACHAT_CREDS = "Y2U4NDJmZDYtYjVlMS00ZTQ0LWE1ZWUtZTQ3ZTQ3ODMyOGVhOmIzM2UxNzljLTMwMjYtNDZiYi1hYWEzLTA3NDAzMzlkMTc2Yg=="
+SCOPE = "GIGACHAT_API_PERS"
 
 FALLBACK_IMAGES = [
     "https://picsum.photos/800/600?random=1",
@@ -58,7 +64,7 @@ def generate_title(topic):
             r = requests.post(url, headers=headers, json=payload)
             r.raise_for_status()
             text = r.json()["choices"][0]["message"]["content"]
-            match = re.search(r"ЗАГОЛОВОК:\s*(.+)", text, re.IGNORECASE)
+            match = re.search(r"ЗАГОЛОВОК:s*(.+)", text, re.IGNORECASE)
             if match:
                 title = match.group(1).strip()
                 if len(title.split()) >= 8:  # Минимум 8 слов для надёжности
@@ -98,96 +104,98 @@ def generate_body(title):
             time.sleep(3)
     raise RuntimeError("Failed to generate article body")
 
-# -------------------- Шаг 3: Изображение (Kandinsky) --------------------
-def generate_image_kandinsky(prompt, timeout=600):
-    if not FUSIONBRAIN_API_KEY or not FUSION_SECRET_KEY:
-        logging.warning("Kandinsky keys absent, skipping")
-        return None
-
-    base_url = "https://api-key.fusionbrain.ai/key/api/v1"
-    headers = {
-        "X-Key": f"Key {FUSIONBRAIN_API_KEY}",
-        "X-Secret": f"Secret {FUSION_SECRET_KEY}",
-    }
-
+# 🔥 Шаг 3: GigaChat Kandinsky (замена Fusion Brain) --------------------
+def generate_image_gigachat(prompt, timeout=300):
+    """GigaChat API: 100+ изображений/сутки БЕСПЛАТНО"""
+    logging.info(f"GigaChat: generating '{prompt[:50]}...'")
+    
     try:
-        r = requests.get(f"{base_url}/pipelines", headers=headers)
-        if not r.ok:
-            logging.warning(f"Kandinsky pipelines error {r.status_code}: {r.text[:200]}")
+        # 1. Токен (30 мин)
+        token_url = "https://gigachat.devices.sberbank.ru/api/v1/oauth"
+        token_data = {"scope": SCOPE}
+        token_headers = {
+            "Authorization": f"Basic {GIGACHAT_CREDS}",
+            "Content-Type": "application/x-www-form-urlencoded",
+            "RqUID": re.sub(r"[^0-9a-f-]", "", str(uuid.uuid4()))
+        }
+        token_resp = requests.post(token_url, data=token_data, headers=token_headers, timeout=30)
+        token_resp.raise_for_status()
+        access_token = token_resp.json()["access_token"]
+        
+        # 2. Генерация
+        chat_url = "https://gigachat.devices.sberbank.ru/api/v1/chat/completions"
+        chat_payload = {
+            "model": "GigaChat Pro",
+            "messages": [
+                {"role": "system", "content": "Генерируй изображения Kandinsky 3.1"},
+                {"role": "user", "content": prompt + ", реалистично, высокое качество, 4k"}
+            ],
+            "max_tokens": 1000,
+            "temperature": 0.7,
+            "function_call": "auto"
+        }
+        chat_headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json",
+            "RqUID": re.sub(r"[^0-9a-f-]", "", str(uuid.uuid4()))
+        }
+        chat_resp = requests.post(chat_url, json=chat_payload, headers=chat_headers, timeout=60)
+        chat_resp.raise_for_status()
+        
+        content = chat_resp.json()["choices"][0]["message"]["content"]
+        soup = BeautifulSoup(content, "html.parser")
+        img_tag = soup.find("img")
+        
+        if not img_tag or not img_tag.get("src"):
+            logging.warning("GigaChat: no image in response")
             return None
-        models = r.json()
-        model_id = models[0]["id"]
+        
+        file_id = img_tag.get("src")
+        
+        # 3. Скачиваем
+        img_url = f"https://gigachat.devices.sberbank.ru/api/v1/files/{file_id}/content"
+        img_headers = {"Authorization": f"Bearer {access_token}", "Accept": "image/jpeg"}
+        img_resp = requests.get(img_url, headers=img_headers, timeout=30)
+        img_resp.raise_for_status()
+        
+        img_path = IMAGES_DIR / f"post-{int(time.time())}.jpg"
+        with open(img_path, "wb") as f:
+            f.write(img_resp.content)
+        logging.info(f"✅ GigaChat image: {img_path}")
+        return str(img_path)
+        
+    except requests.exceptions.RequestException as e:
+        logging.warning(f"GigaChat error: {e}")
+        return None
     except Exception as e:
-        logging.warning(f"Kandinsky model fetch error: {e}")
+        logging.warning(f"GigaChat unexpected error: {e}")
         return None
 
-    full_prompt = prompt + ", photorealistic, high resolution, detailed, professional photography, relevant to AI theme"
-
-    params = {
-        "type": "GENERATE",
-        "numImages": 1,
-        "width": 1024,
-        "height": 1024,
-        "generateParams": {"query": full_prompt}
-    }
-
-    files = {
-        "model_id": (None, model_id),
-        "params": (None, json.dumps(params), "application/json")
-    }
-
-    start_time = time.time()
-    try:
-        r = requests.post(f"{base_url}/text2image/run", headers=headers, files=files)
-        if not r.ok:
-            logging.warning(f"Kandinsky run error {r.status_code}: {r.text[:200]}")
-            return None
-        uuid = r.json()["uuid"]
-    except Exception as e:
-        logging.warning(f"Kandinsky run request error: {e}")
-        return None
-
-    while time.time() - start_time < timeout:
-        try:
-            r = requests.get(f"{base_url}/text2image/status/{uuid}", headers=headers)
-            if not r.ok:
-                time.sleep(10)
-                continue
-            data = r.json()
-            status = data["status"]
-            if status == "DONE":
-                img_data = data["images"][0]
-                img_path = IMAGES_DIR / f"post-{int(time.time())}.jpg"
-                with open(img_path, "wb") as f:
-                    f.write(base64.b64decode(img_data))
-                logging.info(f"Image generated by Kandinsky: {img_path}")
-                return str(img_path)
-            elif status == "FAILED":
-                logging.warning("Kandinsky generation failed")
-                return None
-            time.sleep(10)
-        except Exception:
-            time.sleep(10)
-
-    logging.warning("Kandinsky timeout → fallback")
-    return None
+# 🗑️ УДАЛИЛ старую функцию generate_image_kandinsky (Fusion Brain мёртв)
 
 def generate_image(title):
-    img = generate_image_kandinsky(title)
+    """Приоритет: GigaChat → fallback"""
+    img = generate_image_gigachat(title)
     if img:
         return img
-    logging.warning("Kandinsky failed → using fallback URL")
+    logging.warning("GigaChat failed → using fallback URL")
     return random.choice(FALLBACK_IMAGES)
 
 # -------------------- Сохранение --------------------
 def save_post(title, body):
     today = datetime.now().strftime("%Y-%m-%d")
-    slug = re.sub(r'[^a-zA-Z0-9]+', '-', title.lower()).strip('-')[:100]  # Обрезаем для безопасности
+    slug = re.sub(r'[^a-zA-Z0-9]+', '-', title.lower()).strip('-')[:100]
     if not slug or len(slug) < 10:
         slug = "ai-revolution-" + today.replace("-", "")
     filename = POSTS_DIR / f"{today}-{slug}.md"
     with open(filename, "w", encoding="utf-8") as f:
-        f.write(f"---\ntitle: {title}\ndate: {today}\n---\n\n{body}\n")
+        f.write(f"---
+title: {title}
+date: {today}
+---
+
+{body}
+")
     logging.info(f"Saved post: {filename}")
     return filename
 
@@ -198,8 +206,14 @@ def send_to_telegram(title, body, image_path):
         return
 
     teaser = ' '.join(body.split()[:30]) + '…'
-    def esc(text): return re.sub(r'([_*\[\]\(\)~`>#+\-=|{}.!])', r'\\\1', text)
-    message = f"*Новая статья*\n\n{esc(teaser)}\n\n[Читать на сайте](https://lybra-ai.ru)\n\n{esc('#ИИ #LybraAI')}"
+    def esc(text): return re.sub(r'([_*[]()~`>#+-=|{}.!])', r'\\\u0001', text)
+    message = f"*Новая статья*
+
+{esc(teaser)}
+
+[Читать на сайте](https://lybra-ai.ru)
+
+{esc('#ИИ #LybraAI')}"
 
     try:
         if image_path.startswith('http'):
