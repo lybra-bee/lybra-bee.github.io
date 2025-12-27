@@ -67,7 +67,7 @@ def generate_title(topic):
             match = re.search(r"ЗАГОЛОВОК:s*(.+)", text, re.IGNORECASE)
             if match:
                 title = match.group(1).strip()
-                if len(title.split()) >= 8:  # Минимум 8 слов для надёжности
+                if len(title.split()) >= 8:
                     return title
         except Exception as e:
             logging.error(f"Title error: {e}")
@@ -97,7 +97,7 @@ def generate_body(title):
             r = requests.post(url, headers=headers, json=payload)
             r.raise_for_status()
             body = r.json()["choices"][0]["message"]["content"].strip()
-            if len(body.split()) > 300:  # Минимум ~300 слов
+            if len(body.split()) > 300:
                 return body
         except Exception as e:
             logging.error(f"Body error: {e}")
@@ -171,8 +171,6 @@ def generate_image_gigachat(prompt, timeout=300):
         logging.warning(f"GigaChat unexpected error: {e}")
         return None
 
-# 🗑️ УДАЛИЛ старую функцию generate_image_kandinsky (Fusion Brain мёртв)
-
 def generate_image(title):
     """Приоритет: GigaChat → fallback"""
     img = generate_image_gigachat(title)
@@ -181,21 +179,25 @@ def generate_image(title):
     logging.warning("GigaChat failed → using fallback URL")
     return random.choice(FALLBACK_IMAGES)
 
-# -------------------- Сохранение --------------------
+# -------------------- Сохранение (ИСПРАВЛЕНО) --------------------
 def save_post(title, body):
     today = datetime.now().strftime("%Y-%m-%d")
     slug = re.sub(r'[^a-zA-Z0-9]+', '-', title.lower()).strip('-')[:100]
     if not slug or len(slug) < 10:
         slug = "ai-revolution-" + today.replace("-", "")
     filename = POSTS_DIR / f"{today}-{slug}.md"
-    with open(filename, "w", encoding="utf-8") as f:
-        f.write(f"---
+    
+    # ✅ ИСПРАВЛЕННЫЙ f-string (одна строка)
+    frontmatter = f"""---
 title: {title}
 date: {today}
 ---
 
-{body}
-")
+"""
+    
+    content = frontmatter + body
+    with open(filename, "w", encoding="utf-8") as f:
+        f.write(content)
     logging.info(f"Saved post: {filename}")
     return filename
 
@@ -205,14 +207,15 @@ def send_to_telegram(title, body, image_path):
         logging.warning("Telegram keys absent, skipping")
         return
 
-    teaser = ' '.join(body.split()[:30]) + '…'
-    def esc(text): return re.sub(r'([_*[]()~`>#+-=|{}.!])', r'\\\u0001', text)
-    message = f"*Новая статья*
-
-{esc(teaser)}
-
-[Читать на сайте](https://lybra-ai.ru)
-
+    teaser = ' '.join(body.split()[:30]) + '...'
+    def esc(text): 
+        return re.sub(r'([_*[]()~`>#+-=|{}.!])', r'\\\u0001', text)
+    message = f"*Новая статья*\
+\
+{esc(teaser)}\
+\
+[Читать на сайте](https://lybra-ai.ru)\
+\
 {esc('#ИИ #LybraAI')}"
 
     try:
