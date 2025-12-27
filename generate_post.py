@@ -210,7 +210,7 @@ def save_post(title, body, img_path=None):
     return filename
 
 
-# -------------------- Telegram (полное экранирование) --------------------
+# -------------------- Telegram --------------------
 def send_to_telegram(title, body, image_path):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         return
@@ -218,25 +218,7 @@ def send_to_telegram(title, body, image_path):
     teaser = ' '.join(body.split()[:40]) + '…'
 
     def esc(text):
-        return (text.replace('\\', '\\\\')
-                    .replace('_', '\\_')
-                    .replace('*', '\\*')
-                    .replace('[', '\\[')
-                    .replace(']', '\\]')
-                    .replace('(', '\\(')
-                    .replace(')', '\\)')
-                    .replace('~', '\\~')
-                    .replace('`', '\\`')
-                    .replace('>', '\\>')
-                    .replace('#', '\\#')
-                    .replace('+', '\\+')
-                    .replace('-', '\\-')
-                    .replace('=', '\\=')
-                    .replace('|', '\\|')
-                    .replace('{', '\\{')
-                    .replace('}', '\\}')
-                    .replace('.', '\\.')
-                    .replace('!', '\\!'))
+        return re.sub(r'([_*\[\]\(\)~`>#+\-=|{}.!])', r'\\\1', text)
 
     message = f"*Новая статья в блоге\\!*\n\n*{esc(title)}*\n\n{esc(teaser)}\n\n[Читать полностью →](https://lybra-ai.ru)\n\n\\#ИИ \\#LybraAI \\#искусственный_интеллект"
 
