@@ -3,10 +3,8 @@
 import os
 import re
 import time
-import json
 import random
 import logging
-import sys
 from datetime import datetime
 from pathlib import Path
 import tempfile
@@ -15,21 +13,16 @@ import hashlib
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
 
-# -------------------- Папки --------------------
 POSTS_DIR = Path("_posts")
 IMAGES_DIR = Path("assets/images/posts")
 POSTS_DIR.mkdir(exist_ok=True)
 IMAGES_DIR.mkdir(exist_ok=True)
 
-# -------------------- API ключи --------------------
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-# -------------------- Telegram экранирование --------------------
 def telegram_escape(text):
-    if not text:
-        return ""
     escaped = ""
     for char in text:
         if char in r'_*[]()~`>#+=|{}.!-':
@@ -38,174 +31,120 @@ def telegram_escape(text):
             escaped += char
     return escaped
 
-# -------------------- AI-генерация изображения --------------------
 def generate_deterministic_image(title):
     title_hash = hashlib.md5(title.encode()).hexdigest()
     seed = int(title_hash[:8], 16) % 1000
-    
-    themes = [
-        f"https://picsum.photos/seed/ai-{seed}/1024/1024",
-        f"https://picsum.photos/seed/tech-{seed}/1024/1024", 
-        f"https://source.unsplash.com/1024x1024/?ai,technology&sig={seed}",
-    ]
-    
-    img_url = random.choice(themes)
-    logging.info(f"🖼️ Image: {img_url}")
+    img_url = f"https://picsum.photos/seed/ai-{seed}/1024/1024"
+    logging.info(f"Image: {img_url}")
     return img_url
 
-# -------------------- Шаг 1: НАДЁЖНЫЕ SMM заголовки --------------------
 def generate_title(topic):
     if not GROQ_API_KEY:
-        raise RuntimeError("GROQ_API_KEY required")
+        return f"ИИ {topic} 2025"
     
-    # ✅ ОДНА строка промпта
-    prompt = f"Создай КЛИКАБЕЛЬНЫЙ заголовок для ИИ-блога: {topic}. Примеры: '7 ИИ-инструментов 10x ускорят бизнес 2025', 'ШОК: нейросеть заменит дизайнеров'. Только заголовок, 10-20 слов!"
-
+    prompt = f"Заголовок для ИИ-блога: {topic}"
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
     payload = {
         "model": "llama-3.3-70b-versatile",
         "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 80,
+        "max_tokens": 60,
         "temperature": 0.8,
     }
 
-    for attempt in range(5):
-        logging.info(f"Title attempt {attempt+1}: {topic}")
-        try:
-            r = requests.post(url, headers=headers, json=payload, timeout=20)
-            r.raise_for_status()
-            text = r.json()["choices"][0]["message"]["content"].strip()
-            
-            # Первая непустая строка
-            lines = [line.strip() for line in text.split('
-') if line.strip()]
-            if lines:
-                title = lines[0]
-                words = title.split()
-                if 8 <= len(words) <= 25:
-                    logging.info(f"✅ Title: {title}")
-                    return title
-                    
-        except Exception as e:
-            logging.error(f"Title error {attempt+1}: {e}")
-            time.sleep(1)
+    try:
+        r = requests.post(url, headers=headers, json=payload, timeout=20)
+        r.raise_for_status()
+        text = r.json()["choices"][0]["message"]["content"].strip()
+        title = text.split('
+')[0].strip()[:100]
+        if len(title.split()) >= 6:
+            logging.info(f"Title: {title}")
+            return title
+    except:
+        pass
     
-    # Fallback
-    fallback_titles = [
-        f"ИИ-революция 2025: {topic}",
-        f"Топ-7 {topic} для бизнеса",
-        f"Как {topic} изменит 2025"
-    ]
-    title = random.choice(fallback_titles)
-    logging.warning(f"Fallback title: {title}")
-    return title
+    fallback = f"ИИ революция: {topic}"
+    logging.warning(f"Fallback: {fallback}")
+    return fallback
 
-# -------------------- Шаг 2: Генерация статьи --------------------
 def generate_body(title):
     if not GROQ_API_KEY:
-        raise RuntimeError("GROQ_API_KEY required")
-    
-    prompt = f'Напиши статью для ИИ-блога: "{title}". Русский, 700-1000 слов, 4-6 подзаголовков (###), примеры, советы, заключение.'
+        return f"# {title}
 
+Статья про {title.lower()}.
+
+## Преимущества
+1. Быстрее
+2. Дешевле
+3. Лучше
+
+## Заключение
+Начните использовать сегодня!"
+    
+    prompt = f"Статья ИИ-блог: {title}. Русский, 600 слов."
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
     payload = {
-        "model": "llama-3.3-70b-versatile",
+        "model": "llama-3.3-70b-versatile", 
         "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 2500,
+        "max_tokens": 2000,
         "temperature": 0.7,
     }
 
-    for attempt in range(3):
-        logging.info(f"Body attempt {attempt+1}: {title[:50]}...")
-        try:
-            r = requests.post(url, headers=headers, json=payload, timeout=60)
-            r.raise_for_status()
-            body = r.json()["choices"][0]["message"]["content"].strip()
-            if len(body.split()) > 500:
-                return body
-        except Exception as e:
-            logging.error(f"Body error: {e}")
-            time.sleep(2)
+    try:
+        r = requests.post(url, headers=headers, json=payload, timeout=60)
+        r.raise_for_status()
+        body = r.json()["choices"][0]["message"]["content"].strip()
+        if len(body) > 1000:
+            logging.info("Body OK")
+            return body
+    except:
+        pass
     
-    fallback = f"""# {title}
+    fallback = f"# {title}
 
-## Почему это важно в 2025
+{title} меняет мир ИИ.
 
-{title} меняет подход к работе...
-
-## Практика и примеры
-
-1. Автоматизация контента
-2. Генерация изображений  
-3. Аналитика данных
-
-## Как внедрить
-
-- Инструмент 1: ChatGPT
-- Инструмент 2: Midjourney
-- Инструмент 3: Grok
-
-## Итоги
-
-Начните с {title} уже сегодня!"""
+Начните использовать прямо сейчас!"
     logging.warning("Fallback body")
     return fallback
 
-# -------------------- Сохранение С ИЗОБРАЖЕНИЕМ --------------------
 def save_post(title, body, image_url):
     today = datetime.now().strftime("%Y-%m-%d")
-    
-    slug = re.sub(r'[^a-zа-я0-9s]', '', title.lower())
-    slug = re.sub(r's+', '-', slug)
-    slug = re.sub(r'-+', '-', slug).strip('-')[:80]
-    if len(slug) < 8:
-        slug = f"ai-{today.replace('-', '')}"
-    
+    slug = re.sub(r'[^a-zа-я0-9]', '-', title.lower())[:60].strip('-')
     filename = POSTS_DIR / f"{today}-{slug}.md"
-    
-    image_filename = f"post-{int(time.time())}.jpg"
-    image_relative = f"/assets/images/posts/{image_filename}"
     
     frontmatter = f"""---
 title: "{title}"
 date: {today}
-image: {image_relative}
-description: {title[:120]}...
+image: /assets/images/posts/post-{int(time.time())}.jpg
 ---
 
 {body}
 
-![{title}]({image_url})
+![cover]({image_url})
 """
     
     with open(filename, "w", encoding="utf-8") as f:
         f.write(frontmatter)
-    logging.info(f"✅ Saved: {filename}")
+    logging.info(f"Saved: {filename}")
     return filename
 
-# -------------------- Telegram --------------------
 def send_to_telegram(title, body, image_url):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-        logging.warning("Telegram keys absent")
+        logging.warning("No Telegram")
         return
 
-    teaser = ' '.join(body.split()[:20]) + '...'
-    message = f"*🚀 {title}*\
+    teaser = ' '.join(body.split()[:15]) + '...'
+    message = f"*{title}*\
 \
 {telegram_escape(teaser)}\
 \
-👉 [Читать полностью](https://lybra-ai.ru)\
-\
-#ИИ #Нейросети #2025"
+[Читать](https://lybra-ai.ru)"
 
     try:
-        r = requests.get(image_url, timeout=15)
-        if not r.ok:
-            logging.warning(f"Image download failed")
-            return
-            
+        r = requests.get(image_url, timeout=10)
         temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.jpg')
         temp_file.write(r.content)
         temp_file.close()
@@ -214,9 +153,29 @@ def send_to_telegram(title, body, image_url):
             resp = requests.post(
                 f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto",
                 data={"chat_id": TELEGRAM_CHAT_ID, "caption": message, "parse_mode": "MarkdownV2"},
-                files={"photo": photo},
-                timeout=30
+                files={"photo": photo}
             )
-
+        
         if resp.status_code == 200:
-            logging.info("✅ Telegram
+            logging.info("Telegram OK")
+        os.unlink(temp_file.name)
+    except:
+        logging.warning("Telegram failed")
+
+def main():
+    topics = ["автоматизация контента", "нейросети 2025", "генеративный ИИ", "ИИ бизнес"]
+    topic = random.choice(topics)
+
+    logging.info(f"Topic: {topic}")
+    
+    title = generate_title(topic)
+    body = generate_body(title)
+    image_url = generate_deterministic_image(title)
+    
+    save_post(title, body, image_url)
+    send_to_telegram(title, body, image_url)
+    
+    logging.info("DONE")
+
+if __name__ == "__main__":
+    main()
