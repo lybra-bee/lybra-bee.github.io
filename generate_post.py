@@ -10,14 +10,12 @@ import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
-import base64
 import tempfile
-import uuid
-import ssl
+import requests
 
-# 🔥 АВТОУСТАНОВКА ЗАВИСИМОСТЕЙ
+# 🔥 АВТОУСТАНОВКА
 def install_requirements():
-    required = ['requests', 'beautifulsoup4']
+    required = ['requests', 'replicate']
     for package in required:
         try:
             __import__(package.replace('-', '_'))
@@ -27,8 +25,7 @@ def install_requirements():
 
 install_requirements()
 
-import requests
-from bs4 import BeautifulSoup
+import replicate
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
 
@@ -42,10 +39,7 @@ IMAGES_DIR.mkdir(exist_ok=True)
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-
-# 🔥 GIGACHAT КЛЮЧИ (твои данные)
-GIGACHAT_CREDS = "Y2U4NDJmZDYtYjVlMS00ZTQ0LWE1ZWUtZTQ3ZTQ3ODMyOGVhOmIzM2UxNzljLTMwMjYtNDZiYi1hYWEzLTA3NDAzMzlkMTc2Yg=="
-SCOPE = "GIGACHAT_API_PERS"
+REPLICATE_API_TOKEN = os.getenv("REPLICATE_API_TOKEN")  # Получи на replicate.com (бесплатно)
 
 FALLBACK_IMAGES = [
     "https://picsum.photos/800/600?random=1",
@@ -53,9 +47,8 @@ FALLBACK_IMAGES = [
     "https://picsum.photos/800/600?random=3",
 ]
 
-# -------------------- Telegram экранирование (ИСПРАВЛЕНО) --------------------
+# -------------------- Telegram экранирование --------------------
 def telegram_escape(text):
-    """Правильное экранирование для MarkdownV2"""
     chars_to_escape = r'_*[]()~`>#+=|{}.!-'
     return re.sub(f'([{re.escape(chars_to_escape)}])', r'\\\u0001', text)
 
@@ -67,8 +60,7 @@ def generate_title(topic):
     groq_model = "llama-3.3-70b-versatile"
     system_prompt = f"""Ты — эксперт по SMM и копирайтингу для блога об ИИ.
     Создай один яркий, кликабельный заголовок на тему '{topic}'.
-    Заголовок должен быть на русском, содержать 10-15 слов, использовать приёмы: цифры, вопросы, слова "Как", "Почему", "Топ", "Будущее", "Революция", "Секреты", "2025" и т.д.
-    Он должен вызывать любопытство и желание кликнуть.
+    Заголовок должен быть на русском, содержать 10-15 слов.
     Формат ответа строго: ЗАГОЛОВОК: [твой заголовок]"""
 
     url = "https://api.groq.com/openai/v1/chat/completions"
@@ -104,8 +96,7 @@ def generate_body(title):
         
     groq_model = "llama-3.3-70b-versatile"
     system_prompt = f"""Напиши полную информативную статью для блога об ИИ по заголовку: "{title}"
-    Статья на русском, 600-900 слов, с абзацами, без политики, скандалов, морали или регуляций.
-    Сделай текст увлекательным, с примерами и выводами."""
+    Статья на русском, 600-900 слов, с абзацами."""
 
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
@@ -130,79 +121,49 @@ def generate_body(title):
             time.sleep(3)
     raise RuntimeError("Failed to generate article body")
 
-# 🔥 Шаг 3: GigaChat (ИСПРАВЛЕНО SSL) --------------------
-def generate_image_gigachat(prompt, timeout=300):
-    """GigaChat API с отключением SSL верификации для GitHub Actions"""
-    logging.info(f"GigaChat: generating '{prompt[:50]}...'")
+# 🔥 Шаг 3: Replicate FLUX.1 (50+ изображений/месяц БЕСПЛАТНО) --------------------
+def generate_image_replicate(prompt):
+    """Replicate API: 50+ изображений/месяц бесплатно"""
+    if not REPLICATE_API_TOKEN:
+        logging.warning("REPLICATE_API_TOKEN absent → skipping")
+        return None
+        
+    logging.info(f"Replicate: generating '{prompt[:50]}...'")
     
-    start_time = time.time()
     try:
-        # 1. Токен (30 мин) - БЕЗ SSL верификации
-        session = requests.Session()
-        session.verify = False  # ✅ GitHub Actions SSL fix
+        # FLUX.1 [schnell] — быстро + качественно
+        output = replicate.run(
+            "black-forest-labs/flux-schnell",
+            input={
+                "prompt": prompt + ", realistic, high quality, 1024x1024",
+                "num_outputs": 1,
+                "num_inference_steps": 4,  # schnell = быстро
+                "guidance_scale": 0.0,
+            }
+        )
         
-        token_url = "https://gigachat.devices.sberbank.ru/api/v1/oauth"
-        token_data = {"scope": SCOPE}
-        token_headers = {
-            "Authorization": f"Basic {GIGACHAT_CREDS}",
-            "Content-Type": "application/x-www-form-urlencoded",
-            "RqUID": re.sub(r"[^0-9a-f-]", "", str(uuid.uuid4()))
-        }
-        token_resp = session.post(token_url, data=token_data, headers=token_headers, timeout=30)
-        token_resp.raise_for_status()
-        access_token = token_resp.json()["access_token"]
+        img_url = output[0]  # URL готового изображения
         
-        # 2. Генерация
-        chat_url = "https://gigachat.devices.sberbank.ru/api/v1/chat/completions"
-        chat_payload = {
-            "model": "GigaChat Pro",
-            "messages": [
-                {"role": "system", "content": "Генерируй изображения Kandinsky 3.1"},
-                {"role": "user", "content": prompt + ", реалистично, высокое качество, 4k"}
-            ],
-            "max_tokens": 1000,
-            "temperature": 0.7,
-            "function_call": "auto"
-        }
-        chat_headers = {
-            "Authorization": f"Bearer {access_token}",
-            "Content-Type": "application/json",
-            "RqUID": re.sub(r"[^0-9a-f-]", "", str(uuid.uuid4()))
-        }
-        chat_resp = session.post(chat_url, json=chat_payload, headers=chat_headers, timeout=120)
-        chat_resp.raise_for_status()
-        
-        content = chat_resp.json()["choices"][0]["message"]["content"]
-        soup = BeautifulSoup(content, "html.parser")
-        img_tag = soup.find("img")
-        
-        if not img_tag or not img_tag.get("src"):
-            logging.warning("GigaChat: no image in response")
-            return None
-        
-        file_id = img_tag.get("src")
-        
-        # 3. Скачиваем
-        img_url = f"https://gigachat.devices.sberbank.ru/api/v1/files/{file_id}/content"
-        img_headers = {"Authorization": f"Bearer {access_token}", "Accept": "image/jpeg"}
-        img_resp = session.get(img_url, headers=img_headers, timeout=30)
-        img_resp.raise_for_status()
+        # Скачиваем
+        r = requests.get(img_url, timeout=30)
+        r.raise_for_status()
         
         img_path = IMAGES_DIR / f"post-{int(time.time())}.jpg"
         with open(img_path, "wb") as f:
-            f.write(img_resp.content)
-        logging.info(f"✅ GigaChat image: {img_path}")
+            f.write(r.content)
+        logging.info(f"✅ Replicate FLUX.1: {img_path}")
         return str(img_path)
         
     except Exception as e:
-        logging.warning(f"GigaChat error: {e}")
+        logging.warning(f"Replicate error: {e}")
         return None
 
 def generate_image(title):
-    img = generate_image_gigachat(title)
+    """Replicate → fallback"""
+    img = generate_image_replicate(title)
     if img:
         return img
-    logging.warning("GigaChat failed → using fallback URL")
+    logging.warning("Replicate failed → fallback")
     return random.choice(FALLBACK_IMAGES)
 
 # -------------------- Сохранение --------------------
@@ -221,12 +182,12 @@ date: {today}
 """
     
     content = frontmatter + body
-    with open(filename, "w", "utf-8") as f:
+    with open(filename, "w", encoding="utf-8") as f:
         f.write(content)
     logging.info(f"Saved post: {filename}")
     return filename
 
-# -------------------- Telegram (ИСПРАВЛЕНО) --------------------
+# -------------------- Telegram --------------------
 def send_to_telegram(title, body, image_path):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         logging.warning("Telegram keys absent, skipping")
@@ -245,7 +206,7 @@ def send_to_telegram(title, body, image_path):
         if image_path.startswith('http'):
             r = requests.get(image_path, timeout=10)
             if not r.ok:
-                logging.warning(f"Failed to download fallback image: {r.status_code}")
+                logging.warning(f"Fallback download failed")
                 return
             temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.jpg')
             temp_file.write(r.content)
@@ -262,10 +223,10 @@ def send_to_telegram(title, body, image_path):
                 timeout=30
             )
 
-        if resp.status_code != 200:
-            logging.warning(f"Telegram error {resp.status_code}: {resp.text}")
+        if resp.status_code == 200:
+            logging.info("Telegram OK")
         else:
-            logging.info(f"Telegram OK: {resp.status_code}")
+            logging.warning(f"Telegram error {resp.status_code}")
 
         if image_path.startswith('http'):
             os.unlink(image_file)
