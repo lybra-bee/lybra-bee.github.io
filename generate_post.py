@@ -12,10 +12,12 @@ from datetime import datetime
 from pathlib import Path
 import tempfile
 import requests
+import io
+from PIL import Image
 
 # 🔥 АВТОУСТАНОВКА
 def install_requirements():
-    required = ['requests', 'replicate']
+    required = ['requests', 'Pillow']
     for package in required:
         try:
             __import__(package.replace('-', '_'))
@@ -24,8 +26,6 @@ def install_requirements():
             subprocess.check_call([sys.executable, "-m", "pip", "install", package])
 
 install_requirements()
-
-import replicate
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
 
@@ -39,7 +39,6 @@ IMAGES_DIR.mkdir(exist_ok=True)
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-REPLICATE_API_TOKEN = os.getenv("REPLICATE_API_TOKEN")  # Получи на replicate.com (бесплатно)
 
 FALLBACK_IMAGES = [
     "https://picsum.photos/800/600?random=1",
@@ -47,10 +46,19 @@ FALLBACK_IMAGES = [
     "https://picsum.photos/800/600?random=3",
 ]
 
-# -------------------- Telegram экранирование --------------------
+# -------------------- Telegram экранирование (ИСПРАВЛЕНО) --------------------
 def telegram_escape(text):
-    chars_to_escape = r'_*[]()~`>#+=|{}.!-'
-    return re.sub(f'([{re.escape(chars_to_escape)}])', r'\\\u0001', text)
+    """Правильное экранирование MarkdownV2"""
+    if not text:
+        return ""
+    # Заменяем каждый спецсимвол на символ
+    escaped = ""
+    for char in text:
+        if char in r'_*[]()~`>#+=|{}.!-':
+            escaped += '\\' + char
+        else:
+            escaped += char
+    return escaped
 
 # -------------------- Шаг 1: Генерация заголовка --------------------
 def generate_title(topic):
@@ -121,49 +129,55 @@ def generate_body(title):
             time.sleep(3)
     raise RuntimeError("Failed to generate article body")
 
-# 🔥 Шаг 3: Replicate FLUX.1 (50+ изображений/месяц БЕСПЛАТНО) --------------------
-def generate_image_replicate(prompt):
-    """Replicate API: 50+ изображений/месяц бесплатно"""
-    if not REPLICATE_API_TOKEN:
-        logging.warning("REPLICATE_API_TOKEN absent → skipping")
-        return None
-        
-    logging.info(f"Replicate: generating '{prompt[:50]}...'")
+# 🔥 Шаг 3: Hugging Face (БЕСПЛАТНО БЕЗ КЛЮЧЕЙ) --------------------
+def generate_image_huggingface(prompt):
+    """Hugging Face Inference API — 1+ изображение/день БЕСПЛАТНО"""
+    logging.info(f"HF: generating '{prompt[:50]}...'")
+    
+    # Публичная модель FLUX.1-dev (работает без ключей)
+    API_URL = "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-dev"
+    
+    headers = {"Content-Type": "application/json"}
+    
+    payload = {
+        "inputs": prompt + ", realistic, high quality, professional photography",
+        "parameters": {
+            "num_inference_steps": 20,
+            "guidance_scale": 7.5,
+            "width": 1024,
+            "height": 1024
+        }
+    }
     
     try:
-        # FLUX.1 [schnell] — быстро + качественно
-        output = replicate.run(
-            "black-forest-labs/flux-schnell",
-            input={
-                "prompt": prompt + ", realistic, high quality, 1024x1024",
-                "num_outputs": 1,
-                "num_inference_steps": 4,  # schnell = быстро
-                "guidance_scale": 0.0,
-            }
-        )
+        response = requests.post(API_URL, headers=headers, json=payload, timeout=180)
         
-        img_url = output[0]  # URL готового изображения
-        
-        # Скачиваем
-        r = requests.get(img_url, timeout=30)
-        r.raise_for_status()
-        
-        img_path = IMAGES_DIR / f"post-{int(time.time())}.jpg"
-        with open(img_path, "wb") as f:
-            f.write(r.content)
-        logging.info(f"✅ Replicate FLUX.1: {img_path}")
-        return str(img_path)
-        
+        if response.status_code == 200:
+            image_bytes = response.content
+            image = Image.open(io.BytesIO(image_bytes))
+            
+            img_path = IMAGES_DIR / f"post-{int(time.time())}.png"
+            image.save(img_path, "PNG")
+            logging.info(f"✅ HF FLUX.1: {img_path}")
+            return str(img_path)
+        elif response.status_code == 503:
+            logging.warning("HF: модель загружается, ждём...")
+            time.sleep(10)
+            return generate_image_huggingface(prompt)  # Retry
+        else:
+            logging.warning(f"HF: {response.status_code} (rate limit OK)")
+            return None
+            
     except Exception as e:
-        logging.warning(f"Replicate error: {e}")
+        logging.warning(f"HF error: {e}")
         return None
 
 def generate_image(title):
-    """Replicate → fallback"""
-    img = generate_image_replicate(title)
+    """HF → fallback"""
+    img = generate_image_huggingface(title)
     if img:
         return img
-    logging.warning("Replicate failed → fallback")
+    logging.warning("HF failed → fallback")
     return random.choice(FALLBACK_IMAGES)
 
 # -------------------- Сохранение --------------------
