@@ -21,7 +21,7 @@ HORDE_API_KEY = os.getenv("HORDE_API_KEY")
 CLIPDROP_API_KEY = os.getenv("CLIPDROP_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 FUSIONBRAIN_API_KEY = os.getenv("FUSIONBRAIN_API_KEY")
-FUSIONBRAIN_SECRET_KEY = os.getenv("FUSION_SECRET_KEY")
+FUSION_SECRET_KEY = os.getenv("FUSION_SECRET_KEY")
 
 FALLBACK_IMAGES = [
     "https://picsum.photos/800/600?random=1",
@@ -72,14 +72,14 @@ def generate_article(topic):
 
 # -------------------- Изображение --------------------
 def generate_image_kandinsky(prompt, timeout=600):
-    if not FUSIONBRAIN_API_KEY or not FUSIONBRAIN_SECRET_KEY:
+    if not FUSIONBRAIN_API_KEY or not FUSION_SECRET_KEY:
         logging.warning("Kandinsky keys absent, skipping")
         return None
 
     base_url = "https://api-key.fusionbrain.ai/key/api/v1"
     headers = {
         "X-Key": f"Key {FUSIONBRAIN_API_KEY}",
-        "X-Secret": f"Secret {FUSIONBRAIN_SECRET_KEY}",
+        "X-Secret": f"Secret {FUSION_SECRET_KEY}",
     }
 
     # Get model_id (pipeline)
