@@ -29,7 +29,7 @@ FALLBACK_IMAGES = [
 
 # -------------------- Статья --------------------
 def generate_article(topic):
-    groq_model = "llama3-70b-8192"
+    groq_model = "llama-3.3-70b-versatile"
     system_prompt = f"Напиши статью на тему '{topic}' без политики, скандалов, морали. Заголовок должен быть уникальным."
     user_prompt = "Пожалуйста, сформируй текст: ЗАГОЛОВОК: ... ТЕКСТ: ..."
 
@@ -43,7 +43,7 @@ def generate_article(topic):
         "temperature": 0.8,
     }
 
-    forbidden_words = ["политика", "скандал", "мораль", "регуляция", "политик", "политический"]
+    forbidden_words = ["политика", "скандал", "мораль", "регуляция", "политик", "политический", "регулирование", "скандальный", "моральный"]
 
     for attempt in range(5):
         logging.info(f"Article attempt {attempt+1}: {topic}")
@@ -108,7 +108,7 @@ def generate_image_horde(prompt, timeout=180):
     return None
 
 def generate_image_hf(prompt):
-    url = "https://router.huggingface.co/models/CompVis/stable-diffusion-v1-4"
+    url = "https://api-inference.huggingface.co/models/CompVis/stable-diffusion-v1-4"
     headers = {"Authorization": f"Bearer {HF_API_KEY}"}
     payload = {"inputs": prompt + ", photorealistic, high resolution, detailed, relevant to article content"}
     try:
