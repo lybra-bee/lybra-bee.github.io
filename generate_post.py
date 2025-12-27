@@ -113,7 +113,7 @@ def generate_image_horde(title):
         "params": {
             "width": 1024,
             "height": 1024,
-            "steps": 20,
+            "steps": 15,  # Изменение: уменьшил с 20 на 15 для снижения kudos
             "cfg_scale": 7.0,
             "n": 1
         },
@@ -218,9 +218,29 @@ def send_to_telegram(title, body, image_path):
     teaser = ' '.join(body.split()[:40]) + '…'
 
     def esc(text):
-        return re.sub(r'([_*\[\]\(\)~`>#+\-=|{}.!])', r'\\\1', text)
+        return (text.replace('\\', '\\\\')
+                    .replace('_', '\\_')
+                    .replace('*', '\\*')
+                    .replace('[', '\\[')
+                    .replace(']', '\\]')
+                    .replace('(', '\\(')
+                    .replace(')', '\\)')
+                    .replace('~', '\\~')
+                    .replace('`', '\\`')
+                    .replace('>', '\\>')
+                    .replace('#', '\\#')
+                    .replace('+', '\\+')
+                    .replace('-', '\\-')
+                    .replace('=', '\\=')
+                    .replace('|', '\\|')
+                    .replace('{', '\\{')
+                    .replace('}', '\\}')
+                    .replace('.', '\\.')
+                    .replace('!', '\\!'))
 
-    message = f"*Новая статья в блоге\\!*\n\n*{esc(title)}*\n\n{esc(teaser)}\n\n[Читать полностью →](https://lybra-ai.ru)\n\n\\#ИИ \\#LybraAI \\#искусственный_интеллект"
+    message = f"*Новая статья в блоге\\!*\n\n{esc(title)}\n\n{esc(teaser)}\n\n[Читать полностью →](https://lybra-ai.ru)\n\n\\#ИИ \\#LybraAI \\#искусственный_интеллект"  # Изменение: убрал * вокруг title и teaser
+
+    logging.info(f"Отправляемое сообщение в Telegram: {message}")  # Изменение: добавил logging для отладки
 
     try:
         if image_path.startswith('http'):
@@ -256,27 +276,29 @@ def send_to_telegram(title, body, image_path):
 
 # -------------------- MAIN --------------------
 def main():
-    topics = [
-        "ИИ в автоматизации контента",
-        "Мультимодальные модели ИИ",
-        "Генеративный ИИ в 2025 году",
-        "Автономные ИИ-агенты",
-        "ИИ в креативных профессиях",
-        "Будущее нейросетей и AGI",
-        "ИИ и обработка естественного языка"
-    ]
-    topic = random.choice(topics)
-    logging.info(f"Тема дня: {topic}")
+    try:
+        topics = [
+            "ИИ в автоматизации контента",
+            "Мультимодальные модели ИИ",
+            "Генеративный ИИ в 2025 году",
+            "Автономные ИИ-агенты",
+            "ИИ в креативных профессиях",
+            "Будущее нейросетей и AGI",
+            "ИИ и обработка естественного языка"
+        ]
+        topic = random.choice(topics)
+        logging.info(f"Тема дня: {topic}")
 
-    title = generate_title(topic)
-    body = generate_body(title)
-    img_path = generate_image(title)
+        title = generate_title(topic)
+        body = generate_body(title)
+        img_path = generate_image(title)
 
-    save_post(title, body, img_path)
-    send_to_telegram(title, body, img_path)
+        save_post(title, body, img_path)
+        send_to_telegram(title, body, img_path)
 
-    logging.info("=== Пост успешно создан и опубликован ===")
-
+        logging.info("=== Пост успешно создан и опубликован ===")
+    except Exception as e:
+        logging.error(f"Ошибка в main: {e}")
 
 if __name__ == "__main__":
     main()
