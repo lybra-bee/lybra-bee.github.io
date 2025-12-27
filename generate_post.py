@@ -24,8 +24,6 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-# Нет нужды в ключе для Puter.js!
-
 FALLBACK_IMAGES = [
     "https://picsum.photos/1200/800?random=50",
     "https://picsum.photos/1200/800?random=51",
@@ -117,7 +115,9 @@ def generate_image_puter(title):
           puter.ai.txt2img("{prompt}", {{ 
             model: "black-forest-labs/FLUX.1-schnell"
           }}).then(img => {{
-            document.body.appendChild(img);
+            const image = document.createElement('img');
+            image.src = img.src;
+            document.body.appendChild(image);
           }});
         </script>
       </body>
@@ -130,17 +130,17 @@ def generate_image_puter(title):
             with sync_playwright() as p:
                 browser = p.chromium.launch(headless=True)
                 page = browser.new_page()
-                page.set_content(html_code, wait_until="networkidle")
-                page.wait_for_selector("img", timeout=90000)  # Увеличил до 90 сек — генерация может занять время
+                page.set_content(html_code)
+                page.wait_for_selector("img", timeout=90000)  # до 90 секунд
                 
                 img_src = page.eval_on_selector("img", "el => el.src")
                 
                 if not img_src or not img_src.startswith("http"):
-                    raise Exception("Нет валидного URL изображения")
+                    raise Exception("Не получен валидный URL изображения")
                 
                 img_data = requests.get(img_src, timeout=60)
                 if not img_data.ok:
-                    raise Exception("Не удалось скачать изображение")
+                    raise Exception("Ошибка скачивания изображения")
                 
                 timestamp = int(time.time())
                 img_path = IMAGES_DIR / f"puter-flux-{timestamp}.jpg"
@@ -153,7 +153,8 @@ def generate_image_puter(title):
 
         except Exception as e:
             logging.warning(f"Ошибка Puter.js (попытка {attempt+1}): {e}")
-            time.sleep(15)
+            if attempt < 4:
+                time.sleep(15)
 
     return None
 
@@ -232,4 +233,37 @@ def send_to_telegram(title, body, image_path):
             os.unlink(image_file)
 
         if resp.status_code != 200:
-            logging
+            logging.warning(f"Telegram ошибка: {resp.status_code} {resp.text}")
+        else:
+            logging.info("Пост успешно отправлен в Telegram")
+
+    except Exception as e:
+        logging.warning(f"Ошибка отправки в Telegram: {e}")
+
+
+# -------------------- MAIN --------------------
+def main():
+    topics = [
+        "ИИ в автоматизации контента",
+        "Мультимодальные модели ИИ",
+        "Генеративный ИИ в 2025 году",
+        "Автономные ИИ-агенты",
+        "ИИ в креативных профессиях",
+        "Будущее нейросетей и AGI",
+        "ИИ и обработка естественного языка"
+    ]
+    topic = random.choice(topics)
+    logging.info(f"Тема дня: {topic}")
+
+    title = generate_title(topic)
+    body = generate_body(title)
+    img_path = generate_image(title)
+
+    save_post(title, body, img_path)
+    send_to_telegram(title, body, img_path)
+
+    logging.info("=== Пост успешно создан и опубликован ===")
+
+
+if __name__ == "__main__":
+    main()
