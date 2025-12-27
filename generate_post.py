@@ -101,7 +101,7 @@ def generate_body(title):
     raise RuntimeError("Не удалось сгенерировать статью")
 
 
-# -------------------- Изображение: AI Horde (низкая нагрузка) --------------------
+# -------------------- Изображение: AI Horde --------------------
 def generate_image_horde(title):
     prompt = f"{title}, futuristic artificial intelligence, neural networks, cyberpunk aesthetic, photorealistic, highly detailed, cinematic lighting, vibrant neon colors, masterpiece, best quality"
 
@@ -113,7 +113,7 @@ def generate_image_horde(title):
         "params": {
             "width": 1024,
             "height": 1024,
-            "steps": 20,  # Меньше steps = меньше kudos
+            "steps": 20,
             "cfg_scale": 7.0,
             "n": 1
         },
@@ -199,53 +199,4 @@ def save_post(title, body, img_path=None):
 
     if img_path and not img_path.startswith('http'):
         image_name = Path(img_path).name
-        content += f"![{title}]({{{{ site.baseurl }}}}/assets/images/posts/{image_name})\n\n"
-
-    content += body
-
-    with open(filename, "w", encoding="utf-8") as f:
-        f.write(content)
-
-    logging.info(f"Пост сохранён: {filename}")
-    return filename
-
-
-# -------------------- Telegram (полное экранирование) --------------------
-def send_to_telegram(title, body, image_path):
-    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-        return
-
-    teaser = ' '.join(body.split()[:40]) + '…'
-
-    def esc(text):
-        return (text.replace('\\', '\\\\')
-                    .replace('_', '\\_')
-                    .replace('*', '\\*')
-                    .replace('[', '\\[')
-                    .replace(']', '\\]')
-                    .replace('(', '\\(')
-                    .replace(')', '\\)')
-                    .replace('~', '\\~')
-                    .replace('`', '\\`')
-                    .replace('>', '\\>')
-                    .replace('#', '\\#')
-                    .replace('+', '\\+')
-                    .replace('-', '\\-')
-                    .replace('=', '\\=')
-                    .replace('|', '\\|')
-                    .replace('{', '\\{')
-                    .replace('}', '\\}')
-                    .replace('.', '\\.')
-                    .replace('!', '\\!'))
-
-    message = f"*Новая статья в блоге\\!*\n\n*{esc(title)}*\n\n{esc(teaser)}\n\n[Читать полностью →](https://lybra-ai.ru)\n\n\\#ИИ \\#LybraAI \\#искусственный_интеллект"
-
-    try:
-        if image_path.startswith('http'):
-            r = requests.get(image_path, timeout=30)
-            if not r.ok:
-                return
-            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.jpg')
-            temp_file.write(r.content)
-            temp_file.close()
-            image_file
+        content
