@@ -6,12 +6,28 @@ import time
 import json
 import random
 import logging
-import requests
+import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
 import base64
 import tempfile
 import uuid
+
+# 🔥 АВТОУСТАНОВКА ЗАВИСИМОСТЕЙ (1 раз)
+def install_requirements():
+    required = ['requests', 'beautifulsoup4']
+    for package in required:
+        try:
+            __import__(package.replace('-', '_'))
+        except ImportError:
+            logging.info(f"Installing {package}...")
+            subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+
+install_requirements()
+
+# Теперь импортируем после установки
+import requests
 from bs4 import BeautifulSoup
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
@@ -26,8 +42,6 @@ IMAGES_DIR.mkdir(exist_ok=True)
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-FUSIONBRAIN_API_KEY = os.getenv("FUSIONBRAIN_API_KEY")
-FUSION_SECRET_KEY = os.getenv("FUSION_SECRET_KEY")
 
 # 🔥 GIGACHAT КЛЮЧИ (твои данные)
 GIGACHAT_CREDS = "Y2U4NDJmZDYtYjVlMS00ZTQ0LWE1ZWUtZTQ3ZTQ3ODMyOGVhOmIzM2UxNzljLTMwMjYtNDZiYi1hYWEzLTA3NDAzMzlkMTc2Yg=="
@@ -41,6 +55,9 @@ FALLBACK_IMAGES = [
 
 # -------------------- Шаг 1: Генерация заголовка --------------------
 def generate_title(topic):
+    if not GROQ_API_KEY:
+        raise RuntimeError("GROQ_API_KEY required")
+        
     groq_model = "llama-3.3-70b-versatile"
     system_prompt = f"""Ты — эксперт по SMM и копирайтингу для блога об ИИ.
     Создай один яркий, кликабельный заголовок на тему '{topic}'.
@@ -61,7 +78,7 @@ def generate_title(topic):
     for attempt in range(7):
         logging.info(f"Title attempt {attempt+1}: {topic}")
         try:
-            r = requests.post(url, headers=headers, json=payload)
+            r = requests.post(url, headers=headers, json=payload, timeout=30)
             r.raise_for_status()
             text = r.json()["choices"][0]["message"]["content"]
             match = re.search(r"ЗАГОЛОВОК:s*(.+)", text, re.IGNORECASE)
@@ -76,6 +93,9 @@ def generate_title(topic):
 
 # -------------------- Шаг 2: Генерация статьи по заголовку --------------------
 def generate_body(title):
+    if not GROQ_API_KEY:
+        raise RuntimeError("GROQ_API_KEY required")
+        
     groq_model = "llama-3.3-70b-versatile"
     system_prompt = f"""Напиши полную информативную статью для блога об ИИ по заголовку: "{title}"
     Статья на русском, 600-900 слов, с абзацами, без политики, скандалов, морали или регуляций.
@@ -94,7 +114,7 @@ def generate_body(title):
     for attempt in range(5):
         logging.info(f"Body attempt {attempt+1} for title: {title[:50]}...")
         try:
-            r = requests.post(url, headers=headers, json=payload)
+            r = requests.post(url, headers=headers, json=payload, timeout=60)
             r.raise_for_status()
             body = r.json()["choices"][0]["message"]["content"].strip()
             if len(body.split()) > 300:
@@ -104,11 +124,12 @@ def generate_body(title):
             time.sleep(3)
     raise RuntimeError("Failed to generate article body")
 
-# 🔥 Шаг 3: GigaChat Kandinsky (замена Fusion Brain) --------------------
+# 🔥 Шаг 3: GigaChat Kandinsky --------------------
 def generate_image_gigachat(prompt, timeout=300):
     """GigaChat API: 100+ изображений/сутки БЕСПЛАТНО"""
     logging.info(f"GigaChat: generating '{prompt[:50]}...'")
     
+    start_time = time.time()
     try:
         # 1. Токен (30 мин)
         token_url = "https://gigachat.devices.sberbank.ru/api/v1/oauth"
@@ -139,7 +160,7 @@ def generate_image_gigachat(prompt, timeout=300):
             "Content-Type": "application/json",
             "RqUID": re.sub(r"[^0-9a-f-]", "", str(uuid.uuid4()))
         }
-        chat_resp = requests.post(chat_url, json=chat_payload, headers=chat_headers, timeout=60)
+        chat_resp = requests.post(chat_url, json=chat_payload, headers=chat_headers, timeout=120)
         chat_resp.raise_for_status()
         
         content = chat_resp.json()["choices"][0]["message"]["content"]
@@ -164,11 +185,8 @@ def generate_image_gigachat(prompt, timeout=300):
         logging.info(f"✅ GigaChat image: {img_path}")
         return str(img_path)
         
-    except requests.exceptions.RequestException as e:
-        logging.warning(f"GigaChat error: {e}")
-        return None
     except Exception as e:
-        logging.warning(f"GigaChat unexpected error: {e}")
+        logging.warning(f"GigaChat error: {e}")
         return None
 
 def generate_image(title):
@@ -179,7 +197,7 @@ def generate_image(title):
     logging.warning("GigaChat failed → using fallback URL")
     return random.choice(FALLBACK_IMAGES)
 
-# -------------------- Сохранение (ИСПРАВЛЕНО) --------------------
+# -------------------- Сохранение --------------------
 def save_post(title, body):
     today = datetime.now().strftime("%Y-%m-%d")
     slug = re.sub(r'[^a-zA-Z0-9]+', '-', title.lower()).strip('-')[:100]
@@ -187,7 +205,6 @@ def save_post(title, body):
         slug = "ai-revolution-" + today.replace("-", "")
     filename = POSTS_DIR / f"{today}-{slug}.md"
     
-    # ✅ ИСПРАВЛЕННЫЙ f-string (одна строка)
     frontmatter = f"""---
 title: {title}
 date: {today}
@@ -220,7 +237,7 @@ def send_to_telegram(title, body, image_path):
 
     try:
         if image_path.startswith('http'):
-            r = requests.get(image_path)
+            r = requests.get(image_path, timeout=10)
             if not r.ok:
                 logging.warning(f"Failed to download fallback image: {r.status_code}")
                 return
@@ -235,7 +252,8 @@ def send_to_telegram(title, body, image_path):
             resp = requests.post(
                 f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto",
                 data={"chat_id": TELEGRAM_CHAT_ID, "caption": message, "parse_mode": "MarkdownV2"},
-                files={"photo": photo}
+                files={"photo": photo},
+                timeout=30
             )
 
         if resp.status_code != 200:
