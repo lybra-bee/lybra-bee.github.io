@@ -12,7 +12,6 @@ from pathlib import Path
 import tempfile
 import requests
 import hashlib
-import urllib.parse
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
 
@@ -59,15 +58,8 @@ def generate_title(topic):
     if not GROQ_API_KEY:
         raise RuntimeError("GROQ_API_KEY required")
     
-    # ✅ ПРОСТОЙ промпт — работает 100%
-    prompt = f"""Создай КЛИКАБЕЛЬНЫЙ заголовок для ИИ-блога по теме: {topic}
-
-ПРИМЕРЫ:
-• "7 ИИ-инструментов которые 10x ускорят ваш бизнес в 2025"
-• "ШОК нейросеть заменит 80% дизайнеров уже в этом году" 
-• "Топ-5 мультимодальных моделей 2025 которые взорвут рынок"
-
-Только ЗАГОЛОВОК без номера!"""
+    # ✅ ОДНА строка промпта
+    prompt = f"Создай КЛИКАБЕЛЬНЫЙ заголовок для ИИ-блога: {topic}. Примеры: '7 ИИ-инструментов 10x ускорят бизнес 2025', 'ШОК: нейросеть заменит дизайнеров'. Только заголовок, 10-20 слов!"
 
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
@@ -78,20 +70,20 @@ def generate_title(topic):
         "temperature": 0.8,
     }
 
-    for attempt in range(5):  # ✅ Меньше попыток
+    for attempt in range(5):
         logging.info(f"Title attempt {attempt+1}: {topic}")
         try:
             r = requests.post(url, headers=headers, json=payload, timeout=20)
             r.raise_for_status()
             text = r.json()["choices"][0]["message"]["content"].strip()
             
-            # ✅ БЕРЁМ ПЕРВУЮ НЕПУСТУЮ СТРОКУ
+            # Первая непустая строка
             lines = [line.strip() for line in text.split('
 ') if line.strip()]
             if lines:
                 title = lines[0]
                 words = title.split()
-                if 8 <= len(words) <= 25:  # ✅ Гибкие лимиты
+                if 8 <= len(words) <= 25:
                     logging.info(f"✅ Title: {title}")
                     return title
                     
@@ -99,14 +91,14 @@ def generate_title(topic):
             logging.error(f"Title error {attempt+1}: {e}")
             time.sleep(1)
     
-    # ✅ FALLBACK заголовок если Groq глючит
+    # Fallback
     fallback_titles = [
-        f"ИИ-революция 2025: как {topic.lower()} изменит ваш бизнес",
-        f"Топ-7 инструментов {topic} для 2025 года",
-        f"Будущее {topic}: что покажут нейросети 2025"
+        f"ИИ-революция 2025: {topic}",
+        f"Топ-7 {topic} для бизнеса",
+        f"Как {topic} изменит 2025"
     ]
     title = random.choice(fallback_titles)
-    logging.warning(f"Using fallback title: {title}")
+    logging.warning(f"Fallback title: {title}")
     return title
 
 # -------------------- Шаг 2: Генерация статьи --------------------
@@ -114,15 +106,7 @@ def generate_body(title):
     if not GROQ_API_KEY:
         raise RuntimeError("GROQ_API_KEY required")
     
-    prompt = f"""Напиши статью для ИИ-блога по заголовку: "{title}"
-
-✅ ТРЕБОВАНИЯ:
-• Русский язык
-• 700-1000 слов  
-• 4-6 подзаголовков (### Заголовок)
-• Конкретные примеры
-• Практические советы
-• Заключение"""
+    prompt = f'Напиши статью для ИИ-блога: "{title}". Русский, 700-1000 слов, 4-6 подзаголовков (###), примеры, советы, заключение.'
 
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
@@ -145,41 +129,34 @@ def generate_body(title):
             logging.error(f"Body error: {e}")
             time.sleep(2)
     
-    # ✅ FALLBACK тело
     fallback = f"""# {title}
 
-## Введение
+## Почему это важно в 2025
 
-{title} — одна из самых горячих тем 2025 года. ИИ меняет подход к...
+{title} меняет подход к работе...
 
-## Почему это важно
+## Практика и примеры
 
-1. **Скорость**: в 10 раз быстрее традиционных методов
-2. **Качество**: нейросети дают профессиональный результат
-3. **Экономия**: снижает затраты на 70%
+1. Автоматизация контента
+2. Генерация изображений  
+3. Аналитика данных
 
-## Практические примеры
+## Как внедрить
 
-- **Кейс 1**: компания X увеличила конверсию на 300%
-- **Кейс 2**: автоматизация сократила время на 90%
+- Инструмент 1: ChatGPT
+- Инструмент 2: Midjourney
+- Инструмент 3: Grok
 
-## Как начать
+## Итоги
 
-1. Выберите инструмент (ChatGPT, Midjourney, Grok)
-2. Настройте промпты
-3. Интегрируйте в workflow
-
-## Заключение
-
-{title} — это не будущее, а настоящее. Начните сегодня!"""
-    logging.warning("Using fallback body")
+Начните с {title} уже сегодня!"""
+    logging.warning("Fallback body")
     return fallback
 
 # -------------------- Сохранение С ИЗОБРАЖЕНИЕМ --------------------
 def save_post(title, body, image_url):
     today = datetime.now().strftime("%Y-%m-%d")
     
-    # Правильный slug
     slug = re.sub(r'[^a-zа-я0-9s]', '', title.lower())
     slug = re.sub(r's+', '-', slug)
     slug = re.sub(r'-+', '-', slug).strip('-')[:80]
@@ -188,7 +165,6 @@ def save_post(title, body, image_url):
     
     filename = POSTS_DIR / f"{today}-{slug}.md"
     
-    # Frontmatter С ИЗОБРАЖЕНИЕМ
     image_filename = f"post-{int(time.time())}.jpg"
     image_relative = f"/assets/images/posts/{image_filename}"
     
@@ -243,31 +219,4 @@ def send_to_telegram(title, body, image_url):
             )
 
         if resp.status_code == 200:
-            logging.info("✅ Telegram OK")
-        os.unlink(temp_file.name)
-    except Exception as e:
-        logging.warning(f"Telegram: {e}")
-
-# -------------------- MAIN --------------------
-def main():
-    topics = [
-        "ИИ автоматизация контента 2025", 
-        "мультимодальные нейросети", 
-        "генеративные модели будущего",
-        "нейросети для бизнеса"
-    ]
-    topic = random.choice(topics)
-
-    logging.info(f"🎯 Topic: {topic}")
-    
-    title = generate_title(topic)
-    body = generate_body(title)
-    image_url = generate_deterministic_image(title)
-    
-    save_post(title, body, image_url)
-    send_to_telegram(title, body, image_url)
-    
-    logging.info("🎉 === DONE ===")
-
-if __name__ == "__main__":
-    main()
+            logging.info("✅ Telegram
