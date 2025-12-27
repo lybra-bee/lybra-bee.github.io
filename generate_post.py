@@ -9,7 +9,6 @@ import logging
 import requests
 from datetime import datetime
 from pathlib import Path
-import base64
 import tempfile
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
@@ -24,8 +23,7 @@ IMAGES_DIR.mkdir(exist_ok=True)
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-FUSIONBRAIN_API_KEY = os.getenv("FUSIONBRAIN_API_KEY")
-FUSION_SECRET_KEY = os.getenv("FUSION_SECRET_KEY")
+REPLICATE_API_TOKEN = os.getenv("REPLICATE_API_TOKEN")  # Новый ключ для Replicate
 
 FALLBACK_IMAGES = [
     "https://picsum.photos/800/600?random=1",
@@ -61,7 +59,7 @@ def generate_title(topic):
             match = re.search(r"ЗАГОЛОВОК:\s*(.+)", text, re.IGNORECASE)
             if match:
                 title = match.group(1).strip()
-                if len(title.split()) >= 8:  # Минимум 8 слов для надёжности
+                if len(title.split()) >= 8:
                     return title
         except Exception as e:
             logging.error(f"Title error: {e}")
@@ -91,98 +89,88 @@ def generate_body(title):
             r = requests.post(url, headers=headers, json=payload)
             r.raise_for_status()
             body = r.json()["choices"][0]["message"]["content"].strip()
-            if len(body.split()) > 300:  # Минимум ~300 слов
+            if len(body.split()) > 300:
                 return body
         except Exception as e:
             logging.error(f"Body error: {e}")
             time.sleep(3)
     raise RuntimeError("Failed to generate article body")
 
-# -------------------- Шаг 3: Изображение (Kandinsky) --------------------
-def generate_image_kandinsky(prompt, timeout=600):
-    if not FUSIONBRAIN_API_KEY or not FUSION_SECRET_KEY:
-        logging.warning("Kandinsky keys absent, skipping")
+# -------------------- Изображение: Flux.1 через Replicate --------------------
+def generate_image_flux(prompt, timeout=300):
+    if not REPLICATE_API_TOKEN:
+        logging.warning("Replicate API token absent, skipping Flux")
         return None
 
-    base_url = "https://api-key.fusionbrain.ai/key/api/v1"
+    model = "black-forest-labs/flux-schnell"  # Быстрая версия с хорошим качеством
+    url = f"https://api.replicate.com/v1/models/{model}/predictions"
     headers = {
-        "X-Key": f"Key {FUSIONBRAIN_API_KEY}",
-        "X-Secret": f"Secret {FUSION_SECRET_KEY}",
+        "Authorization": f"Token {REPLICATE_API_TOKEN}",
+        "Content-Type": "application/json"
     }
-
-    try:
-        r = requests.get(f"{base_url}/pipelines", headers=headers)
-        if not r.ok:
-            logging.warning(f"Kandinsky pipelines error {r.status_code}: {r.text[:200]}")
-            return None
-        models = r.json()
-        model_id = models[0]["id"]
-    except Exception as e:
-        logging.warning(f"Kandinsky model fetch error: {e}")
-        return None
 
     full_prompt = prompt + ", photorealistic, high resolution, detailed, professional photography, relevant to AI theme"
 
-    params = {
-        "type": "GENERATE",
-        "numImages": 1,
-        "width": 1024,
-        "height": 1024,
-        "generateParams": {"query": full_prompt}
-    }
-
-    files = {
-        "model_id": (None, model_id),
-        "params": (None, json.dumps(params), "application/json")
+    payload = {
+        "input": {
+            "prompt": full_prompt,
+            "num_inference_steps": 4,  # Для schnell оптимально 1-4
+            "guidance_scale": 0.0,     # Для schnell обычно 0
+            "aspect_ratio": "1:1",     # Или "16:9" и т.д.
+            "output_format": "jpg"
+        }
     }
 
     start_time = time.time()
     try:
-        r = requests.post(f"{base_url}/text2image/run", headers=headers, files=files)
+        r = requests.post(url, headers=headers, json=payload)
         if not r.ok:
-            logging.warning(f"Kandinsky run error {r.status_code}: {r.text[:200]}")
+            logging.warning(f"Flux prediction error {r.status_code}: {r.text}")
             return None
-        uuid = r.json()["uuid"]
+        prediction = r.json()
+        prediction_id = prediction["id"]
+        status_url = prediction["urls"]["get"]
     except Exception as e:
-        logging.warning(f"Kandinsky run request error: {e}")
+        logging.warning(f"Flux create prediction error: {e}")
         return None
 
     while time.time() - start_time < timeout:
         try:
-            r = requests.get(f"{base_url}/text2image/status/{uuid}", headers=headers)
+            r = requests.get(status_url, headers=headers)
             if not r.ok:
-                time.sleep(10)
+                time.sleep(5)
                 continue
             data = r.json()
             status = data["status"]
-            if status == "DONE":
-                img_data = data["images"][0]
+            if status == "succeeded":
+                img_url = data["output"][0]  # Обычно список с одним URL
                 img_path = IMAGES_DIR / f"post-{int(time.time())}.jpg"
+                img_data = requests.get(img_url).content
                 with open(img_path, "wb") as f:
-                    f.write(base64.b64decode(img_data))
-                logging.info(f"Image generated by Kandinsky: {img_path}")
+                    f.write(img_data)
+                logging.info(f"Image generated by Flux (Replicate): {img_path}")
                 return str(img_path)
-            elif status == "FAILED":
-                logging.warning("Kandinsky generation failed")
+            elif status in ["failed", "canceled"]:
+                logging.warning(f"Flux generation {status}")
                 return None
-            time.sleep(10)
+            time.sleep(5)
         except Exception:
-            time.sleep(10)
+            time.sleep(5)
 
-    logging.warning("Kandinsky timeout → fallback")
+    logging.warning("Flux timeout → fallback")
     return None
 
 def generate_image(title):
-    img = generate_image_kandinsky(title)
+    img = generate_image_flux(title)
     if img:
         return img
-    logging.warning("Kandinsky failed → using fallback URL")
+    logging.warning("Flux failed → using fallback URL")
     return random.choice(FALLBACK_IMAGES)
 
 # -------------------- Сохранение --------------------
 def save_post(title, body):
     today = datetime.now().strftime("%Y-%m-%d")
-    slug = re.sub(r'[^a-zA-Z0-9]+', '-', title.lower()).strip('-')[:100]  # Обрезаем для безопасности
+    slug = re.sub(r'[^a-zA-Z0-9]+', '-', title.lower()).strip('-')[:100]
     if not slug or len(slug) < 10:
         slug = "ai-revolution-" + today.replace("-", "")
     filename = POSTS_DIR / f"{today}-{slug}.md"
