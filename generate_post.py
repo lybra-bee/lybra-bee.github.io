@@ -33,60 +33,72 @@ FALLBACK_IMAGES = [
     "https://picsum.photos/800/600?random=3",
 ]
 
-# -------------------- Статья --------------------
-def generate_article(topic):
+# -------------------- Шаг 1: Генерация заголовка --------------------
+def generate_title(topic):
     groq_model = "llama-3.3-70b-versatile"
-    system_prompt = f"""Ты пишешь увлекательную статью на тему '{topic}' для блога об ИИ. 
-    Статья должна быть информативной, без политики, скандалов, морали или регуляций.
-    Обязательно сделай заголовок ярким, кликабельным, SMM-дружелюбным: используй цифры, вопросы, слова вроде "Как", "Почему", "Топ", "Будущее", "Революция" и т.д., чтобы привлекать внимание.
-    Заголовок должен быть уникальным и отражать суть статьи.
-    Формат ответа строго:
-    ЗАГОЛОВОК: [твой заголовок]
-    ТЕКСТ: [полный текст статьи, 600-800 слов, с абзацами]"""
-
-    user_prompt = "Сформируй статью в указанном формате."
+    system_prompt = f"""Ты — эксперт по SMM и копирайтингу для блога об ИИ.
+    Создай один яркий, кликабельный заголовок на тему '{topic}'.
+    Заголовок должен быть на русском, содержать 10-15 слов, использовать приёмы: цифры, вопросы, слова "Как", "Почему", "Топ", "Будущее", "Революция", "Секреты", "2025" и т.д.
+    Он должен вызывать любопытство и желание кликнуть.
+    Формат ответа строго: ЗАГОЛОВОК: [твой заголовок]"""
 
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
     payload = {
         "model": groq_model,
         "messages": [{"role": "system", "content": system_prompt},
-                     {"role": "user", "content": user_prompt}],
-        "max_tokens": 1500,
-        "temperature": 0.9,
+                     {"role": "user", "content": "Создай заголовок."}],
+        "max_tokens": 100,
+        "temperature": 1.0,
     }
 
-    forbidden_words = ["политика", "скандал", "мораль", "регуляция", "политик", "политический", "регулирование", "скандальный", "моральный"]
-
     for attempt in range(7):
-        logging.info(f"Article attempt {attempt+1}: {topic}")
+        logging.info(f"Title attempt {attempt+1}: {topic}")
         try:
             r = requests.post(url, headers=headers, json=payload)
             r.raise_for_status()
-        except requests.exceptions.RequestException as e:
-            logging.error(f"Groq error: {e}")
-            time.sleep(3)
-            continue
-        data = r.json()
-        text = data.get("choices", [{}])[0].get("message", {}).get("content", "")
-        if not text:
-            continue
-        if any(word in text.lower() for word in forbidden_words):
-            logging.warning("Обнаружен запрещенный контент — регенерация")
-            continue
-        title_match = re.search(r"ЗАГОЛОВОК:\s*(.+)", text, re.IGNORECASE)
-        body_match = re.search(r"ТЕКСТ:\s*(.+)", text, re.DOTALL | re.IGNORECASE)
-        if not title_match or not body_match:
-            logging.warning("Неправильный формат — регенерация")
-            continue
-        title = title_match.group(1).strip()
-        body = body_match.group(1).strip()
-        if len(title) < 10:
-            continue
-        return title, body
-    raise RuntimeError("Groq article generation failed after attempts")
+            text = r.json()["choices"][0]["message"]["content"]
+            match = re.search(r"ЗАГОЛОВОК:\s*(.+)", text, re.IGNORECASE)
+            if match:
+                title = match.group(1).strip()
+                if len(title.split()) >= 8:  # Минимум 8 слов для надёжности
+                    return title
+        except Exception as e:
+            logging.error(f"Title error: {e}")
+            time.sleep(2)
+    raise RuntimeError("Failed to generate valid title")
 
-# -------------------- Изображение: Kandinsky --------------------
+# -------------------- Шаг 2: Генерация статьи по заголовку --------------------
+def generate_body(title):
+    groq_model = "llama-3.3-70b-versatile"
+    system_prompt = f"""Напиши полную информативную статью для блога об ИИ по заголовку: "{title}"
+    Статья на русском, 600-900 слов, с абзацами, без политики, скандалов, морали или регуляций.
+    Сделай текст увлекательным, с примерами и выводами."""
+
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
+    payload = {
+        "model": groq_model,
+        "messages": [{"role": "system", "content": system_prompt},
+                     {"role": "user", "content": "Напиши статью."}],
+        "max_tokens": 2000,
+        "temperature": 0.8,
+    }
+
+    for attempt in range(5):
+        logging.info(f"Body attempt {attempt+1} for title: {title[:50]}...")
+        try:
+            r = requests.post(url, headers=headers, json=payload)
+            r.raise_for_status()
+            body = r.json()["choices"][0]["message"]["content"].strip()
+            if len(body.split()) > 300:  # Минимум ~300 слов
+                return body
+        except Exception as e:
+            logging.error(f"Body error: {e}")
+            time.sleep(3)
+    raise RuntimeError("Failed to generate article body")
+
+# -------------------- Шаг 3: Изображение (Kandinsky) --------------------
 def generate_image_kandinsky(prompt, timeout=600):
     if not FUSIONBRAIN_API_KEY or not FUSION_SECRET_KEY:
         logging.warning("Kandinsky keys absent, skipping")
@@ -101,7 +113,7 @@ def generate_image_kandinsky(prompt, timeout=600):
     try:
         r = requests.get(f"{base_url}/pipelines", headers=headers)
         if not r.ok:
-            logging.warning(f"Kandinsky pipelines error {r.status_code}: {r.text}")
+            logging.warning(f"Kandinsky pipelines error {r.status_code}: {r.text[:200]}")
             return None
         models = r.json()
         model_id = models[0]["id"]
@@ -109,7 +121,7 @@ def generate_image_kandinsky(prompt, timeout=600):
         logging.warning(f"Kandinsky model fetch error: {e}")
         return None
 
-    full_prompt = prompt + ", photorealistic, high resolution, detailed, relevant to article content"
+    full_prompt = prompt + ", photorealistic, high resolution, detailed, professional photography, relevant to AI theme"
 
     params = {
         "type": "GENERATE",
@@ -128,7 +140,7 @@ def generate_image_kandinsky(prompt, timeout=600):
     try:
         r = requests.post(f"{base_url}/text2image/run", headers=headers, files=files)
         if not r.ok:
-            logging.warning(f"Kandinsky run error {r.status_code}: {r.text}")
+            logging.warning(f"Kandinsky run error {r.status_code}: {r.text[:200]}")
             return None
         uuid = r.json()["uuid"]
     except Exception as e:
@@ -160,9 +172,8 @@ def generate_image_kandinsky(prompt, timeout=600):
     logging.warning("Kandinsky timeout → fallback")
     return None
 
-# -------------------- Основная функция генерации изображения --------------------
-def generate_image(prompt):
-    img = generate_image_kandinsky(prompt)
+def generate_image(title):
+    img = generate_image_kandinsky(title)
     if img:
         return img
     logging.warning("Kandinsky failed → using fallback URL")
@@ -171,9 +182,9 @@ def generate_image(prompt):
 # -------------------- Сохранение --------------------
 def save_post(title, body):
     today = datetime.now().strftime("%Y-%m-%d")
-    slug = re.sub(r'[^a-zA-Z0-9]+', '-', title.lower()).strip('-')
-    if not slug or len(slug) < 5:
-        slug = "future-of-ai-" + today.replace("-", "")
+    slug = re.sub(r'[^a-zA-Z0-9]+', '-', title.lower()).strip('-')[:100]  # Обрезаем для безопасности
+    if not slug or len(slug) < 10:
+        slug = "ai-revolution-" + today.replace("-", "")
     filename = POSTS_DIR / f"{today}-{slug}.md"
     with open(filename, "w", encoding="utf-8") as f:
         f.write(f"---\ntitle: {title}\ndate: {today}\n---\n\n{body}\n")
@@ -225,7 +236,8 @@ def main():
     topics = ["ИИ в автоматизации контента", "Мультимодальные модели", "Генеративные модели 2025"]
     topic = random.choice(topics)
 
-    title, body = generate_article(topic)
+    title = generate_title(topic)
+    body = generate_body(title)
     img_path = generate_image(title)
     save_post(title, body)
     send_to_telegram(title, body, img_path)
