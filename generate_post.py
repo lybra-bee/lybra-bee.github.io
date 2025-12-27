@@ -22,17 +22,17 @@ IMAGES_DIR.mkdir(parents=True, exist_ok=True)
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-AIHORDE_API_KEY = os.getenv("AIHORDE_API_KEY", "0000000000")  # Анонимный по умолчанию
+AIHORDE_API_KEY = os.getenv("AIHORDE_API_KEY", "0000000000")
 
 FALLBACK_IMAGES = [
-    "https://picsum.photos/1200/800?random=90",
-    "https://picsum.photos/1200/800?random=91",
-    "https://picsum.photos/1200/800?random=92",
-    "https://picsum.photos/1200/800?random=93",
-    "https://picsum.photos/1200/800?random=94",
+    "https://picsum.photos/1280/768?random=1",
+    "https://picsum.photos/1280/768?random=2",
+    "https://picsum.photos/1280/768?random=3",
+    "https://picsum.photos/1280/768?random=4",
+    "https://picsum.photos/1280/768?random=5",
 ]
 
-# -------------------- Шаг 1: Генерация заголовка --------------------
+# -------------------- Генерация заголовка и статьи (без изменений) --------------------
 def generate_title(topic):
     groq_model = "llama-3.3-70b-versatile"
     system_prompt = f"""Ты — эксперт по SMM и копирайтингу для блога об ИИ.
@@ -66,7 +66,6 @@ def generate_title(topic):
     raise RuntimeError("Не удалось сгенерировать заголовок")
 
 
-# -------------------- Шаг 2: Генерация статьи --------------------
 def generate_body(title):
     groq_model = "llama-3.3-70b-versatile"
     system_prompt = f"""Напиши полную статью для блога об ИИ по заголовку: "{title}"
@@ -101,7 +100,7 @@ def generate_body(title):
     raise RuntimeError("Не удалось сгенерировать статью")
 
 
-# -------------------- Изображение: AI Horde --------------------
+# -------------------- Изображение: AI Horde (исправленные размеры) --------------------
 def generate_image_horde(title):
     prompt = f"{title}, futuristic artificial intelligence, neural networks, cyberpunk aesthetic, photorealistic, highly detailed, cinematic lighting, vibrant neon colors, 8k resolution, masterpiece, best quality"
 
@@ -111,8 +110,8 @@ def generate_image_horde(title):
         "prompt": prompt,
         "models": ["FLUX.1 [schnell]", "Flux.1 Dev", "SDXL 1.0"],
         "params": {
-            "width": 1280,
-            "height": 720,
+            "width": 1280,   # кратно 64
+            "height": 768,   # 768 = 12*64 — исправлено с 720
             "steps": 30,
             "cfg_scale": 7.0,
             "n": 1
@@ -146,7 +145,7 @@ def generate_image_horde(title):
         check_url = f"https://stablehorde.net/api/v2/generate/check/{job_id}"
         status_url = f"https://stablehorde.net/api/v2/generate/status/{job_id}"
 
-        for poll in range(60):  # Макс 10 минут
+        for poll in range(60):
             time.sleep(10)
             check = requests.get(check_url, headers=headers, timeout=60).json()
             if check.get("done"):
@@ -210,7 +209,7 @@ def save_post(title, body, img_path=None):
     return filename
 
 
-# -------------------- Telegram --------------------
+# -------------------- Telegram (исправлено экранирование #) --------------------
 def send_to_telegram(title, body, image_path):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         return
@@ -220,7 +219,7 @@ def send_to_telegram(title, body, image_path):
     def esc(text):
         return re.sub(r'([_*\[\]\(\)~`>#+\-=|{}.!])', r'\\\1', text)
 
-    message = f"*Новая статья в блоге\\!*\n\n*{esc(title)}*\n\n{esc(teaser)}\n\n[Читать полностью →](https://lybra-ai.ru)\n\n#ИИ #LybraAI #искусственный_интеллект"
+    message = f"*Новая статья в блоге\\!*\n\n*{esc(title)}*\n\n{esc(teaser)}\n\n[Читать полностью →](https://lybra-ai.ru)\n\n\\#ИИ \\#LybraAI \\#искусственный_интеллект"
 
     try:
         if image_path.startswith('http'):
