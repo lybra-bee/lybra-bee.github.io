@@ -18,7 +18,6 @@ IMAGES_DIR.mkdir(exist_ok=True)
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 HORDE_API_KEY = os.getenv("HORDE_API_KEY")
-HF_API_KEY = os.getenv("HF_API_KEY")
 CLIPDROP_API_KEY = os.getenv("CLIPDROP_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
@@ -70,67 +69,56 @@ def generate_article(topic):
     raise RuntimeError("Groq article generation failed")
 
 # -------------------- Изображение --------------------
-def generate_image_horde(prompt, timeout=180):
+def generate_image_horde(prompt, timeout=600):
     url = "https://stablehorde.net/api/v2/generate/async"
-    headers = {"apikey": HORDE_API_KEY}
-    payload = {"prompt": prompt + ", photorealistic, high resolution, detailed, relevant to article content", "params": {"width":512, "height":512, "steps":25}}
+    headers = {
+        "apikey": HORDE_API_KEY,
+        "Client-Agent": "LybraAI Bot:1.0:github.com/lybra-bee"
+    }
+    full_prompt = prompt + ", photorealistic, high resolution, detailed, relevant to article content"
+    payload = {"prompt": full_prompt, "params": {"width":512, "height":512, "steps":30}}
 
     start_time = time.time()
     while time.time() - start_time < timeout:
         r = requests.post(url, headers=headers, json=payload)
         if r.status_code == 429:
-            logging.warning("Horde limit reached, ждем 7 секунд")
-            time.sleep(7)
+            logging.warning("Horde limit reached, ждем 10 секунд")
+            time.sleep(10)
             continue
         if not r.ok:
             logging.warning(f"Horde returned {r.status_code}: {r.text}")
             break
         task_id = r.json().get("id")
+        if not task_id:
+            break
         # Polling
-        for _ in range(30):
+        for _ in range(100):
+            time.sleep(5)
             resp = requests.get(f"https://stablehorde.net/api/v2/generate/check/{task_id}", headers=headers)
             if resp.status_code != 200:
-                time.sleep(3)
                 continue
             result = resp.json()
             if result.get("done"):
                 status_resp = requests.get(f"https://stablehorde.net/api/v2/generate/status/{task_id}", headers=headers)
-                if status_resp.status_code != 200:
-                    time.sleep(3)
-                    continue
-                status_result = status_resp.json()
-                img_data = status_result["generations"][0]["img"]
-                img_path = IMAGES_DIR / f"post-{int(time.time())}.png"
-                with open(img_path, "wb") as f:
-                    f.write(base64.b64decode(img_data))
-                return str(img_path)
-            time.sleep(3)
+                if status_resp.status_code == 200:
+                    status_result = status_resp.json()
+                    img_data = status_result["generations"][0]["img"]
+                    img_path = IMAGES_DIR / f"post-{int(time.time())}.png"
+                    with open(img_path, "wb") as f:
+                        f.write(base64.b64decode(img_data))
+                    return str(img_path)
+            # Optional: use wait_time
+            wait = result.get("wait_time", 5)
+            time.sleep(max(5, wait))
     logging.warning("Horde failed → fallback")
     return None
-
-def generate_image_hf(prompt):
-    url = "https://router.huggingface.co/v1/models/stabilityai/stable-diffusion-2-1"
-    headers = {"Authorization": f"Bearer {HF_API_KEY}"}
-    payload = {"inputs": prompt + ", photorealistic, high resolution, detailed, relevant to article content"}
-    try:
-        r = requests.post(url, headers=headers, json=payload)
-        if r.status_code != 200:
-            logging.warning(f"HF returned {r.status_code}: {r.text}")
-            return None
-        img_path = IMAGES_DIR / f"post-{int(time.time())}.png"
-        with open(img_path, "wb") as f:
-            f.write(r.content)
-        return str(img_path)
-    except Exception as e:
-        logging.warning(f"HF error: {e}")
-        return None
 
 def generate_image_clipdrop(prompt):
     url = "https://clipdrop-api.co/text-to-image/v1"
     headers = {"x-api-key": CLIPDROP_API_KEY}
-    payload = {"prompt": prompt + ", photorealistic, high resolution, detailed, relevant to article content"}
+    full_prompt = prompt + ", photorealistic, high resolution, detailed, relevant to article content"
     try:
-        r = requests.post(url, headers=headers, data=payload)
+        r = requests.post(url, headers=headers, files={'prompt': (None, full_prompt, 'text/plain')})
         if r.status_code != 200:
             logging.warning(f"ClipDrop returned {r.status_code}: {r.text}")
             return None
@@ -146,9 +134,6 @@ def generate_image(prompt):
     img = generate_image_horde(prompt)
     if img:
         return img
-    img = generate_image_hf(prompt)
-    if img:
-        return img
     img = generate_image_clipdrop(prompt)
     if img:
         return img
@@ -157,7 +142,10 @@ def generate_image(prompt):
 # -------------------- Сохранение --------------------
 def save_post(title, body):
     today = datetime.now().strftime("%Y-%m-%d")
-    filename = POSTS_DIR / f"{today}-{re.sub(r'[^a-zA-Z0-9]+','-',title.lower())}.md"
+    slug = re.sub(r'[^a-zA-Z0-9]+', '-', title.lower()).strip('-')
+    if not slug:
+        slug = "ai-post"
+    filename = POSTS_DIR / f"{today}-{slug}.md"
     with open(filename, "w", encoding="utf-8") as f:
         f.write(f"---\ntitle: {title}\ndate: {today}\n---\n\n{body}\n")
     logging.info(f"Saved post: {filename}")
