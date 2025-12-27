@@ -23,7 +23,7 @@ IMAGES_DIR.mkdir(exist_ok=True)
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-HF_API_TOKEN = os.getenv("HF_API_TOKEN")  # Hugging Face token (бесплатный аккаунт)
+HF_API_TOKEN = os.getenv("HF_API_TOKEN")  # Обязательно добавить в GitHub Secrets
 
 FALLBACK_IMAGES = [
     "https://picsum.photos/800/600?random=1",
@@ -69,9 +69,15 @@ def generate_title(topic):
 # -------------------- Шаг 2: Генерация статьи по заголовку --------------------
 def generate_body(title):
     groq_model = "llama-3.3-70b-versatile"
-    system_prompt = f"""Напиши полную информативную статью для блога об ИИ по заголовку: "{title}"
-    Статья на русском, 600-900 слов, с абзацами, без политики, скандалов, морали или регуляций.
-    Сделай текст увлекательным, с примерами и выводами."""
+    system_prompt = f"""Напиши полную статью для блога об ИИ по заголовку: "{title}"
+
+Требования:
+- На русском языке
+- 600-900 слов
+- ОБЯЗАТЕЛЬНО используй Markdown-заголовки: один главный ## Введение, несколько ### для основных разделов, #### для подразделов
+- Структура: Введение → Основные пункты/разделы с примерами → Заключение
+- Без политики, скандалов, морали или регуляций
+- Текст увлекательный, с примерами и выводами"""
 
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
@@ -102,7 +108,7 @@ def generate_image_sd(title):
         logging.warning("HF_API_TOKEN absent, skipping Stable Diffusion")
         return None
 
-    model = "runwayml/stable-diffusion-v1-5"  # Бесплатная, стабильная, хорошее качество
+    model = "runwayml/stable-diffusion-v1-5"
     url = f"https://api-inference.huggingface.co/models/{model}"
     headers = {"Authorization": f"Bearer {HF_API_TOKEN}"}
 
@@ -137,15 +143,31 @@ def generate_image(title):
     logging.warning("Stable Diffusion failed → using fallback URL")
     return random.choice(FALLBACK_IMAGES)
 
-# -------------------- Сохранение --------------------
-def save_post(title, body):
+# -------------------- Сохранение с изображением и структурой --------------------
+def save_post(title, body, img_path=None):
     today = datetime.now().strftime("%Y-%m-%d")
     slug = re.sub(r'[^a-zA-Z0-9]+', '-', title.lower()).strip('-')[:100]
     if not slug or len(slug) < 10:
         slug = "ai-revolution-" + today.replace("-", "")
     filename = POSTS_DIR / f"{today}-{slug}.md"
+
+    content = f"---\ntitle: {title}\ndate: {today}\n"
+
+    # Добавляем обложку, если изображение локальное
+    if img_path and not img_path.startswith('http'):
+        rel_path = f"/assets/images/posts/{Path(img_path).name}"
+        content += f"image: {rel_path}\n"
+
+    content += "---\n\n"
+
+    # Вставляем изображение в начало статьи
+    if img_path and not img_path.startswith('http'):
+        content += f"![{title}]({{{{ site.baseurl }}}}{rel_path}})\n\n"
+
+    content += body
+
     with open(filename, "w", encoding="utf-8") as f:
-        f.write(f"---\ntitle: {title}\ndate: {today}\n---\n\n{body}\n")
+        f.write(content)
     logging.info(f"Saved post: {filename}")
     return filename
 
@@ -197,7 +219,7 @@ def main():
     title = generate_title(topic)
     body = generate_body(title)
     img_path = generate_image(title)
-    save_post(title, body)
+    save_post(title, body, img_path)
     send_to_telegram(title, body, img_path)
     logging.info("=== DONE ===")
 
