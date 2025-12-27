@@ -3,179 +3,245 @@
 import os
 import re
 import time
+import json
 import random
 import logging
+import requests
 from datetime import datetime
 from pathlib import Path
+import base64
 import tempfile
-import requests
-import hashlib
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
 
+# -------------------- Папки --------------------
 POSTS_DIR = Path("_posts")
 IMAGES_DIR = Path("assets/images/posts")
 POSTS_DIR.mkdir(exist_ok=True)
 IMAGES_DIR.mkdir(exist_ok=True)
 
+# -------------------- API ключи --------------------
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+FUSIONBRAIN_API_KEY = os.getenv("FUSIONBRAIN_API_KEY")
+FUSION_SECRET_KEY = os.getenv("FUSION_SECRET_KEY")
 
-def telegram_escape(text):
-    escaped = ""
-    for char in text:
-        if char in r'_*[]()~`>#+=|{}.!-':
-            escaped += '\\' + char
-        else:
-            escaped += char
-    return escaped
+FALLBACK_IMAGES = [
+    "https://picsum.photos/800/600?random=1",
+    "https://picsum.photos/800/600?random=2",
+    "https://picsum.photos/800/600?random=3",
+]
 
-def generate_deterministic_image(title):
-    title_hash = hashlib.md5(title.encode()).hexdigest()
-    seed = int(title_hash[:8], 16) % 1000
-    img_url = f"https://picsum.photos/seed/ai-{seed}/1024/1024"
-    logging.info(f"Image: {img_url}")
-    return img_url
-
+# -------------------- Шаг 1: Генерация заголовка --------------------
 def generate_title(topic):
-    if not GROQ_API_KEY:
-        return f"ИИ {topic} 2025"
-    
-    prompt = f"Заголовок для ИИ-блога: {topic}"
+    groq_model = "llama-3.3-70b-versatile"
+    system_prompt = f"""Ты — эксперт по SMM и копирайтингу для блога об ИИ.
+    Создай один яркий, кликабельный заголовок на тему '{topic}'.
+    Заголовок должен быть на русском, содержать 10-15 слов, использовать приёмы: цифры, вопросы, слова "Как", "Почему", "Топ", "Будущее", "Революция", "Секреты", "2025" и т.д.
+    Он должен вызывать любопытство и желание кликнуть.
+    Формат ответа строго: ЗАГОЛОВОК: [твой заголовок]"""
+
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
     payload = {
-        "model": "llama-3.3-70b-versatile",
-        "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 60,
+        "model": groq_model,
+        "messages": [{"role": "system", "content": system_prompt},
+                     {"role": "user", "content": "Создай заголовок."}],
+        "max_tokens": 100,
+        "temperature": 1.0,
+    }
+
+    for attempt in range(7):
+        logging.info(f"Title attempt {attempt+1}: {topic}")
+        try:
+            r = requests.post(url, headers=headers, json=payload)
+            r.raise_for_status()
+            text = r.json()["choices"][0]["message"]["content"]
+            match = re.search(r"ЗАГОЛОВОК:\s*(.+)", text, re.IGNORECASE)
+            if match:
+                title = match.group(1).strip()
+                if len(title.split()) >= 8:  # Минимум 8 слов для надёжности
+                    return title
+        except Exception as e:
+            logging.error(f"Title error: {e}")
+            time.sleep(2)
+    raise RuntimeError("Failed to generate valid title")
+
+# -------------------- Шаг 2: Генерация статьи по заголовку --------------------
+def generate_body(title):
+    groq_model = "llama-3.3-70b-versatile"
+    system_prompt = f"""Напиши полную информативную статью для блога об ИИ по заголовку: "{title}"
+    Статья на русском, 600-900 слов, с абзацами, без политики, скандалов, морали или регуляций.
+    Сделай текст увлекательным, с примерами и выводами."""
+
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
+    payload = {
+        "model": groq_model,
+        "messages": [{"role": "system", "content": system_prompt},
+                     {"role": "user", "content": "Напиши статью."}],
+        "max_tokens": 2000,
         "temperature": 0.8,
     }
 
-    try:
-        r = requests.post(url, headers=headers, json=payload, timeout=20)
-        r.raise_for_status()
-        text = r.json()["choices"][0]["message"]["content"].strip()
-        title = text.split('
-')[0].strip()[:100]
-        if len(title.split()) >= 6:
-            logging.info(f"Title: {title}")
-            return title
-    except:
-        pass
-    
-    fallback = f"ИИ революция: {topic}"
-    logging.warning(f"Fallback: {fallback}")
-    return fallback
+    for attempt in range(5):
+        logging.info(f"Body attempt {attempt+1} for title: {title[:50]}...")
+        try:
+            r = requests.post(url, headers=headers, json=payload)
+            r.raise_for_status()
+            body = r.json()["choices"][0]["message"]["content"].strip()
+            if len(body.split()) > 300:  # Минимум ~300 слов
+                return body
+        except Exception as e:
+            logging.error(f"Body error: {e}")
+            time.sleep(3)
+    raise RuntimeError("Failed to generate article body")
 
-def generate_body(title):
-    if not GROQ_API_KEY:
-        return f"# {title}
+# -------------------- Шаг 3: Изображение (Kandinsky) --------------------
+def generate_image_kandinsky(prompt, timeout=600):
+    if not FUSIONBRAIN_API_KEY or not FUSION_SECRET_KEY:
+        logging.warning("Kandinsky keys absent, skipping")
+        return None
 
-Статья про {title.lower()}.
-
-## Преимущества
-1. Быстрее
-2. Дешевле
-3. Лучше
-
-## Заключение
-Начните использовать сегодня!"
-    
-    prompt = f"Статья ИИ-блог: {title}. Русский, 600 слов."
-    url = "https://api.groq.com/openai/v1/chat/completions"
-    headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
-    payload = {
-        "model": "llama-3.3-70b-versatile", 
-        "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 2000,
-        "temperature": 0.7,
+    base_url = "https://api-key.fusionbrain.ai/key/api/v1"
+    headers = {
+        "X-Key": f"Key {FUSIONBRAIN_API_KEY}",
+        "X-Secret": f"Secret {FUSION_SECRET_KEY}",
     }
 
     try:
-        r = requests.post(url, headers=headers, json=payload, timeout=60)
-        r.raise_for_status()
-        body = r.json()["choices"][0]["message"]["content"].strip()
-        if len(body) > 1000:
-            logging.info("Body OK")
-            return body
-    except:
-        pass
-    
-    fallback = f"# {title}
+        r = requests.get(f"{base_url}/pipelines", headers=headers)
+        if not r.ok:
+            logging.warning(f"Kandinsky pipelines error {r.status_code}: {r.text[:200]}")
+            return None
+        models = r.json()
+        model_id = models[0]["id"]
+    except Exception as e:
+        logging.warning(f"Kandinsky model fetch error: {e}")
+        return None
 
-{title} меняет мир ИИ.
+    full_prompt = prompt + ", photorealistic, high resolution, detailed, professional photography, relevant to AI theme"
 
-Начните использовать прямо сейчас!"
-    logging.warning("Fallback body")
-    return fallback
+    params = {
+        "type": "GENERATE",
+        "numImages": 1,
+        "width": 1024,
+        "height": 1024,
+        "generateParams": {"query": full_prompt}
+    }
 
-def save_post(title, body, image_url):
+    files = {
+        "model_id": (None, model_id),
+        "params": (None, json.dumps(params), "application/json")
+    }
+
+    start_time = time.time()
+    try:
+        r = requests.post(f"{base_url}/text2image/run", headers=headers, files=files)
+        if not r.ok:
+            logging.warning(f"Kandinsky run error {r.status_code}: {r.text[:200]}")
+            return None
+        uuid = r.json()["uuid"]
+    except Exception as e:
+        logging.warning(f"Kandinsky run request error: {e}")
+        return None
+
+    while time.time() - start_time < timeout:
+        try:
+            r = requests.get(f"{base_url}/text2image/status/{uuid}", headers=headers)
+            if not r.ok:
+                time.sleep(10)
+                continue
+            data = r.json()
+            status = data["status"]
+            if status == "DONE":
+                img_data = data["images"][0]
+                img_path = IMAGES_DIR / f"post-{int(time.time())}.jpg"
+                with open(img_path, "wb") as f:
+                    f.write(base64.b64decode(img_data))
+                logging.info(f"Image generated by Kandinsky: {img_path}")
+                return str(img_path)
+            elif status == "FAILED":
+                logging.warning("Kandinsky generation failed")
+                return None
+            time.sleep(10)
+        except Exception:
+            time.sleep(10)
+
+    logging.warning("Kandinsky timeout → fallback")
+    return None
+
+def generate_image(title):
+    img = generate_image_kandinsky(title)
+    if img:
+        return img
+    logging.warning("Kandinsky failed → using fallback URL")
+    return random.choice(FALLBACK_IMAGES)
+
+# -------------------- Сохранение --------------------
+def save_post(title, body):
     today = datetime.now().strftime("%Y-%m-%d")
-    slug = re.sub(r'[^a-zа-я0-9]', '-', title.lower())[:60].strip('-')
+    slug = re.sub(r'[^a-zA-Z0-9]+', '-', title.lower()).strip('-')[:100]  # Обрезаем для безопасности
+    if not slug or len(slug) < 10:
+        slug = "ai-revolution-" + today.replace("-", "")
     filename = POSTS_DIR / f"{today}-{slug}.md"
-    
-    frontmatter = f"""---
-title: "{title}"
-date: {today}
-image: /assets/images/posts/post-{int(time.time())}.jpg
----
-
-{body}
-
-![cover]({image_url})
-"""
-    
     with open(filename, "w", encoding="utf-8") as f:
-        f.write(frontmatter)
-    logging.info(f"Saved: {filename}")
+        f.write(f"---\ntitle: {title}\ndate: {today}\n---\n\n{body}\n")
+    logging.info(f"Saved post: {filename}")
     return filename
 
-def send_to_telegram(title, body, image_url):
+# -------------------- Telegram --------------------
+def send_to_telegram(title, body, image_path):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-        logging.warning("No Telegram")
+        logging.warning("Telegram keys absent, skipping")
         return
 
-    teaser = ' '.join(body.split()[:15]) + '...'
-    message = f"*{title}*\
-\
-{telegram_escape(teaser)}\
-\
-[Читать](https://lybra-ai.ru)"
+    teaser = ' '.join(body.split()[:30]) + '…'
+    def esc(text): return re.sub(r'([_*\[\]\(\)~`>#+\-=|{}.!])', r'\\\1', text)
+    message = f"*Новая статья*\n\n{esc(teaser)}\n\n[Читать на сайте](https://lybra-ai.ru)\n\n{esc('#ИИ #LybraAI')}"
 
     try:
-        r = requests.get(image_url, timeout=10)
-        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.jpg')
-        temp_file.write(r.content)
-        temp_file.close()
+        if image_path.startswith('http'):
+            r = requests.get(image_path)
+            if not r.ok:
+                logging.warning(f"Failed to download fallback image: {r.status_code}")
+                return
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.jpg')
+            temp_file.write(r.content)
+            temp_file.close()
+            image_file = temp_file.name
+        else:
+            image_file = image_path
 
-        with open(temp_file.name, "rb") as photo:
+        with open(image_file, "rb") as photo:
             resp = requests.post(
                 f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto",
                 data={"chat_id": TELEGRAM_CHAT_ID, "caption": message, "parse_mode": "MarkdownV2"},
                 files={"photo": photo}
             )
-        
-        if resp.status_code == 200:
-            logging.info("Telegram OK")
-        os.unlink(temp_file.name)
-    except:
-        logging.warning("Telegram failed")
 
+        if resp.status_code != 200:
+            logging.warning(f"Telegram error {resp.status_code}: {resp.text}")
+        else:
+            logging.info(f"Telegram status {resp.status_code}")
+
+        if image_path.startswith('http'):
+            os.unlink(image_file)
+    except Exception as e:
+        logging.warning(f"Telegram error: {e}")
+
+# -------------------- MAIN --------------------
 def main():
-    topics = ["автоматизация контента", "нейросети 2025", "генеративный ИИ", "ИИ бизнес"]
+    topics = ["ИИ в автоматизации контента", "Мультимодальные модели", "Генеративные модели 2025"]
     topic = random.choice(topics)
 
-    logging.info(f"Topic: {topic}")
-    
     title = generate_title(topic)
     body = generate_body(title)
-    image_url = generate_deterministic_image(title)
-    
-    save_post(title, body, image_url)
-    send_to_telegram(title, body, image_url)
-    
-    logging.info("DONE")
+    img_path = generate_image(title)
+    save_post(title, body)
+    send_to_telegram(title, body, img_path)
+    logging.info("=== DONE ===")
 
 if __name__ == "__main__":
     main()
