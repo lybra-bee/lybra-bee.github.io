@@ -26,16 +26,8 @@ IMAGES_DIR.mkdir(parents=True, exist_ok=True)
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-AIHORDE_API_KEY = os.getenv("AIHORDE_API_KEY", "0000000000")
 
 SITE_URL = "https://lybra-ai.ru"
-
-if AIHORDE_API_KEY == "0000000000":
-    logging.warning("AI Horde в анонимном режиме — fallback на случайные изображения сразу")
-    USE_AI_HORDE = False
-else:
-    logging.info("Используется персональный AIHORDE_API_KEY")
-    USE_AI_HORDE = True
 
 FALLBACK_IMAGES = [
     "https://picsum.photos/1024/768?random=1",
@@ -45,17 +37,21 @@ FALLBACK_IMAGES = [
     "https://picsum.photos/1024/768?random=5",
 ]
 
-# Ручной транслит для slug
+# Улучшенный транслит для правильных slug
 TRANSLIT_MAP = {
     'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo',
     'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
     'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
-    'ф': 'f', 'х': 'h', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch', 'ъ': '',
-    'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
+    'ф': 'f', 'х': 'kh', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'shch',
+    'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
 }
 
 def translit(text):
-    return ''.join(TRANSLIT_MAP.get(c.lower(), c.lower()) for c in text)
+    text = text.lower()
+    result = []
+    for c in text:
+        result.append(TRANSLIT_MAP.get(c, c))
+    return ''.join(result)
 
 # -------------------- Шаг 1: Заголовок --------------------
 def generate_title(topic):
@@ -206,7 +202,6 @@ def generate_body(title):
             if header:
                 section_headers.append(header)
 
-    # Если мало — добавляем стандартные
     if len(section_headers) < 8:
         section_headers = [
             "Введение",
@@ -220,7 +215,6 @@ def generate_body(title):
             "Заключение"
         ]
 
-    # ЖЁСТКОЕ ОГРАНИЧЕНИЕ: максимум 12 разделов
     MAX_SECTIONS = 12
     section_headers = section_headers[:MAX_SECTIONS]
     
@@ -243,82 +237,61 @@ def generate_body(title):
     logging.info(f"Статья полностью сгенерирована ({total_words} слов)")
     return full_body
 
-# -------------------- Изображение --------------------
-def generate_image_horde(title):
+# -------------------- Изображение: Dezgo API (бесплатно, без ключа) --------------------
+def generate_image_dezgo(title):
     prompt = f"{title}, futuristic artificial intelligence, neural networks, cyberpunk aesthetic, photorealistic, highly detailed, cinematic lighting, vibrant neon colors, masterpiece, best quality"
 
-    url_async = "https://stablehorde.net/api/v2/generate/async"
+    url = "https://dezgo.com/api/text2image"
     payload = {
         "prompt": prompt,
-        "models": ["FLUX.1 [schnell]"],
-        "params": {
-            "width": 512,
-            "height": 512,
-            "steps": 6,
-            "cfg_scale": 3.5,
-            "n": 1
-        },
-        "nsfw": False,
-        "trusted_workers": True,
-        "slow_workers": False
-    }
-
-    headers = {
-        "apikey": AIHORDE_API_KEY,
-        "Content-Type": "application/json",
-        "Client-Agent": "LybraBlogBot:1.1"
+        "negative_prompt": "blurry, low quality, deformed, ugly, text, watermark",
+        "model": "flux_1_dev",  # Лучшее качество (Flux)
+        "guidance": 7.5,
+        "steps": 28,
+        "sampler": "euler_a",
+        "width": 768,
+        "height": 512,
+        "seed": -1
     }
 
     try:
-        r = requests.post(url_async, json=payload, headers=headers, timeout=60)
+        logging.info("Генерация изображения через Dezgo API...")
+        r = requests.post(url, data=payload, timeout=180)
         if not r.ok:
-            logging.warning(f"AI Horde ошибка отправки: {r.status_code} {r.text}")
+            logging.warning(f"Dezgo ошибка: {r.status_code} {r.text}")
             return None
 
-        job_id = r.json().get("id")
-        if not job_id:
+        data = r.json()
+        img_url = data.get("image")
+        if not img_url:
+            logging.warning("Dezgo не вернул URL изображения")
             return None
 
-        logging.info(f"AI Horde задача создана: {job_id}")
+        img_data = requests.get(img_url, timeout=60)
+        if not img_data.ok:
+            logging.warning("Не удалось скачать изображение от Dezgo")
+            return None
 
-        check_url = f"https://stablehorde.net/api/v2/generate/check/{job_id}"
-        status_url = f"https://stablehorde.net/api/v2/generate/status/{job_id}"
+        filename = f"dezgo-{int(time.time())}.jpg"
+        img_path = IMAGES_DIR / filename
+        img_path.write_bytes(img_data.content)
+        logging.info(f"Изображение от Dezgo сохранено: {img_path}")
+        return str(img_path)
 
-        for _ in range(40):
-            time.sleep(6)
-            check = requests.get(check_url, headers=headers).json()
-            if check.get("done"):
-                final = requests.get(status_url, headers=headers).json()
-                if final.get("generations"):
-                    img_url = final["generations"][0]["img"]
-                    img_data = requests.get(img_url, timeout=60)
-                    if img_data.ok:
-                        filename = f"horde-{int(time.time())}.jpg"
-                        img_path = IMAGES_DIR / filename
-                        img_path.write_bytes(img_data.content)
-                        logging.info(f"Изображение сохранено: {img_path}")
-                        return str(img_path)
-            logging.info(f"Ожидание... очередь: {check.get('queue_position', '?')}")
     except Exception as e:
-        logging.warning(f"Ошибка AI Horde: {e}")
-
-    return None
+        logging.warning(f"Ошибка Dezgo: {e}")
+        return None
 
 def generate_image(title):
-    if not USE_AI_HORDE:
-        fallback_url = random.choice(FALLBACK_IMAGES)
-        logging.warning("Анонимный режим — прямой fallback")
-        return fallback_url
-
-    local_path = generate_image_horde(title)
+    local_path = generate_image_dezgo(title)
     if local_path and os.path.exists(local_path):
         return local_path
 
     fallback_url = random.choice(FALLBACK_IMAGES)
-    logging.warning(f"AI Horde не сработал → fallback: {fallback_url}")
+    logging.warning(f"Dezgo не сработал → fallback на picsum: {fallback_url}")
     return fallback_url
 
-# -------------------- Сохранение и Telegram --------------------
+# -------------------- Сохранение поста --------------------
 def save_post(title, body, img_path=None):
     today = datetime.now().strftime("%Y-%m-%d")
     slug = re.sub(r'[^a-z0-9-]+', '-', translit(title)).strip('-')[:80]
@@ -329,15 +302,17 @@ def save_post(title, body, img_path=None):
 
     frontmatter = f"---\ntitle: {title}\ndate: {today}\ncategories: ai\n"
 
-    if img_path and not img_path.startswith("http"):
-        rel_path = f"/assets/images/posts/{Path(img_path).name}"
-        frontmatter += f"image: {rel_path}\n"
+    if img_path:
+        if img_path.startswith("http"):
+            frontmatter += f"image: {img_path}\n"
+        else:
+            rel_path = f"/assets/images/posts/{Path(img_path).name}"
+            frontmatter += f"image: {rel_path}\n"
 
     frontmatter += "---\n\n"
 
-    if img_path and not img_path.startswith("http"):
-        img_name = Path(img_path).name
-        frontmatter += f"![Обложка: {title}]({{{{ site.baseurl }}}}/assets/images/posts/{img_name})\n\n"
+    # Всегда добавляем картинку в тело поста
+    frontmatter += f"![Обложка: {title}]({img_path if img_path else '/assets/images/placeholder.jpg'})\n\n"
 
     full_content = frontmatter + body
     filename.write_text(full_content, encoding="utf-8")
@@ -348,6 +323,7 @@ def save_post(title, body, img_path=None):
 
     return str(filename), article_url
 
+# -------------------- Telegram --------------------
 def send_to_telegram(title, teaser_text, image_path, article_url):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         logging.warning("Telegram токен или чат не указаны — пропуск")
