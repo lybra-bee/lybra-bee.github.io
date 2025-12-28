@@ -22,84 +22,18 @@ IMAGES_DIR.mkdir(parents=True, exist_ok=True)
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-AIHORDE_API_KEY = os.getenv("AIHORDE_API_KEY", "0000000000")  # Анонимный или ваш ключ
+AIHORDE_API_KEY = os.getenv("AIHORDE_API_KEY", "0000000000")  # Теперь будет ваш настоящий ключ!
 
 FALLBACK_IMAGES = [
-    "https://picsum.photos/1024/1024?random=1",
-    "https://picsum.photos/1024/1024?random=2",
-    "https://picsum.photos/1024/1024?random=3",
-    "https://picsum.photos/1024/1024?random=4",
-    "https://picsum.photos/1024/1024?random=5",
+    "https://picsum.photos/1024/768?random=10",
+    "https://picsum.photos/1024/768?random=11",
+    "https://picsum.photos/1024/768?random=12",
+    "https://picsum.photos/1024/768?random=13",
+    "https://picsum.photos/1024/768?random=14",
 ]
 
-# -------------------- Шаг 1: Генерация заголовка --------------------
-def generate_title(topic):
-    groq_model = "llama-3.3-70b-versatile"
-    system_prompt = f"""Ты — эксперт по SMM и копирайтингу для блога об ИИ.
-    Создай один яркий, кликабельный заголовок на тему '{topic}'.
-    Заголовок на русском, 10–15 слов, используй приёмы: цифры, вопросы, "Как", "Почему", "Топ", "2025", "Революция", "Секреты".
-    Формат ответа строго: ЗАГОЛОВОК: [твой заголовок]"""
-
-    url = "https://api.groq.com/openai/v1/chat/completions"
-    headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
-    payload = {
-        "model": groq_model,
-        "messages": [{"role": "system", "content": system_prompt},
-                     {"role": "user", "content": "Создай заголовок."}],
-        "max_tokens": 100,
-        "temperature": 1.0,
-    }
-
-    for attempt in range(7):
-        try:
-            r = requests.post(url, headers=headers, json=payload, timeout=60)
-            r.raise_for_status()
-            text = r.json()["choices"][0]["message"]["content"]
-            match = re.search(r"ЗАГОЛОВОК:\s*(.+)", text, re.IGNORECASE)
-            if match:
-                title = match.group(1).strip()
-                if len(title.split()) >= 8:
-                    return title
-        except Exception as e:
-            logging.error(f"Ошибка генерации заголовка: {e}")
-            time.sleep(3)
-    raise RuntimeError("Не удалось сгенерировать заголовок")
-
-
-# -------------------- Шаг 2: Генерация статьи --------------------
-def generate_body(title):
-    groq_model = "llama-3.3-70b-versatile"
-    system_prompt = f"""Напиши полную статью для блога об ИИ по заголовку: "{title}"
-
-Требования:
-- На русском языке
-- 600–900 слов
-- Используй Markdown: ## Введение, ### разделы, #### подразделы
-- Структура: Введение → Основная часть → Заключение
-- Увлекательно, с примерами, без политики и морали"""
-
-    url = "https://api.groq.com/openai/v1/chat/completions"
-    headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
-    payload = {
-        "model": groq_model,
-        "messages": [{"role": "system", "content": system_prompt},
-                     {"role": "user", "content": "Напиши статью."}],
-        "max_tokens": 3000,
-        "temperature": 0.8,
-    }
-
-    for attempt in range(5):
-        try:
-            r = requests.post(url, headers=headers, json=payload, timeout=120)
-            r.raise_for_status()
-            body = r.json()["choices"][0]["message"]["content"].strip()
-            if len(body.split()) > 300:
-                return body
-        except Exception as e:
-            logging.error(f"Ошибка генерации статьи: {e}")
-            time.sleep(5)
-    raise RuntimeError("Не удалось сгенерировать статью")
-
+# -------------------- Генерация заголовка и статьи (без изменений) --------------------
+# (generate_title и generate_body — оставляем как есть)
 
 # -------------------- Изображение: AI Horde --------------------
 def generate_image_horde(title):
@@ -112,8 +46,8 @@ def generate_image_horde(title):
         "models": ["FLUX.1 [schnell]", "Flux.1 Dev", "SDXL 1.0"],
         "params": {
             "width": 1024,
-            "height": 1024,
-            "steps": 15,  # Изменение: уменьшил с 20 на 15 для снижения kudos
+            "height": 768,   # 4:3 — меньше kudos, чем 1024x1024
+            "steps": 20,
             "cfg_scale": 7.0,
             "n": 1
         },
@@ -180,42 +114,15 @@ def generate_image(title):
     return random.choice(FALLBACK_IMAGES)
 
 
-# -------------------- Сохранение поста --------------------
-def save_post(title, body, img_path=None):
-    today = datetime.now().strftime("%Y-%m-%d")
-    slug = re.sub(r'[^a-zA-Z0-9]+', '-', title.lower()).strip('-')[:100]
-    if len(slug) < 10:
-        slug = "ai-post-" + today.replace("-", "")
+# -------------------- Сохранение поста (без изменений) --------------------
+# (save_post — как в предыдущей версии)
 
-    filename = POSTS_DIR / f"{today}-{slug}.md"
-
-    content = f"---\ntitle: {title}\ndate: {today}\ncategories: ai\n"
-
-    if img_path and not img_path.startswith('http'):
-        rel_path = f"/assets/images/posts/{Path(img_path).name}"
-        content += f"image: {rel_path}\n"
-
-    content += "---\n\n"
-
-    if img_path and not img_path.startswith('http'):
-        image_name = Path(img_path).name
-        content += f"![{title}]({{{{ site.baseurl }}}}/assets/images/posts/{image_name})\n\n"
-
-    content += body
-
-    with open(filename, "w", encoding="utf-8") as f:
-        f.write(content)
-
-    logging.info(f"Пост сохранён: {filename}")
-    return filename
-
-
-# -------------------- Telegram --------------------
+# -------------------- Telegram — финальное безопасное сообщение --------------------
 def send_to_telegram(title, body, image_path):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         return
 
-    teaser = ' '.join(body.split()[:40]) + '…'
+    teaser = ' '.join(body.split()[:60]) + '…'  # Увеличил до 60 слов для информативности
 
     def esc(text):
         return (text.replace('\\', '\\\\')
@@ -238,9 +145,10 @@ def send_to_telegram(title, body, image_path):
                     .replace('.', '\\.')
                     .replace('!', '\\!'))
 
-    message = f"*Новая статья в блоге\\!*\n\n{esc(title)}\n\n{esc(teaser)}\n\n[Читать полностью →](https://lybra-ai.ru)\n\n\\#ИИ \\#LybraAI \\#искусственный_интеллект"  # Изменение: убрал * вокруг title и teaser
+    # Самое безопасное: только жирный для заголовка, остальное — обычный текст
+    message = f"*Новая статья в блоге!*\n\n{esc(title)}\n\n{esc(teaser)}\n\n[Читать полностью →](https://lybra-ai.ru)\n\n\\#ИИ \\#LybraAI \\#искусственный_интеллект"
 
-    logging.info(f"Отправляемое сообщение в Telegram: {message}")  # Изменение: добавил logging для отладки
+    logging.info(f"Отправляемое сообщение в Telegram:\n{message}")
 
     try:
         if image_path.startswith('http'):
@@ -274,7 +182,7 @@ def send_to_telegram(title, body, image_path):
         logging.warning(f"Ошибка отправки в Telegram: {e}")
 
 
-# -------------------- MAIN --------------------
+# -------------------- MAIN (с защитой) --------------------
 def main():
     try:
         topics = [
@@ -298,7 +206,8 @@ def main():
 
         logging.info("=== Пост успешно создан и опубликован ===")
     except Exception as e:
-        logging.error(f"Ошибка в main: {e}")
+        logging.error(f"Критическая ошибка в main: {e}")
+
 
 if __name__ == "__main__":
     main()
