@@ -57,7 +57,7 @@ TRANSLIT_MAP = {
 def translit(text):
     return ''.join(TRANSLIT_MAP.get(c.lower(), c.lower()) for c in text)
 
-# -------------------- Шаг 1: Заголовок --------------------
+# -------------------- Шаг 1: Заголовок (с backoff) --------------------
 def generate_title(topic):
     groq_model = "llama-3.3-70b-versatile"
     system_prompt = f"""Ты — эксперт по SMM и копирайтингу для блога об ИИ.
@@ -80,6 +80,11 @@ def generate_title(topic):
     for attempt in range(7):
         try:
             r = requests.post(url, headers=headers, json=payload, timeout=60)
+            if r.status_code == 429:
+                wait = (2 ** attempt) + random.uniform(0, 1)
+                logging.warning(f"Rate limit Groq (429). Ждём {wait:.1f} сек...")
+                time.sleep(wait)
+                continue
             r.raise_for_status()
             text = r.json()["choices"][0]["message"]["content"]
             match = re.search(r"ЗАГОЛОВОК:\s*(.+)", text, re.IGNORECASE)
@@ -90,11 +95,11 @@ def generate_title(topic):
                     return title
         except Exception as e:
             logging.error(f"Попытка {attempt+1}/7 генерации заголовка: {e}")
-            time.sleep(2 ** attempt)
+            time.sleep(2 ** attempt + random.uniform(0, 1))
 
     raise RuntimeError("Не удалось сгенерировать валидный заголовок")
 
-# -------------------- Шаг 2: Статья по частям (chunked) --------------------
+# -------------------- Шаг 2: План и разделы (с backoff) --------------------
 def generate_outline(title):
     system_prompt = f"""Ты — эксперт по ИИ и технический писатель.
 Создай детальный план статьи на русском языке по заголовку: "{title}"
@@ -120,17 +125,23 @@ def generate_outline(title):
         "temperature": 0.7,
     }
 
-    for attempt in range(3):
+    for attempt in range(5):
         try:
             r = requests.post(url, headers=headers, json=payload, timeout=60)
+            if r.status_code == 429:
+                wait = (2 ** attempt) * 2 + random.uniform(0, 5)
+                logging.warning(f"Rate limit при генерации плана. Ждём {wait:.1f} сек...")
+                time.sleep(wait)
+                continue
             r.raise_for_status()
             outline = r.json()["choices"][0]["message"]["content"].strip()
-            lines = [l.strip() for l in outline.split("\n") if l.strip() and (l.startswith(('#', '1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.', '10.', '11.', '12.', '13.', '14.', '15.')))]
+            lines = [l.strip() for l in outline.split("\n") if l.strip() and re.match(r'^(\d+\.|##)', l.strip())]
             if len(lines) >= 10:
                 logging.info(f"План статьи сгенерирован ({len(lines)} пунктов)")
                 return outline
         except Exception as e:
             logging.warning(f"Попытка {attempt+1} генерации плана: {e}")
+            time.sleep(5)
     raise RuntimeError("Не удалось сгенерировать план статьи")
 
 def generate_section(title, outline, section_header):
@@ -161,9 +172,14 @@ def generate_section(title, outline, section_header):
         "temperature": 0.8,
     }
 
-    for attempt in range(3):
+    for attempt in range(6):  # Больше попыток на случай rate limit
         try:
-            r = requests.post(url, headers=headers, json=payload, timeout=120)
+            r = requests.post(url, headers=headers, json=payload, timeout=150)
+            if r.status_code == 429:
+                wait = (2 ** attempt) * 3 + random.uniform(0, 5)  # Дольше ждём
+                logging.warning(f"Rate limit (429) для раздела '{section_header}'. Ждём {wait:.1f} сек...")
+                time.sleep(wait)
+                continue
             r.raise_for_status()
             text = r.json()["choices"][0]["message"]["content"].strip()
             word_count = len(text.split())
@@ -171,9 +187,17 @@ def generate_section(title, outline, section_header):
                 return text
             else:
                 logging.warning(f"Раздел '{section_header}' короткий ({word_count} слов) — retry")
+                time.sleep(3)
         except Exception as e:
-            logging.warning(f"Ошибка генерации раздела '{section_header}': {e}")
-    return f"## {section_header}\n\n[Временный текст из-за ошибки генерации]\n\n"
+            logging.warning(f"Ошибка генерации раздела '{section_header}' (попытка {attempt+1}): {e}")
+            time.sleep(3)
+
+    # Лучший fallback
+    fallback = f"В этом разделе рассматриваются ключевые аспекты темы «{section_header}». " \
+               f"Генеративный ИИ демонстрирует значительный прогресс, включая практические примеры применения, " \
+               f"технические детали реализации и анализ перспектив развития. " \
+               f"Детальный обзор временно недоступен из-за технических ограничений API."
+    return fallback
 
 def generate_body(title):
     logging.info("Генерация плана статьи...")
@@ -204,22 +228,25 @@ def generate_body(title):
         total_words += words
         logging.info(f"Раздел готов ({words} слов, всего: {total_words})")
 
+        # Небольшая пауза между разделами, чтобы не превышать rate limit
+        time.sleep(random.uniform(2, 5))
+
     logging.info(f"Статья полностью сгенерирована ({total_words} слов)")
     return full_body
 
-# -------------------- Изображение --------------------
+# -------------------- Изображение (оптимизировано для низких kudos) --------------------
 def generate_image_horde(title):
     prompt = f"{title}, futuristic artificial intelligence, neural networks, cyberpunk aesthetic, photorealistic, highly detailed, cinematic lighting, vibrant neon colors, masterpiece, best quality"
 
     url_async = "https://stablehorde.net/api/v2/generate/async"
     payload = {
         "prompt": prompt,
-        "models": ["FLUX.1 [schnell]", "Flux.1 Dev", "SDXL 1.0"],
+        "models": ["FLUX.1 [schnell]"],  # Только schnell — минимум kudos
         "params": {
             "width": 512,
             "height": 512,
-            "steps": 15,
-            "cfg_scale": 7.0,
+            "steps": 6,          # 4–6 steps достаточно для schnell, сильно снижает kudos
+            "cfg_scale": 3.5,    # Низкий CFG для schnell
             "n": 1
         },
         "nsfw": False,
@@ -230,7 +257,7 @@ def generate_image_horde(title):
     headers = {
         "apikey": AIHORDE_API_KEY,
         "Content-Type": "application/json",
-        "Client-Agent": "LybraBlogBot:1.0"
+        "Client-Agent": "LybraBlogBot:1.1"
     }
 
     try:
@@ -248,8 +275,8 @@ def generate_image_horde(title):
         check_url = f"https://stablehorde.net/api/v2/generate/check/{job_id}"
         status_url = f"https://stablehorde.net/api/v2/generate/status/{job_id}"
 
-        for _ in range(30):
-            time.sleep(5)
+        for _ in range(40):  # Больше итераций на случай очереди
+            time.sleep(6)
             check = requests.get(check_url, headers=headers).json()
             if check.get("done"):
                 final = requests.get(status_url, headers=headers).json()
@@ -282,7 +309,9 @@ def generate_image(title):
     logging.warning(f"AI Horde не сработал → fallback: {fallback_url}")
     return fallback_url
 
-# -------------------- Сохранение и Telegram --------------------
+# -------------------- Сохранение и Telegram (без изменений) --------------------
+# (оставляю тот же код, что был в предыдущей версии — он работает отлично)
+
 def save_post(title, body, img_path=None):
     today = datetime.now().strftime("%Y-%m-%d")
     slug = re.sub(r'[^a-z0-9-]+', '-', translit(title)).strip('-')[:80]
