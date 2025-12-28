@@ -57,7 +57,7 @@ TRANSLIT_MAP = {
 def translit(text):
     return ''.join(TRANSLIT_MAP.get(c.lower(), c.lower()) for c in text)
 
-# -------------------- Шаг 1: Заголовок (с backoff) --------------------
+# -------------------- Шаг 1: Заголовок --------------------
 def generate_title(topic):
     groq_model = "llama-3.3-70b-versatile"
     system_prompt = f"""Ты — эксперт по SMM и копирайтингу для блога об ИИ.
@@ -99,19 +99,19 @@ def generate_title(topic):
 
     raise RuntimeError("Не удалось сгенерировать валидный заголовок")
 
-# -------------------- Шаг 2: План и разделы (с backoff) --------------------
+# -------------------- Шаг 2: План и разделы --------------------
 def generate_outline(title):
     system_prompt = f"""Ты — эксперт по ИИ и технический писатель.
 Создай детальный план статьи на русском языке по заголовку: "{title}"
 
 Требования:
-- Только нумерованный список из 12–15 основных пунктов (включая Введение и Заключение)
-- Каждый пункт — отдельный раздел или подраздел
-- План должен быть очень подробным, чтобы общий объём готовой статьи составил не менее 2500 слов
-- Используй подзаголовки уровня ## и ###
-- Обязательно включи: примеры, кейсы, сравнения моделей, технические детали, прогнозы
+- Используй только подзаголовки уровня ## (основные разделы) и ### (подразделы)
+- Всего 8–12 основных разделов (##), включая Введение и Заключение
+- Под каждым ## может быть 1–3 ###
+- План должен обеспечивать объём статьи 3000–5000 слов
+- Обязательно включи: примеры, кейсы, сравнения, технические детали, прогнозы
 
-Ответ в чистом Markdown, только список."""
+Ответ в чистом Markdown, без лишнего текста."""
 
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
@@ -135,10 +135,8 @@ def generate_outline(title):
                 continue
             r.raise_for_status()
             outline = r.json()["choices"][0]["message"]["content"].strip()
-            lines = [l.strip() for l in outline.split("\n") if l.strip() and re.match(r'^(\d+\.|##)', l.strip())]
-            if len(lines) >= 10:
-                logging.info(f"План статьи сгенерирован ({len(lines)} пунктов)")
-                return outline
+            logging.info("План статьи сгенерирован")
+            return outline
         except Exception as e:
             logging.warning(f"Попытка {attempt+1} генерации плана: {e}")
             time.sleep(5)
@@ -148,20 +146,20 @@ def generate_section(title, outline, section_header):
     prompt = f"""Напиши подробный раздел статьи на русском языке.
 
 Заголовок статьи: {title}
-План статьи (для контекста):
+Полный план статьи (для контекста):
 {outline}
 
-Текущий раздел:
-{section_header}
+Текущий раздел, который нужно написать:
+## {section_header}
 
 Требования:
-- Объём: 300–600 слов (обязательно!)
+- Объём: 350–600 слов (обязательно!)
 - Формат Markdown
-- Подробные объяснения, примеры, кейсы, сравнения
+- Подробные объяснения, реальные примеры, кейсы, сравнения
 - Доступный язык с техническими деталями
-- Если Введение — 400–500 слов с хуком
-- Если Заключение — 400–600 слов с выводами и прогнозами
-- Только этот раздел, ничего больше!"""
+- Если это Введение — 400–600 слов с ярким хуком
+- Если это Заключение — 500–700 слов с выводами и прогнозами
+- Пиши только содержимое этого раздела!"""
 
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
@@ -172,18 +170,18 @@ def generate_section(title, outline, section_header):
         "temperature": 0.8,
     }
 
-    for attempt in range(6):  # Больше попыток на случай rate limit
+    for attempt in range(6):
         try:
             r = requests.post(url, headers=headers, json=payload, timeout=150)
             if r.status_code == 429:
-                wait = (2 ** attempt) * 3 + random.uniform(0, 5)  # Дольше ждём
+                wait = (2 ** attempt) * 3 + random.uniform(0, 5)
                 logging.warning(f"Rate limit (429) для раздела '{section_header}'. Ждём {wait:.1f} сек...")
                 time.sleep(wait)
                 continue
             r.raise_for_status()
             text = r.json()["choices"][0]["message"]["content"].strip()
             word_count = len(text.split())
-            if word_count >= 250:
+            if word_count >= 300:
                 return text
             else:
                 logging.warning(f"Раздел '{section_header}' короткий ({word_count} слов) — retry")
@@ -192,30 +190,41 @@ def generate_section(title, outline, section_header):
             logging.warning(f"Ошибка генерации раздела '{section_header}' (попытка {attempt+1}): {e}")
             time.sleep(3)
 
-    # Лучший fallback
-    fallback = f"В этом разделе рассматриваются ключевые аспекты темы «{section_header}». " \
-               f"Генеративный ИИ демонстрирует значительный прогресс, включая практические примеры применения, " \
-               f"технические детали реализации и анализ перспектив развития. " \
-               f"Детальный обзор временно недоступен из-за технических ограничений API."
+    fallback = f"В разделе «{section_header}» рассматриваются ключевые аспекты темы. Генеративный ИИ и обработка естественного языка продолжают развиваться, предлагая новые возможности и вызовы. Детальный анализ временно недоступен из-за технических ограничений."
     return fallback
 
 def generate_body(title):
     logging.info("Генерация плана статьи...")
     outline = generate_outline(title)
 
-    # Извлекаем заголовки разделов
+    # Извлекаем только основные разделы (##)
     section_headers = []
     for line in outline.split("\n"):
         line = line.strip()
-        header = re.sub(r'^\d+\.\s*', '', line)
-        header = re.sub(r'^##\s*', '', header)
-        if header:
-            section_headers.append(header.strip())
+        if re.match(r'^##\s+', line):
+            header = re.sub(r'^##\s*', '', line).strip()
+            if header:
+                section_headers.append(header)
 
+    # Если мало — добавляем стандартные
     if len(section_headers) < 8:
-        section_headers = ["Введение"] + section_headers + ["Заключение"]
+        section_headers = [
+            "Введение",
+            "История развития",
+            "Ключевые технологии",
+            "Современные модели",
+            "Примеры применения",
+            "Проблемы и ограничения",
+            "Этические аспекты",
+            "Будущее и прогнозы",
+            "Заключение"
+        ]
 
-    logging.info(f"Будет сгенерировано {len(section_headers)} разделов")
+    # ЖЁСТКОЕ ОГРАНИЧЕНИЕ: максимум 12 разделов
+    MAX_SECTIONS = 12
+    section_headers = section_headers[:MAX_SECTIONS]
+    
+    logging.info(f"Будет сгенерировано {len(section_headers)} разделов (макс. {MAX_SECTIONS})")
 
     full_body = f"# {title}\n\n"
     total_words = 0
@@ -228,25 +237,25 @@ def generate_body(title):
         total_words += words
         logging.info(f"Раздел готов ({words} слов, всего: {total_words})")
 
-        # Небольшая пауза между разделами, чтобы не превышать rate limit
-        time.sleep(random.uniform(2, 5))
+        if i < len(section_headers):
+            time.sleep(random.uniform(3, 6))
 
     logging.info(f"Статья полностью сгенерирована ({total_words} слов)")
     return full_body
 
-# -------------------- Изображение (оптимизировано для низких kudos) --------------------
+# -------------------- Изображение --------------------
 def generate_image_horde(title):
     prompt = f"{title}, futuristic artificial intelligence, neural networks, cyberpunk aesthetic, photorealistic, highly detailed, cinematic lighting, vibrant neon colors, masterpiece, best quality"
 
     url_async = "https://stablehorde.net/api/v2/generate/async"
     payload = {
         "prompt": prompt,
-        "models": ["FLUX.1 [schnell]"],  # Только schnell — минимум kudos
+        "models": ["FLUX.1 [schnell]"],
         "params": {
             "width": 512,
             "height": 512,
-            "steps": 6,          # 4–6 steps достаточно для schnell, сильно снижает kudos
-            "cfg_scale": 3.5,    # Низкий CFG для schnell
+            "steps": 6,
+            "cfg_scale": 3.5,
             "n": 1
         },
         "nsfw": False,
@@ -275,7 +284,7 @@ def generate_image_horde(title):
         check_url = f"https://stablehorde.net/api/v2/generate/check/{job_id}"
         status_url = f"https://stablehorde.net/api/v2/generate/status/{job_id}"
 
-        for _ in range(40):  # Больше итераций на случай очереди
+        for _ in range(40):
             time.sleep(6)
             check = requests.get(check_url, headers=headers).json()
             if check.get("done"):
@@ -309,9 +318,7 @@ def generate_image(title):
     logging.warning(f"AI Horde не сработал → fallback: {fallback_url}")
     return fallback_url
 
-# -------------------- Сохранение и Telegram (без изменений) --------------------
-# (оставляю тот же код, что был в предыдущей версии — он работает отлично)
-
+# -------------------- Сохранение и Telegram --------------------
 def save_post(title, body, img_path=None):
     today = datetime.now().strftime("%Y-%m-%d")
     slug = re.sub(r'[^a-z0-9-]+', '-', translit(title)).strip('-')[:80]
