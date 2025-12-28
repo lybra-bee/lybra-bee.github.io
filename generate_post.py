@@ -22,7 +22,10 @@ IMAGES_DIR.mkdir(parents=True, exist_ok=True)
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-AIHORDE_API_KEY = os.getenv("AIHORDE_API_KEY", "0000000000")  # Теперь ваш настоящий ключ!
+AIHORDE_API_KEY = os.getenv("AIHORDE_API_KEY")  # ОБЯЗАТЕЛЬНО добавьте ваш ключ из stablehorde.net!
+
+if not AIHORDE_API_KEY:
+    logging.warning("AIHORDE_API_KEY не найден — будет использован анонимный режим (медленно и с ограничениями)")
 
 FALLBACK_IMAGES = [
     "https://picsum.photos/1024/768?random=1",
@@ -123,7 +126,7 @@ def generate_image_horde(title):
     }
 
     headers = {
-        "apikey": AIHORDE_API_KEY,
+        "apikey": AIHORDE_API_KEY or "0000000000",
         "Content-Type": "application/json",
         "Client-Agent": "LybraBlogBot:1.0:contact@example.com"
     }
@@ -210,7 +213,7 @@ def save_post(title, body, img_path=None):
     return filename
 
 
-# -------------------- Telegram --------------------
+# -------------------- Telegram — 100% безопасное сообщение --------------------
 def send_to_telegram(title, body, image_path):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         return
@@ -238,7 +241,7 @@ def send_to_telegram(title, body, image_path):
                     .replace('.', '\\.')
                     .replace('!', '\\!'))
 
-    message = f"*Новая статья в блоге!*\n\n{esc(title)}\n\n{esc(teaser)}\n\n[Читать полностью →](https://lybra-ai.ru)\n\n\\#ИИ \\#LybraAI \\#искусственный_интеллект"
+    message = f"*Новая статья в блоге\\!*\n\n{esc(title)}\n\n{esc(teaser)}\n\n[Читать полностью →](https://lybra-ai.ru)\n\n\\#ИИ \\#LybraAI \\#искусственный_интеллект"
 
     logging.info(f"Отправляемое сообщение в Telegram:\n{message}")
 
