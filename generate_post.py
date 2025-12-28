@@ -10,7 +10,7 @@ from datetime import datetime
 from pathlib import Path
 import tempfile
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
+logging.basicBase(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
 
 # -------------------- Папки --------------------
 POSTS_DIR = Path("_posts")
@@ -22,10 +22,12 @@ IMAGES_DIR.mkdir(parents=True, exist_ok=True)
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-AIHORDE_API_KEY = os.getenv("AIHORDE_API_KEY")  # ОБЯЗАТЕЛЬНО добавьте ваш ключ из stablehorde.net!
+AIHORDE_API_KEY = os.getenv("AIHORDE_API_KEY", "0000000000")  # Анонимный или ваш ключ
 
-if not AIHORDE_API_KEY:
-    logging.warning("AIHORDE_API_KEY не найден — будет использован анонимный режим (медленно и с ограничениями)")
+if AIHORDE_API_KEY != "0000000000":
+    logging.info("Используется ваш AIHORDE_API_KEY — kudos должны быть доступны")
+else:
+    logging.warning("AIHORDE_API_KEY не найден — анонимный режим, могут быть ограничения")
 
 FALLBACK_IMAGES = [
     "https://picsum.photos/1024/768?random=1",
@@ -114,9 +116,9 @@ def generate_image_horde(title):
         "prompt": prompt,
         "models": ["FLUX.1 [schnell]", "Flux.1 Dev", "SDXL 1.0"],
         "params": {
-            "width": 1024,
-            "height": 768,
-            "steps": 20,
+            "width": 512,  # Изменение: уменьшил с 1024 на 512 для снижения kudos
+            "height": 512,  # Изменение: уменьшил с 1024 на 512
+            "steps": 10,  # Изменение: уменьшил с 20 на 10 для снижения kudos
             "cfg_scale": 7.0,
             "n": 1
         },
@@ -126,7 +128,7 @@ def generate_image_horde(title):
     }
 
     headers = {
-        "apikey": AIHORDE_API_KEY or "0000000000",
+        "apikey": AIHORDE_API_KEY,
         "Content-Type": "application/json",
         "Client-Agent": "LybraBlogBot:1.0:contact@example.com"
     }
@@ -213,12 +215,12 @@ def save_post(title, body, img_path=None):
     return filename
 
 
-# -------------------- Telegram — 100% безопасное сообщение --------------------
+# -------------------- Telegram --------------------
 def send_to_telegram(title, body, image_path):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         return
 
-    teaser = ' '.join(body.split()[:60]) + '…'
+    teaser = ' '.join(body.split()[:40]) + '…'
 
     def esc(text):
         return (text.replace('\\', '\\\\')
