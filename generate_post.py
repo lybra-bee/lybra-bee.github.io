@@ -11,7 +11,6 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 
-# Изменение: Увеличена длина ожидания для Horde (range до 200, sleep до 10 сек), чтобы дождаться очереди даже от 170+.
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)s | %(message)s"
@@ -120,9 +119,7 @@ def generate_title(topic):
     logging.info(f"Использован fallback-заголовок: {title}")
     return title
 
-# -------------------- Шаг 2: План и тело статьи (теперь 3000–5000 знаков) --------------------
-# Изменение: Промпты обновлены на "знаков" вместо "слов". Подсчёт total_chars = len(text) вместо слов.
-# Уменьшены объёмы разделов для общей 3000–5000 знаков (примерно 500–800 слов, но по знакам).
+# -------------------- Шаг 2: План и тело статьи --------------------
 def generate_outline(title):
     system_prompt = f"""Ты — эксперт по ИИ и технический писатель.
 Создай детальный план статьи на русском языке по заголовку: "{title}"
@@ -249,7 +246,6 @@ def generate_body(title):
     return full_body
 
 # -------------------- Изображение: Stable Horde анонимный --------------------
-# Изменение: Увеличен range до 200 (до ~30 мин ожидания), sleep до 10 сек, чтобы дождаться даже из очереди 170+.
 def generate_image_horde(title):
     prompt = f"{title}, futuristic artificial intelligence, neural networks, cyberpunk aesthetic, photorealistic, highly detailed, cinematic lighting, vibrant neon colors, masterpiece, best quality"
 
@@ -322,7 +318,6 @@ def generate_image(title):
     return fallback_url
 
 # -------------------- Сохранение поста --------------------
-# Изменение: Frontmatter обновлён: title в кавычках, добавлен layout: post, date в формате YYYY-MM-DD.
 def save_post(title, body, img_path=None):
     today = datetime.now().strftime("%Y-%m-%d")
     slug = re.sub(r'[^a-z0-9-]+', '-', translit(title)).strip('-')[:80]
