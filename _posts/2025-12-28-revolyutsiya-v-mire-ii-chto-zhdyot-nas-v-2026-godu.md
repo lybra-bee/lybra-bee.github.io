@@ -1,6 +1,6 @@
 ---
-description: post 
 title: Революция в мире ИИ: Что ждёт нас в 2026 году?
+layout: post
 date: 2025-12-28
 categories: ai
 image: https://picsum.photos/1024/768?random=5
