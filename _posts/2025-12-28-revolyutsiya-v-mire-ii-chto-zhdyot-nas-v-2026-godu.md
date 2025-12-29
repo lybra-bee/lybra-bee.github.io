@@ -1,4 +1,5 @@
 ---
+description: post 
 title: Революция в мире ИИ: Что ждёт нас в 2026 году?
 date: 2025-12-28
 categories: ai
