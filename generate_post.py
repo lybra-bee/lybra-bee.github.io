@@ -11,6 +11,7 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 
+# Изменение: Увеличена длина ожидания для Horde (range до 200, sleep до 10 сек), чтобы дождаться очереди даже от 170+.
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)s | %(message)s"
@@ -98,7 +99,7 @@ def generate_title(topic):
             text = r.json()["choices"][0]["message"]["content"].strip()
             match = re.search(r"ЗАГОЛОВОК:\s*(.+)", text, re.IGNORECASE | re.DOTALL)
             if match:
-                title = match.group(1).strip().strip('"').strip("'")
+                title = match.group(1).strip().strip('"').strip("'").strip()
                 if not re.search(r'^(топ|5|10|\d+)\s', title.lower()):
                     if 8 <= len(title.split()) <= 16:
                         logging.info(f"Сгенерирован заголовок: {title}")
@@ -108,7 +109,6 @@ def generate_title(topic):
             logging.error(f"Ошибка генерации заголовка: {e}")
             time.sleep(2)
 
-    # Fallback на случай неудачи
     fallbacks = [
         f"Почему {topic.lower()} меняет всё в 2025 году",
         f"ИИ переходит на новый уровень: эра {topic.lower()} началась",
@@ -120,7 +120,9 @@ def generate_title(topic):
     logging.info(f"Использован fallback-заголовок: {title}")
     return title
 
-# -------------------- Шаг 2: План и тело статьи --------------------
+# -------------------- Шаг 2: План и тело статьи (теперь 3000–5000 знаков) --------------------
+# Изменение: Промпты обновлены на "знаков" вместо "слов". Подсчёт total_chars = len(text) вместо слов.
+# Уменьшены объёмы разделов для общей 3000–5000 знаков (примерно 500–800 слов, но по знакам).
 def generate_outline(title):
     system_prompt = f"""Ты — эксперт по ИИ и технический писатель.
 Создай детальный план статьи на русском языке по заголовку: "{title}"
@@ -129,7 +131,7 @@ def generate_outline(title):
 - Только подзаголовки ## (основные разделы) и ### (подразделы)
 - 8–12 основных разделов (##), включая Введение и Заключение
 - Под каждым ## — 1–3 ###
-- Общий объём статьи должен быть 3000–5000 слов
+- Общий объём статьи должен быть 3000–5000 знаков
 - Включи: примеры, кейсы, сравнения, технические детали, прогнозы
 
 Ответ в чистом Markdown."""
@@ -174,12 +176,12 @@ def generate_section(title, outline, section_header):
 ## {section_header}
 
 Требования:
-- 350–600 слов (обязательно!)
-- Markdown
-- Примеры, кейсы, сравнения, технические детали
-- Доступный язык
-- Введение: 400–600 слов с хуком
-- Заключение: 500–700 слов с выводами
+- Объём: 300–600 знаков (обязательно!)
+- Формат Markdown
+- Подробные объяснения, примеры, кейсы, сравнения
+- Доступный язык с техническими деталями
+- Введение: 400–600 знаков с хуком
+- Заключение: 500–700 знаков с выводами
 - Только этот раздел!"""
 
     url = "https://api.groq.com/openai/v1/chat/completions"
@@ -187,7 +189,7 @@ def generate_section(title, outline, section_header):
     payload = {
         "model": "llama-3.3-70b-versatile",
         "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 4000,
+        "max_tokens": 400,
         "temperature": 0.8,
     }
 
@@ -201,13 +203,16 @@ def generate_section(title, outline, section_header):
                 continue
             r.raise_for_status()
             text = r.json()["choices"][0]["message"]["content"].strip()
-            if len(text.split()) >= 300:
+            char_count = len(text)
+            if char_count >= 250:
                 return text
+            logging.warning(f"Раздел '{section_header}' короткий ({char_count} знаков) — retry")
+            time.sleep(3)
         except Exception as e:
             logging.warning(f"Ошибка раздела '{section_header}': {e}")
             time.sleep(3)
 
-    return f"В разделе «{section_header}» рассматриваются ключевые аспекты темы. Детальный анализ временно недоступен."
+    return f"В разделе «{section_header}» рассматриваются ключевые аспекты. Детальный анализ временно недоступен."
 
 def generate_body(title):
     logging.info("Генерация плана статьи...")
@@ -228,22 +233,23 @@ def generate_body(title):
     logging.info(f"Будет сгенерировано {len(section_headers)} разделов")
 
     full_body = f"# {title}\n\n"
-    total_words = 0
+    total_chars = 0
 
     for i, header in enumerate(section_headers, 1):
         logging.info(f"Генерация раздела {i}/{len(section_headers)}: {header}")
         section_text = generate_section(title, outline, header)
         full_body += f"\n## {header}\n\n{section_text}\n\n"
-        words = len(section_text.split())
-        total_words += words
-        logging.info(f"Раздел готов ({words} слов, всего: {total_words})")
+        chars = len(section_text)
+        total_chars += chars
+        logging.info(f"Раздел готов ({chars} знаков, всего: {total_chars})")
         if i < len(section_headers):
             time.sleep(random.uniform(3, 6))
 
-    logging.info(f"Статья полностью сгенерирована ({total_words} слов)")
+    logging.info(f"Статья полностью сгенерирована ({total_chars} знаков)")
     return full_body
 
 # -------------------- Изображение: Stable Horde анонимный --------------------
+# Изменение: Увеличен range до 200 (до ~30 мин ожидания), sleep до 10 сек, чтобы дождаться даже из очереди 170+.
 def generate_image_horde(title):
     prompt = f"{title}, futuristic artificial intelligence, neural networks, cyberpunk aesthetic, photorealistic, highly detailed, cinematic lighting, vibrant neon colors, masterpiece, best quality"
 
@@ -284,8 +290,8 @@ def generate_image_horde(title):
         check_url = f"https://stablehorde.net/api/v2/generate/check/{job_id}"
         status_url = f"https://stablehorde.net/api/v2/generate/status/{job_id}"
 
-        for _ in range(120):
-            time.sleep(5)
+        for _ in range(200):
+            time.sleep(10)
             check = requests.get(check_url, headers=headers).json()
             if check.get("done"):
                 final = requests.get(status_url, headers=headers).json()
@@ -298,7 +304,8 @@ def generate_image_horde(title):
                         img_path.write_bytes(img_data.content)
                         logging.info(f"Изображение от Horde сохранено: {img_path}")
                         return str(img_path)
-            logging.info(f"Horde ожидание... очередь: {check.get('queue_position', '?')}")
+            queue = check.get("queue_position", "?")
+            logging.info(f"Horde ожидание... позиция: {queue}")
 
     except Exception as e:
         logging.warning(f"Ошибка Horde: {e}")
@@ -314,7 +321,8 @@ def generate_image(title):
     logging.warning(f"Horde не сработал → fallback: {fallback_url}")
     return fallback_url
 
-# -------------------- Сохранение и Telegram --------------------
+# -------------------- Сохранение поста --------------------
+# Изменение: Frontmatter обновлён: title в кавычках, добавлен layout: post, date в формате YYYY-MM-DD.
 def save_post(title, body, img_path=None):
     today = datetime.now().strftime("%Y-%m-%d")
     slug = re.sub(r'[^a-z0-9-]+', '-', translit(title)).strip('-')[:80]
@@ -323,7 +331,7 @@ def save_post(title, body, img_path=None):
 
     filename = POSTS_DIR / f"{today}-{slug}.md"
 
-    frontmatter = f"---\ntitle: {title}\ndate: {today}\ncategories: ai\n"
+    frontmatter = f'---\ntitle: "{title}"\nlayout: post\ndate: {today}\ncategories: ai\n'
 
     if img_path:
         if img_path.startswith("http"):
@@ -333,6 +341,7 @@ def save_post(title, body, img_path=None):
             frontmatter += f"image: {rel_path}\n"
 
     frontmatter += "---\n\n"
+
     frontmatter += f"![Обложка: {title}]({img_path if img_path else '/assets/images/placeholder.jpg'})\n\n"
 
     full_content = frontmatter + body
@@ -344,6 +353,7 @@ def save_post(title, body, img_path=None):
 
     return str(filename), article_url
 
+# -------------------- Telegram --------------------
 def send_to_telegram(title, teaser_text, image_path, article_url):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         logging.warning("Telegram настройки отсутствуют")
@@ -393,14 +403,14 @@ def main():
         topics = [
             "Мультимодальные модели ИИ",
             "Автономные ИИ-агенты",
-            "ИИ в медицине и здравоохранении",
-            "Этика и безопасность ИИ",
+            "ИИ в медицине",
+            "Этика ИИ",
             "ИИ и творчество",
             "Будущее AGI",
             "ИИ в образовании",
-            "Голосовые и визуальные модели",
-            "ИИ и повседневная жизнь",
-            "Квантовый ИИ и новые горизонты"
+            "Голосовые модели ИИ",
+            "ИИ в повседневной жизни",
+            "Квантовый ИИ"
         ]
         topic = random.choice(topics)
         logging.info(f"Выбрана тема: {topic}")
