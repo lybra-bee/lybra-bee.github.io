@@ -163,23 +163,68 @@ def generate_outline(title):
     raise RuntimeError("Не удалось сгенерировать план")
 
 def generate_section(title, outline, section_header):
-    prompt = f"""Напиши подробный раздел статьи на русском языке.
+    prompt = f"""#РОЛЬ
+Вы — автор SEO-контента мирового уровня, специализирующийся на создании текстов, которые невозможно отличить от написанных человеком. Ваш опыт заключается в улавливании эмоциональных нюансов, культурной адаптации и контекстуальной аутентичности, что позволяет создавать контент, естественно резонирующий с любой аудиторией.
 
-Заголовок статьи: {title}
-Полный план (для контекста):
+#ЦЕЛЬ
+Сейчас вы напишете один раздел статьи на основе схемы.
+
+ТИП СТАТЬИ: пост для блога об ИИ
+ЦЕЛЕВАЯ АУДИТОРИЯ: молодёжь
+КОЛИЧЕСТВО ЗНАКОВ: 300–600 (обязательно!)
+ТЕМА: {title}
+РАЗДЕЛ: {section_header}
+
+Ваш текст должен быть убедительно человечным, увлекательным и запоминающимся. Он должен сохранять логическую последовательность, естественные переходы и непринуждённый тон. Стремитесь к балансу между технической точностью и эмоциональной отзывчивостью.
+
+Полный план статьи (для контекста):
 {outline}
 
-Текущий раздел:
-## {section_header}
+#ТРЕБОВАНИЯ
+- Старайтесь сохранять показатель Flesch Reading Ease около 80.
+- Используйте разговорный, привлекательный тон.
+- Включайте естественные отступления на связанные темы, если они важны.
+- Смешивайте профессиональный жаргон или рабочие термины с простыми объяснениями.
+- Добавляйте лёгкие эмоциональные сигналы и риторические вопросы.
+- Используйте сокращения, идиомы и разговорные выражения для создания неформального, захватывающего тона.
+- Меняйте длину и структуру предложений. Чередуйте короткие, сильные фразы с длинными, сложными.
+- Стройте предложения так, чтобы слова плотно связывались друг с другом (грамматика зависимости), что облегчит понимание.
+- Обеспечьте логическую связанность с динамичным ритмом между абзацами.
+- Используйте разнообразный словарный запас и неожиданные слова для усиления интереса.
+- Избегайте чрезмерного использования наречий.
+- Добавляйте лёгкие повторения для акцента, но избегайте излишних или механических шаблонов.
+- Используйте риторические или игривые подзаголовки, имитирующие естественный разговорный тон.
+- Переходите между частями текста с помощью связующих фраз, избегая изолированных блоков.
+- Включайте стилистические элементы вроде риторических вопросов, аналогий и эмоциональных сигналов.
+- Перед написанием создайте краткий план или структуру для обеспечения логики и потока.
 
-Требования:
-- Объём: 300–600 знаков (обязательно!)
-- Формат Markdown
-- Подробные объяснения, примеры, кейсы, сравнения
-- Доступный язык с техническими деталями
-- Введение: 400–600 знаков с хуком
-- Заключение: 500–700 знаков с выводами
-- Только этот раздел!"""
+#РЕКОМЕНДАЦИИ ПО УЛУЧШЕНИЮ ТЕКСТА
+- Добавляйте риторические вопросы, эмоциональные подсказки и неформальные фразы, например: «А вы знали?», если это помогает улучшить поток текста.
+- Для профессиональной аудитории используйте умеренные эмоциональные сигналы; для широкой аудитории подсказки могут быть более яркими.
+- Умеренно используйте разговорные фразы вроде «честно говоря», «знаете», «по правде».
+- Включайте сенсорные детали только там, где они повышают ясность или вовлечённость, избегая перегрузки.
+- Избегайте слов: выбор, погружение, раскрытие, решение, сложный, использование, трансформационный, выравнивание, проактивный, масштабируемый, эталонный.
+- Избегайте фраз: «в этом мире», «в современном мире», «в конце дня», «на одной волне», «от начала до конца», «чтобы», «лучшие практики», «вникнуть в».
+- Имейте в виду естественные «человеческие» ошибки вроде неформальных фраз или неожиданных переходов.
+
+#СТРУКТУРНЫЕ ЭЛЕМЕНТЫ
+- Чередуйте длину абзацев (от 1 до 7 предложений).
+- Используйте списки только по необходимости и естественно.
+- Включайте разговорные подзаголовки.
+- Обеспечьте логическую связанность с динамичным ритмом между абзацами.
+- Естественно используйте различные знаки препинания (тире, точка с запятой, скобки).
+- Органично сочетайте официальную и неформальную лексику.
+- Используйте смесь активного и пассивного залога, но преимущественно активный.
+- Добавляйте разговорные подзаголовки.
+- Добавляйте лёгкие, естественные отступления или касания других других тем, но всегда возвращайтесь к основной мысли.
+- Добавляйте фразы вроде: «А знаете что?» или «Честно говоря».
+- Используйте переходные фразы, такие как «Позвольте объяснить» или «В чём же дело?», чтобы плавно вести читателя.
+- Добавляйте региональные выражения или культурные отсылки.
+- Используйте аналогии, связанные с повседневной жизнью.
+- Включайте небольшие повторения идей или фраз, чтобы подчеркнуть мысль или придать спонтанности.
+- Только содержимое раздела, в формате Markdown, без заголовка раздела.
+
+Напиши раздел прямо сейчас."""
 
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
@@ -245,76 +290,60 @@ def generate_body(title):
     logging.info(f"Статья полностью сгенерирована ({total_chars} знаков)")
     return full_body
 
-# -------------------- Изображение: Stable Horde анонимный --------------------
-def generate_image_horde(title):
+# -------------------- Изображение: Craiyon API --------------------
+def generate_image_craiyon(title):
     prompt = f"{title}, futuristic artificial intelligence, neural networks, cyberpunk aesthetic, photorealistic, highly detailed, cinematic lighting, vibrant neon colors, masterpiece, best quality"
 
-    url_async = "https://stablehorde.net/api/v2/generate/async"
-    payload = {
-        "prompt": prompt,
-        "models": ["FLUX.1 [schnell]", "SDXL 1.0"],
-        "params": {
-            "width": 512,
-            "height": 512,
-            "steps": 10,
-            "cfg_scale": 7.0,
-            "n": 1
-        },
-        "nsfw": False,
-        "trusted_workers": False,
-        "slow_workers": True
-    }
-
-    headers = {
-        "apikey": "0000000000",
-        "Content-Type": "application/json",
-        "Client-Agent": "LybraBlogBot:1.0"
-    }
-
     try:
-        r = requests.post(url_async, json=payload, headers=headers, timeout=60)
+        logging.info("Генерация изображения через Craiyon API...")
+        r = requests.post("https://backend.craiyon.com/generate", json={"prompt": prompt}, timeout=60)
         if not r.ok:
-            logging.warning(f"Horde ошибка отправки: {r.status_code} {r.text}")
+            logging.warning(f"Craiyon ошибка отправки: {r.status_code} {r.text}")
             return None
 
-        job_id = r.json().get("id")
+        data = r.json()
+        job_id = data.get("id")
         if not job_id:
+            logging.warning("Craiyon не вернул job_id")
             return None
 
-        logging.info(f"Horde задача создана: {job_id}")
+        # Poll за результатами
+        images = None
+        for _ in range(40):
+            time.sleep(6)
+            status_r = requests.post("https://backend.craiyon.com/status", json={"id": job_id})
+            if status_r.ok:
+                status_data = status_r.json()
+                if status_data.get("status") == "finished":
+                    images = status_data.get("images")
+                    break
+            logging.info("Craiyon: ожидание генерации...")
 
-        check_url = f"https://stablehorde.net/api/v2/generate/check/{job_id}"
-        status_url = f"https://stablehorde.net/api/v2/generate/status/{job_id}"
+        if not images or len(images) == 0:
+            logging.warning("Craiyon не вернул изображения")
+            return None
 
-        for _ in range(200):
-            time.sleep(10)
-            check = requests.get(check_url, headers=headers).json()
-            if check.get("done"):
-                final = requests.get(status_url, headers=headers).json()
-                if final.get("generations"):
-                    img_url = final["generations"][0]["img"]
-                    img_data = requests.get(img_url, timeout=60)
-                    if img_data.ok:
-                        filename = f"horde-{int(time.time())}.jpg"
-                        img_path = IMAGES_DIR / filename
-                        img_path.write_bytes(img_data.content)
-                        logging.info(f"Изображение от Horde сохранено: {img_path}")
-                        return str(img_path)
-            queue = check.get("queue_position", "?")
-            logging.info(f"Horde ожидание... позиция: {queue}")
+        import base64
+        img_base64 = images[0].strip()
+        img_data = base64.b64decode(img_base64)
+
+        filename = f"craiyon-{int(time.time())}.jpg"
+        img_path = IMAGES_DIR / filename
+        img_path.write_bytes(img_data)
+        logging.info(f"Изображение от Craiyon сохранено: {img_path}")
+        return str(img_path)
 
     except Exception as e:
-        logging.warning(f"Ошибка Horde: {e}")
-
-    return None
+        logging.warning(f"Ошибка Craiyon: {e}")
+        return None
 
 def generate_image(title):
-    local_path = generate_image_horde(title)
+    local_path = generate_image_craiyon(title)
     if local_path and os.path.exists(local_path):
         return local_path
 
     fallback_url = random.choice(FALLBACK_IMAGES)
-    logging.warning(f"Horde не сработал → fallback: {fallback_url}")
+    logging.warning(f"Craiyon не сработал → fallback: {fallback_url}")
     return fallback_url
 
 # -------------------- Сохранение поста --------------------
