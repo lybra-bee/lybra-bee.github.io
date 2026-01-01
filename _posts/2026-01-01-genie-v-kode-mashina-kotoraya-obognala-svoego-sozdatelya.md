@@ -1,16 +1,19 @@
 ---
 title: "Гenie в коде: Машина, которая обогнала своего создателя"
-date: 2026-01-01 00:00:00 +0000
+date: 2026-01-01 00:00:00 -0000
 layout: post
-categories: ai
-tags:
-  - ИИ
-  - технологии
-  - 2026
 image: /assets/images/posts/horde-1767292687.jpg
-image_alt: "Гenie в коде: Машина, которая обогнала своего создателя
 description: "Гenie в коде: Машина, которая обогнала своего создателя: обзор трендов ИИ 2026""
-
+tags:
+- ИИ
+- технологии
+- статья
+- big
+- tech
+- says
+keywords: '["big", "tech", "says", "superintelligent", "ai"]'
+read_time: 5 мин
+trend_id: news_6_1764551994
 ---
 
 # Гenie в коде: Машина, которая обогнала своего создателя
