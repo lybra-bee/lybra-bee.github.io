@@ -4,7 +4,7 @@ date: 2026-01-01 00:00:00 -0000
 layout: post
 categories: ai
 tags: [ИИ, технологии, 2026]
-image: /assets/images/posts/horde-1767264593.jpg
+image: assets/images/posts/horde-1767264593.jpg
 image_alt: ИИ 2026: что будет, если ии 2026 году сможет всё?
 description: Статья о трендах ИИ: что будет, если ии 2026 году сможет всё?
 ---
