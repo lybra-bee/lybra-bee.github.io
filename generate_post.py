@@ -394,27 +394,30 @@ def save_post(title, body, img_path=None):
         f"date: {full_date_str}",
         "layout: post",
         "categories: ai",
-        "tags: [ИИ, технологии, 2026]"
+        "tags:",
+        "  - ИИ",
+        "  - технологии",
+        "  - 2026"
     ]
 
     if img_path:
         if img_path.startswith("http"):
             image_url = img_path
         else:
-            image_url = f"/assets/images/posts/{Path(img_path).name}"
+            image_url = f"assets/images/posts/{Path(img_path).name}"
         frontmatter_lines.extend([
             f"image: {image_url}",
-            f"image_alt: ИИ 2026: {title.lower().rstrip('.')}",
-            f"description: Статья о трендах ИИ: {title.lower().rstrip('.')}"
+            f"image_alt: {title.rstrip('.')}",
+            f"description: Статья об ИИ: {title.rstrip('.')}"
         ])
 
     frontmatter_lines.append("---")
     frontmatter = "\n".join(frontmatter_lines) + "\n\n"
 
-    # Добавляем обложку в тело
+    # Обложка в теле с site.baseurl
     if img_path:
-        cover_img = image_url if img_path else '/assets/images/placeholder.jpg'
-        body_start = f"![Обложка: {title}]({cover_img})\n\n"
+        cover_img = image_url if 'image_url' in locals() else '/assets/images/placeholder.jpg'
+        body_start = f"![Обложка: {title}]({{{{ site.baseurl }}}}/{cover_img})\n\n"
     else:
         body_start = ""
 
@@ -422,14 +425,13 @@ def save_post(title, body, img_path=None):
 
     try:
         filename.write_text(full_content, encoding="utf-8")
-        logging.info(f"Пост сохранён с правильным frontmatter: {filename}")
+        logging.info(f"Пост сохранён: {filename}")
     except Exception as e:
-        logging.error(f"Ошибка сохранения файла: {e}")
+        logging.error(f"Ошибка сохранения: {e}")
         raise
 
     article_url = f"{SITE_URL}/{slug}/"
-    logging.info(f"Ссылка на статью: {article_url}")
-
+    logging.info(f"Ссылка: {article_url}")
     return str(filename), article_url
 
 # -------------------- Telegram --------------------
