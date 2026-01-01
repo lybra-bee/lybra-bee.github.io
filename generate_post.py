@@ -148,7 +148,9 @@ def generate_outline(title):
     return "## Введение\n### Краткий обзор\n## Основные тренды\n### Детали\n## Применение\n### Примеры\n## Риски\n### Анализ\n## Будущее\n### Прогнозы\n## Заключение\n### Итоги"
 
 def generate_section(title, outline, section_header):
-    prompt = f"""Напиши короткий раздел "{section_header}" для статьи "{title}"
+    prompt = f"""Напиши короткий раздел для статьи "{title}"
+
+Раздел называется: "{section_header}"
 
 Контекст плана:
 {outline}
@@ -157,7 +159,8 @@ def generate_section(title, outline, section_header):
 - Объём: строго 500–800 знаков
 - Разговорный тон для молодёжи
 - Добавляй вопросы, аналогии, фразы "А знаете что?", "Представьте"
-- Только текст раздела в Markdown
+- НЕ ПОВТОРЯЙ НАЗВАНИЕ РАЗДЕЛА в тексте
+- Только текст раздела в Markdown, без заголовков
 
 Напиши сейчас."""
 
@@ -178,12 +181,15 @@ def generate_section(title, outline, section_header):
                 continue
             r.raise_for_status()
             text = r.json()["choices"][0]["message"]["content"].strip()
+            # Удаляем возможное повторение заголовка
+            text = re.sub(rf'^{re.escape(section_header)}.*?\n', '', text, flags=re.IGNORECASE)
+            text = text.strip()
             if 450 <= len(text) <= 850:
                 return text
         except:
             time.sleep(3)
 
-    return f"Короткий обзор раздела «{section_header}»."
+    return f"Короткий обзор темы раздела."
 
 def generate_body(title):
     outline = generate_outline(title)
@@ -303,7 +309,7 @@ def generate_image(title):
     logging.warning(f"Horde не успел → fallback: {fallback_url}")
     return fallback_url
 
-# -------------------- Сохранение поста — 100% ВАЛИДНЫЙ FRONTMATTER --------------------
+# -------------------- Сохранение поста — валидный frontmatter --------------------
 def save_post(title, body, img_path=None):
     today = datetime.now()
     date_str = today.strftime("%Y-%m-%d")
@@ -315,7 +321,6 @@ def save_post(title, body, img_path=None):
 
     filename = POSTS_DIR / f"{date_str}-{slug}.md"
 
-    # Валидный frontmatter — каждая строка отдельно
     frontmatter = "---\n"
     frontmatter += f"title: {title.rstrip('.')}\n"
     frontmatter += f"date: {full_date_str}\n"
