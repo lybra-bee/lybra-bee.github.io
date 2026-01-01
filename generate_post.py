@@ -8,7 +8,6 @@ import random
 import logging
 import requests
 import tempfile
-import yaml  # Добавлено для безопасного YAML
 from datetime import datetime
 from pathlib import Path
 
@@ -118,8 +117,6 @@ def generate_title(topic):
     return title
 
 # -------------------- Шаг 2: План и тело статьи (3000–5000 знаков) --------------------
-# (оставляем как есть — с твоим адаптированным "человеческим" промптом)
-
 def generate_outline(title):
     system_prompt = f"""Ты — эксперт по ИИ и технический писатель.
 Создай детальный план статьи на русском языке по заголовку: "{title}"
@@ -198,7 +195,7 @@ def generate_section(title, outline, section_header):
 - Включайте стилистические элементы вроде риторических вопросов, аналогий и эмоциональных сигналов.
 - Перед написанием создайте краткий план или структуру для обеспечения логики и потока.
 
-#РЕКОМЕНДАЦИИ ПО УЛУЧШЕНИЮ ТЕКСТА
+#РЕКОМЕНДАЦИИ ПО УЛУЖШЕНИЮ ТЕКСТА
 - Добавляйте риторические вопросы, эмоциональные подсказки и неформальные фразы, например: «А вы знали?», если это помогает улучшить поток текста.
 - Для профессиональной аудитории используйте умеренные эмоциональные сигналы; для широкой аудитории подсказки могут быть более яркими.
 - Умеренно используйте разговорные фразы вроде «честно говоря», «знаете», «по правде».
@@ -378,43 +375,53 @@ def generate_image(title):
     logging.warning(f"Horde не успел → fallback: {fallback_url}")
     return fallback_url
 
-# -------------------- Сохранение поста — ПО ТВОЕМУ ОБРАЗЦУ --------------------
+# -------------------- Сохранение поста — РУЧНОЕ YAML без PyYAML --------------------
 def save_post(title, body, img_path=None):
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = datetime.now()
+    date_str = today.strftime("%Y-%m-%d")
+    full_date_str = today.strftime("%Y-%m-%d 00:00:00 -0000")
+
     slug = re.sub(r'[^a-z0-9-]+', '-', translit(title)).strip('-')[:80]
     if len(slug) < 10:
         slug = "ai-news-" + ''.join(random.choices("abcdefghijklmnopqrstuvwxyz", k=10))
 
-    filename = POSTS_DIR / f"{today}-{slug}.md"
+    filename = POSTS_DIR / f"{date_str}-{slug}.md"
 
-    # Формируем правильный frontmatter по твоему образцу
-    front_matter = {
-        "title": title.rstrip('.'),
-        "date": f"{today} 00:00:00 -0000",
-        "layout": "post",
-        "categories": "ai",
-        "tags": ["ИИ", "технологии", "2026"]
-    }
+    # Ручное формирование frontmatter
+    frontmatter_lines = [
+        "---",
+        f"title: {title.rstrip('.')}",
+        f"date: {full_date_str}",
+        "layout: post",
+        "categories: ai",
+        "tags: [ИИ, технологии, 2026]"
+    ]
 
     if img_path:
         if img_path.startswith("http"):
-            front_matter["image"] = img_path
+            image_url = img_path
         else:
-            rel_path = f"/assets/images/posts/{Path(img_path).name}"
-            front_matter["image"] = rel_path
-        front_matter["image_alt"] = f"ИИ 2026: {title.lower().rstrip('.')}"
-        front_matter["description"] = f"Статья о трендах ИИ: {title.lower().rstrip('.')}"
+            image_url = f"/assets/images/posts/{Path(img_path).name}"
+        frontmatter_lines.extend([
+            f"image: {image_url}",
+            f"image_alt: ИИ 2026: {title.lower().rstrip('.')}",
+            f"description: Статья о трендах ИИ: {title.lower().rstrip('.')}"
+        ])
 
-    # Записываем файл с правильным YAML
+    frontmatter_lines.append("---")
+    frontmatter = "\n".join(frontmatter_lines) + "\n\n"
+
+    # Добавляем обложку в тело
+    if img_path:
+        cover_img = image_url if img_path else '/assets/images/placeholder.jpg'
+        body_start = f"![Обложка: {title}]({cover_img})\n\n"
+    else:
+        body_start = ""
+
+    full_content = frontmatter + body_start + body
+
     try:
-        with open(filename, "w", encoding="utf-8") as f:
-            f.write("---\n")
-            f.write(yaml.safe_dump(front_matter, allow_unicode=True, default_flow_style=False, sort_keys=False))
-            f.write("---\n\n")
-            # Добавляем обложку в тело
-            if img_path:
-                f.write(f"![Обложка: {title}]({front_matter.get('image', '/assets/images/placeholder.jpg')})\n\n")
-            f.write(body)
+        filename.write_text(full_content, encoding="utf-8")
         logging.info(f"Пост сохранён с правильным frontmatter: {filename}")
     except Exception as e:
         logging.error(f"Ошибка сохранения файла: {e}")
