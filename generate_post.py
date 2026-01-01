@@ -172,7 +172,7 @@ def generate_section(title, outline, section_header):
     payload = {
         "model": "llama-3.3-70b-versatile",
         "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 200,  # Жёсткий лимит для коротких разделов
+        "max_tokens": 200,
         "temperature": 0.9,
     }
 
@@ -209,10 +209,95 @@ def generate_body(title):
     logging.info(f"Статья готова: {total_chars} знаков")
     return full_body
 
-# -------------------- Изображение: Stable Horde --------------------
-# (оставляем как есть — работает)
+# -------------------- Изображение: Stable Horde с фотореализмом --------------------
+def generate_image_horde(title):
+    prompt = (
+        f"{title}, ultra realistic professional photography, beautiful futuristic scene with artificial intelligence elements, "
+        "highly detailed human interacting with holographic AI interface, cyberpunk city at night with neon lights, "
+        "sharp focus, cinematic lighting, natural skin textures, realistic eyes, depth of field, 8k resolution, "
+        "photorealistic, masterpiece, award winning photo"
+    )
 
-# -------------------- Сохранение поста — БЕЗ обложки в теле --------------------
+    negative_prompt = (
+        "abstract, painting, drawing, illustration, cartoon, anime, low quality, blurry, deformed, ugly, extra limbs, "
+        "geometric shapes, lines, wireframe, text, watermark, logo, signature, overexposed, underexposed"
+    )
+
+    url_async = "https://stablehorde.net/api/v2/generate/async"
+    payload = {
+        "prompt": prompt + " ### " + negative_prompt,
+        "models": ["Juggernaut XL", "Realistic Vision V5.1", "FLUX.1 [schnell]", "SDXL 1.0"],
+        "params": {
+            "width": 768,
+            "height": 512,
+            "steps": 28,
+            "cfg_scale": 7.5,
+            "sampler_name": "k_euler_a",
+            "n": 1
+        },
+        "nsfw": False,
+        "trusted_workers": False,
+        "slow_workers": True
+    }
+
+    headers = {
+        "apikey": "0000000000",
+        "Content-Type": "application/json",
+        "Client-Agent": "LybraBlogBot:2.0"
+    }
+
+    try:
+        r = requests.post(url_async, json=payload, headers=headers, timeout=60)
+        if not r.ok:
+            logging.warning(f"Horde ошибка отправки: {r.status_code} {r.text}")
+            return None
+
+        job_id = r.json().get("id")
+        if not job_id:
+            return None
+
+        logging.info(f"Horde задача создана: {job_id}. Долгое ожидание для фотореализма...")
+
+        check_url = f"https://stablehorde.net/api/v2/generate/check/{job_id}"
+        status_url = f"https://stablehorde.net/api/v2/generate/status/{job_id}"
+
+        for _ in range(360):
+            time.sleep(10)
+            try:
+                check = requests.get(check_url, headers=headers, timeout=30).json()
+                if check.get("done"):
+                    final = requests.get(status_url, headers=headers, timeout=30).json()
+                    if final.get("generations"):
+                        img_url = final["generations"][0]["img"]
+                        img_data = requests.get(img_url, timeout=60)
+                        if img_data.ok:
+                            filename = f"horde-{int(time.time())}.jpg"
+                            img_path = IMAGES_DIR / filename
+                            img_path.write_bytes(img_data.content)
+                            logging.info(f"Фотореалистичное изображение от Horde сохранено: {img_path}")
+                            return str(img_path)
+                queue = check.get("queue_position", "?")
+                if queue != "?" and queue > 0:
+                    logging.info(f"Ожидание в очереди Horde... позиция: {queue}")
+            except Exception as e:
+                logging.debug(f"Сетевой сбой при проверке Horde: {e}")
+
+        logging.warning("Horde: таймаут ожидания (60 мин)")
+    except Exception as e:
+        logging.warning(f"Ошибка Horde: {e}")
+
+    return None
+
+def generate_image(title):
+    local_path = generate_image_horde(title)
+    if local_path and os.path.exists(local_path):
+        return local_path
+
+    fallback_url = random.choice(FALLBACK_IMAGES)
+    logging.warning(f"Horde не успел → fallback: {fallback_url}")
+    return fallback_url
+
+# -------------------- Сохранение поста — только frontmatter для изображения --------------------
 def save_post(title, body, img_path=None):
     today = datetime.now()
     date_str = today.strftime("%Y-%m-%d")
@@ -250,7 +335,7 @@ def save_post(title, body, img_path=None):
     frontmatter_lines.append("---")
     frontmatter = "\n".join(frontmatter_lines) + "\n\n"
 
-    # БЕЗ обложки в теле — только frontmatter
+    # Нет обложки в теле — только frontmatter
     full_content = frontmatter + body
 
     try:
@@ -264,8 +349,81 @@ def save_post(title, body, img_path=None):
     logging.info(f"Ссылка: {article_url}")
     return str(filename), article_url
 
-# -------------------- Telegram и main --------------------
-# (без изменений)
+# -------------------- Telegram --------------------
+def send_to_telegram(title, teaser_text, image_path, article_url):
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        logging.warning("Telegram настройки отсутствуют")
+        return
+
+    if len(teaser_text) > 800:
+        teaser_text = teaser_text[:800] + "..."
+
+    caption = f"<b>Новая статья!</b>\n\n<b>{title}</b>\n\n{teaser_text}\n\n<i>Читать:</i> {article_url}"
+
+    try:
+        if image_path.startswith("http"):
+            photo_data = requests.get(image_path, timeout=30).content
+            photo_file = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
+            photo_file.write(photo_data)
+            photo_file.close()
+            photo_path_local = photo_file.name
+        else:
+            photo_path_local = image_path
+
+        with open(photo_path_local, "rb") as photo:
+            resp = requests.post(
+                f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto",
+                data={
+                    "chat_id": TELEGRAM_CHAT_ID,
+                    "caption": caption,
+                    "parse_mode": "HTML",
+                    "disable_web_page_preview": False
+                },
+                files={"photo": photo},
+                timeout=60
+            )
+
+        if image_path.startswith("http"):
+            os.unlink(photo_path_local)
+
+        if resp.ok:
+            logging.info("Пост отправлен в Telegram!")
+        else:
+            logging.warning(f"Ошибка Telegram: {resp.status_code} {resp.text}")
+    except Exception as e:
+        logging.error(f"Ошибка отправки в Telegram: {e}")
+
+# -------------------- MAIN — ВОССТАНОВЛЕНА ПОЛНОСТЬЮ --------------------
+def main():
+    try:
+        topics = [
+            "Мультимодальные модели ИИ",
+            "Автономные ИИ-агенты",
+            "ИИ в медицине",
+            "Этика ИИ",
+            "ИИ и творчество",
+            "Будущее AGI",
+            "ИИ в образовании",
+            "Голосовые модели ИИ",
+            "ИИ в повседневной жизни",
+            "Квантовый ИИ"
+        ]
+        topic = random.choice(topics)
+        logging.info(f"Выбрана тема: {topic}")
+
+        title = generate_title(topic)
+        body = generate_body(title)
+        img_path = generate_image(title)
+
+        _, article_url = save_post(title, body, img_path)
+
+        teaser = " ".join(body.split()[:50]) + "…"
+        send_to_telegram(title, teaser, img_path, article_url)
+
+        logging.info("=== Пост успешно создан и опубликован ===")
+
+    except Exception as e:
+        logging.error(f"Критическая ошибка: {e}", exc_info=True)
 
 if __name__ == "__main__":
     main()
