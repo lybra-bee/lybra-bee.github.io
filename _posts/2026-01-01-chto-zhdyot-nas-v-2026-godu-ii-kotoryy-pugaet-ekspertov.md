@@ -3,10 +3,10 @@ title: "Что ждёт нас в 2026 году: ИИ, который пугае
 layout: post
 date: 2026-01-01
 categories: ai
-image: assets/images/posts/horde-1767261592.jpg
+image: /assets/images/posts/horde-1767261592.jpg
 ---
 
-![Обложка: Что ждёт нас в 2026 году: ИИ, который пугает экспертов?](assets/images/posts/horde-1767261592.jpg)
+![Обложка: Что ждёт нас в 2026 году: ИИ, который пугает экспертов?](/assets/images/posts/horde-1767261592.jpg)
 
 # Что ждёт нас в 2026 году: ИИ, который пугает экспертов?
 
