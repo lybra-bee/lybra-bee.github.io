@@ -54,12 +54,59 @@ def translit(text):
     return ''.join(result)
 
 # -------------------- Шаг 1: Разнообразный заголовок --------------------
-# (оставляем как есть — работает отлично)
-
 def generate_title(topic):
-    # ... (тот же код, что и раньше)
+    groq_model = "llama-3.3-70b-versatile"
+    system_prompt = f"""Ты — профессиональный копирайтер и SMM-специалист для блога об искусственном интеллекте.
+Создай ОДИН очень привлекательный, эмоциональный и кликабельный заголовок на русском языке по теме: "{topic}"
 
-    # (полный код функции из предыдущей версии)
+Правила:
+- Длина: 8–16 слов
+- Запрещено начинать с "Топ 5", "Топ 10", "5 секретов", "Топ секретов" и подобных шаблонов
+- Используй мощные приёмы:
+  • Вопросы ("Почему все говорят о...", "Что будет, если...")
+  • Интрига и парадоксы ("ИИ, который пугает экспертов")
+  • Будущее ("Что ждёт нас в 2026 году")
+  • Драма ("Революция, которую никто не заметил")
+  • "Как...", "Когда...", "Почему..."
+- Включи год 2025 или 2026, если уместно
+- Заголовок должен вызывать желание кликнуть немедленно
+- Делай его живым, современным и естественным
+
+Ответ строго: ЗАГОЛОВОК: [твой заголовок]"""
+
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
+    payload = {
+        "model": groq_model,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": "Придумай лучший заголовок."}
+        ],
+        "max_tokens": 120,
+        "temperature": 1.1,
+    }
+
+    for attempt in range(10):
+        try:
+            r = requests.post(url, headers=headers, json=payload, timeout=60)
+            if r.status_code == 429:
+                wait = (2 ** attempt) + random.uniform(0, 1)
+                logging.warning(f"Rate limit Groq (429). Ждём {wait:.1f} сек...")
+                time.sleep(wait)
+                continue
+            r.raise_for_status()
+            text = r.json()["choices"][0]["message"]["content"].strip()
+            match = re.search(r"ЗАГОЛОВОК:\s*(.+)", text, re.IGNORECASE | re.DOTALL)
+            if match:
+                title = match.group(1).strip().strip('"').strip("'").strip()
+                if not re.search(r'^(топ|5|10|\d+)\s', title.lower()):
+                    if 8 <= len(title.split()) <= 16:
+                        logging.info(f"Сгенерирован заголовок: {title}")
+                        return title
+            logging.warning(f"Заголовок не прошёл фильтр — retry ({attempt+1}/10)")
+        except Exception as e:
+            logging.error(f"Ошибка генерации заголовка: {e}")
+            time.sleep(2)
 
     fallbacks = [
         f"Почему {topic.lower()} меняет всё в 2026 году",
@@ -72,14 +119,179 @@ def generate_title(topic):
     logging.info(f"Использован fallback-заголовок: {title}")
     return title
 
-# -------------------- Шаг 2: План и тело статьи (3000–5000 знаков) --------------------
-# (оставляем как есть — с твоим адаптированным промптом)
+# -------------------- Шаг 2: План и тело статьи --------------------
+def generate_outline(title):
+    system_prompt = f"""Ты — эксперт по ИИ и технический писатель.
+Создай детальный план статьи на русском языке по заголовку: "{title}"
 
-# ... (generate_outline, generate_section, generate_body — как в последней версии с твоим промптом)
+Требования:
+- Только подзаголовки ## (основные разделы) и ### (подразделы)
+- 8–12 основных разделов (##), включая Введение и Заключение
+- Под каждым ## — 1–3 ###
+- Общий объём статьи должен быть 3000–5000 знаков
+- Включи: примеры, кейсы, сравнения, технические детали, прогнозы
+
+Ответ в чистом Markdown."""
+
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
+    payload = {
+        "model": "llama-3.3-70b-versatile",
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": "Создай план."}
+        ],
+        "max_tokens": 2000,
+        "temperature": 0.7,
+    }
+
+    for attempt in range(5):
+        try:
+            r = requests.post(url, headers=headers, json=payload, timeout=60)
+            if r.status_code == 429:
+                wait = (2 ** attempt) * 2 + random.uniform(0, 5)
+                logging.warning(f"Rate limit. Ждём {wait:.1f} сек...")
+                time.sleep(wait)
+                continue
+            r.raise_for_status()
+            outline = r.json()["choices"][0]["message"]["content"].strip()
+            logging.info("План статьи сгенерирован")
+            return outline
+        except Exception as e:
+            logging.warning(f"Попытка {attempt+1} генерации плана: {e}")
+            time.sleep(5)
+    raise RuntimeError("Не удалось сгенерировать план")
+
+def generate_section(title, outline, section_header):
+    prompt = f"""#РОЛЬ
+Вы — автор SEO-контента мирового уровня, специализирующийся на создании текстов, которые невозможно отличить от написанных человеком. Ваш опыт заключается в улавливании эмоциональных нюансов, культурной адаптации и контекстуальной аутентичности, что позволяет создавать контент, естественно резонирующий с любой аудиторией.
+
+#ЦЕЛЬ
+Сейчас вы напишете один раздел статьи на основе схемы.
+
+ТИП СТАТЬИ: пост для блога об ИИ
+ЦЕЛЕВАЯ АУДИТОРИЯ: молодёжь
+КОЛИЧЕСТВО ЗНАКОВ: 300–600 (обязательно!)
+ТЕМА: {title}
+РАЗДЕЛ: {section_header}
+
+Ваш текст должен быть убедительно человечным, увлекательным и запоминающимся. Он должен сохранять логическую последовательность, естественные переходы и непринуждённый тон. Стремитесь к балансу между технической точностью и эмоциональной отзывчивостью.
+
+Полный план статьи (для контекста):
+{outline}
+
+#ТРЕБОВАНИЯ
+- Старайтесь сохранять показатель Flesch Reading Ease около 80.
+- Используйте разговорный, привлекательный тон.
+- Включайте естественные отступления на связанные темы, если они важны.
+- Смешивайте профессиональный жаргон или рабочие термины с простыми объяснениями.
+- Добавляйте лёгкие эмоциональные сигналы и риторические вопросы.
+- Используйте сокращения, идиомы и разговорные выражения для создания неформального, захватывающего тона.
+- Меняйте длину и структуру предложений. Чередуйте короткие, сильные фразы с длинными, сложными.
+- Стройте предложения так, чтобы слова плотно связывались друг с другом (грамматика зависимости), что облегчит понимание.
+- Обеспечьте логическую связанность с динамичным ритмом между абзацами.
+- Используйте разнообразный словарный запас и неожиданные слова для усиления интереса.
+- Избегайте чрезмерного использования наречий.
+- Добавляйте лёгкие повторения для акцента, но избегайте излишних или механических шаблонов.
+- Используйте риторические или игривые подзаголовки, имитирующие естественный разговорный тон.
+- Переходите между частями текста с помощью связующих фраз, избегая изолированных блоков.
+- Включайте стилистические элементы вроде риторических вопросов, аналогий и эмоциональных сигналов.
+- Перед написанием создайте краткий план или структуру для обеспечения логики и потока.
+
+#РЕКОМЕНДАЦИИ ПО УЛУЧШЕНИЮ ТЕКСТА
+- Добавляйте риторические вопросы, эмоциональные подсказки и неформальные фразы, например: «А вы знали?», если это помогает улучшить поток текста.
+- Для профессиональной аудитории используйте умеренные эмоциональные сигналы; для широкой аудитории подсказки могут быть более яркими.
+- Умеренно используйте разговорные фразы вроде «честно говоря», «знаете», «по правде».
+- Включайте сенсорные детали только там, где они повышают ясность или вовлечённость, избегая перегрузки.
+- Избегайте слов: выбор, погружение, раскрытие, решение, сложный, использование, трансформационный, выравнивание, проактивный, масштабируемый, эталонный.
+- Избегайте фраз: «в этом мире», «в современном мире», «в конце дня», «на одной волне», «от начала до конца», «чтобы», «лучшие практики», «вникнуть в».
+- Имейте в виду естественные «человеческие» ошибки вроде неформальных фраз или неожиданных переходов.
+
+#СТРУКТУРНЫЕ ЭЛЕМЕНТЫ
+- Чередуйте длину абзацев (от 1 до 7 предложений).
+- Используйте списки только по необходимости и естественно.
+- Включайте разговорные подзаголовки.
+- Обеспечьте логическую связанность с динамичным ритмом между абзацами.
+- Естественно используйте различные знаки препинания (тире, точка с запятой, скобки).
+- Органично сочетайте официальную и неформальную лексику.
+- Используйте смесь активного и пассивного залога, но преимущественно активный.
+- Добавляйте разговорные подзаголовки.
+- Добавляйте лёгкие, естественные отступления или касания других тем, но всегда возвращайтесь к основной мысли.
+- Добавляйте фразы вроде: «А знаете что?» или «Честно говоря».
+- Используйте переходные фразы, такие как «Позвольте объяснить» или «В чём же дело?», чтобы плавно вести читателя.
+- Добавляйте региональные выражения или культурные отсылки.
+- Используйте аналогии, связанные с повседневной жизнью.
+- Включайте небольшие повторения идей или фраз, чтобы подчеркнуть мысль или придать спонтанности.
+- Только содержимое раздела, в формате Markdown, без заголовка раздела.
+
+Напиши раздел прямо сейчас."""
+
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
+    payload = {
+        "model": "llama-3.3-70b-versatile",
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": 400,
+        "temperature": 0.8,
+    }
+
+    for attempt in range(6):
+        try:
+            r = requests.post(url, headers=headers, json=payload, timeout=150)
+            if r.status_code == 429:
+                wait = (2 ** attempt) * 3 + random.uniform(0, 5)
+                logging.warning(f"Rate limit для '{section_header}'. Ждём {wait:.1f} сек...")
+                time.sleep(wait)
+                continue
+            r.raise_for_status()
+            text = r.json()["choices"][0]["message"]["content"].strip()
+            char_count = len(text)
+            if char_count >= 250:
+                return text
+            logging.warning(f"Раздел '{section_header}' короткий ({char_count} знаков) — retry")
+            time.sleep(3)
+        except Exception as e:
+            logging.warning(f"Ошибка раздела '{section_header}': {e}")
+            time.sleep(3)
+
+    return f"В разделе «{section_header}» рассматриваются ключевые аспекты. Детальный анализ временно недоступен."
+
+def generate_body(title):
+    logging.info("Генерация плана статьи...")
+    outline = generate_outline(title)
+
+    section_headers = []
+    for line in outline.split("\n"):
+        line = line.strip()
+        if re.match(r'^##\s+', line):
+            header = re.sub(r'^##\s*', '', line).strip()
+            if header:
+                section_headers.append(header)
+
+    if len(section_headers) < 8:
+        section_headers = ["Введение", "История", "Технологии", "Модели", "Применение", "Проблемы", "Этика", "Будущее", "Заключение"]
+
+    section_headers = section_headers[:12]
+    logging.info(f"Будет сгенерировано {len(section_headers)} разделов")
+
+    full_body = f"# {title}\n\n"
+    total_chars = 0
+
+    for i, header in enumerate(section_headers, 1):
+        logging.info(f"Генерация раздела {i}/{len(section_headers)}: {header}")
+        section_text = generate_section(title, outline, header)
+        full_body += f"\n## {header}\n\n{section_text}\n\n"
+        chars = len(section_text)
+        total_chars += chars
+        logging.info(f"Раздел готов ({chars} знаков, всего: {total_chars})")
+        if i < len(section_headers):
+            time.sleep(random.uniform(3, 6))
+
+    logging.info(f"Статья полностью сгенерирована ({total_chars} знаков)")
+    return full_body
 
 # -------------------- Изображение: Stable Horde с фотореализмом --------------------
 def generate_image_horde(title):
-    # Мощный промпт для фотореализма
     prompt = (
         f"{title}, ultra realistic professional photography, beautiful futuristic scene with artificial intelligence elements, "
         "highly detailed human interacting with holographic AI interface, cyberpunk city at night with neon lights, "
@@ -130,7 +342,6 @@ def generate_image_horde(title):
         check_url = f"https://stablehorde.net/api/v2/generate/check/{job_id}"
         status_url = f"https://stablehorde.net/api/v2/generate/status/{job_id}"
 
-        # До 60 минут ожидания — хватит на любую очередь
         for _ in range(360):
             time.sleep(10)
             try:
@@ -167,11 +378,112 @@ def generate_image(title):
     logging.warning(f"Horde не успел → fallback: {fallback_url}")
     return fallback_url
 
-# -------------------- Сохранение поста и Telegram --------------------
-# (оставляем как в последней версии — с title в кавычках, layout: post и т.д.)
+# -------------------- Сохранение поста --------------------
+def save_post(title, body, img_path=None):
+    today = datetime.now().strftime("%Y-%m-%d")
+    slug = re.sub(r'[^a-z0-9-]+', '-', translit(title)).strip('-')[:80]
+    if len(slug) < 10:
+        slug = "ai-news-" + ''.join(random.choices("abcdefghijklmnopqrstuvwxyz", k=10))
+
+    filename = POSTS_DIR / f"{today}-{slug}.md"
+
+    frontmatter = f'---\ntitle: "{title}"\nlayout: post\ndate: {today}\ncategories: ai\n'
+
+    if img_path:
+        if img_path.startswith("http"):
+            frontmatter += f"image: {img_path}\n"
+        else:
+            rel_path = f"/assets/images/posts/{Path(img_path).name}"
+            frontmatter += f"image: {rel_path}\n"
+
+    frontmatter += "---\n\n"
+
+    frontmatter += f"![Обложка: {title}]({img_path if img_path else '/assets/images/placeholder.jpg'})\n\n"
+
+    full_content = frontmatter + body
+    filename.write_text(full_content, encoding="utf-8")
+
+    article_url = f"{SITE_URL}/{slug}/"
+    logging.info(f"Пост сохранён: {filename}")
+    logging.info(f"Ссылка на статью: {article_url}")
+
+    return str(filename), article_url
+
+# -------------------- Telegram --------------------
+def send_to_telegram(title, teaser_text, image_path, article_url):
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        logging.warning("Telegram настройки отсутствуют")
+        return
+
+    if len(teaser_text) > 800:
+        teaser_text = teaser_text[:800] + "…"
+
+    caption = f"<b>Новая статья!</b>\n\n<b>{title}</b>\n\n{teaser_text}\n\n<i>Читать:</i> {article_url}"
+
+    try:
+        if image_path.startswith("http"):
+            photo_data = requests.get(image_path, timeout=30).content
+            photo_file = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
+            photo_file.write(photo_data)
+            photo_file.close()
+            photo_path_local = photo_file.name
+        else:
+            photo_path_local = image_path
+
+        with open(photo_path_local, "rb") as photo:
+            resp = requests.post(
+                f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto",
+                data={
+                    "chat_id": TELEGRAM_CHAT_ID,
+                    "caption": caption,
+                    "parse_mode": "HTML",
+                    "disable_web_page_preview": False
+                },
+                files={"photo": photo},
+                timeout=60
+            )
+
+        if image_path.startswith("http"):
+            os.unlink(photo_path_local)
+
+        if resp.ok:
+            logging.info("Пост отправлен в Telegram!")
+        else:
+            logging.warning(f"Ошибка Telegram: {resp.status_code} {resp.text}")
+    except Exception as e:
+        logging.error(f"Ошибка отправки в Telegram: {e}")
 
 # -------------------- MAIN --------------------
-# (как раньше)
+def main():
+    try:
+        topics = [
+            "Мультимодальные модели ИИ",
+            "Автономные ИИ-агенты",
+            "ИИ в медицине",
+            "Этика ИИ",
+            "ИИ и творчество",
+            "Будущее AGI",
+            "ИИ в образовании",
+            "Голосовые модели ИИ",
+            "ИИ в повседневной жизни",
+            "Квантовый ИИ"
+        ]
+        topic = random.choice(topics)
+        logging.info(f"Выбрана тема: {topic}")
+
+        title = generate_title(topic)
+        body = generate_body(title)
+        img_path = generate_image(title)
+
+        _, article_url = save_post(title, body, img_path)
+
+        teaser = " ".join(body.split()[:50]) + "…"
+        send_to_telegram(title, teaser, img_path, article_url)
+
+        logging.info("=== Пост успешно создан и опубликован ===")
+
+    except Exception as e:
+        logging.error(f"Критическая ошибка: {e}", exc_info=True)
 
 if __name__ == "__main__":
     main()
