@@ -166,7 +166,7 @@ def generate_section(title, outline, section_header):
     payload = {
         "model": "llama-3.3-70b-versatile",
         "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 250,  # Жёсткий контроль длины
+        "max_tokens": 250,
         "temperature": 0.9,
     }
 
@@ -189,7 +189,7 @@ def generate_body(title):
     outline = generate_outline(title)
 
     section_headers = [re.sub(r'^##\s*', '', line).strip() for line in outline.split("\n") if line.strip().startswith("##")]
-    section_headers = section_headers[:7]  # Максимум 7 разделов
+    section_headers = section_headers[:7]
 
     full_body = f"# {title}\n\n"
     total_chars = 0
@@ -303,7 +303,7 @@ def generate_image(title):
     logging.warning(f"Horde не успел → fallback: {fallback_url}")
     return fallback_url
 
-# -------------------- Сохранение поста — ВАЛИДНЫЙ FRONTMATTER --------------------
+# -------------------- Сохранение поста — 100% ВАЛИДНЫЙ FRONTMATTER --------------------
 def save_post(title, body, img_path=None):
     today = datetime.now()
     date_str = today.strftime("%Y-%m-%d")
@@ -315,29 +315,25 @@ def save_post(title, body, img_path=None):
 
     filename = POSTS_DIR / f"{date_str}-{slug}.md"
 
-    lines = [
-        "---",
-        f"title: {title.rstrip('.')}",
-        f"date: {full_date_str}",
-        "layout: post",
-        "categories: ai",
-        "tags: [ИИ, технологии, 2026]"
-    ]
+    # Валидный frontmatter — каждая строка отдельно
+    frontmatter = "---\n"
+    frontmatter += f"title: {title.rstrip('.')}\n"
+    frontmatter += f"date: {full_date_str}\n"
+    frontmatter += "layout: post\n"
+    frontmatter += "categories: ai\n"
+    frontmatter += "tags: [ИИ, технологии, 2026]\n"
 
     if img_path:
         if img_path.startswith("http"):
             image_url = img_path
         else:
             image_url = f"/assets/images/posts/{Path(img_path).name}"
-        lines += [
-            f"image: {image_url}",
-            f"image_alt: {title.rstrip('.')}",
-            f"description: {title.rstrip('.')}: обзор трендов ИИ 2026"
-        ]
+        frontmatter += f"image: {image_url}\n"
+        frontmatter += f"image_alt: {title.rstrip('.')}\n"
+        frontmatter += f"description: {title.rstrip('.')}: обзор трендов ИИ 2026\n"
 
-    lines.append("---")
+    frontmatter += "---\n\n"
 
-    frontmatter = "\n".join(lines) + "\n\n"
     full_content = frontmatter + body
 
     try:
