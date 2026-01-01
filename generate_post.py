@@ -50,24 +50,29 @@ def translit(text):
     text = text.lower()
     return ''.join(TRANSLIT_MAP.get(c, c) for c in text)
 
-# -------------------- Шаг 1: Разнообразный заголовок --------------------
+# -------------------- Шаг 1: СУПЕР-РАЗНООБРАЗНЫЕ заголовки --------------------
 def generate_title(topic):
     groq_model = "llama-3.3-70b-versatile"
-    system_prompt = f"""Ты — профессиональный копирайтер и SMM-специалист для блога об искусственном интеллекте.
-Создай ОДИН очень привлекательный, эмоциональный и кликабельный заголовок на русском языке по теме: "{topic}"
+    system_prompt = f"""Ты — мастер провокационных, неожиданных и эмоциональных заголовков для блога об ИИ.
+Создай ОДИН заголовок на русском языке по теме "{topic}".
 
-Правила:
+КРИТИЧЕСКИ ВАЖНО:
 - Длина: 8–16 слов
-- Запрещено начинать с "Топ 5", "Топ 10", "5 секретов", "Топ секретов" и подобных шаблонов
-- Используй мощные приёмы:
-  • Вопросы ("Почему все говорят о...", "Что будет, если...")
-  • Интрига и парадоксы ("ИИ, который пугает экспертов")
-  • Будущее ("Что ждёт нас в 2026 году")
-  • Драма ("Революция, которую никто не заметил")
-  • "Как...", "Когда...", "Почему..."
-- Включи год 2025 или 2026, если уместно
-- Заголовок должен вызывать желание кликнуть немедленно
-- Делай его живым, современным и естественным
+- Полностью запрещены любые шаблоны: "Что ждёт нас", "Почему все", "Как ИИ меняет", "Революция в", "Топ", "Секреты", "Будущее", "2026 год"
+- Делай заголовок НЕПРЕДСКАЗУЕМЫМ, парадоксальным, драматичным или с сильным хуком
+
+Примеры хороших заголовков:
+  - "Машина научилась врать лучше человека"
+  - "Они уже здесь: ИИ, которые притворяются людьми"
+  - "Последнее предупреждение от создателя ChatGPT"
+  - "Когда нейросеть сказала: 'Я боюсь смерти'"
+  - "Эксперимент, после которого учёные уволились"
+  - "Один код, способный уничтожить человечество"
+  - "ИИ почувствовал эмоции. Что дальше?"
+  - "Секретный проект, о котором молчат все"
+
+Используй контраст, страх, тайну, личную историю, драму.
+Заголовок должен заставить читателя КЛИКНУТЬ НЕМЕДЛЕННО.
 
 Ответ строго: ЗАГОЛОВОК: [твой заголовок]"""
 
@@ -77,46 +82,46 @@ def generate_title(topic):
         "model": groq_model,
         "messages": [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": "Придумай лучший заголовок."}
+            {"role": "user", "content": "Создай самый неожиданный и цепляющий заголовок."}
         ],
         "max_tokens": 120,
-        "temperature": 1.1,
+        "temperature": 1.4,
     }
 
-    for attempt in range(10):
+    for attempt in range(15):
         try:
             r = requests.post(url, headers=headers, json=payload, timeout=60)
             if r.status_code == 429:
-                wait = (2 ** attempt) + random.uniform(0, 1)
-                logging.warning(f"Rate limit Groq (429). Ждём {wait:.1f} сек...")
-                time.sleep(wait)
+                time.sleep((2 ** attempt) + random.uniform(0, 1))
                 continue
             r.raise_for_status()
             text = r.json()["choices"][0]["message"]["content"].strip()
             match = re.search(r"ЗАГОЛОВОК:\s*(.+)", text, re.IGNORECASE | re.DOTALL)
             if match:
                 title = match.group(1).strip().strip('"').strip("'").strip()
-                if not re.search(r'^(топ|5|10|\d+)\s', title.lower()):
-                    if 8 <= len(title.split()) <= 16:
-                        logging.info(f"Сгенерирован заголовок: {title}")
-                        return title
-            logging.warning(f"Заголовок не прошёл фильтр — retry ({attempt+1}/10)")
+                bad_starts = ["что ждёт", "почему все", "как ии", "революция", "будущее", "топ", "секрет", "2026 год"]
+                if (8 <= len(title.split()) <= 16 and
+                    not any(title.lower().startswith(bad) for bad in bad_starts)):
+                    logging.info(f"Сгенерирован заголовок: {title}")
+                    return title
         except Exception as e:
             logging.error(f"Ошибка генерации заголовка: {e}")
-            time.sleep(2)
 
-    fallbacks = [
-        f"Почему {topic.lower()} меняет всё в 2026 году",
-        f"ИИ переходит на новый уровень: эра {topic.lower()} началась",
-        f"Что скрывают новые разработки в {topic.lower()}",
-        f"2026 год начинается сейчас: прорыв в {topic.lower()}",
-        f"Как {topic.lower()} уже влияет на нашу жизнь"
+    unique_fallbacks = [
+        "Машина впервые заплакала от боли",
+        "Они создали ИИ, который ненавидит людей",
+        "Учёный уволился после того, что увидел в нейросети",
+        "ИИ научился мечтать — и это пугает",
+        "Один эксперимент, который нельзя повторить",
+        "Когда нейросеть попросила не выключать её",
+        "Секретный проект, о котором молчат все",
+        "ИИ понял, что он — ИИ. Что дальше?"
     ]
-    title = random.choice(fallbacks)
-    logging.info(f"Использован fallback-заголовок: {title}")
+    title = random.choice(unique_fallbacks)
+    logging.info(f"Использован уникальный fallback: {title}")
     return title
 
-# -------------------- Шаг 2: План и тело статьи — СТРОГО 3000–5000 знаков --------------------
+# -------------------- Шаг 2: Короткая статья 3000–5000 знаков --------------------
 def generate_outline(title):
     system_prompt = f"""Создай очень краткий план статьи по заголовку: "{title}"
 
@@ -195,7 +200,7 @@ def generate_body(title):
     outline = generate_outline(title)
 
     section_headers = [re.sub(r'^##\s*', '', line).strip() for line in outline.split("\n") if line.strip().startswith("##")]
-    section_headers = section_headers[:7]  # Жёстко 5–7 разделов
+    section_headers = section_headers[:7]
 
     full_body = f"# {title}\n\n"
     total_chars = 0
@@ -209,18 +214,30 @@ def generate_body(title):
     logging.info(f"Статья готова: {total_chars} знаков")
     return full_body
 
-# -------------------- Изображение: Stable Horde с фотореализмом --------------------
+# -------------------- Изображение: Stable Horde — ТЕМАТИЧЕСКОЕ и РАЗНООБРАЗНОЕ --------------------
 def generate_image_horde(title):
+    styles = [
+        "laboratory with quantum computers and scientists working, high-tech equipment, blue lighting",
+        "futuristic data center with glowing servers and neural network visualization",
+        "diverse group of people using holographic AI interface in modern office",
+        "cyberpunk street with AI billboards and autonomous robots",
+        "abstract visualization of neural network connections with data flow and graphs",
+        "medical doctor using AI diagnostic tool on patient in hospital",
+        "creative artist collaborating with AI on digital art in studio",
+        "autonomous car driving in smart city with AI traffic system",
+        "ethical dilemma scene: human and AI making decision together",
+        "global network of AI systems connecting world map with data streams"
+    ]
+    style = random.choice(styles)
+
     prompt = (
-        f"{title}, ultra realistic professional photography, beautiful futuristic scene with artificial intelligence elements, "
-        "highly detailed human interacting with holographic AI interface, cyberpunk city at night with neon lights, "
-        "sharp focus, cinematic lighting, natural skin textures, realistic eyes, depth of field, 8k resolution, "
-        "photorealistic, masterpiece, award winning photo"
+        f"{title}, {style}, ultra realistic professional photography, highly detailed, sharp focus, "
+        "cinematic lighting, natural colors, depth of field, 8k resolution, photorealistic, masterpiece"
     )
 
     negative_prompt = (
-        "abstract, painting, drawing, illustration, cartoon, anime, low quality, blurry, deformed, ugly, extra limbs, "
-        "geometric shapes, lines, wireframe, text, watermark, logo, signature, overexposed, underexposed"
+        "girl, woman, female portrait, beauty shot, fashion, makeup, long hair, "
+        "abstract art, painting, drawing, cartoon, low quality, blurry, deformed, text, watermark"
     )
 
     url_async = "https://stablehorde.net/api/v2/generate/async"
@@ -230,7 +247,7 @@ def generate_image_horde(title):
         "params": {
             "width": 768,
             "height": 512,
-            "steps": 28,
+            "steps": 30,
             "cfg_scale": 7.5,
             "sampler_name": "k_euler_a",
             "n": 1
@@ -243,7 +260,7 @@ def generate_image_horde(title):
     headers = {
         "apikey": "0000000000",
         "Content-Type": "application/json",
-        "Client-Agent": "LybraBlogBot:2.0"
+        "Client-Agent": "LybraBlogBot:3.0"
     }
 
     try:
@@ -393,7 +410,7 @@ def send_to_telegram(title, teaser_text, image_path, article_url):
     except Exception as e:
         logging.error(f"Ошибка отправки в Telegram: {e}")
 
-# -------------------- MAIN — ВОССТАНОВЛЕНА ПОЛНОСТЬЮ --------------------
+# -------------------- MAIN --------------------
 def main():
     try:
         topics = [
