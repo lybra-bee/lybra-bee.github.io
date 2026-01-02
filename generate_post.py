@@ -156,10 +156,11 @@ def generate_section(title, outline, section_header):
 {outline}
 
 Требования:
-- Объём: строго 500–800 знаков
-- Разговорный тон для молодёжи
-- Добавляй вопросы, аналогии, фразы "А знаете что?", "Представьте"
-- НЕ ПОВТОРЯЙ НАЗВАНИЕ РАЗДЕЛА в тексте
+- Объём: 500–800 знаков
+- Живой, разговорный тон для молодёжи
+- Используй риторические вопросы, аналогии, эмоции
+- Можно иногда добавить "А знаете что?" или "Представьте", но не часто — только когда уместно
+- НЕ ПОВТОРЯЙ название раздела в тексте
 - Только текст раздела в Markdown, без заголовков
 
 Напиши сейчас."""
@@ -189,7 +190,7 @@ def generate_section(title, outline, section_header):
         except:
             time.sleep(3)
 
-    return f"Короткий обзор темы раздела."
+    return f"Обзор раздела «{section_header}»."
 
 def generate_body(title):
     outline = generate_outline(title)
@@ -309,7 +310,7 @@ def generate_image(title):
     logging.warning(f"Horde не успел → fallback: {fallback_url}")
     return fallback_url
 
-# -------------------- Сохранение поста — валидный frontmatter --------------------
+# -------------------- Сохранение поста — с кавычками в title, description, image_alt --------------------
 def save_post(title, body, img_path=None):
     today = datetime.now()
     date_str = today.strftime("%Y-%m-%d")
@@ -322,7 +323,7 @@ def save_post(title, body, img_path=None):
     filename = POSTS_DIR / f"{date_str}-{slug}.md"
 
     frontmatter = "---\n"
-    frontmatter += f"title: {title.rstrip('.')}\n"
+    frontmatter += f"title: \"{title.rstrip('.')}\"\n"
     frontmatter += f"date: {full_date_str}\n"
     frontmatter += "layout: post\n"
     frontmatter += "categories: ai\n"
@@ -334,8 +335,8 @@ def save_post(title, body, img_path=None):
         else:
             image_url = f"/assets/images/posts/{Path(img_path).name}"
         frontmatter += f"image: {image_url}\n"
-        frontmatter += f"image_alt: {title.rstrip('.')}\n"
-        frontmatter += f"description: {title.rstrip('.')}: обзор трендов ИИ 2026\n"
+        frontmatter += f"image_alt: \"{title.rstrip('.')}\"\n"
+        frontmatter += f"description: \"{title.rstrip('.')}: обзор трендов ИИ 2026\"\n"
 
     frontmatter += "---\n\n"
 
