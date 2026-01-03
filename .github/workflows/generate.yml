@@ -2,7 +2,7 @@ name: Generate & Publish AI Post
 
 on:
   schedule:
-    - cron: '0 10 * * *'  # Каждый день в 10:00 UTC (13:00 Москва)
+    - cron: '0 00 * * *'
   workflow_dispatch:
 
 jobs:
