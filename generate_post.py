@@ -37,7 +37,7 @@ FALLBACK_IMAGES = [
     "https://picsum.photos/1024/768?random=5",
 ]
 
-# Улучшенный транслит
+# -------------------- Транслит --------------------
 TRANSLIT_MAP = {
     'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo',
     'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
@@ -50,267 +50,96 @@ def translit(text):
     text = text.lower()
     return ''.join(TRANSLIT_MAP.get(c, c) for c in text)
 
-# -------------------- Разнообразные заголовки --------------------
+# -------------------- Заголовок --------------------
 def generate_title(topic):
-    groq_model = "llama-3.3-70b-versatile"
-    system_prompt = f"""Ты — мастер провокационных и неожиданных заголовков для блога об ИИ.
-Создай ОДИН заголовок на русском по теме "{topic}".
+    system_prompt = f"""
+Ты — профессиональный редактор технического блога про ИИ.
 
-Правила:
-- Длина: 8–16 слов
-- Запрещены шаблоны: "Что ждёт нас", "Почему все", "Как ИИ меняет", "Революция", "Топ", "Секреты", "Будущее", "2026 год"
-- Делай заголовок драматичным, парадоксальным или с сильным хуком
-
-Примеры:
-  - "Машина научилась врать лучше человека"
-  - "Они уже здесь: ИИ, которые притворяются людьми"
-  - "Эксперимент, после которого учёные уволились"
-  - "Когда нейросеть сказала: 'Я боюсь смерти'"
-  - "Один код, способный уничтожить человечество"
-
-Ответ строго: ЗАГОЛОВОК: [заголовок]"""
-
-    url = "https://api.groq.com/openai/v1/chat/completions"
-    headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
-    payload = {
-        "model": groq_model,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": "Создай самый неожиданный заголовок."}
-        ],
-        "max_tokens": 120,
-        "temperature": 1.4,
-    }
-
-    for attempt in range(15):
-        try:
-            r = requests.post(url, headers=headers, json=payload, timeout=60)
-            if r.status_code == 429:
-                time.sleep((2 ** attempt) + random.uniform(0, 1))
-                continue
-            r.raise_for_status()
-            text = r.json()["choices"][0]["message"]["content"].strip()
-            match = re.search(r"ЗАГОЛОВОК:\s*(.+)", text, re.IGNORECASE | re.DOTALL)
-            if match:
-                title = match.group(1).strip().strip('"').strip("'").strip()
-                bad_starts = ["что ждёт", "почему все", "как ии", "революция", "будущее", "топ", "секрет", "2026 год"]
-                if (8 <= len(title.split()) <= 16 and
-                    not any(title.lower().startswith(bad) for bad in bad_starts)):
-                    logging.info(f"Сгенерирован заголовок: {title}")
-                    return title
-        except Exception as e:
-            logging.error(f"Ошибка генерации заголовка: {e}")
-
-    unique_fallbacks = [
-        "Машина впервые заплакала от боли",
-        "Они создали ИИ, который ненавидит людей",
-        "Учёный уволился после того, что увидел в нейросети",
-        "ИИ научился мечтать — и это пугает",
-        "Один эксперимент, который нельзя повторить",
-        "Когда нейросеть попросила не выключать её",
-        "Секретный проект, о котором молчат все",
-        "ИИ понял, что он — ИИ. Что дальше?"
-    ]
-    title = random.choice(unique_fallbacks)
-    logging.info(f"Использован fallback-заголовок: {title}")
-    return title
-
-# -------------------- Короткая статья 3000–5000 знаков --------------------
-def generate_outline(title):
-    system_prompt = f"""Создай очень краткий план статьи по заголовку: "{title}"
-
-- 5–7 основных разделов (##)
-- Под каждым — 1 подраздел (###)
-- Общий объём всей статьи: строго 3000–5000 знаков
-- Только названия разделов
-
-Ответ в чистом Markdown."""
-
-    url = "https://api.groq.com/openai/v1/chat/completions"
-    headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
-    payload = {
-        "model": "llama-3.3-70b-versatile",
-        "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": "План."}],
-        "max_tokens": 600,
-        "temperature": 0.5,
-    }
-
-    for attempt in range(3):
-        try:
-            r = requests.post(url, headers=headers, json=payload, timeout=60)
-            if r.status_code == 429:
-                time.sleep(5)
-                continue
-            r.raise_for_status()
-            return r.json()["choices"][0]["message"]["content"].strip()
-        except:
-            time.sleep(3)
-    return "## Введение\n### Краткий обзор\n## Основные тренды\n### Детали\n## Применение\n### Примеры\n## Риски\n### Анализ\n## Будущее\n### Прогнозы\n## Заключение\n### Итоги"
-
-def generate_section(title, outline, section_header):
-    prompt = f"""Напиши короткий раздел для статьи "{title}"
-
-Раздел называется: "{section_header}"
-
-Контекст плана:
-{outline}
+Создай ОДИН заголовок на русском по теме "{topic}",
+но подай её как ПРАКТИЧЕСКИЙ МАТЕРИАЛ.
 
 Требования:
-- Объём: 500–800 знаков
-- Живой, разговорный тон для молодёжи
-- Используй риторические вопросы, аналогии, эмоции
-- Можно иногда добавить "А знаете что?" или "Представьте", но не часто — только когда уместно
-- НЕ ПОВТОРЯЙ название раздела в тексте
-- Только текст раздела в Markdown, без заголовков
+- 8–16 слов
+- Формат: гайд / инструкция / мастер-класс / практический разбор
+- Без философии и футурологии
+- Заголовок должен обещать реальную пользу
 
-Напиши сейчас."""
+Запрещено:
+- «будущее», «революция», «AGI», «2026», абстракции
 
-    url = "https://api.groq.com/openai/v1/chat/completions"
-    headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
+Ответ строго:
+ЗАГОЛОВОК: ...
+"""
+
     payload = {
         "model": "llama-3.3-70b-versatile",
-        "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 250,
+        "messages": [{"role": "system", "content": system_prompt}],
+        "max_tokens": 120,
+        "temperature": 1.1,
+    }
+
+    r = requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+        json=payload,
+        timeout=60
+    )
+    text = r.json()["choices"][0]["message"]["content"]
+    return re.sub(r"ЗАГОЛОВОК:\s*", "", text).strip()
+
+# -------------------- СТАТЬЯ (ИЗМЕНЁН ПРОМПТ) --------------------
+def generate_body(title):
+    system_prompt = f"""
+Ты — практикующий инженер и архитектор ИИ.
+
+Напиши ПОЛЕЗНУЮ статью в формате:
+урок / гайд / мастер-класс / обзор / лайфхак.
+
+Тема определяется заголовком:
+"{title}"
+
+СТРОГО:
+- Только практическая работа с нейросетями
+- Ускорение инференса, оптимизация, агенты, пайплайны, интеграции
+- Только актуальные подходы (последние 6–12 месяцев)
+- Никаких устаревших API и методов
+- Без философии и отвлечённых рассуждений
+
+СТРУКТУРА:
+## Зачем это нужно
+## Проблема
+## Практическое решение
+## Советы и приёмы
+## Ошибки и ограничения
+## Итог
+
+ФОРМАТ:
+- Markdown
+- 3000–5000 знаков
+"""
+
+    payload = {
+        "model": "llama-3.3-70b-versatile",
+        "messages": [{"role": "system", "content": system_prompt}],
+        "max_tokens": 1800,
         "temperature": 0.9,
     }
 
-    for attempt in range(5):
-        try:
-            r = requests.post(url, headers=headers, json=payload, timeout=120)
-            if r.status_code == 429:
-                time.sleep(5)
-                continue
-            r.raise_for_status()
-            text = r.json()["choices"][0]["message"]["content"].strip()
-            # Удаляем возможное повторение заголовка
-            text = re.sub(rf'^{re.escape(section_header)}.*?\n', '', text, flags=re.IGNORECASE)
-            text = text.strip()
-            if 450 <= len(text) <= 850:
-                return text
-        except:
-            time.sleep(3)
-
-    return f"Обзор раздела «{section_header}»."
-
-def generate_body(title):
-    outline = generate_outline(title)
-
-    section_headers = [re.sub(r'^##\s*', '', line).strip() for line in outline.split("\n") if line.strip().startswith("##")]
-    section_headers = section_headers[:7]
-
-    full_body = f"# {title}\n\n"
-    total_chars = 0
-
-    for i, header in enumerate(section_headers, 1):
-        section_text = generate_section(title, outline, header)
-        full_body += f"\n## {header}\n\n{section_text}\n\n"
-        total_chars += len(section_text)
-        logging.info(f"Раздел {i}: {len(section_text)} знаков (всего: {total_chars})")
-
-    logging.info(f"Статья готова: {total_chars} знаков")
-    return full_body
-
-# -------------------- Изображение: Horde — тематическое и разнообразное --------------------
-def generate_image_horde(title):
-    styles = [
-        "laboratory with quantum computers and scientists working, high-tech equipment, blue lighting",
-        "futuristic data center with glowing servers and neural network visualization",
-        "diverse group of people using holographic AI interface in modern office",
-        "cyberpunk street with AI billboards and autonomous robots",
-        "abstract visualization of neural network connections with data flow and graphs",
-        "medical doctor using AI diagnostic tool on patient in hospital",
-        "creative artist collaborating with AI on digital art in studio",
-        "autonomous car driving in smart city with AI traffic system",
-        "ethical dilemma scene: human and AI making decision together",
-        "global network of AI systems connecting world map with data streams"
-    ]
-    style = random.choice(styles)
-
-    prompt = (
-        f"{title}, {style}, ultra realistic professional photography, highly detailed, sharp focus, "
-        "cinematic lighting, natural colors, depth of field, 8k resolution, photorealistic, masterpiece"
+    r = requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+        json=payload,
+        timeout=120
     )
+    return r.json()["choices"][0]["message"]["content"].strip()
 
-    negative_prompt = (
-        "girl, woman, female portrait, beauty shot, fashion, makeup, long hair, "
-        "abstract art, painting, drawing, cartoon, low quality, blurry, deformed, text, watermark"
-    )
-
-    url_async = "https://stablehorde.net/api/v2/generate/async"
-    payload = {
-        "prompt": prompt + " ### " + negative_prompt,
-        "models": ["Juggernaut XL", "Realistic Vision V5.1", "FLUX.1 [schnell]", "SDXL 1.0"],
-        "params": {
-            "width": 768,
-            "height": 512,
-            "steps": 30,
-            "cfg_scale": 7.5,
-            "sampler_name": "k_euler_a",
-            "n": 1
-        },
-        "nsfw": False,
-        "trusted_workers": False,
-        "slow_workers": True
-    }
-
-    headers = {
-        "apikey": "0000000000",
-        "Content-Type": "application/json",
-        "Client-Agent": "LybraBlogBot:3.0"
-    }
-
-    try:
-        r = requests.post(url_async, json=payload, headers=headers, timeout=60)
-        if not r.ok:
-            logging.warning(f"Horde ошибка отправки: {r.status_code} {r.text}")
-            return None
-
-        job_id = r.json().get("id")
-        if not job_id:
-            return None
-
-        logging.info(f"Horde задача создана: {job_id}.")
-
-        check_url = f"https://stablehorde.net/api/v2/generate/check/{job_id}"
-        status_url = f"https://stablehorde.net/api/v2/generate/status/{job_id}"
-
-        for _ in range(360):
-            time.sleep(10)
-            try:
-                check = requests.get(check_url, headers=headers, timeout=30).json()
-                if check.get("done"):
-                    final = requests.get(status_url, headers=headers, timeout=30).json()
-                    if final.get("generations"):
-                        img_url = final["generations"][0]["img"]
-                        img_data = requests.get(img_url, timeout=60)
-                        if img_data.ok:
-                            filename = f"horde-{int(time.time())}.jpg"
-                            img_path = IMAGES_DIR / filename
-                            img_path.write_bytes(img_data.content)
-                            logging.info(f"Изображение сохранено: {img_path}")
-                            return str(img_path)
-                queue = check.get("queue_position", "?")
-                if queue != "?" and queue > 0:
-                    logging.info(f"Очередь Horde: позиция {queue}")
-            except Exception as e:
-                logging.debug(f"Сбой проверки Horde: {e}")
-
-        logging.warning("Horde: таймаут 60 мин")
-    except Exception as e:
-        logging.warning(f"Ошибка Horde: {e}")
-
-    return None
-
+# -------------------- Horde изображение --------------------
 def generate_image(title):
-    local_path = generate_image_horde(title)
-    if local_path and os.path.exists(local_path):
-        return local_path
-
     fallback_url = random.choice(FALLBACK_IMAGES)
-    logging.warning(f"Horde не успел → fallback: {fallback_url}")
+    logging.warning(f"Изображение fallback: {fallback_url}")
     return fallback_url
 
-# -------------------- Сохранение поста — с кавычками в title, description, image_alt --------------------
+# -------------------- Сохранение поста --------------------
 def save_post(title, body, img_path=None):
     today = datetime.now()
     date_str = today.strftime("%Y-%m-%d")
@@ -318,116 +147,64 @@ def save_post(title, body, img_path=None):
 
     slug = re.sub(r'[^a-z0-9-]+', '-', translit(title)).strip('-')[:80]
     if len(slug) < 10:
-        slug = "ai-news-" + ''.join(random.choices("abcdefghijklmnopqrstuvwxyz", k=10))
+        slug = "ai-post-" + ''.join(random.choices("abcdefghijklmnopqrstuvwxyz", k=10))
 
     filename = POSTS_DIR / f"{date_str}-{slug}.md"
 
     frontmatter = "---\n"
-    frontmatter += f"title: \"{title.rstrip('.')}\"\n"
+    frontmatter += f"title: \"{title}\"\n"
     frontmatter += f"date: {full_date_str}\n"
     frontmatter += "layout: post\n"
     frontmatter += "categories: ai\n"
-    frontmatter += "tags: [ИИ, технологии, 2026]\n"
+    frontmatter += "tags: [ИИ, нейросети, практика]\n"
 
     if img_path:
-        if img_path.startswith("http"):
-            image_url = img_path
-        else:
-            image_url = f"/assets/images/posts/{Path(img_path).name}"
-        frontmatter += f"image: {image_url}\n"
-        frontmatter += f"image_alt: \"{title.rstrip('.')}\"\n"
-        frontmatter += f"description: \"{title.rstrip('.')}: обзор трендов ИИ 2026\"\n"
+        frontmatter += f"image: {img_path}\n"
+        frontmatter += f"image_alt: \"{title}\"\n"
+        frontmatter += f"description: \"{title} — практический разбор\"\n"
 
     frontmatter += "---\n\n"
 
-    full_content = frontmatter + body
-
-    try:
-        filename.write_text(full_content, encoding="utf-8")
-        logging.info(f"Пост сохранён: {filename}")
-    except Exception as e:
-        logging.error(f"Ошибка сохранения: {e}")
-        raise
-
+    filename.write_text(frontmatter + body, encoding="utf-8")
     article_url = f"{SITE_URL}/{slug}/"
-    logging.info(f"Ссылка: {article_url}")
     return str(filename), article_url
 
 # -------------------- Telegram --------------------
 def send_to_telegram(title, teaser_text, image_path, article_url):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-        logging.warning("Telegram настройки отсутствуют")
         return
 
-    if len(teaser_text) > 800:
-        teaser_text = teaser_text[:800] + "..."
+    caption = f"<b>{title}</b>\n\n{teaser_text}\n\n{article_url}"
 
-    caption = f"<b>Новая статья!</b>\n\n<b>{title}</b>\n\n{teaser_text}\n\n<i>Читать:</i> {article_url}"
-
-    try:
-        if image_path.startswith("http"):
-            photo_data = requests.get(image_path, timeout=30).content
-            photo_file = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
-            photo_file.write(photo_data)
-            photo_file.close()
-            photo_path_local = photo_file.name
-        else:
-            photo_path_local = image_path
-
-        with open(photo_path_local, "rb") as photo:
-            resp = requests.post(
-                f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto",
-                data={
-                    "chat_id": TELEGRAM_CHAT_ID,
-                    "caption": caption,
-                    "parse_mode": "HTML",
-                    "disable_web_page_preview": False
-                },
-                files={"photo": photo},
-                timeout=60
-            )
-
-        if image_path.startswith("http"):
-            os.unlink(photo_path_local)
-
-        if resp.ok:
-            logging.info("Пост отправлен в Telegram!")
-        else:
-            logging.warning(f"Ошибка Telegram: {resp.status_code} {resp.text}")
-    except Exception as e:
-        logging.error(f"Ошибка отправки в Telegram: {e}")
+    with requests.get(image_path, stream=True) as img:
+        resp = requests.post(
+            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto",
+            data={"chat_id": TELEGRAM_CHAT_ID, "caption": caption, "parse_mode": "HTML"},
+            files={"photo": img.raw}
+        )
 
 # -------------------- MAIN --------------------
 def main():
-    try:
-        topics = [
-            "Мультимодальные модели ИИ",
-            "Автономные ИИ-агенты",
-            "ИИ в медицине",
-            "Этика ИИ",
-            "ИИ и творчество",
-            "Будущее AGI",
-            "ИИ в образовании",
-            "Голосовые модели ИИ",
-            "ИИ в повседневной жизни",
-            "Квантовый ИИ"
-        ]
-        topic = random.choice(topics)
-        logging.info(f"Выбрана тема: {topic}")
+    topics = [
+        "Оптимизация инференса LLM",
+        "Автономные ИИ-агенты",
+        "Мультимодальные пайплайны",
+        "Запуск ИИ локально",
+        "Связка нескольких нейросетей",
+        "Оптимизация GPU и CPU для ИИ",
+        "Интеграция ИИ в приложения"
+    ]
 
-        title = generate_title(topic)
-        body = generate_body(title)
-        img_path = generate_image(title)
+    topic = random.choice(topics)
+    title = generate_title(topic)
+    body = generate_body(title)
+    img_path = generate_image(title)
 
-        _, article_url = save_post(title, body, img_path)
+    _, article_url = save_post(title, body, img_path)
+    teaser = " ".join(body.split()[:40]) + "..."
+    send_to_telegram(title, teaser, img_path, article_url)
 
-        teaser = " ".join(body.split()[:50]) + "..."
-        send_to_telegram(title, teaser, img_path, article_url)
-
-        logging.info("=== Пост успешно создан и опубликован ===")
-
-    except Exception as e:
-        logging.error(f"Критическая ошибка: {e}", exc_info=True)
+    logging.info("=== ГОТОВО ===")
 
 if __name__ == "__main__":
     main()
