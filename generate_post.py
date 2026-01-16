@@ -418,4 +418,5 @@ def main():
     except Exception as e:
         logging.error(f"Критическая ошибка: {e}", exc_info=True)
 
-if __name__ == "__
+if __name__ == "__main__":
+    main()
