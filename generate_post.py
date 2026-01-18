@@ -54,8 +54,6 @@ def translit(text):
 
 # -------------------- Заголовок (прикладной) --------------------
 def generate_title(topic):
-    logging.info("Генерация заголовка для темы: %s", topic)
-
     prompt = f"""
 Сгенерируй ОДИН прикладной заголовок статьи на русском языке.
 
@@ -75,65 +73,41 @@ def generate_title(topic):
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
     payload = {
-        "model": "meta-llama/llama-guard-4-12b",
+        "model": "llama-3.3-70b-versatile",
         "messages": [{"role": "user", "content": prompt}],
         "max_tokens": 120,
         "temperature": 0.7,
     }
 
-    # Повторяем до 5 раз
-    for attempt in range(5):
-        try:
-            r = requests.post(url, headers=headers, json=payload, timeout=60)
-            if r.status_code == 429:
-                logging.warning("Groq 429 (rate limit). Попытка %d", attempt + 1)
-                time.sleep(2 ** attempt)
-                continue
+    for attempt in range(3):
+        logging.info(f"Генерация заголовка для темы: {topic} (попытка {attempt+1}/3)")
+        r = requests.post(url, headers=headers, json=payload, timeout=60)
+        r.raise_for_status()
 
-            r.raise_for_status()
-            text = r.json()["choices"][0]["message"]["content"]
-            logging.info("Ответ Groq: %s", text.strip().replace("\n", " "))
+        data = r.json()
+        text = data["choices"][0]["message"]["content"]
+        logging.info(f"Ответ Groq: {text[:200]}...")
 
-            # Ищем по формату "ЗАГОЛОВОК:"
-            match = re.search(r"ЗАГОЛОВОК:\s*(.+)", text, re.IGNORECASE)
-            if match:
-                title = match.group(1).strip().strip('"').strip("'")
-            else:
-                # Если формат не тот, берем весь текст и убираем лишнее
-                title = text.strip().split("\n")[0].strip()
+        match = re.search(r"ЗАГОЛОВОК:\s*(.+)", text)
+        if not match:
+            logging.warning("Не удалось найти 'ЗАГОЛОВОК:' в ответе")
+            continue
 
-            # Проверяем длину и запрещённые слова
-            bad_words = ["будущее", "революция", "секрет", "что ждёт", "почему все"]
-            if len(title.split()) < 6 or len(title.split()) > 14:
-                logging.warning("Неподходящая длина заголовка: %d слов", len(title.split()))
-                continue
-            if any(bad in title.lower() for bad in bad_words):
-                logging.warning("Заголовок содержит запрещённые слова: %s", title)
-                continue
+        title = match.group(1).strip()
+        words = len(title.split())
+        if not (8 <= words <= 14):
+            logging.warning(f"Неподходящая длина заголовка: {words} слов")
+            continue
 
-            logging.info("Заголовок принят: %s", title)
-            return title
+        logging.info(f"Заголовок: {title}")
+        return title
 
-        except Exception as e:
-            logging.exception("Ошибка генерации заголовка: %s", e)
-            time.sleep(2)
-
-    # Fallback заголовок, чтобы процесс не падал
-    fallback_titles = [
-        "Как внедрить ИИ в поддержку клиентов без потери качества",
-        "5 практических сценариев ИИ для службы поддержки",
-        "Автоматизация тикетов: как ИИ ускоряет обработку запросов",
-        "Как обучить ИИ отвечать клиентам так, как человек",
-        "ИИ в поддержке: что нельзя делать и почему",
-    ]
-    title = random.choice(fallback_titles)
-    logging.warning("Использован fallback-заголовок: %s", title)
-    return title
+    fallback = "Как обучить ИИ отвечать клиентам так, как человек"
+    logging.warning(f"Использован fallback-заголовок: {fallback}")
+    return fallback
 
 # -------------------- План статьи --------------------
 def generate_outline(title):
-    logging.info("Генерация плана для заголовка: %s", title)
-
     prompt = f"""
 Создай план ПРИКЛАДНОЙ статьи по заголовку:
 
@@ -151,7 +125,7 @@ def generate_outline(title):
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
     payload = {
-        "model": "meta-llama/llama-guard-4-12b",
+        "model": "llama-3.3-70b-versatile",
         "messages": [{"role": "user", "content": prompt}],
         "max_tokens": 800,
         "temperature": 0.4,
@@ -159,14 +133,14 @@ def generate_outline(title):
 
     r = requests.post(url, headers=headers, json=payload, timeout=60)
     r.raise_for_status()
-    outline = r.json()["choices"][0]["message"]["content"]
+
+    text = r.json()["choices"][0]["message"]["content"]
     logging.info("План получен")
-    return outline
+    logging.info(f"План (первые 200 символов): {text[:200]}...")
+    return text
 
 # -------------------- Раздел статьи --------------------
 def generate_section(title, outline, section):
-    logging.info("Генерация раздела: %s", section)
-
     prompt = f"""
 Статья: "{title}"
 Стиль: прикладной, практический, без футуризма
@@ -177,7 +151,7 @@ def generate_section(title, outline, section):
 {outline}
 
 Требования:
-- 900–1200 знаков
+- 800–1200 знаков
 - Примеры, советы, ошибки
 - Без воды и абстракций
 """
@@ -185,24 +159,61 @@ def generate_section(title, outline, section):
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
     payload = {
-        "model": "meta-llama/llama-guard-4-12b",
+        "model": "llama-3.3-70b-versatile",
         "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 700,
+        "max_tokens": 600,
         "temperature": 0.6,
     }
 
-    r = requests.post(url, headers=headers, json=payload, timeout=60)
-    r.raise_for_status()
-    section_text = r.json()["choices"][0]["message"]["content"].strip()
-    logging.info("Раздел готов: %s (длина %d)", section, len(section_text))
-    return section_text
+    for attempt in range(3):
+        logging.info(f"Генерация раздела: {section} (попытка {attempt+1}/3)")
+        r = requests.post(url, headers=headers, json=payload, timeout=60)
+        r.raise_for_status()
+
+        text = r.json()["choices"][0]["message"]["content"].strip()
+        if len(text) < 500:
+            logging.warning(f"Раздел слишком короткий ({len(text)} знаков), повторяем...")
+            continue
+
+        return text
+
+    raise RuntimeError(f"Не удалось сгенерировать раздел: {section}")
 
 # -------------------- Тело статьи --------------------
+def extract_headers(outline):
+    headers = []
+
+    for line in outline.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+
+        # ## Заголовок
+        if line.startswith("##"):
+            headers.append(line.replace("##", "").strip())
+            continue
+
+        # 1) Заголовок или 1. Заголовок
+        m = re.match(r"^\d+[\.\)]\s*(.+)", line)
+        if m:
+            headers.append(m.group(1).strip())
+            continue
+
+        # - Заголовок или * Заголовок
+        m = re.match(r"^[-\*]\s+(.+)", line)
+        if m:
+            headers.append(m.group(1).strip())
+            continue
+
+    return headers
+
 def generate_body(title):
     logging.info("Генерация тела статьи")
-
     outline = generate_outline(title)
-    headers = [re.sub(r'^##\s*', '', l) for l in outline.splitlines() if l.startswith("##")]
+    headers = extract_headers(outline)
+
+    if not headers:
+        raise RuntimeError("Не удалось извлечь заголовки из плана")
 
     body = f"# {title}\n\n"
     total = 0
@@ -212,17 +223,14 @@ def generate_body(title):
         body += f"## {h}\n\n{text}\n\n"
         total += len(text)
 
-    logging.info("Общий объем статьи: %d знаков", total)
-
+    logging.info(f"Общий объем статьи: {total} знаков")
     if total < 6000:
         raise RuntimeError("Статья слишком короткая")
 
     return body
 
-# -------------------- ИЗОБРАЖЕНИЕ (НЕ ТРОГАТЬ) --------------------
+# -------------------- ИЗОБРАЖЕНИЕ (логирование добавлено) --------------------
 def generate_image_horde(title):
-    logging.info("Генерация изображения (Horde) для: %s", title)
-
     styles = [
         "laboratory with quantum computers, blue lighting",
         "futuristic data center with glowing servers",
@@ -257,52 +265,51 @@ def generate_image_horde(title):
 
     headers = {"apikey": "0000000000", "Content-Type": "application/json", "Client-Agent": "LybraBlogBot:3.0"}
 
+    logging.info("Запрос на генерацию изображения (Stable Horde)")
     try:
         r = requests.post(url_async, json=payload, headers=headers, timeout=60)
+        logging.info(f"StableHorde async response status: {r.status_code}")
+        logging.info(f"StableHorde async response: {r.text[:200]}...")
         if not r.ok:
-            logging.warning("Horde генерация вернула не OK: %s", r.text)
             return None
 
         job_id = r.json().get("id")
+        logging.info(f"StableHorde job_id: {job_id}")
         if not job_id:
-            logging.warning("Horde не вернул job_id")
             return None
-
-        logging.info("Horde job_id: %s", job_id)
 
         check_url = f"https://stablehorde.net/api/v2/generate/check/{job_id}"
         status_url = f"https://stablehorde.net/api/v2/generate/status/{job_id}"
 
-        for _ in range(36):
+        for i in range(36):
             time.sleep(10)
             check = requests.get(check_url, headers=headers).json()
             if check.get("done"):
                 final = requests.get(status_url, headers=headers).json()
                 if final.get("generations"):
                     img_url = final["generations"][0]["img"]
+                    logging.info(f"Image URL: {img_url}")
                     img_data = requests.get(img_url).content
                     path = IMAGES_DIR / f"horde-{int(time.time())}.jpg"
                     path.write_bytes(img_data)
-                    logging.info("Изображение сохранено: %s", path)
+                    logging.info(f"Image saved: {path}")
                     return str(path)
-    except Exception as e:
-        logging.exception("Ошибка генерации изображения Horde: %s", e)
+            logging.info(f"Waiting image... {i+1}/36")
 
-    logging.warning("Не удалось сгенерировать изображение через Horde")
+    except Exception as e:
+        logging.error(f"Ошибка генерации изображения: {e}")
+
     return None
 
 def generate_image(title):
-    logging.info("Запуск генерации изображения для: %s", title)
     local = generate_image_horde(title)
     if local and os.path.exists(local):
         return local
-    logging.info("Использование fallback-изображения")
+    logging.warning("Использован fallback-изображение")
     return random.choice(FALLBACK_IMAGES)
 
 # -------------------- Сохранение --------------------
 def save_post(title, body, image):
-    logging.info("Сохранение статьи")
-
     date = datetime.now()
     slug = re.sub(r'[^a-z0-9-]+', '-', translit(title)).strip('-')[:80]
     file = POSTS_DIR / f"{date:%Y-%m-%d}-{slug}.md"
@@ -317,18 +324,15 @@ image: {image if image.startswith('http') else '/assets/images/posts/' + Path(im
 
 """
     file.write_text(front + body, encoding="utf-8")
-    logging.info("Статья сохранена: %s", file)
+    logging.info(f"Статья сохранена: {file}")
     return SITE_URL
 
 # -------------------- Telegram --------------------
 def send_to_telegram(title, teaser, image):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-        logging.warning("Telegram токены не заданы, пропуск отправки")
+        logging.warning("Telegram токены не установлены — пропускаем отправку")
         return
 
-    logging.info("Отправка в Telegram")
-
-    # ссылка всегда на главную страницу
     caption = f"<b>{title}</b>\n\n{teaser}\n\n<i>Читать:</i> {SITE_URL}"
 
     if image.startswith("http"):
@@ -339,35 +343,26 @@ def send_to_telegram(title, teaser, image):
         image = f.name
 
     with open(image, "rb") as p:
-        resp = requests.post(
+        requests.post(
             f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto",
             data={"chat_id": TELEGRAM_CHAT_ID, "caption": caption, "parse_mode": "HTML"},
             files={"photo": p},
         )
-    logging.info("Telegram status: %s", resp.status_code)
+    logging.info("Отправлено в Telegram")
 
 # -------------------- MAIN --------------------
 def main():
     logging.info("=== START ===")
-
-    topic_list = [
+    topic = random.choice([
         "ИИ в бизнесе",
         "ИИ для разработчиков",
         "ИИ в маркетинге",
         "ИИ в аналитике",
         "ИИ в образовании",
-        "ИИ в HR и рекрутинге",
-        "ИИ в продажах",
-        "ИИ для автоматизации задач",
-        "ИИ в поддержке клиентов",
-        "ИИ для оптимизации процессов"
-    ]
+        "ИИ в поддержке клиентов"
+    ])
 
-    # чтобы каждый день тема не повторялась
-    day_index = int(datetime.now().strftime("%j"))  # 1..365
-    topic = topic_list[day_index % len(topic_list)]
-    logging.info("Тема дня: %s", topic)
-
+    logging.info(f"Тема дня: {topic}")
     title = generate_title(topic)
     body = generate_body(title)
     image = generate_image(title)
