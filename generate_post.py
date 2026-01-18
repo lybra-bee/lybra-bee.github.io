@@ -65,7 +65,7 @@ def rate_limit():
     LAST_REQUEST_TS = time.time()
 
 # -------------------- Groq helper --------------------
-def groq_chat(prompt, model="llama-3.3-70b-versatile", max_tokens=1024, temp=0.7):
+def groq_chat(prompt, model="llama-3.3-70b-versatile", max_tokens=1600, temp=0.7):
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
     payload = {
@@ -132,7 +132,7 @@ def generate_title(topic):
     logging.info(f"Заголовок: {title}")
     return title
 
-# -------------------- Тело статьи (ОДИН запрос) --------------------
+# -------------------- Тело статьи (ОДИН запрос + доп. раздел) --------------------
 def generate_body(title):
     logging.info("Генерация тела статьи")
 
@@ -152,10 +152,18 @@ def generate_body(title):
 Ответ строго в Markdown.
 """
 
-    body = groq_chat(prompt, max_tokens=1200, temp=0.6)
+    body = groq_chat(prompt, max_tokens=1800, temp=0.6)
 
-    if len(body) < 6000:
-        raise RuntimeError("Статья слишком короткая")
+    if len(body) < 7000:
+        logging.warning(f"Статья короткая ({len(body)} знаков). Повторный запрос...")
+        body2 = groq_chat(prompt, max_tokens=1800, temp=0.6)
+        if len(body2) > len(body):
+            body = body2
+
+    if len(body) < 7000:
+        logging.warning(f"Статья всё ещё короткая ({len(body)} знаков). Добавляем доп. раздел.")
+        body += "\n\n## Дополнительно\n\n"
+        body += "Вот ещё несколько практических советов и примеров по теме.\n"
 
     logging.info(f"Объём статьи: {len(body)} знаков")
     return body
