@@ -11,7 +11,9 @@ jobs:
     
     steps:
     - uses: actions/checkout@v4
-    
+      with:
+        fetch-depth: 0
+
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
@@ -27,17 +29,22 @@ jobs:
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-        AIHORDE_API_KEY: ${{ secrets.AIHORDE_API_KEY }}  # ← Ключ теперь передаётся
+        AIHORDE_API_KEY: ${{ secrets.AIHORDE_API_KEY }}
       run: python generate_post.py
     
-    - name: Commit changes
+    - name: Commit and push changes
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
+
         git add _posts/ assets/images/posts/
+
         if git diff --staged --quiet; then
           echo "Нет изменений для коммита"
-        else
-          git commit -m "🤖 Новая статья об ИИ $(date +%Y-%m-%d)"
-          git push
+          exit 0
         fi
+
+        git commit -m "🤖 Новая статья об ИИ $(date +%Y-%m-%d)"
+
+        git pull --rebase origin main
+        git push origin main
