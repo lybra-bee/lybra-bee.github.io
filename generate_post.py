@@ -81,16 +81,53 @@ def generate_title(topic):
         "temperature": 0.7,
     }
 
-    r = requests.post(url, headers=headers, json=payload, timeout=60)
-    r.raise_for_status()
-    text = r.json()["choices"][0]["message"]["content"]
+    # Повторяем до 5 раз
+    for attempt in range(5):
+        try:
+            r = requests.post(url, headers=headers, json=payload, timeout=60)
+            if r.status_code == 429:
+                logging.warning("Groq 429 (rate limit). Попытка %d", attempt + 1)
+                time.sleep(2 ** attempt)
+                continue
 
-    match = re.search(r"ЗАГОЛОВОК:\s*(.+)", text)
-    if not match:
-        raise RuntimeError("Не удалось получить заголовок")
+            r.raise_for_status()
+            text = r.json()["choices"][0]["message"]["content"]
+            logging.info("Ответ Groq: %s", text.strip().replace("\n", " "))
 
-    title = match.group(1).strip()
-    logging.info("Заголовок: %s", title)
+            # Ищем по формату "ЗАГОЛОВОК:"
+            match = re.search(r"ЗАГОЛОВОК:\s*(.+)", text, re.IGNORECASE)
+            if match:
+                title = match.group(1).strip().strip('"').strip("'")
+            else:
+                # Если формат не тот, берем весь текст и убираем лишнее
+                title = text.strip().split("\n")[0].strip()
+
+            # Проверяем длину и запрещённые слова
+            bad_words = ["будущее", "революция", "секрет", "что ждёт", "почему все"]
+            if len(title.split()) < 6 or len(title.split()) > 14:
+                logging.warning("Неподходящая длина заголовка: %d слов", len(title.split()))
+                continue
+            if any(bad in title.lower() for bad in bad_words):
+                logging.warning("Заголовок содержит запрещённые слова: %s", title)
+                continue
+
+            logging.info("Заголовок принят: %s", title)
+            return title
+
+        except Exception as e:
+            logging.exception("Ошибка генерации заголовка: %s", e)
+            time.sleep(2)
+
+    # Fallback заголовок, чтобы процесс не падал
+    fallback_titles = [
+        "Как внедрить ИИ в поддержку клиентов без потери качества",
+        "5 практических сценариев ИИ для службы поддержки",
+        "Автоматизация тикетов: как ИИ ускоряет обработку запросов",
+        "Как обучить ИИ отвечать клиентам так, как человек",
+        "ИИ в поддержке: что нельзя делать и почему",
+    ]
+    title = random.choice(fallback_titles)
+    logging.warning("Использован fallback-заголовок: %s", title)
     return title
 
 # -------------------- План статьи --------------------
