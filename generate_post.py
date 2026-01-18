@@ -40,137 +40,120 @@ FALLBACK_IMAGES = [
     "https://picsum.photos/1024/768?random=5",
 ]
 
-# -------------------- Стили статей --------------------
-ARTICLE_STYLES = {
-    "guide": "пошаговый практический гайд",
-    "business": "прикладная статья для бизнеса и маркетинга",
-    "developer": "технический разбор для разработчиков",
-    "content": "практика автоматизации контента и медиа"
-}
-
-ARTICLE_STYLE = random.choice(list(ARTICLE_STYLES.keys()))
-ARTICLE_STYLE_DESC = ARTICLE_STYLES[ARTICLE_STYLE]
-
-logging.info(f"Стиль статьи: {ARTICLE_STYLE} — {ARTICLE_STYLE_DESC}")
-
 # -------------------- Транслит --------------------
 TRANSLIT_MAP = {
-    'а': 'a','б': 'b','в': 'v','г': 'g','д': 'd','е': 'e','ё': 'yo',
-    'ж': 'zh','з': 'z','и': 'i','й': 'y','к': 'k','л': 'l','м': 'm',
-    'н': 'n','о': 'o','п': 'p','р': 'r','с': 's','т': 't','у': 'u',
-    'ф': 'f','х': 'kh','ц': 'ts','ч': 'ch','ш': 'sh','щ': 'shch',
-    'ъ': '','ы': 'y','ь': '','э': 'e','ю': 'yu','я': 'ya'
+    'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo',
+    'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
+    'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
+    'ф': 'f', 'х': 'kh', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'shch',
+    'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
 }
 
 def translit(text):
     return ''.join(TRANSLIT_MAP.get(c, c) for c in text.lower())
 
-# -------------------- Заголовок --------------------
+# -------------------- Заголовок (прикладной) --------------------
 def generate_title(topic):
     prompt = f"""
-Ты пишешь {ARTICLE_STYLE_DESC}.
+Сгенерируй ОДИН прикладной заголовок статьи на русском языке.
 
-Создай ОДИН заголовок на русском языке.
 Тема: {topic}
 
 Требования:
-- практическая польза
-- конкретный результат
-- без футуризма
-- без философии
-- без слов: будущее, революция, AGI, осознал
 - 8–14 слов
+- Практическая польза
+- Без футуризма и философии
+- Без слов: будущее, революция, секреты, что ждёт, почему все
+- Формат: конкретная польза или задача
 
-Формат:
+Ответ строго:
 ЗАГОЛОВОК: ...
 """
 
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
     payload = {
         "model": "llama-3.3-70b-versatile",
         "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.6,
-        "max_tokens": 120
+        "max_tokens": 120,
+        "temperature": 0.7,
     }
 
-    r = requests.post(
-        "https://api.groq.com/openai/v1/chat/completions",
-        headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
-        json=payload,
-        timeout=60
-    )
+    r = requests.post(url, headers=headers, json=payload, timeout=60)
+    r.raise_for_status()
     text = r.json()["choices"][0]["message"]["content"]
-    return re.sub(r"ЗАГОЛОВОК:\s*", "", text).strip()
 
-# -------------------- План --------------------
+    match = re.search(r"ЗАГОЛОВОК:\s*(.+)", text)
+    if not match:
+        raise RuntimeError("Не удалось получить заголовок")
+
+    title = match.group(1).strip()
+    logging.info(f"Заголовок: {title}")
+    return title
+
+# -------------------- План статьи --------------------
 def generate_outline(title):
     prompt = f"""
-Ты пишешь {ARTICLE_STYLE_DESC}.
-Статья строго прикладная.
+Создай план ПРИКЛАДНОЙ статьи по заголовку:
 
-Заголовок: {title}
+"{title}"
 
-Сделай план:
-- 6–8 разделов
-- формат инструкции
-- без прогнозов
-- без абстракций
-- только практика
+Стиль: практическое руководство
+Формат:
+- 6–8 разделов ##
+- Без философии
+- Про реальные кейсы, ошибки, советы
 
-Markdown, только заголовки.
+Ответ только Markdown.
 """
 
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
     payload = {
         "model": "llama-3.3-70b-versatile",
         "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": 800,
         "temperature": 0.4,
-        "max_tokens": 1200
     }
 
-    r = requests.post(
-        "https://api.groq.com/openai/v1/chat/completions",
-        headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
-        json=payload,
-        timeout=60
-    )
+    r = requests.post(url, headers=headers, json=payload, timeout=60)
+    r.raise_for_status()
     return r.json()["choices"][0]["message"]["content"]
 
-# -------------------- Раздел --------------------
-def generate_section(title, outline, header):
+# -------------------- Раздел статьи --------------------
+def generate_section(title, outline, section):
     prompt = f"""
-Ты пишешь {ARTICLE_STYLE_DESC}.
+Статья: "{title}"
+Стиль: прикладной, практический, без футуризма
 
-Раздел: {header}
-Статья: {title}
+Раздел: {section}
+
+Контекст плана:
+{outline}
 
 Требования:
 - 800–1200 знаков
-- конкретные действия
-- примеры
-- чеклисты допустимы
-- никакой философии
-
-Только текст.
+- Примеры, советы, ошибки
+- Без воды и абстракций
 """
 
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
     payload = {
         "model": "llama-3.3-70b-versatile",
         "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.7,
-        "max_tokens": 600
+        "max_tokens": 600,
+        "temperature": 0.6,
     }
 
-    r = requests.post(
-        "https://api.groq.com/openai/v1/chat/completions",
-        headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
-        json=payload,
-        timeout=90
-    )
+    r = requests.post(url, headers=headers, json=payload, timeout=60)
+    r.raise_for_status()
     return r.json()["choices"][0]["message"]["content"].strip()
 
 # -------------------- Тело статьи --------------------
 def generate_body(title):
     outline = generate_outline(title)
-    headers = [l.replace("##", "").strip() for l in outline.splitlines() if l.startswith("##")]
+    headers = [re.sub(r'^##\s*', '', l) for l in outline.splitlines() if l.startswith("##")]
 
     body = f"# {title}\n\n"
     total = 0
@@ -180,81 +163,138 @@ def generate_body(title):
         body += f"## {h}\n\n{text}\n\n"
         total += len(text)
 
+    if total < 6000:
+        raise RuntimeError("Статья слишком короткая")
+
     logging.info(f"Объём статьи: {total} знаков")
     return body
 
-# -------------------- Изображение --------------------
-def generate_image(title):
+# -------------------- ИЗОБРАЖЕНИЕ (НЕ ТРОГАТЬ) --------------------
+def generate_image_horde(title):
     styles = [
-        "person working at laptop with AI dashboard",
-        "computer screen with analytics and charts",
-        "developer workspace with code editor",
-        "business analyst using AI tool on screen",
-        "content creator automating workflow on computer"
+        "laboratory with quantum computers, blue lighting",
+        "futuristic data center with glowing servers",
+        "people using holographic AI interface",
+        "cyberpunk street with AI billboards",
+        "abstract visualization of neural network",
+        "doctor using AI diagnostic tool",
+        "artist collaborating with AI",
+        "autonomous car in smart city",
+        "ethical dilemma: human and AI",
+        "global network of AI systems"
     ]
+    style = random.choice(styles)
 
-    prompt = f"{title}, {random.choice(styles)}, realistic photo, office, natural light"
+    prompt = (
+        f"{title}, {style}, ultra realistic professional photography, "
+        "sharp focus, cinematic lighting, natural colors, 8k resolution"
+    )
 
+    negative_prompt = (
+        "girl, woman, female portrait, fashion, makeup, long hair, "
+        "abstract art, cartoon, low quality, blurry, deformed, text, watermark"
+    )
+
+    url_async = "https://stablehorde.net/api/v2/generate/async"
     payload = {
-        "prompt": prompt,
-        "models": ["Realistic Vision V5.1", "SDXL 1.0"],
-        "params": {"width": 768, "height": 512, "steps": 25}
+        "prompt": prompt + " ### " + negative_prompt,
+        "models": ["Juggernaut XL", "Realistic Vision V5.1", "FLUX.1 [schnell]", "SDXL 1.0"],
+        "params": {"width": 768, "height": 512, "steps": 30, "cfg_scale": 7.5, "sampler_name": "k_euler_a", "n": 1},
+        "nsfw": False, "trusted_workers": False, "slow_workers": True
     }
 
+    headers = {"apikey": "0000000000", "Content-Type": "application/json", "Client-Agent": "LybraBlogBot:3.0"}
+
     try:
-        r = requests.post("https://stablehorde.net/api/v2/generate/async", json=payload, timeout=30)
-        return random.choice(FALLBACK_IMAGES)
+        r = requests.post(url_async, json=payload, headers=headers, timeout=60)
+        if not r.ok:
+            return None
+
+        job_id = r.json().get("id")
+        if not job_id:
+            return None
+
+        check_url = f"https://stablehorde.net/api/v2/generate/check/{job_id}"
+        status_url = f"https://stablehorde.net/api/v2/generate/status/{job_id}"
+
+        for _ in range(36):
+            time.sleep(10)
+            check = requests.get(check_url, headers=headers).json()
+            if check.get("done"):
+                final = requests.get(status_url, headers=headers).json()
+                if final.get("generations"):
+                    img_url = final["generations"][0]["img"]
+                    img_data = requests.get(img_url).content
+                    path = IMAGES_DIR / f"horde-{int(time.time())}.jpg"
+                    path.write_bytes(img_data)
+                    return str(path)
     except:
-        return random.choice(FALLBACK_IMAGES)
+        pass
+
+    return None
+
+def generate_image(title):
+    local = generate_image_horde(title)
+    if local and os.path.exists(local):
+        return local
+    return random.choice(FALLBACK_IMAGES)
 
 # -------------------- Сохранение --------------------
-def save_post(title, body, img):
-    date = datetime.now().strftime("%Y-%m-%d")
-    slug = re.sub(r'[^a-z0-9-]+', '-', translit(title))[:80]
-    path = POSTS_DIR / f"{date}-{slug}.md"
+def save_post(title, body, image):
+    date = datetime.now()
+    slug = re.sub(r'[^a-z0-9-]+', '-', translit(title)).strip('-')[:80]
+    file = POSTS_DIR / f"{date:%Y-%m-%d}-{slug}.md"
 
-    fm = f"""---
+    front = f"""---
 title: "{title}"
-date: {date}
+date: {date:%Y-%m-%d 00:00:00 -0000}
 layout: post
 categories: ai
-tags: [ИИ, практика]
-image: {img}
+image: {image if image.startswith('http') else '/assets/images/posts/' + Path(image).name}
 ---
 
 """
-    path.write_text(fm + body, encoding="utf-8")
-    return f"{SITE_URL}/{slug}/"
+    file.write_text(front + body, encoding="utf-8")
+    return SITE_URL
 
 # -------------------- Telegram --------------------
-def send_to_telegram(title, body, img, url):
-    if not TELEGRAM_BOT_TOKEN:
+def send_to_telegram(title, teaser, image):
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         return
-    teaser = " ".join(body.split()[:60]) + "..."
-    caption = f"<b>{title}</b>\n\n{teaser}\n\n{url}"
 
-    requests.post(
-        f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto",
-        data={"chat_id": TELEGRAM_CHAT_ID, "caption": caption, "parse_mode": "HTML"},
-        files={"photo": requests.get(img).content}
-    )
+    caption = f"<b>{title}</b>\n\n{teaser}\n\n<i>Читать:</i> {SITE_URL}"
+
+    if image.startswith("http"):
+        img = requests.get(image).content
+        f = tempfile.NamedTemporaryFile(delete=False)
+        f.write(img)
+        f.close()
+        image = f.name
+
+    with open(image, "rb") as p:
+        requests.post(
+            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto",
+            data={"chat_id": TELEGRAM_CHAT_ID, "caption": caption, "parse_mode": "HTML"},
+            files={"photo": p},
+        )
 
 # -------------------- MAIN --------------------
 def main():
-    topics = [
-        "Автоматизация задач с ИИ",
-        "Использование ИИ в бизнесе",
-        "ИИ для программистов",
-        "Генерация контента с ИИ",
-        "Оптимизация процессов с ИИ"
-    ]
+    topic = random.choice([
+        "ИИ в бизнесе",
+        "ИИ для разработчиков",
+        "ИИ в маркетинге",
+        "ИИ в аналитике",
+        "ИИ в образовании"
+    ])
 
-    topic = random.choice(topics)
     title = generate_title(topic)
     body = generate_body(title)
-    img = generate_image(title)
-    url = save_post(title, body, img)
-    send_to_telegram(title, body, img, url)
+    image = generate_image(title)
+    save_post(title, body, image)
+
+    teaser = " ".join(body.split()[:40]) + "..."
+    send_to_telegram(title, teaser, image)
 
     logging.info("=== DONE ===")
 
