@@ -45,6 +45,5 @@ jobs:
         fi
 
         git commit -m "🤖 Новая статья об ИИ $(date +%Y-%m-%d)"
-
-        git pull --rebase origin main
+        
         git push origin main
