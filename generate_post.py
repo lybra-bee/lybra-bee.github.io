@@ -3,407 +3,376 @@
 
 import os
 import re
+import json
 import time
 import random
 import logging
-import requests
-import tempfile
+import urllib.parse
 from datetime import datetime
 from pathlib import Path
 
+import requests
+from groq import Groq
+
+# Настройка логирования
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(message)s"
+    format='%(asctime)s | %(levelname)s | %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
 )
+logger = logging.getLogger(__name__)
 
-log = logging.getLogger()
+# Конфигурация
+GROQ_API_KEY = os.getenv('GROQ_API_KEY')
+TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
+TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 
-POSTS_DIR = Path("_posts")
-IMAGES_DIR = Path("assets/images/posts")
-
-POSTS_DIR.mkdir(parents=True, exist_ok=True)
-IMAGES_DIR.mkdir(parents=True, exist_ok=True)
-
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-HORDE_API_KEY = os.getenv("HORDE_API_KEY") or os.getenv("AIHORDE_API_KEY")
-
-SITE_URL = "https://lybra-ai.ru"
-
+# Проверка обязательных переменных
 if not GROQ_API_KEY:
-    raise RuntimeError("GROQ_API_KEY не установлен!")
+    raise ValueError("GROQ_API_KEY не установлен")
 
-FALLBACK_IMAGES = [
-    "https://picsum.photos/1024/768?random=1",
-    "https://picsum.photos/1024/768?random=2",
-    "https://picsum.photos/1024/768?random=3",
-    "https://picsum.photos/1024/768?random=4",
-]
+client = Groq(api_key=GROQ_API_KEY)
 
-TRANSLIT_MAP = {
-    'а': 'a','б': 'b','в': 'v','г': 'g','д': 'd','е': 'e','ё': 'yo','ж': 'zh','з': 'z',
-    'и': 'i','й': 'y','к': 'k','л': 'l','м': 'm','н': 'n','о': 'o','п': 'p','р': 'r',
-    'с': 's','т': 't','у': 'u','ф': 'f','х': 'kh','ц': 'ts','ч': 'ch','ш': 'sh',
-    'щ': 'shch','ъ': '','ы': 'y','ь': '','э': 'e','ю': 'yu','я': 'ya'
-}
+class ArticleGenerator:
+    def __init__(self):
+        self.max_retries = 4
+        self.retry_delay = 2
+        
+    def groq_request(self, messages, temperature=0.7):
+        """Отправка запроса к Groq с повторами при ошибках"""
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                logger.info(f"Groq request attempt {attempt}/{self.max_retries}")
+                response = client.chat.completions.create(
+                    model="llama-3.3-70b-versatile",
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=4000
+                )
+                return response.choices[0].message.content
+            except Exception as e:
+                logger.warning(f"Groq error (attempt {attempt}): {e}")
+                if attempt < self.max_retries:
+                    time.sleep(self.retry_delay * attempt)
+                else:
+                    raise
+        return None
 
-def translit(text):
-    return ''.join(TRANSLIT_MAP.get(c, c) for c in text.lower())
-
-# -------------------- GOOGLE TRENDS --------------------
-def get_google_trends_topic():
-    log.info("🌍 Fetching Google Trends topic")
-    try:
-        r = requests.get("https://trends.google.com/trends/hottrends/visualize/internal/data", timeout=10)
-        if not r.ok:
-            return "AI tools"
-        topics = re.findall(r'"title":{"query":"([^"]+)"', r.text)
-        if topics:
-            topic = random.choice(topics)
-            log.info(f"🔥 Google Trends topic: {topic}")
-            return topic + " practical AI"
-    except Exception as e:
-        log.warning(f"Google Trends failed: {e}")
-
-    return "AI tools practical"
-
-# -------------------- GROQ REQUEST --------------------
-def groq_request(prompt, max_tokens=900, temperature=0.6):
-    url = "https://api.groq.com/openai/v1/chat/completions"
-    headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
-    payload = {
-        "model": "llama-3.3-70b-versatile",
-        "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": max_tokens,
-        "temperature": temperature
-    }
-
-    for attempt in range(4):
+    def get_trending_topic(self):
+        """Получение трендовой темы"""
+        logger.info("🌍 Fetching Google Trends topic")
+        
+        # Список актуальных тем на случай недоступности Trends
+        fallback_topics = [
+            "AI tools", "machine learning", "automation", 
+            "digital transformation", "productivity apps",
+            "chatbots", "neural networks", "cloud computing"
+        ]
+        
         try:
-            log.info(f"Groq request attempt {attempt+1}/4")
-            r = requests.post(url, headers=headers, json=payload, timeout=60)
-
-            if r.status_code == 429:
-                time.sleep(3)
-                continue
-
-            r.raise_for_status()
-            return r.json()["choices"][0]["message"]["content"]
-
+            # Пробуем получить реальные тренды
+            url = "https://trends.google.com/trends/trendingsearches/daily/rss?geo=US"
+            response = requests.get(url, timeout=10)
+            
+            if response.status_code == 200:
+                # Простой парсинг RSS
+                titles = re.findall(r'<title>(.*?)</title>', response.text)
+                if len(titles) > 1:
+                    # Пропускаем первый заголовок (обычно "Daily Search Trends")
+                    topic = random.choice(titles[1:min(6, len(titles))])
+                    # Очищаем от лишнего
+                    topic = re.sub(r'&#39;', "'", topic)
+                    topic = re.sub(r'&quot;', '"', topic)
+                    logger.info(f"🎯 Topic from Trends: {topic}")
+                    return topic
+            
+            # Fallback на случайные темы
+            topic = random.choice(fallback_topics)
+            logger.info(f"🎯 Fallback topic: {topic}")
+            return topic
+            
         except Exception as e:
-            log.warning(f"Groq retry error: {e}")
-            time.sleep(2)
+            logger.warning(f"Trends error: {e}, using fallback")
+            topic = random.choice(fallback_topics)
+            logger.info(f"🎯 Fallback topic: {topic}")
+            return topic
 
-    raise RuntimeError("Groq failed after retries")
+    def generate_title(self, topic):
+        """Генерация заголовка статьи"""
+        logger.info(f"✍️ Generating title: {topic}")
+        
+        prompt = f"""Создай привлекательный заголовок для статьи блога на тему "{topic}".
+Заголовок должен быть на русском языке, информативным и SEO-оптимизированным.
+Длина: 60-100 символов.
+Формат ответа: ЗАГОЛОВОК: [твой заголовок]"""
 
-# -------------------- TITLE --------------------
-def generate_title(topic):
-    log.info(f"✍️ Generating title: {topic}")
-
-    prompt = f"""
-Сгенерируй ОДИН прикладной заголовок статьи на русском.
-
-Тема: {topic}
-
-Требования:
-- 8–14 слов
-- Практическая польза
-- Без футуризма
-- Без философии
-- Конкретная выгода
-
-Формат ответа:
-ЗАГОЛОВОК: ...
-"""
-
-    text = groq_request(prompt, max_tokens=120)
-    log.info(f"Groq title raw: {text}")
-
-    match = re.search(r"ЗАГОЛОВОК:\s*(.+)", text)
-    if match:
-        title = match.group(1).strip()
-        log.info(f"✅ Title: {title}")
+        response = self.groq_request([
+            {"role": "system", "content": "Ты профессиональный копирайтер и SEO-специалист."},
+            {"role": "user", "content": prompt}
+        ])
+        
+        # Извлекаем заголовок
+        match = re.search(r'ЗАГОЛОВОК:\s*(.+)', response, re.IGNORECASE)
+        if match:
+            title = match.group(1).strip()
+        else:
+            title = response.strip().split('\n')[0][:100]
+        
+        logger.info(f"✅ Title: {title}")
         return title
 
-    fallback = "Как эффективно применять ИИ в практических задачах"
-    log.warning(f"⚠ Using fallback title: {fallback}")
-    return fallback
-
-# -------------------- OUTLINE --------------------
-def generate_outline(title):
-    log.info("📚 Generating outline")
-
-    prompt = f"""
-Создай план ПРАКТИЧЕСКОЙ статьи по заголовку:
-
-"{title}"
-
+    def generate_outline(self, title):
+        """Генерация структуры статьи"""
+        logger.info("📚 Generating outline")
+        
+        prompt = f"""Создай подробный план статьи с заголовком: "{title}"
+Статья должна содержать 5-7 разделов.
+Каждый раздел должен иметь чёткое название на русском языке.
 Формат:
-- 6–9 разделов ##
-- Реальные советы
-- Кейсы
-- Ошибки
-- Инструменты
+1. [Название раздела]
+2. [Название раздела]
+...
+Последний раздел всегда "Заключение"."""
 
-Ответ только Markdown.
-"""
+        response = self.groq_request([
+            {"role": "system", "content": "Ты профессиональный редактор и контент-менеджер."},
+            {"role": "user", "content": prompt}
+        ])
+        
+        # Парсим разделы
+        sections = re.findall(r'\d+\.\s*(.+)', response)
+        if not sections:
+            sections = ["Введение", "Основная часть", "Заключение"]
+        
+        logger.info(f"✅ Outline generated: {len(sections)} sections")
+        return sections
 
-    outline = groq_request(prompt, max_tokens=900, temperature=0.4)
-    log.info("✅ Outline generated")
-    return outline
-
-# -------------------- SECTION --------------------
-def generate_section(title, outline, section):
-    log.info(f"🧩 Generating section: {section}")
-
-    prompt = f"""
-Статья: "{title}"
-
-Раздел: {section}
-
-Контекст плана:
-{outline}
+    def generate_section(self, title, section_name, context=""):
+        """Генерация текста для одного раздела"""
+        logger.info(f"🧩 Generating section: {section_name}")
+        
+        prompt = f"""Напиши раздел "{section_name}" для статьи "{title}".
+Контекст предыдущих разделов: {context[:500] if context else "Нет"}
 
 Требования:
-- 900–1500 знаков
-- Практика
-- Примеры
-- Кейсы
-- Без воды
-"""
+- Объём: 300-500 слов
+- Стиль: информативный, профессиональный, но доступный
+- Используй маркированные списки где уместно
+- Добавь практические советы или примеры
+- Тон: экспертный, но дружелюбный"""
 
-    return groq_request(prompt, max_tokens=900, temperature=0.65)
+        response = self.groq_request([
+            {"role": "system", "content": "Ты профессиональный технический писатель и блогер."},
+            {"role": "user", "content": prompt}
+        ])
+        
+        return response.strip()
 
-# -------------------- BODY --------------------
-def generate_body(title):
-    log.info("📝 Generating article body")
+    def generate_article(self, title):
+        """Генерация полной статьи"""
+        outline = self.generate_outline(title)
+        sections_content = []
+        
+        context = ""
+        for section in outline:
+            content = self.generate_section(title, section, context)
+            sections_content.append(f"## {section}\n\n{content}")
+            context += f"{section}: {content[:200]}... "
+            time.sleep(1)  # Небольшая пауза между запросами
+        
+        body = "\n\n".join(sections_content)
+        logger.info(f"📏 Body length: {len(body)}")
+        return body
 
-    outline = generate_outline(title)
-    headers = [re.sub(r'^##\s*', '', l) for l in outline.splitlines() if l.startswith("##")]
+    def generate_image_prompt(self, title):
+        """Создание английского промпта для изображения на основе заголовка"""
+        # Переводим ключевые слова на английский для лучшего качества генерации
+        prompt = f"""Create a short English image generation prompt (10-15 words) based on this Russian article title: "{title}"
+The prompt should describe a professional illustration suitable for a tech blog.
+Focus on: technology, business, modern office, digital innovation, AI.
+Return ONLY the English prompt, nothing else."""
 
-    body = f"# {title}\n\n"
-    total = 0
+        response = self.groq_request([
+            {"role": "system", "content": "You create image generation prompts."},
+            {"role": "user", "content": prompt}
+        ], temperature=0.5)
+        
+        # Очищаем от лишнего
+        clean_prompt = response.strip().strip('"').strip("'")
+        # Добавляем улучшающие теги
+        enhanced = f"{clean_prompt}, professional illustration, clean design, high quality, detailed"
+        return enhanced
 
-    for h in headers:
-        text = generate_section(title, outline, h)
-        body += f"## {h}\n\n{text}\n\n"
-        total += len(text)
-
-    log.info(f"📏 Body length: {total}")
-
-    if total < 8000:
-        raise RuntimeError("Статья слишком короткая")
-
-    return body
-
-# -------------------- IMAGE (HORDE) --------------------
-def generate_image_horde(title):
-    log.info("🎨 Horde image generation started")
-
-    styles = [
-        "developer working with AI",
-        "machine learning workflow",
-        "neural network visualization",
-        "coding with AI assistant",
-        "AI automation in real business"
-    ]
-
-    style = random.choice(styles)
-    prompt = f"{title}, {style}, ultra realistic, professional photography, 8k"
-    negative_prompt = "text, watermark, low quality, blurry, deformed, cartoon, girl, woman"
-
-    url_async = "https://stablehorde.net/api/v2/generate/async"
-
-    payload = {
-        "prompt": prompt + " ### " + negative_prompt,
-        "models": ["Realistic Vision V5.1", "SDXL 1.0", "Juggernaut XL"],
-        "params": {
-            "width": 1024,
-            "height": 576,
-            "steps": 28,
-            "cfg_scale": 7.5,
-            "sampler_name": "k_euler_a",
-            "n": 1
-        },
-        "nsfw": False,
-        "trusted_workers": False,
-        "slow_workers": True
-    }
-
-    headers = {
-        "Content-Type": "application/json",
-        "Client-Agent": "LybraBlogBot:4.0"
-    }
-    if HORDE_API_KEY:
-        headers["apikey"] = HORDE_API_KEY
-
-    try:
-        log.info("📡 Sending Horde request")
-        r = requests.post(url_async, json=payload, headers=headers, timeout=60)
-
-        if not r.ok:
-            log.error(f"Horde failed: {r.status_code} {r.text[:500]}")
-            return None
-
-        job = r.json()
-        job_id = job.get("id")
-        if not job_id:
-            log.error("No job ID in response")
-            return None
-
-        log.info(f"🧩 Horde job id: {job_id}")
-
-        check_url = f"https://stablehorde.net/api/v2/generate/check/{job_id}"
-        status_url = f"https://stablehorde.net/api/v2/generate/status/{job_id}"
-
-        for i in range(36):
-            time.sleep(10)
+    def generate_image(self, title):
+        """Генерация изображения через Pollinations.ai (бесплатно, без ключа)"""
+        logger.info("🎨 Generating image with Pollinations.ai")
+        
+        try:
+            # Получаем английский промпт
+            image_prompt = self.generate_image_prompt(title)
+            logger.info(f"📝 Image prompt: {image_prompt[:100]}...")
             
-            try:
-                check = requests.get(check_url, headers=headers, timeout=30)
-                if not check.ok:
-                    log.debug(f"Horde check status: {check.status_code}")
-                    continue
+            # Кодируем для URL
+            encoded_prompt = urllib.parse.quote(image_prompt)
+            
+            # Формируем URL для Pollinations
+            # Параметры:
+            # - width/height: размеры
+            # - nologo=true: без водяного знака
+            # - enhance=true: улучшение качества
+            # - seed: для воспроизводимости (можно убрать для случайности)
+            image_url = (
+                f"https://image.pollinations.ai/prompt/{encoded_prompt}"
+                f"?width=1024&height=768&nologo=true&enhance=true&seed={random.randint(1, 10000)}"
+            )
+            
+            # Проверяем, что URL доступен (делаем HEAD запрос)
+            logger.info("📡 Checking image availability...")
+            response = requests.head(image_url, timeout=30, allow_redirects=True)
+            
+            if response.status_code == 200:
+                logger.info(f"✅ Image generated: {image_url[:80]}...")
+                return image_url
+            else:
+                logger.warning(f"Image check failed with status {response.status_code}")
+                return None
                 
-                check_json = check.json()
-                if check_json.get("done"):
-                    final = requests.get(status_url, headers=headers, timeout=30)
-                    if not final.ok:
-                        log.warning(f"Horde final status HTTP {final.status_code}")
-                        continue
-                    
-                    final_json = final.json()
-                    gens = final_json.get("generations") or []
-                    
-                    if gens:
-                        img_url = gens[0].get("img")
-                        if img_url:
-                            log.info(f"📥 Downloading image: {img_url}")
-                            img_resp = requests.get(img_url, timeout=60)
-                            
-                            if img_resp.ok:
-                                filename = f"horde-{int(time.time())}.png"
-                                path = IMAGES_DIR / filename
-                                path.write_bytes(img_resp.content)
-                                log.info(f"🖼 Image saved: {path}")
-                                return str(path)
-                    else:
-                        log.warning("Horde done but no generations")
-                        
-            except Exception as e:
-                log.debug(f"Horde poll exception: {e}")
-                continue
+        except Exception as e:
+            logger.error(f"Image generation error: {e}")
+            return None
 
-        log.warning("⏱ Horde timeout")
-        return None
-
-    except Exception as e:
-        log.exception(f"Horde exception: {e}")
-        return None
-
-def generate_image(title):
-    local = generate_image_horde(title)
-    if local and Path(local).exists():
-        return local
-
-    if not FALLBACK_IMAGES:
-        raise RuntimeError("No fallback images available")
-
-    fallback = random.choice(FALLBACK_IMAGES)
-    log.warning(f"⚠ Using fallback image: {fallback}")
-    return fallback
-
-# -------------------- SAVE POST --------------------
-def save_post(title, body, image):
-    date = datetime.now()
-    slug = re.sub(r'[^a-z0-9-]+', '-', translit(title)).strip('-')[:80]
-    file = POSTS_DIR / f"{date:%Y-%m-%d}-{slug}.md"
-
-    image_path = Path(image)
-    image_url = image if image.startswith("http") else f"/assets/images/posts/{image_path.name}"
-
-    front = f"""---
-title: "{title}"
-date: {date:%Y-%m-%d 00:00:00 -0000}
+    def save_post(self, title, body, image_url):
+        """Сохранение поста в файл"""
+        date_str = datetime.now().strftime('%Y-%m-%d')
+        # Транслитерация для имени файла
+        slug = self.transliterate(title.lower())
+        slug = re.sub(r'[^a-z0-9]+', '-', slug)[:50].strip('-')
+        
+        filename = f"{date_str}-{slug}.md"
+        filepath = Path('_posts') / filename
+        
+        # Создаём директорию если нужно
+        filepath.parent.mkdir(exist_ok=True)
+        
+        # Front matter
+        front_matter = f"""---
 layout: post
-categories: ai
+title: "{title}"
+date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} +0300
+categories: ai technology
 image: {image_url}
 ---
 
 """
+        
+        full_content = front_matter + body
+        
+        with open(filepath, 'w', encoding='utf-8') as f:
+            f.write(full_content)
+        
+        logger.info(f"📝 Post saved: {filepath}")
+        return filepath
 
-    file.write_text(front + body, encoding="utf-8")
-    log.info(f"📝 Post saved: {file}")
+    def transliterate(self, text):
+        """Простая транслитерация русского текста"""
+        translit_dict = {
+            'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo',
+            'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
+            'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
+            'ф': 'f', 'х': 'h', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch',
+            'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya',
+            ' ': '-', ',': '', '.': '', '!': '', '?': ''
+        }
+        
+        result = ''
+        for char in text:
+            result += translit_dict.get(char, char)
+        return result
 
-# -------------------- TELEGRAM --------------------
-def send_to_telegram(title, teaser, image):
-    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-        log.warning("Telegram disabled")
-        return
+    def send_telegram(self, title, filepath):
+        """Отправка уведомления в Telegram"""
+        if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+            logger.warning("Telegram credentials not set")
+            return
+        
+        try:
+            message = f"📝 Новая статья опубликована!\n\n<b>{title}</b>"
+            
+            url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+            payload = {
+                'chat_id': TELEGRAM_CHAT_ID,
+                'text': message,
+                'parse_mode': 'HTML'
+            }
+            
+            response = requests.post(url, json=payload, timeout=10)
+            if response.status_code == 200:
+                logger.info("📬 Telegram sent")
+            else:
+                logger.warning(f"Telegram error: {response.status_code}")
+                
+        except Exception as e:
+            logger.error(f"Telegram error: {e}")
 
-    caption = f"<b>{title}</b>\n\n{teaser}\n\n<i>Читать:</i> {SITE_URL}"
+    def cleanup_old_posts(self, keep_days=30):
+        """Удаление старых постов"""
+        try:
+            posts_dir = Path('_posts')
+            if not posts_dir.exists():
+                return
+            
+            now = datetime.now()
+            for post_file in posts_dir.glob('*.md'):
+                # Извлекаем дату из имени файла
+                date_match = re.match(r'(\d{4}-\d{2}-\d{2})', post_file.name)
+                if date_match:
+                    post_date = datetime.strptime(date_match.group(1), '%Y-%m-%d')
+                    days_old = (now - post_date).days
+                    
+                    if days_old > keep_days:
+                        post_file.unlink()
+                        logger.info(f"🧹 Removed old post: {post_file.name}")
+                        
+        except Exception as e:
+            logger.error(f"Cleanup error: {e}")
 
-    temp_file = None
-    try:
-        if image.startswith("http"):
-            img = requests.get(image, timeout=30).content
-            with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as f:
-                f.write(img)
-                temp_file = f.name
-            image = temp_file
-
-        with open(image, "rb") as p:
-            response = requests.post(
-                f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto",
-                data={"chat_id": TELEGRAM_CHAT_ID, "caption": caption, "parse_mode": "HTML"},
-                files={"photo": p},
-                timeout=30
-            )
-            response.raise_for_status()
-
-        log.info("📬 Telegram sent")
-    finally:
-        if temp_file and os.path.exists(temp_file):
-            os.unlink(temp_file)
-
-# -------------------- CLEAN POSTS --------------------
-def cleanup_posts(limit=70):
-    posts = sorted(POSTS_DIR.glob("*.md"))
-    if len(posts) <= limit:
-        return
-
-    to_delete = posts[:-limit]
-    for p in to_delete:
-        log.info(f"🧹 Removing old post: {p}")
-        p.unlink()
-
-# -------------------- MAIN --------------------
-def main():
-    log.info("=== START ===")
-
-    topic = get_google_trends_topic()
-    log.info(f"🎯 Topic: {topic}")
-
-    title = generate_title(topic)
-    
-    try:
-        body = generate_body(title)
-    except RuntimeError as e:
-        log.error(f"Failed to generate article body: {e}")
-        return
-
-    image = generate_image(title)
-    log.info(f"🖼 Image: {image}")
-
-    save_post(title, body, image)
-
-    teaser = " ".join(body.split()[:40]) + "..."
-    send_to_telegram(title, teaser, image)
-
-    cleanup_posts()
-
-    log.info("=== DONE ===")
+    def run(self):
+        """Основной процесс генерации"""
+        logger.info("=== START ===")
+        
+        try:
+            # 1. Получаем тему
+            topic = self.get_trending_topic()
+            
+            # 2. Генерируем заголовок
+            title = self.generate_title(topic)
+            
+            # 3. Генерируем статью
+            body = self.generate_article(title)
+            
+            # 4. Генерируем изображение (НОВОЕ: Pollinations вместо Horde)
+            image_url = self.generate_image(title)
+            
+            if not image_url:
+                # Если не удалось, используем placeholder (но теперь это редкость)
+                logger.warning("⚠ Using placeholder image")
+                image_url = f"https://via.placeholder.com/1024x768/4a90e2/ffffff?text={urllib.parse.quote(title[:30])}"
+            
+            # 5. Сохраняем
+            filepath = self.save_post(title, body, image_url)
+            
+            # 6. Отправляем в Telegram
+            self.send_telegram(title, filepath)
+            
+            # 7. Очистка старых постов
+            self.cleanup_old_posts()
+            
+            logger.info("=== SUCCESS ===")
+            
+        except Exception as e:
+            logger.error(f"=== FAILED: {e} ===")
+            raise
 
 if __name__ == "__main__":
-    main()
+    generator = ArticleGenerator()
+    generator.run()
