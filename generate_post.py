@@ -10,7 +10,6 @@ import logging
 import urllib.parse
 from datetime import datetime
 from pathlib import Path
-from io import BytesIO
 
 import requests
 from groq import Groq
@@ -35,7 +34,7 @@ logger.propagate = False
 GROQ_API_KEY = os.getenv('GROQ_API_KEY')
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
-HF_API_TOKEN = os.getenv('HF_API_TOKEN')  # Новый токен для Hugging Face
+HF_API_TOKEN = os.getenv('HF_API_TOKEN')
 
 if not GROQ_API_KEY:
     raise ValueError("GROQ_API_KEY не установлен")
@@ -73,7 +72,8 @@ class ArticleGenerator:
         
         fallback_topics = [
             "AI automation", "machine learning", "digital transformation", 
-            "cloud computing", "data science", "cybersecurity", "blockchain"
+            "cloud computing", "data science", "cybersecurity", "blockchain",
+            "artificial intelligence", "big data", "IoT", "quantum computing"
         ]
         
         try:
@@ -113,7 +113,7 @@ class ArticleGenerator:
             {"role": "user", "content": prompt}
         ])
         
-        match = re.search(r'ЗАГОЛОВОВОК:\s*(.+)', response, re.IGNORECASE)
+        match = re.search(r'ЗАГОЛОВОК:\s*(.+)', response, re.IGNORECASE)
         if match:
             title = match.group(1).strip()
         else:
@@ -193,10 +193,10 @@ Return ONLY the English prompt, no explanation."""
                 {"role": "user", "content": prompt}
             ], temperature=0.3)
             
-            # Очищаем от лишнего
             clean = response.strip().strip('"').strip("'").strip()
-            # Убираем "Prompt:" или "Image:" если есть
             clean = re.sub(r'^(Prompt|Image):\s*', '', clean, flags=re.IGNORECASE)
+            # Убираем переносы строк
+            clean = clean.replace('\n', ' ').strip()
             return clean[:100]
             
         except Exception as e:
@@ -206,7 +206,7 @@ Return ONLY the English prompt, no explanation."""
     def generate_image(self, title):
         """
         Генерация изображения через Hugging Face Inference API
-        Модель: stabilityai/stable-diffusion-xl-base-1.0 (или другая бесплатная)
+        Используем бесплатные модели без ограничений
         """
         logger.info("=== IMAGE GENERATION START ===")
         
@@ -219,62 +219,79 @@ Return ONLY the English prompt, no explanation."""
             english_prompt = self.generate_english_prompt(title)
             logger.info(f"English prompt: {english_prompt}")
             
-            # Добавляем улучшающие теги
             full_prompt = f"{english_prompt}, high quality, detailed, professional illustration, clean design"
             logger.info(f"Full prompt: {full_prompt}")
             
-            # Hugging Face Inference API
-            # Используем бесплатную модель Stable Diffusion
-            API_URL = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0"
+            # Список бесплатных моделей для попыток
+            models = [
+                "runwayml/stable-diffusion-v1-5",  # SD 1.5 - стабильная
+                "CompVis/stable-diffusion-v1-4",   # SD 1.4
+                "stabilityai/stable-diffusion-2-1", # SD 2.1
+            ]
+            
             headers = {"Authorization": f"Bearer {HF_API_TOKEN}"}
             
-            payload = {
-                "inputs": full_prompt,
-                "parameters": {
-                    "width": 1024,
-                    "height": 768,
-                    "seed": random.randint(1, 100000),
-                    "negative_prompt": "blurry, low quality, distorted, ugly, deformed"
-                }
-            }
+            for model in models:
+                try:
+                    logger.info(f"Trying model: {model}")
+                    API_URL = f"https://api-inference.huggingface.co/models/{model}"
+                    
+                    payload = {
+                        "inputs": full_prompt,
+                    }
+                    
+                    # Для некоторых моделей нужны дополнительные параметры
+                    if "stable-diffusion" in model:
+                        payload["parameters"] = {
+                            "width": 512,  # Меньше размер = быстрее генерация
+                            "height": 512,
+                            "num_inference_steps": 25,
+                            "guidance_scale": 7.5,
+                            "seed": random.randint(1, 100000)
+                        }
+                    
+                    logger.info(f"Sending request to {model}...")
+                    response = requests.post(API_URL, headers=headers, json=payload, timeout=60)
+                    
+                    logger.info(f"Response status: {response.status_code}")
+                    
+                    if response.status_code == 200:
+                        # Успех! Сохраняем изображение
+                        image_bytes = response.content
+                        
+                        # Проверяем, что это действительно изображение
+                        if len(image_bytes) < 1000:
+                            logger.warning(f"Response too small ({len(image_bytes)} bytes), probably error")
+                            continue
+                        
+                        # Сохраняем локально
+                        image_filename = f"ai_generated_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+                        image_path = Path('assets/images/posts') / image_filename
+                        image_path.parent.mkdir(parents=True, exist_ok=True)
+                        
+                        with open(image_path, 'wb') as f:
+                            f.write(image_bytes)
+                        
+                        logger.info(f"Image saved: {image_path} ({len(image_bytes)} bytes)")
+                        return f"/assets/images/posts/{image_filename}"
+                        
+                    elif response.status_code == 503:
+                        logger.warning(f"Model {model} is loading, trying next...")
+                        continue
+                    elif response.status_code == 401:
+                        logger.error("Invalid HF token!")
+                        return None
+                    else:
+                        logger.warning(f"Model {model} returned {response.status_code}: {response.text[:100]}")
+                        continue
+                        
+                except Exception as e:
+                    logger.error(f"Error with model {model}: {e}")
+                    continue
             
-            logger.info("Sending request to Hugging Face...")
-            
-            response = requests.post(API_URL, headers=headers, json=payload, timeout=120)
-            logger.info(f"HF response status: {response.status_code}")
-            
-            if response.status_code == 200:
-                # Получаем бинарные данные изображения
-                image_bytes = response.content
-                
-                # Сохраняем локально
-                image_filename = f"ai_generated_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
-                image_path = Path('assets/images/posts') / image_filename
-                
-                # Создаём директории если нужно
-                image_path.parent.mkdir(parents=True, exist_ok=True)
-                
-                with open(image_path, 'wb') as f:
-                    f.write(image_bytes)
-                
-                logger.info(f"Image saved locally: {image_path}")
-                
-                # Возвращаем относительный путь для Jekyll
-                return f"/assets/images/posts/{image_filename}"
-                
-            elif response.status_code == 503:
-                # Модель загружается, попробуем позже
-                logger.warning("Model is loading, waiting...")
-                time.sleep(20)
-                return None  # Попытка повторится в цикле
-                
-            else:
-                logger.error(f"HF error: {response.status_code} - {response.text[:200]}")
-                return None
-                
-        except requests.exceptions.Timeout:
-            logger.error("HF request timeout")
+            logger.error("All HF models failed")
             return None
+                
         except Exception as e:
             logger.error(f"Image generation error: {e}")
             import traceback
@@ -377,7 +394,7 @@ image: "{image_url}"
             # 2. Статья
             body = self.generate_article(title)
             
-            # 3. Изображение (до 3 попыток)
+            # 3. Изображение (до 3 попыток с разными моделями)
             for attempt in range(3):
                 logger.info(f"Image attempt {attempt + 1}/3")
                 image_url = self.generate_image(title)
@@ -387,9 +404,9 @@ image: "{image_url}"
             
             # Fallback если не сработало
             if not image_url:
-                logger.error("All image attempts failed")
-                # Используем Unsplash как fallback (надёжнее placeholder)
-                keywords = "technology,business,ai"
+                logger.error("All image attempts failed, using Unsplash fallback")
+                # Unsplash - надёжный fallback с реальными фото
+                keywords = urllib.parse.quote("technology,computer,business")
                 image_url = f"https://source.unsplash.com/1024x768/?{keywords}"
             
             logger.info(f"Final image: {image_url}")
