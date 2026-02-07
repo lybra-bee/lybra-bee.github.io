@@ -28,7 +28,7 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-# ключ Horde из окружения
+# 🔹 ДОБАВЛЕНО: ключ Horde из окружения (как в первом файле)
 HORDE_API_KEY = os.getenv("HORDE_API_KEY") or os.getenv("AIHORDE_API_KEY")
 
 SITE_URL = "https://lybra-ai.ru"
@@ -122,7 +122,6 @@ def generate_title(topic):
     text = groq_request(prompt, max_tokens=120)
     log.info(f"Groq title raw: {text}")
 
-    # исправлен регэксп: s*
     match = re.search(r"ЗАГОЛОВОК:s*(.+)", text)
     if match:
         title = match.group(1).strip()
@@ -183,11 +182,7 @@ def generate_body(title):
     log.info("📝 Generating article body")
 
     outline = generate_outline(title)
-    # исправлен регэксп: s*
     headers = [re.sub(r'^##s*', '', l) for l in outline.splitlines() if l.startswith("##")]
-
-    # исправлена f-строка: одна строка + 
-
 
     body = f"# {title}
 
@@ -196,9 +191,6 @@ def generate_body(title):
 
     for h in headers:
         text = generate_section(title, outline, h)
-        # тоже одна строка + 
-
-
         body += f"## {h}
 
 {text}
@@ -247,6 +239,7 @@ def generate_image_horde(title):
         "slow_workers": True
     }
 
+    # 🔹 ИЗМЕНЕНО: используем HORDE_API_KEY, а не "0000000000"
     headers = {
         "Client-Agent": "LybraBlogBot:4.0",
         "Content-Type": "application/json"
@@ -347,9 +340,6 @@ def send_to_telegram(title, teaser, image):
         log.warning("Telegram disabled")
         return
 
-    # исправлена f-строка: 
-
- вместо разрыва на пустых строках
     caption = f"<b>{title}</b>
 
 {teaser}
