@@ -28,6 +28,9 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
+# 🔹 ДОБАВЛЕНО: ключ Horde из окружения (как в первом файле)
+HORDE_API_KEY = os.getenv("HORDE_API_KEY") or os.getenv("AIHORDE_API_KEY")
+
 SITE_URL = "https://lybra-ai.ru"
 
 if not GROQ_API_KEY:
@@ -57,7 +60,7 @@ def get_google_trends_topic():
         r = requests.get("https://trends.google.com/trends/hottrends/visualize/internal/data", timeout=10)
         if not r.ok:
             return "AI tools"
-        topics = re.findall(r'"title":\{"query":"([^"]+)"', r.text)
+        topics = re.findall(r'"title":{"query":"([^"]+)"', r.text)
         if topics:
             topic = random.choice(topics)
             log.info(f"🔥 Google Trends topic: {topic}")
@@ -119,7 +122,7 @@ def generate_title(topic):
     text = groq_request(prompt, max_tokens=120)
     log.info(f"Groq title raw: {text}")
 
-    match = re.search(r"ЗАГОЛОВОК:\s*(.+)", text)
+    match = re.search(r"ЗАГОЛОВОК:s*(.+)", text)
     if match:
         title = match.group(1).strip()
         log.info(f"✅ Title: {title}")
@@ -179,14 +182,20 @@ def generate_body(title):
     log.info("📝 Generating article body")
 
     outline = generate_outline(title)
-    headers = [re.sub(r'^##\s*', '', l) for l in outline.splitlines() if l.startswith("##")]
+    headers = [re.sub(r'^##s*', '', l) for l in outline.splitlines() if l.startswith("##")]
 
-    body = f"# {title}\n\n"
+    body = f"# {title}
+
+"
     total = 0
 
     for h in headers:
         text = generate_section(title, outline, h)
-        body += f"## {h}\n\n{text}\n\n"
+        body += f"## {h}
+
+{text}
+
+"
         total += len(text)
 
     log.info(f"📏 Body length: {total}")
@@ -230,18 +239,20 @@ def generate_image_horde(title):
         "slow_workers": True
     }
 
+    # 🔹 ИЗМЕНЕНО: используем HORDE_API_KEY, а не "0000000000"
     headers = {
-        "apikey": "0000000000",
-        "Client-Agent": "LybraBlogBot:3.0",
+        "Client-Agent": "LybraBlogBot:4.0",  # можно оставить 3.0, это не критично
         "Content-Type": "application/json"
     }
+    if HORDE_API_KEY:
+        headers["apikey"] = HORDE_API_KEY
 
     try:
         log.info("📡 Sending Horde request")
         r = requests.post(url_async, json=payload, headers=headers, timeout=60)
 
         if not r.ok:
-            log.warning(f"Horde failed: {r.text}")
+            log.warning(f"Horde failed: {r.status_code} {r.text[:200]}")
             return None
 
         job_id = r.json().get("id")
@@ -256,8 +267,12 @@ def generate_image_horde(title):
 
         for i in range(45):
             time.sleep(8)
-            check = requests.get(check_url, headers=headers).json()
+            check_resp = requests.get(check_url, headers=headers, timeout=30)
+            if not check_resp.ok:
+                log.warning(f"Horde check failed: {check_resp.status_code}")
+                continue
 
+            check = check_resp.json()
             queue = check.get("queue_position")
             waiting = check.get("waiting")
             done = check.get("done")
@@ -265,8 +280,12 @@ def generate_image_horde(title):
             log.info(f"⏳ Horde progress: queue={queue}, waiting={waiting}, done={done}")
 
             if done:
-                final = requests.get(status_url, headers=headers).json()
+                final_resp = requests.get(status_url, headers=headers, timeout=60)
+                if not final_resp.ok:
+                    log.warning(f"Horde status failed: {final_resp.status_code}")
+                    return None
 
+                final = final_resp.json()
                 if final.get("generations"):
                     img_url = final["generations"][0]["img"]
                     log.info(f"📥 Downloading image: {img_url}")
@@ -321,7 +340,11 @@ def send_to_telegram(title, teaser, image):
         log.warning("Telegram disabled")
         return
 
-    caption = f"<b>{title}</b>\n\n{teaser}\n\n<i>Читать:</i> {SITE_URL}"
+    caption = f"<b>{title}</b>
+
+{teaser}
+
+<i>Читать:</i> {SITE_URL}"
 
     if image.startswith("http"):
         img = requests.get(image).content
