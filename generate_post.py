@@ -122,7 +122,8 @@ def generate_title(topic):
     text = groq_request(prompt, max_tokens=120)
     log.info(f"Groq title raw: {text}")
 
-    match = re.search(r"ЗАГОЛОВОК:s*(.+)", text)
+    # ИСПРАВЛЕНО: \s вместо s для пробелов
+    match = re.search(r"ЗАГОЛОВОК:\s*(.+)", text)
     if match:
         title = match.group(1).strip()
         log.info(f"✅ Title: {title}")
@@ -182,20 +183,16 @@ def generate_body(title):
     log.info("📝 Generating article body")
 
     outline = generate_outline(title)
-    headers = [re.sub(r'^##s*', '', l) for l in outline.splitlines() if l.startswith("##")]
+    # ИСПРАВЛЕНО: \s вместо s для пробелов
+    headers = [re.sub(r'^##\s*', '', l) for l in outline.splitlines() if l.startswith("##")]
 
-    body = f"# {title}
-
-"
+    # ИСПРАВЛЕНО: правильное экранирование переносов строк в f-string
+    body = f"# {title}\n\n"
     total = 0
 
     for h in headers:
         text = generate_section(title, outline, h)
-        body += f"## {h}
-
-{text}
-
-"
+        body += f"## {h}\n\n{text}\n\n"
         total += len(text)
 
     log.info(f"📏 Body length: {total}")
@@ -306,8 +303,12 @@ def generate_image_horde(title):
 
 def generate_image(title):
     local = generate_image_horde(title)
-    if local and os.path.exists(local):
+    # ИСПРАВЛЕНО: используем Path для проверки существования
+    if local and Path(local).exists():
         return local
+
+    if not FALLBACK_IMAGES:
+        raise RuntimeError("No fallback images available")
 
     fallback = random.choice(FALLBACK_IMAGES)
     log.warning(f"⚠ Using fallback image: {fallback}")
@@ -319,7 +320,9 @@ def save_post(title, body, image):
     slug = re.sub(r'[^a-z0-9-]+', '-', translit(title)).strip('-')[:80]
     file = POSTS_DIR / f"{date:%Y-%m-%d}-{slug}.md"
 
-    image_url = image if image.startswith("http") else "/assets/images/posts/" + Path(image).name
+    # ИСПРАВЛЕНО: более чистая работа с путями
+    image_path = Path(image)
+    image_url = image if image.startswith("http") else f"/assets/images/posts/{image_path.name}"
 
     front = f"""---
 title: "{title}"
@@ -340,27 +343,32 @@ def send_to_telegram(title, teaser, image):
         log.warning("Telegram disabled")
         return
 
-    caption = f"<b>{title}</b>
+    caption = f"<b>{title}</b>\n\n{teaser}\n\n<i>Читать:</i> {SITE_URL}"
 
-{teaser}
+    # ИСПРАВЛЕНО: правильная работа с временными файлами и очистка
+    temp_file = None
+    try:
+        if image.startswith("http"):
+            img = requests.get(image, timeout=30).content
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as f:
+                f.write(img)
+                temp_file = f.name
+            image = temp_file
 
-<i>Читать:</i> {SITE_URL}"
+        with open(image, "rb") as p:
+            response = requests.post(
+                f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto",
+                data={"chat_id": TELEGRAM_CHAT_ID, "caption": caption, "parse_mode": "HTML"},
+                files={"photo": p},
+                timeout=30
+            )
+            response.raise_for_status()
 
-    if image.startswith("http"):
-        img = requests.get(image).content
-        f = tempfile.NamedTemporaryFile(delete=False)
-        f.write(img)
-        f.close()
-        image = f.name
-
-    with open(image, "rb") as p:
-        requests.post(
-            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto",
-            data={"chat_id": TELEGRAM_CHAT_ID, "caption": caption, "parse_mode": "HTML"},
-            files={"photo": p},
-        )
-
-    log.info("📬 Telegram sent")
+        log.info("📬 Telegram sent")
+    finally:
+        # ИСПРАВЛЕНО: гарантированная очистка временного файла
+        if temp_file and os.path.exists(temp_file):
+            os.unlink(temp_file)
 
 # -------------------- CLEAN POSTS --------------------
 def cleanup_posts(limit=70):
@@ -381,7 +389,13 @@ def main():
     log.info(f"🎯 Topic: {topic}")
 
     title = generate_title(topic)
-    body = generate_body(title)
+    
+    # ИСПРАВЛЕНО: обработка ошибки генерации тела статьи
+    try:
+        body = generate_body(title)
+    except RuntimeError as e:
+        log.error(f"Failed to generate article body: {e}")
+        return
 
     image = generate_image(title)
     log.info(f"🖼 Image: {image}")
