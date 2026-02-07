@@ -27,8 +27,6 @@ IMAGES_DIR.mkdir(parents=True, exist_ok=True)
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-
-# 🔹 ДОБАВЛЕНО: ключ Horde из окружения (как в первом файле)
 HORDE_API_KEY = os.getenv("HORDE_API_KEY") or os.getenv("AIHORDE_API_KEY")
 
 SITE_URL = "https://lybra-ai.ru"
@@ -122,7 +120,6 @@ def generate_title(topic):
     text = groq_request(prompt, max_tokens=120)
     log.info(f"Groq title raw: {text}")
 
-    # ИСПРАВЛЕНО: \s вместо s для пробелов
     match = re.search(r"ЗАГОЛОВОК:\s*(.+)", text)
     if match:
         title = match.group(1).strip()
@@ -183,10 +180,8 @@ def generate_body(title):
     log.info("📝 Generating article body")
 
     outline = generate_outline(title)
-    # ИСПРАВЛЕНО: \s вместо s для пробелов
     headers = [re.sub(r'^##\s*', '', l) for l in outline.splitlines() if l.startswith("##")]
 
-    # ИСПРАВЛЕНО: правильное экранирование переносов строк в f-string
     body = f"# {title}\n\n"
     total = 0
 
@@ -216,17 +211,17 @@ def generate_image_horde(title):
 
     style = random.choice(styles)
     prompt = f"{title}, {style}, ultra realistic, professional photography, 8k"
-    negative_prompt = "girl, woman, cartoon, blurry, watermark"
+    negative_prompt = "text, watermark, low quality, blurry, deformed, cartoon, girl, woman"
 
     url_async = "https://stablehorde.net/api/v2/generate/async"
 
     payload = {
         "prompt": prompt + " ### " + negative_prompt,
-        "models": ["Juggernaut XL", "Realistic Vision V5.1", "SDXL 1.0"],
+        "models": ["Realistic Vision V5.1", "SDXL 1.0", "Juggernaut XL"],
         "params": {
-            "width": 768,
-            "height": 512,
-            "steps": 30,
+            "width": 1024,
+            "height": 576,
+            "steps": 28,
             "cfg_scale": 7.5,
             "sampler_name": "k_euler_a",
             "n": 1
@@ -236,10 +231,9 @@ def generate_image_horde(title):
         "slow_workers": True
     }
 
-    # 🔹 ИЗМЕНЕНО: используем HORDE_API_KEY, а не "0000000000"
     headers = {
-        "Client-Agent": "LybraBlogBot:4.0",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Client-Agent": "LybraBlogBot:4.0"
     }
     if HORDE_API_KEY:
         headers["apikey"] = HORDE_API_KEY
@@ -249,12 +243,13 @@ def generate_image_horde(title):
         r = requests.post(url_async, json=payload, headers=headers, timeout=60)
 
         if not r.ok:
-            log.warning(f"Horde failed: {r.status_code} {r.text[:200]}")
+            log.error(f"Horde failed: {r.status_code} {r.text[:500]}")
             return None
 
-        job_id = r.json().get("id")
+        job = r.json()
+        job_id = job.get("id")
         if not job_id:
-            log.warning("No Horde job id")
+            log.error("No job ID in response")
             return None
 
         log.info(f"🧩 Horde job id: {job_id}")
@@ -262,37 +257,43 @@ def generate_image_horde(title):
         check_url = f"https://stablehorde.net/api/v2/generate/check/{job_id}"
         status_url = f"https://stablehorde.net/api/v2/generate/status/{job_id}"
 
-        for i in range(45):
-            time.sleep(8)
-            check_resp = requests.get(check_url, headers=headers, timeout=30)
-            if not check_resp.ok:
-                log.warning(f"Horde check failed: {check_resp.status_code}")
+        for i in range(36):
+            time.sleep(10)
+            
+            try:
+                check = requests.get(check_url, headers=headers, timeout=30)
+                if not check.ok:
+                    log.debug(f"Horde check status: {check.status_code}")
+                    continue
+                
+                check_json = check.json()
+                if check_json.get("done"):
+                    final = requests.get(status_url, headers=headers, timeout=30)
+                    if not final.ok:
+                        log.warning(f"Horde final status HTTP {final.status_code}")
+                        continue
+                    
+                    final_json = final.json()
+                    gens = final_json.get("generations") or []
+                    
+                    if gens:
+                        img_url = gens[0].get("img")
+                        if img_url:
+                            log.info(f"📥 Downloading image: {img_url}")
+                            img_resp = requests.get(img_url, timeout=60)
+                            
+                            if img_resp.ok:
+                                filename = f"horde-{int(time.time())}.png"
+                                path = IMAGES_DIR / filename
+                                path.write_bytes(img_resp.content)
+                                log.info(f"🖼 Image saved: {path}")
+                                return str(path)
+                    else:
+                        log.warning("Horde done but no generations")
+                        
+            except Exception as e:
+                log.debug(f"Horde poll exception: {e}")
                 continue
-
-            check = check_resp.json()
-            queue = check.get("queue_position")
-            waiting = check.get("waiting")
-            done = check.get("done")
-
-            log.info(f"⏳ Horde progress: queue={queue}, waiting={waiting}, done={done}")
-
-            if done:
-                final_resp = requests.get(status_url, headers=headers, timeout=60)
-                if not final_resp.ok:
-                    log.warning(f"Horde status failed: {final_resp.status_code}")
-                    return None
-
-                final = final_resp.json()
-                if final.get("generations"):
-                    img_url = final["generations"][0]["img"]
-                    log.info(f"📥 Downloading image: {img_url}")
-
-                    img_data = requests.get(img_url, timeout=60).content
-                    path = IMAGES_DIR / f"horde-{int(time.time())}.jpg"
-                    path.write_bytes(img_data)
-
-                    log.info(f"🖼 Horde image saved: {path}")
-                    return str(path)
 
         log.warning("⏱ Horde timeout")
         return None
@@ -303,7 +304,6 @@ def generate_image_horde(title):
 
 def generate_image(title):
     local = generate_image_horde(title)
-    # ИСПРАВЛЕНО: используем Path для проверки существования
     if local and Path(local).exists():
         return local
 
@@ -320,7 +320,6 @@ def save_post(title, body, image):
     slug = re.sub(r'[^a-z0-9-]+', '-', translit(title)).strip('-')[:80]
     file = POSTS_DIR / f"{date:%Y-%m-%d}-{slug}.md"
 
-    # ИСПРАВЛЕНО: более чистая работа с путями
     image_path = Path(image)
     image_url = image if image.startswith("http") else f"/assets/images/posts/{image_path.name}"
 
@@ -345,12 +344,11 @@ def send_to_telegram(title, teaser, image):
 
     caption = f"<b>{title}</b>\n\n{teaser}\n\n<i>Читать:</i> {SITE_URL}"
 
-    # ИСПРАВЛЕНО: правильная работа с временными файлами и очистка
     temp_file = None
     try:
         if image.startswith("http"):
             img = requests.get(image, timeout=30).content
-            with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as f:
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as f:
                 f.write(img)
                 temp_file = f.name
             image = temp_file
@@ -366,7 +364,6 @@ def send_to_telegram(title, teaser, image):
 
         log.info("📬 Telegram sent")
     finally:
-        # ИСПРАВЛЕНО: гарантированная очистка временного файла
         if temp_file and os.path.exists(temp_file):
             os.unlink(temp_file)
 
@@ -390,7 +387,6 @@ def main():
 
     title = generate_title(topic)
     
-    # ИСПРАВЛЕНО: обработка ошибки генерации тела статьи
     try:
         body = generate_body(title)
     except RuntimeError as e:
