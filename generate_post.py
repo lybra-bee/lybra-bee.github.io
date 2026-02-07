@@ -62,7 +62,6 @@ class ArticleGenerator:
         """Получение трендовой темы"""
         logger.info("🌍 Fetching Google Trends topic")
         
-        # Список актуальных тем на случай недоступности Trends
         fallback_topics = [
             "AI tools", "machine learning", "automation", 
             "digital transformation", "productivity apps",
@@ -70,23 +69,18 @@ class ArticleGenerator:
         ]
         
         try:
-            # Пробуем получить реальные тренды
             url = "https://trends.google.com/trends/trendingsearches/daily/rss?geo=US"
             response = requests.get(url, timeout=10)
             
             if response.status_code == 200:
-                # Простой парсинг RSS
                 titles = re.findall(r'<title>(.*?)</title>', response.text)
                 if len(titles) > 1:
-                    # Пропускаем первый заголовок (обычно "Daily Search Trends")
                     topic = random.choice(titles[1:min(6, len(titles))])
-                    # Очищаем от лишнего
                     topic = re.sub(r'&#39;', "'", topic)
                     topic = re.sub(r'&quot;', '"', topic)
                     logger.info(f"🎯 Topic from Trends: {topic}")
                     return topic
             
-            # Fallback на случайные темы
             topic = random.choice(fallback_topics)
             logger.info(f"🎯 Fallback topic: {topic}")
             return topic
@@ -111,7 +105,6 @@ class ArticleGenerator:
             {"role": "user", "content": prompt}
         ])
         
-        # Извлекаем заголовок
         match = re.search(r'ЗАГОЛОВОК:\s*(.+)', response, re.IGNORECASE)
         if match:
             title = match.group(1).strip()
@@ -139,7 +132,6 @@ class ArticleGenerator:
             {"role": "user", "content": prompt}
         ])
         
-        # Парсим разделы
         sections = re.findall(r'\d+\.\s*(.+)', response)
         if not sections:
             sections = ["Введение", "Основная часть", "Заключение"]
@@ -178,65 +170,74 @@ class ArticleGenerator:
             content = self.generate_section(title, section, context)
             sections_content.append(f"## {section}\n\n{content}")
             context += f"{section}: {content[:200]}... "
-            time.sleep(1)  # Небольшая пауза между запросами
+            time.sleep(1)
         
         body = "\n\n".join(sections_content)
         logger.info(f"📏 Body length: {len(body)}")
         return body
 
     def generate_image_prompt(self, title):
-        """Создание английского промпта для изображения на основе заголовка"""
-        # Переводим ключевые слова на английский для лучшего качества генерации
+        """Создание английского промпта для изображения"""
         prompt = f"""Create a short English image generation prompt (10-15 words) based on this Russian article title: "{title}"
 The prompt should describe a professional illustration suitable for a tech blog.
-Focus on: technology, business, modern office, digital innovation, AI.
+Focus on: technology, business, modern office, digital innovation.
 Return ONLY the English prompt, nothing else."""
 
-        response = self.groq_request([
-            {"role": "system", "content": "You create image generation prompts."},
-            {"role": "user", "content": prompt}
-        ], temperature=0.5)
-        
-        # Очищаем от лишнего
-        clean_prompt = response.strip().strip('"').strip("'")
-        # Добавляем улучшающие теги
-        enhanced = f"{clean_prompt}, professional illustration, clean design, high quality, detailed"
-        return enhanced
+        try:
+            response = self.groq_request([
+                {"role": "system", "content": "You create image generation prompts."},
+                {"role": "user", "content": prompt}
+            ], temperature=0.5)
+            
+            clean_prompt = response.strip().strip('"').strip("'")
+            enhanced = f"{clean_prompt}, professional illustration, clean design, high quality, detailed"
+            return enhanced
+        except Exception as e:
+            logger.error(f"Failed to generate image prompt: {e}")
+            return "technology business concept, modern office, digital innovation, professional illustration"
 
     def generate_image(self, title):
-        """Генерация изображения через Pollinations.ai (бесплатно, без ключа)"""
+        """Генерация изображения через Pollinations.ai"""
         logger.info("🎨 Generating image with Pollinations.ai")
         
         try:
-            # Получаем английский промпт
+            # Получаем промпт
             image_prompt = self.generate_image_prompt(title)
-            logger.info(f"📝 Image prompt: {image_prompt[:100]}...")
+            logger.info(f"📝 Image prompt: {image_prompt}")
             
             # Кодируем для URL
             encoded_prompt = urllib.parse.quote(image_prompt)
             
-            # Формируем URL для Pollinations
-            # Параметры:
-            # - width/height: размеры
-            # - nologo=true: без водяного знака
-            # - enhance=true: улучшение качества
-            # - seed: для воспроизводимости (можно убрать для случайности)
+            # Формируем URL
+            seed = random.randint(1, 10000)
             image_url = (
                 f"https://image.pollinations.ai/prompt/{encoded_prompt}"
-                f"?width=1024&height=768&nologo=true&enhance=true&seed={random.randint(1, 10000)}"
+                f"?width=1024&height=768&nologo=true&enhance=true&seed={seed}"
             )
             
-            # Проверяем, что URL доступен (делаем HEAD запрос)
-            logger.info("📡 Checking image availability...")
-            response = requests.head(image_url, timeout=30, allow_redirects=True)
+            logger.info(f"🔗 Image URL: {image_url[:100]}...")
+            
+            # Проверяем доступность (Pollinations генерирует на лету, поэтому просто проверим что URL валидный)
+            # Делаем GET запрос для проверки
+            logger.info("📡 Testing image URL...")
+            response = requests.get(image_url, timeout=60, stream=True)
             
             if response.status_code == 200:
-                logger.info(f"✅ Image generated: {image_url[:80]}...")
-                return image_url
+                # Проверяем, что это действительно изображение
+                content_type = response.headers.get('content-type', '')
+                if 'image' in content_type:
+                    logger.info(f"✅ Image verified: {content_type}")
+                    return image_url
+                else:
+                    logger.warning(f"Unexpected content type: {content_type}")
+                    return None
             else:
-                logger.warning(f"Image check failed with status {response.status_code}")
+                logger.warning(f"Image URL returned status {response.status_code}")
                 return None
                 
+        except requests.exceptions.Timeout:
+            logger.error("Image generation timeout")
+            return None
         except Exception as e:
             logger.error(f"Image generation error: {e}")
             return None
@@ -244,17 +245,14 @@ Return ONLY the English prompt, nothing else."""
     def save_post(self, title, body, image_url):
         """Сохранение поста в файл"""
         date_str = datetime.now().strftime('%Y-%m-%d')
-        # Транслитерация для имени файла
         slug = self.transliterate(title.lower())
         slug = re.sub(r'[^a-z0-9]+', '-', slug)[:50].strip('-')
         
         filename = f"{date_str}-{slug}.md"
         filepath = Path('_posts') / filename
         
-        # Создаём директорию если нужно
         filepath.parent.mkdir(exist_ok=True)
         
-        # Front matter
         front_matter = f"""---
 layout: post
 title: "{title}"
@@ -281,7 +279,7 @@ image: {image_url}
             'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
             'ф': 'f', 'х': 'h', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch',
             'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya',
-            ' ': '-', ',': '', '.': '', '!': '', '?': ''
+            ' ': '-', ',': '', '.': '', '!': '', '?': '', ':': '', ';': ''
         }
         
         result = ''
@@ -289,27 +287,31 @@ image: {image_url}
             result += translit_dict.get(char, char)
         return result
 
-    def send_telegram(self, title, filepath):
+    def send_telegram(self, title, filepath, image_url=None):
         """Отправка уведомления в Telegram"""
         if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
             logger.warning("Telegram credentials not set")
             return
         
         try:
+            # Отправляем текст
             message = f"📝 Новая статья опубликована!\n\n<b>{title}</b>"
+            if image_url:
+                message += f"\n\n🖼 <a href='{image_url}'>Изображение</a>"
             
             url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
             payload = {
                 'chat_id': TELEGRAM_CHAT_ID,
                 'text': message,
-                'parse_mode': 'HTML'
+                'parse_mode': 'HTML',
+                'disable_web_page_preview': False
             }
             
             response = requests.post(url, json=payload, timeout=10)
             if response.status_code == 200:
                 logger.info("📬 Telegram sent")
             else:
-                logger.warning(f"Telegram error: {response.status_code}")
+                logger.warning(f"Telegram error: {response.status_code} - {response.text}")
                 
         except Exception as e:
             logger.error(f"Telegram error: {e}")
@@ -323,7 +325,6 @@ image: {image_url}
             
             now = datetime.now()
             for post_file in posts_dir.glob('*.md'):
-                # Извлекаем дату из имени файла
                 date_match = re.match(r'(\d{4}-\d{2}-\d{2})', post_file.name)
                 if date_match:
                     post_date = datetime.strptime(date_match.group(1), '%Y-%m-%d')
@@ -339,6 +340,7 @@ image: {image_url}
     def run(self):
         """Основной процесс генерации"""
         logger.info("=== START ===")
+        image_url = None
         
         try:
             # 1. Получаем тему
@@ -350,19 +352,26 @@ image: {image_url}
             # 3. Генерируем статью
             body = self.generate_article(title)
             
-            # 4. Генерируем изображение (НОВОЕ: Pollinations вместо Horde)
-            image_url = self.generate_image(title)
+            # 4. Генерируем изображение
+            try:
+                image_url = self.generate_image(title)
+            except Exception as e:
+                logger.error(f"Image generation failed: {e}")
+                image_url = None
             
+            # Если изображение не сгенерировалось, используем placeholder
             if not image_url:
-                # Если не удалось, используем placeholder (но теперь это редкость)
                 logger.warning("⚠ Using placeholder image")
-                image_url = f"https://via.placeholder.com/1024x768/4a90e2/ffffff?text={urllib.parse.quote(title[:30])}"
+                safe_title = urllib.parse.quote(title[:30])
+                image_url = f"https://via.placeholder.com/1024x768/4a90e2/ffffff?text={safe_title}"
+            
+            logger.info(f"🖼 Final image URL: {image_url}")
             
             # 5. Сохраняем
             filepath = self.save_post(title, body, image_url)
             
             # 6. Отправляем в Telegram
-            self.send_telegram(title, filepath)
+            self.send_telegram(title, filepath, image_url)
             
             # 7. Очистка старых постов
             self.cleanup_old_posts()
@@ -371,6 +380,8 @@ image: {image_url}
             
         except Exception as e:
             logger.error(f"=== FAILED: {e} ===")
+            import traceback
+            logger.error(traceback.format_exc())
             raise
 
 if __name__ == "__main__":
