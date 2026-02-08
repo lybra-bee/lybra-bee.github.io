@@ -27,7 +27,7 @@ IMAGES_DIR.mkdir(parents=True, exist_ok=True)
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-HORDE_API_KEY = os.getenv("HORDE_API_KEY")
+DEEPAI_API_KEY = os.getenv("DEEPAI_API_KEY")  # Новый ключ для DeepAI
 
 SITE_URL = "https://lybra-ai.ru"
 
@@ -197,99 +197,32 @@ def generate_body(title):
 
     return body
 
-# -------------------- IMAGE (HORDE) --------------------
-def generate_image_horde(title):
-    log.info("🎨 Horde image generation started")
-
-    styles = [
-        "developer working with AI",
-        "machine learning workflow",
-        "neural network visualization",
-        "coding with AI assistant",
-        "AI automation in real business"
-    ]
-
-    style = random.choice(styles)
-    prompt = f"{title}, {style}, ultra realistic, professional photography, 8k"
-    negative_prompt = "girl, woman, cartoon, blurry, watermark"
-
-    url_async = "https://stablehorde.net/api/v2/generate/async"
-
-    payload = {
-        "prompt": prompt + " ### " + negative_prompt,
-        "models": ["Juggernaut XL", "Realistic Vision V5.1", "SDXL 1.0"],
-        "params": {
-            "width": 768,
-            "height": 512,
-            "steps": 30,
-            "cfg_scale": 7.5,
-            "sampler_name": "k_euler_a",
-            "n": 1
-        },
-        "nsfw": False,
-        "trusted_workers": False,
-        "slow_workers": True
-    }
-
+# -------------------- IMAGE (DEEPAI) --------------------
+def generate_image_deepai(text_prompt):
+    url = 'https://api.deepai.org/api/text2img'
+    
     headers = {
-        "apikey": HORDE_API_KEY,  # Используем API ключ из переменной окружения
-        "Client-Agent": "LybraBlogBot:3.0",
-        "Content-Type": "application/json"
+        'api-key': DEEPAI_API_KEY,
     }
-
+    
+    data = {
+        'text': text_prompt,
+    }
+    
     try:
-        log.info("📡 Sending Horde request")
-        r = requests.post(url_async, json=payload, headers=headers, timeout=60)
-
-        if not r.ok:
-            log.warning(f"Horde failed: {r.text}")
-            return None
-
-        job_id = r.json().get("id")
-        if not job_id:
-            log.warning("No Horde job id")
-            return None
-
-        log.info(f"🧩 Horde job id: {job_id}")
-
-        check_url = f"https://stablehorde.net/api/v2/generate/check/{job_id}"
-        status_url = f"https://stablehorde.net/api/v2/generate/status/{job_id}"
-
-        for i in range(45):
-            time.sleep(8)
-            check = requests.get(check_url, headers=headers).json()
-
-            queue = check.get("queue_position")
-            waiting = check.get("waiting")
-            done = check.get("done")
-
-            log.info(f"⏳ Horde progress: queue={queue}, waiting={waiting}, done={done}")
-
-            if done:
-                final = requests.get(status_url, headers=headers).json()
-
-                if final.get("generations"):
-                    img_url = final["generations"][0]["img"]
-                    log.info(f"📥 Downloading image: {img_url}")
-
-                    img_data = requests.get(img_url, timeout=60).content
-                    path = IMAGES_DIR / f"horde-{int(time.time())}.jpg"
-                    path.write_bytes(img_data)
-
-                    log.info(f"🖼 Horde image saved: {path}")
-                    return str(path)
-
-        log.warning("⏱ Horde timeout")
-        return None
-
+        response = requests.post(url, headers=headers, data=data)
+        response.raise_for_status()  # Проверка на ошибки ответа
+        image_url = response.json()['output_url']
+        return image_url
     except Exception as e:
-        log.exception(f"Horde exception: {e}")
+        log.warning(f"Ошибка генерации изображения: {e}")
         return None
 
 def generate_image(title):
-    local = generate_image_horde(title)
-    if local and os.path.exists(local):
-        return local
+    log.info("🎨 Generating image via DeepAI")
+    image = generate_image_deepai(title)
+    if image:
+        return image
 
     fallback = random.choice(FALLBACK_IMAGES)
     log.warning(f"⚠ Using fallback image: {fallback}")
