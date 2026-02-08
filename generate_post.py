@@ -4,6 +4,7 @@
 import os
 import re
 import time
+import json
 import random
 import logging
 import requests
@@ -11,29 +12,36 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 
+# -------------------- LOGGING --------------------
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)s | %(message)s"
 )
 
-log = logging.getLogger()
+logging.info("=== START ===")
 
+# -------------------- PATHS --------------------
 POSTS_DIR = Path("_posts")
 IMAGES_DIR = Path("assets/images/posts")
 
 POSTS_DIR.mkdir(parents=True, exist_ok=True)
 IMAGES_DIR.mkdir(parents=True, exist_ok=True)
 
+# -------------------- ENV --------------------
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-DEEPAI_API_KEY = os.getenv("DEEPAI_API_KEY")  # Новый ключ для DeepAI
+FLUX_API_KEY = os.getenv("FLUX_API_KEY")
 
 SITE_URL = "https://lybra-ai.ru"
 
 if not GROQ_API_KEY:
-    raise RuntimeError("GROQ_API_KEY не установлен!")
+    raise RuntimeError("❌ GROQ_API_KEY missing")
 
+if not FLUX_API_KEY:
+    logging.warning("⚠ FLUX_API_KEY missing — images fallback only")
+
+# -------------------- FALLBACK IMAGES --------------------
 FALLBACK_IMAGES = [
     "https://picsum.photos/1024/768?random=1",
     "https://picsum.photos/1024/768?random=2",
@@ -41,191 +49,213 @@ FALLBACK_IMAGES = [
     "https://picsum.photos/1024/768?random=4",
 ]
 
+# -------------------- TRANSLIT --------------------
 TRANSLIT_MAP = {
-    'а': 'a','б': 'b','в': 'v','г': 'g','д': 'd','е': 'e','ё': 'yo','ж': 'zh','з': 'z',
-    'и': 'i','й': 'y','к': 'k','л': 'l','м': 'm','н': 'n','о': 'o','п': 'p','р': 'r',
-    'с': 's','т': 't','у': 'u','ф': 'f','х': 'kh','ц': 'ts','ч': 'ch','ш': 'sh',
-    'щ': 'shch','ъ': '','ы': 'y','ь': '','э': 'e','ю': 'yu','я': 'ya'
+    'а': 'a','б': 'b','в': 'v','г': 'g','д': 'd','е': 'e','ё': 'yo',
+    'ж': 'zh','з': 'z','и': 'i','й': 'y','к': 'k','л': 'l','м': 'm',
+    'н': 'n','о': 'o','п': 'p','р': 'r','с': 's','т': 't','у': 'u',
+    'ф': 'f','х': 'kh','ц': 'ts','ч': 'ch','ш': 'sh','щ': 'shch',
+    'ъ': '','ы': 'y','ь': '','э': 'e','ю': 'yu','я': 'ya'
 }
 
 def translit(text):
     return ''.join(TRANSLIT_MAP.get(c, c) for c in text.lower())
 
-# -------------------- GOOGLE TRENDS --------------------
-def get_google_trends_topic():
-    log.info("🌍 Fetching Google Trends topic")
-    try:
-        r = requests.get("https://trends.google.com/trends/hottrends/visualize/internal/data", timeout=10)
-        if not r.ok:
-            return "AI tools"
-        topics = re.findall(r'"title":\{"query":"([^"]+)"', r.text)
-        if topics:
-            topic = random.choice(topics)
-            log.info(f"🔥 Google Trends topic: {topic}")
-            return topic + " practical AI"
-    except Exception as e:
-        log.warning(f"Google Trends failed: {e}")
+# -------------------- GOOGLE TRENDS TOPIC --------------------
+def fetch_google_trends_topic():
+    logging.info("🌍 Fetching Google Trends topic")
 
-    return "AI tools practical"
+    try:
+        url = "https://trends.google.com/trends/hottrends/visualize/internal/data"
+        r = requests.get(url, timeout=10)
+        data = r.json()
+
+        topics = []
+        for block in data.get("trendsByDateList", []):
+            for trend in block.get("trendsList", []):
+                title = trend.get("title")
+                if title:
+                    topics.append(title)
+
+        topic = random.choice(topics) if topics else "AI tools"
+        logging.info(f"🔥 Google Trends topic: {topic}")
+        return topic
+
+    except Exception as e:
+        logging.warning(f"Google Trends failed: {e}")
+        return random.choice([
+            "AI tools",
+            "AI productivity",
+            "AI for developers",
+            "AI automation"
+        ])
 
 # -------------------- GROQ REQUEST --------------------
-def groq_request(prompt, max_tokens=900, temperature=0.6):
+def groq_request(prompt, max_tokens=900, temperature=0.6, retries=4):
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
-    payload = {
-        "model": "llama-3.3-70b-versatile",
-        "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": max_tokens,
-        "temperature": temperature
-    }
 
-    for attempt in range(4):
+    for i in range(retries):
+        logging.info(f"Groq request attempt {i+1}/{retries}")
+
         try:
-            log.info(f"Groq request attempt {attempt+1}/4")
+            payload = {
+                "model": "llama-3.3-70b-versatile",
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": max_tokens,
+                "temperature": temperature
+            }
+
             r = requests.post(url, headers=headers, json=payload, timeout=60)
-
-            if r.status_code == 429:
-                time.sleep(3)
-                continue
-
             r.raise_for_status()
+
             return r.json()["choices"][0]["message"]["content"]
 
         except Exception as e:
-            log.warning(f"Groq retry error: {e}")
+            logging.warning(f"Groq error: {e}")
             time.sleep(2)
 
-    raise RuntimeError("Groq failed after retries")
+    raise RuntimeError("Groq failed")
 
 # -------------------- TITLE --------------------
 def generate_title(topic):
-    log.info(f"✍️ Generating title: {topic}")
-
     prompt = f"""
-Сгенерируй ОДИН прикладной заголовок статьи на русском.
+Сгенерируй ОДИН прикладной заголовок статьи.
 
 Тема: {topic}
 
 Требования:
 - 8–14 слов
-- Практическая польза
+- Только практическая польза
 - Без футуризма
-- Без философии
-- Конкретная выгода
+- Без воды
 
-Формат ответа:
+Формат:
 ЗАГОЛОВОК: ...
 """
 
-    text = groq_request(prompt, max_tokens=120)
-    log.info(f"Groq title raw: {text}")
+    raw = groq_request(prompt, max_tokens=120)
+    logging.info(f"Groq title raw: {raw}")
 
-    match = re.search(r"ЗАГОЛОВОК:\s*(.+)", text)
-    if match:
-        title = match.group(1).strip()
-        log.info(f"✅ Title: {title}")
-        return title
+    match = re.search(r"ЗАГОЛОВОК:\s*(.+)", raw)
+    if not match:
+        return "Практическое применение ИИ для решения реальных задач"
 
-    fallback = "Как эффективно применять ИИ в практических задачах"
-    log.warning(f"⚠ Using fallback title: {fallback}")
-    return fallback
+    title = match.group(1).strip()
+    logging.info(f"✅ Title: {title}")
+    return title
 
 # -------------------- OUTLINE --------------------
 def generate_outline(title):
-    log.info("📚 Generating outline")
-
     prompt = f"""
-Создай план ПРАКТИЧЕСКОЙ статьи по заголовку:
+Создай план прикладной статьи:
 
 "{title}"
 
 Формат:
-- 6–9 разделов ##
-- Реальные советы
-- Кейсы
-- Ошибки
-- Инструменты
+- 6–8 разделов ##
+- Только практика
+- Без философии
 
-Ответ только Markdown.
+Markdown only.
 """
 
-    outline = groq_request(prompt, max_tokens=900, temperature=0.4)
-    log.info("✅ Outline generated")
-    return outline
+    return groq_request(prompt, max_tokens=900)
 
 # -------------------- SECTION --------------------
 def generate_section(title, outline, section):
-    log.info(f"🧩 Generating section: {section}")
-
     prompt = f"""
 Статья: "{title}"
-
 Раздел: {section}
 
 Контекст плана:
 {outline}
 
 Требования:
-- 900–1500 знаков
-- Практика
-- Примеры
-- Кейсы
+- 900–1200 знаков
+- Реальные советы
+- Ошибки и кейсы
 - Без воды
 """
 
-    return groq_request(prompt, max_tokens=900, temperature=0.65)
+    return groq_request(prompt, max_tokens=800)
 
 # -------------------- BODY --------------------
 def generate_body(title):
-    log.info("📝 Generating article body")
-
+    logging.info("📚 Generating outline")
     outline = generate_outline(title)
+    logging.info("✅ Outline generated")
+
     headers = [re.sub(r'^##\s*', '', l) for l in outline.splitlines() if l.startswith("##")]
 
     body = f"# {title}\n\n"
     total = 0
 
     for h in headers:
+        logging.info(f"🧩 Generating section: {h}")
         text = generate_section(title, outline, h)
         body += f"## {h}\n\n{text}\n\n"
         total += len(text)
 
-    log.info(f"📏 Body length: {total}")
+    logging.info(f"📏 Body length: {total}")
 
-    if total < 8000:
-        raise RuntimeError("Статья слишком короткая")
+    if total < 6000:
+        raise RuntimeError("❌ Article too short")
 
     return body
 
-# -------------------- IMAGE (DEEPAI) --------------------
-def generate_image_deepai(text_prompt):
-    url = 'https://api.deepai.org/api/text2img'
-    
-    headers = {
-        'api-key': DEEPAI_API_KEY,
-    }
-    
-    data = {
-        'text': text_prompt,
-    }
-    
-    try:
-        response = requests.post(url, headers=headers, data=data)
-        response.raise_for_status()  # Проверка на ошибки ответа
-        image_url = response.json()['output_url']
-        return image_url
-    except Exception as e:
-        log.warning(f"Ошибка генерации изображения: {e}")
+# -------------------- FLUX IMAGE --------------------
+def generate_image_flux(title):
+    if not FLUX_API_KEY:
         return None
 
+    logging.info("🎨 Generating image via FLUX")
+
+    url = "https://api.bfl.ml/v1/flux-pro-1.1"
+
+    prompt = f"Professional illustration for article: {title}, realistic, sharp, editorial, high quality"
+
+    headers = {
+        "Authorization": f"Bearer {FLUX_API_KEY}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "prompt": prompt,
+        "width": 1024,
+        "height": 768,
+        "steps": 30
+    }
+
+    try:
+        r = requests.post(url, headers=headers, json=payload, timeout=90)
+        r.raise_for_status()
+
+        image_url = r.json().get("url")
+
+        if not image_url:
+            return None
+
+        img = requests.get(image_url).content
+        path = IMAGES_DIR / f"flux-{int(time.time())}.png"
+        path.write_bytes(img)
+
+        logging.info(f"🖼 Image saved: {path}")
+        return str(path)
+
+    except Exception as e:
+        logging.warning(f"Flux image failed: {e}")
+        return None
+
+# -------------------- IMAGE FALLBACK --------------------
 def generate_image(title):
-    log.info("🎨 Generating image via DeepAI")
-    image = generate_image_deepai(title)
-    if image:
-        return image
+    local = generate_image_flux(title)
+
+    if local and os.path.exists(local):
+        return local
 
     fallback = random.choice(FALLBACK_IMAGES)
-    log.warning(f"⚠ Using fallback image: {fallback}")
+    logging.warning(f"⚠ Using fallback image: {fallback}")
     return fallback
 
 # -------------------- SAVE POST --------------------
@@ -234,25 +264,26 @@ def save_post(title, body, image):
     slug = re.sub(r'[^a-z0-9-]+', '-', translit(title)).strip('-')[:80]
     file = POSTS_DIR / f"{date:%Y-%m-%d}-{slug}.md"
 
-    image_url = image if image.startswith("http") else "/assets/images/posts/" + Path(image).name
+    image_path = image if image.startswith("http") else "/assets/images/posts/" + Path(image).name
 
     front = f"""---
 title: "{title}"
 date: {date:%Y-%m-%d 00:00:00 -0000}
 layout: post
 categories: ai
-image: {image_url}
+image: {image_path}
 ---
 
 """
 
     file.write_text(front + body, encoding="utf-8")
-    log.info(f"📝 Post saved: {file}")
+    logging.info(f"📝 Post saved: {file}")
+    return SITE_URL
 
 # -------------------- TELEGRAM --------------------
 def send_to_telegram(title, teaser, image):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-        log.warning("Telegram disabled")
+        logging.warning("Telegram disabled")
         return
 
     caption = f"<b>{title}</b>\n\n{teaser}\n\n<i>Читать:</i> {SITE_URL}"
@@ -271,31 +302,27 @@ def send_to_telegram(title, teaser, image):
             files={"photo": p},
         )
 
-    log.info("📬 Telegram sent")
+    logging.info("📬 Telegram sent")
 
-# -------------------- CLEAN POSTS --------------------
+# -------------------- CLEAN OLD POSTS --------------------
 def cleanup_posts(limit=70):
-    posts = sorted(POSTS_DIR.glob("*.md"))
+    posts = sorted(POSTS_DIR.glob("*.md"), reverse=True)
+
     if len(posts) <= limit:
         return
 
-    to_delete = posts[:-limit]
-    for p in to_delete:
-        log.info(f"🧹 Removing old post: {p}")
-        p.unlink()
+    for old in posts[limit:]:
+        logging.info(f"🧹 Removing old post: {old}")
+        old.unlink()
 
 # -------------------- MAIN --------------------
 def main():
-    log.info("=== START ===")
-
-    topic = get_google_trends_topic()
-    log.info(f"🎯 Topic: {topic}")
+    topic = fetch_google_trends_topic()
+    logging.info(f"🎯 Topic: {topic}")
 
     title = generate_title(topic)
     body = generate_body(title)
-
     image = generate_image(title)
-    log.info(f"🖼 Image: {image}")
 
     save_post(title, body, image)
 
@@ -304,7 +331,7 @@ def main():
 
     cleanup_posts()
 
-    log.info("=== DONE ===")
+    logging.info("=== DONE ===")
 
 if __name__ == "__main__":
     main()
