@@ -2,7 +2,7 @@
 title: "Как сделать бюджетный ремонт ванной комнаты своими руками за 30 000 рублей"
 date: 2025-03-01 00:00:00 -0000
 layout: post
-image: /assets/images/posts/test-vannaya.jpg
+image: /assets/images/posts/assets/images/posts/grok_image_132lkb.jpg
 image_alt: Бюджетный ремонт ванной комнаты своими руками
 description: "Пошаговый гайд: как обновить ванную без мастеров и больших затрат — реальный опыт 2025"
 tags: [ремонт, ванная, бюджетный, DIY]
