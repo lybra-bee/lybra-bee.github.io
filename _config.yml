@@ -1,37 +1,44 @@
-title: "Lybra AI: Блог об ИИ и IoT"
-description: "Ежедневные статьи о гибридном ИИ, IoT и edge-вычислениях 2025 года"
-baseurl: ""
-url: "https://lybra-ai.ru"
+# Основные настройки сайта
+title: "Ремонт своими руками"
+description: "Бюджетный ремонт квартиры, лайфхаки, ошибки новичков и реальные проекты в новостройках и маленьких квартирах"
+baseurl: ""  # Оставляем пустым для GitHub Pages
+url: "https://lybra-ai.ru"  # Пока оставляем текущий домен, потом поменяешь
 permalink: /:year/:month/:day/:title/
 markdown: kramdown
+highlighter: rouge
+
+# Плагины (все бесплатные и работают на GitHub Pages)
 plugins:
   - jekyll-feed
   - jekyll-paginate
   - jekyll-sitemap
   - jekyll-seo-tag
 
-paginate: 5
-paginate_path: "/articles/page:num/"
+# Пагинация (сколько постов на странице)
+paginate: 6
+paginate_path: "/page:num/"
 
+# Коллекции (для рубрик, например "уроки ремонта")
 collections:
   lessons:
     output: true
     permalink: /lessons/:title/
-  pages:
+  projects:
     output: true
-    permalink: /:path/
+    permalink: /projects/:title/
 
+# Значения по умолчанию для постов
 defaults:
   - scope:
       path: ""
       type: posts
     values:
       layout: post
-      image: /assets/images/posts/placeholder.png
-      image_alt: "ИИ и IoT 2025"
-      description: "Статья о трендах ИИ и IoT 2025 года"
+      image: /assets/images/posts/placeholder.jpg  # Заменишь на свою картинку позже
+      image_alt: "Бюджетный ремонт квартиры своими руками"
+      description: "Практические советы по ремонту без мастеров"
   - scope:
       path: ""
       type: pages
     values:
-      layout: default
+      layout: page
