@@ -1,28 +1,31 @@
 # Site settings
-title: "The Budget AI Lab"
+title: "Lybra AI Lab"
 tagline: "Нейросети на P102-100: Экстремальный тюнинг Xeon & GPU"
-description: "Лаборатория по выжиму максимума из дешевого серверного железа для задач Deep Learning и ИИ."
-url: 'https://lybra-ai.ru'
+description: "Лаборатория по выжиму максимума из бюджетного железа для задач Deep Learning."
+
+# Настройки домена (КРИТИЧНО ДЛЯ ВАШЕГО СЛУЧАЯ)
+url: "https://lybra-ai.ru"
+baseurl: "" # ОСТАВИТЬ ПУСТЫМ! Не ставьте даже слэш "/"
+
+# Настройки GitHub
 github:
   username: lybra-bee
+  repository: lybra-bee.github.io
 
-# Настройки оформления
-theme_mode: dark # Всегда темная тема для стиля "Lab"
-avatar: 'https://raw.githubusercontent.com/cotes2020/chirpy-images/main/commons/devices-mockup.png' # Потом замените на фото своего ПК
-
-# Соцсети (оставьте только нужные)
-social:
-  name: "Admin"
-  email: "all77home@list.ru"
-  links:
-    - https://github.com/lybra-bee
-    - https://t.me/lybra777
-
-# Важные технические настройки для GitHub Pages
-baseurl: "" # Оставьте пустым, если репозиторий называется ваш-ник.github.io
-timezone: Europe/Moscow
+# Тема и плагины
+theme: jekyll-theme-chirpy
 lang: ru-RU
+timezone: Europe/Moscow
 
-# Пагинация и поиск
-google_analytics:
-  id: '' # Сюда потом вставите ID для аналитики
+# Оформление
+theme_mode: dark # Чтобы сразу был красивый темный интерфейс
+
+# Пагинация
+paginate: 10
+
+plugins:
+  - jekyll-paginate
+  - jekyll-redirect-from
+  - jekyll-seo-tag
+  - jekyll-sitemap
+  - jekyll-theme-chirpy
