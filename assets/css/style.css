@@ -1,0 +1,17 @@
+/* Добавляем акцентный цвет "Electric Blue" для ссылок и кнопок */
+:root {
+  --link-color: #00d4ff;
+  --link-underline-color: rgba(0, 212, 255, 0.3);
+  --main-wrapper-bg: #121212; /* Глубокий черный фон */
+}
+
+/* Стилизация таблиц под "инструментальный" вид */
+table {
+  border: 1px solid #333;
+  border-radius: 8px;
+}
+
+th {
+  background-color: #1a1a1a !important;
+  color: #00d4ff !important;
+}
