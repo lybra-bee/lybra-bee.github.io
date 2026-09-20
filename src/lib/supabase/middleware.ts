@@ -30,14 +30,18 @@ export async function updateSession(request: NextRequest) {
   // refreshing the auth token
   const { data: { user } } = await supabase.auth.getUser();
 
-  const isAccountRoute = request.nextUrl.pathname.startsWith('/account');
-  const isSellRoute = request.nextUrl.pathname.startsWith('/sell');
+  const pathname = request.nextUrl.pathname;
+
+  // We need to handle localization prefixes (e.g. /en/account, /ru/account)
+  const isAccountRoute = pathname.match(/^\/(en|ru)\/account/);
+  const isSellRoute = pathname.match(/^\/(en|ru)\/sell/);
 
   if (isAccountRoute || isSellRoute) {
     if (!user) {
-      // no user, redirect to login
+      // no user, redirect to login with locale preserved
+      const locale = pathname.split('/')[1];
       const url = request.nextUrl.clone();
-      url.pathname = '/login';
+      url.pathname = `/${locale}/login`;
       return NextResponse.redirect(url);
     }
 
@@ -51,8 +55,9 @@ export async function updateSession(request: NextRequest) {
 
       if (!profile || profile.role !== 'admin') {
          // Not admin, maybe redirect to home or account
+         const locale = pathname.split('/')[1];
          const url = request.nextUrl.clone();
-         url.pathname = '/';
+         url.pathname = `/${locale}`;
          return NextResponse.redirect(url);
       }
     }
