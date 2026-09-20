@@ -1,0 +1,15 @@
+{
+  "home": {
+    "title": "AquaFit",
+    "subtitle": "See it fit before you buy it. Unique aquarium hardscape and 3D printable decor.",
+    "shop_now": "Shop Now",
+    "subscribe": "Subscribe for 3D Decor",
+    "featured": "Featured Items"
+  },
+  "nav": {
+    "catalog": "Catalog",
+    "pricing": "Pricing",
+    "login": "Login",
+    "account": "Account"
+  }
+}
