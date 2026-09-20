@@ -7,19 +7,19 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder'
   apiVersion: '2025-02-24.acacia' as Stripe.LatestApiVersion,
 });
 
-// Create a service role client to bypass RLS for webhook operations
-const supabaseAdmin = createServerClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    cookies: {
-      getAll: () => [],
-      setAll: () => {},
-    },
-  }
-);
-
 export async function POST(req: Request) {
+  // Create a service role client to bypass RLS for webhook operations
+  const supabaseAdmin = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co',
+    process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder',
+    {
+      cookies: {
+        getAll: () => [],
+        setAll: () => {},
+      },
+    }
+  );
+
   const body = await req.text(); // Read raw text for webhook signature verification
   const reqHeaders = headers();
   const signature = (await reqHeaders).get('stripe-signature') as string;

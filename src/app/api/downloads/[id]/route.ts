@@ -48,8 +48,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   // Use admin client to bypass RLS for fetching file_url
   const { createServerClient } = await import('@supabase/ssr');
   const supabaseAdmin = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co',
+    process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder',
     {
       cookies: {
         getAll: () => [],
