@@ -69,12 +69,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
      return NextResponse.json({ error: 'File not found' }, { status: 404 });
   }
 
-  // Generate signed URL (expires in 60 seconds)
-  // Also using admin client since users may not have direct access to generate signed urls on their own without RLS bypass or proper storage policies
+  // Generate signed URL (expires in 2 hours / 7200 seconds) per requirements
   const { data, error } = await supabaseAdmin
     .storage
     .from('3d_files')
-    .createSignedUrl(listingFiles.file_url, 60);
+    .createSignedUrl(listingFiles.file_url, 7200);
 
   if (error || !data) {
     return NextResponse.json({ error: 'Failed to generate download link' }, { status: 500 });
