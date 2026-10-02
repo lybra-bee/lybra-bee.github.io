@@ -42,9 +42,30 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
             <p>{listing.description}</p>
           </div>
 
-          <div className="bg-gray-50 p-4 rounded-lg">
-             <h3 className="font-semibold mb-2">Item Dimensions</h3>
-             <p>{dimensions.length} x {dimensions.width} x {dimensions.height} cm (L x W x H)</p>
+          <div className="bg-zinc-900 border border-gray-800 p-6 rounded-lg text-white">
+             <h3 className="font-semibold mb-4 text-lg border-b border-gray-800 pb-2">3D Print Technical Specs</h3>
+             <ul className="space-y-3 text-sm text-gray-300">
+                <li className="flex items-center gap-2">
+                   <span className="font-semibold text-white">Dimensions:</span>
+                   {dimensions.length} x {dimensions.width} x {dimensions.height} cm
+                </li>
+                {listing.recommended_filament && (
+                   <li className="flex items-center gap-2"><span className="font-semibold text-white">Recommended Filament:</span> {listing.recommended_filament}</li>
+                )}
+                {listing.infill_recommendation && (
+                   <li className="flex items-center gap-2"><span className="font-semibold text-white">Infill:</span> {listing.infill_recommendation}</li>
+                )}
+                <li className="flex items-center gap-2">
+                   <span className="font-semibold text-white">Supports:</span>
+                   {listing.supports_required ? <span className="text-yellow-400">Yes (Required)</span> : <span className="text-green-400 border border-green-800 bg-green-900/30 px-2 py-0.5 rounded text-xs">No Supports Needed</span>}
+                </li>
+                {listing.min_bed_size_mm && (
+                   <li className="flex items-center gap-2"><span className="font-semibold text-white">Min Bed Size:</span> {JSON.parse(JSON.stringify(listing.min_bed_size_mm)).join('x')} mm</li>
+                )}
+             </ul>
+             <div className="mt-4 pt-4 border-t border-gray-800 text-xs text-gray-500">
+                License: Personal Use Only (Single User)
+             </div>
           </div>
 
           <TankFitChecker itemDimensions={dimensions} />
